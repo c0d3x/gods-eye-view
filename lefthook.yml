@@ -1,0 +1,12 @@
+# Git hooks run by Lefthook. `pnpm install` installs them; set LEFTHOOK=0 to
+# skip them for a single Git command.
+pre-commit:
+  commands:
+    # Formats staged files in the adopted Biome scope (biome.json) and stages
+    # the result. Files outside that scope are left untouched. Biome runs
+    # directly because `pnpm exec` first reinstalls dependencies whenever the
+    # lockfile and node_modules differ.
+    format:
+      glob: '*.{js,mjs,cjs,json,jsonc}'
+      run: node_modules/.bin/biome format --write --no-errors-on-unmatched {staged_files}
+      stage_fixed: true

@@ -79,7 +79,7 @@
  * camera idles re-aims the same tick instead of wearing a stale nose for up
  * to ROTATION_REFRESH_MS. Both layers.
  *
- * Run:  npm run test:track       (assumes dev server already up on :4173)
+ * Run:  pnpm run test:track      (assumes dev server already up on :4173)
  *       node scripts/track-regression.mjs
  *
  * Exits non-zero if ANY invariant fails. DOES NOT COMMIT anything.
@@ -205,7 +205,7 @@ async function main() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch (e) {
     console.error(`\x1b[31mDev server not reachable at ${APP_URL} (${e.message}).\x1b[0m`);
-    console.error(`Start it first:  ./scripts/dev-fresh.sh   (or:  npm run dev)`);
+    console.error(`Start it first:  ./scripts/dev-fresh.sh   (or:  pnpm run dev)`);
     process.exit(2);
   }
 

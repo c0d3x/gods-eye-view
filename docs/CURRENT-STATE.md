@@ -16,12 +16,22 @@ helpers do not import the standalone entry or discover configuration. See
 
 ## Scoped formatting and package checks
 
-`npm run format` and `npm run format:check` operate on the explicit adopted-file
-list. `npm run check:boundaries` checks the browser dependency graph of all
-current package exports; infrastructure owns its three implementation modules
-and takes Cesium from the consumer. CI runs both checks on Linux and Windows.
-The standalone app, layer behavior and public export paths remain unchanged.
-See [component ownership and adoption](CODE-BOUNDARIES.md).
+`pnpm run format` and `pnpm run format:check` run Biome on the explicit
+adopted-file list in `biome.json`, and a Lefthook pre-commit hook formats staged
+files from that list. `pnpm run check:boundaries` checks the browser dependency
+graph of all current package exports; infrastructure owns its three
+implementation modules and takes Cesium from the consumer. CI runs both checks
+on Linux and Windows. The standalone app, layer behavior and public export paths
+remain unchanged. See [component ownership and adoption](CODE-BOUNDARIES.md).
+
+## Package management
+
+Dependencies install with pnpm 11, pinned by `packageManager` in `package.json`,
+from `pnpm-lock.yaml`. pnpm runs dependency install scripts only for packages
+approved in `pnpm-workspace.yaml` and does not resolve releases published within
+the last day. Dependabot opens weekly grouped updates for npm packages and
+GitHub Actions after a seven-day cooldown; Biome and Cesium updates arrive in
+their own pull requests.
 
 ## Google browser and server keys
 
@@ -1672,7 +1682,7 @@ This is the current runtime/source-of-truth snapshot for the project.
 >   OSM stack, ground-floor system with rendered-mesh sampling, always-visible
 >   sprites/trails, OpenSky credit governor). The 2026-07-08 CHANGELOG entry
 >   records the subsystem's architecture, invariants, residuals, and verification.
-> - **Height-datum test surface:** `npm test` 184 unit · `npm run
+> - **Height-datum test surface:** `pnpm test` 184 unit · `pnpm run
 >   test:track` 43 tracking invariants · headless QA harnesses under
 >   `scripts/qa-*.mjs` incl. `qa-height-datum.mjs` (numeric heights) and
 >   `qa-floor-verify.mjs` (any-airport ground-truth oracle).
@@ -2320,7 +2330,7 @@ silently demoting every later lookup for the session.
 - **Token flow**: browser fetches a short-lived client secret from `/api/realtime/token`; the Vite middleware holds `OPENAI_API_KEY` and posts the full session config (instructions, tool schemas, VAD, truncation) to `api.openai.com/v1/realtime/client_secrets`. SDP exchange goes directly to `api.openai.com/v1/realtime/calls` with the ephemeral token.
 - **Session defaults** (env-tunable): model `gpt-realtime-2` (or `gpt-realtime-2.1-mini` when the MINI tier is selected — see the model-tier entry below), voice `marin`, reasoning effort `low`, semantic VAD with low eagerness, no response interruption, context window truncated to ~3,000 post-instruction tokens with 0.5 retention ratio — the conversational window stays short because map state is fetched live per turn.
 - **Twenty-eight tools** (schemas defined server-side in `vite.config.js`, executed client-side in `src/voice/gevActions.js`): `fly_to_location`, `select_nearest_aircraft`, `adjust_camera_zoom`, `zoom_to_globe`, `set_layer_visibility`, `show_data_layers_menu`, `set_panel_open`, `set_visual_style`, `get_entity_context`, `get_current_view_state`, `set_hud`, `set_detection`, `set_map_stack`, `set_post_processing`, `control_scene`, `control_cctv`, `set_context_mode`, `control_cockpit`, `control_radio`, `track_entity`, `stop_tracking`, `frame_overhead`, `annotate_map`, `clear_annotations`, `move_camera`, `fly_route`, `analyst_query`, and `next_iss_pass`.
-> **Reading `npm test` totals:** the count depends on the Node major. The two
+> **Reading `pnpm test` totals:** the count depends on the Node major. The two
 > GC-bracketed allocation microbenchmarks (`src/data/focusAllocations.test.mjs`
 > = 1 test, `src/overlays/worldOverlayAllocation.test.mjs` = 13) only RUN on the
 > calibrated Node 24 runtime; on any other major the runner skips both files and
@@ -2404,7 +2414,7 @@ silently demoting every later lookup for the session.
 - Fleet model eligibility is distance-based with on-screen priority and hard caps (`MODEL_MAX`, `MODEL_MAX_ALL`) to avoid draw-call explosions. Each model owns its own `modelMatrix`; shared scratch matrices are forbidden because they caused stacking/flicker.
 - Tracked aircraft use standalone model primitives driven from the already-settled dead-reckoned display position, while the tracked Cesium entity remains billboard-backed so `viewer.trackedEntity` always has a ready bounding sphere.
 - Flights and military layers mirror the same tracking invariants: no warm-up freeze/jump, altitude-scaled framing, trail head glued to the displayed plane, no pull-out when switching targets, and no cross-layer orphan when switching between commercial and military tracks.
-- Regression surface: `npm run test:track` drives the real app headless with synthetic aircraft feeds and asserts the tracking invariants without depending on live OpenSky/adsb data. `src/data/trackedModelRegime.test.mjs` pins the tracked contact's threshold math, the enter/exit asymmetry, and the default-on / cockpit / TR-3B / deselect wiring in both layers.
+- Regression surface: `pnpm run test:track` drives the real app headless with synthetic aircraft feeds and asserts the tracking invariants without depending on live OpenSky/adsb data. `src/data/trackedModelRegime.test.mjs` pins the tracked contact's threshold math, the enter/exit asymmetry, and the default-on / cockpit / TR-3B / deselect wiring in both layers.
 
 ### TR-3B conversion Easter egg (August 2026)
 
@@ -2452,7 +2462,7 @@ silently demoting every later lookup for the session.
   marker. The nested launcher menu resolves that marker from its own directory:
   an absent marker exposes Install, a present marker exposes Start, and a
   running server with a captured ready URL exposes Open God's Eye View.
-- Build gate: `npm run build`
+- Build gate: `pnpm run build`
 - Network access: local-only by default (`HOST=localhost` in dev-fresh.sh); LAN is an explicit opt-in via `HOST=0.0.0.0` (launcher prints a key-exposure warning + LAN URL; see SECURITY.md)
 - OpenSky default mode: OAuth (`OPENSKY_AUTH_MODE=oauth`; `anon` works without credentials)
 - Google key expected in Keychain service `google-maps-api` (or `GOOGLE_MAPS_API_KEY`, or `.env`)
@@ -2694,7 +2704,7 @@ easier to meet (detection is now on more often), but does not create it.
 - Draggable panel positions persist at `godsEyeView.v7.panelPos.<panel-id>` (collapsed states at `godsEyeView.v6.panelCollapsed.<panel-id>`).
 - Legacy draggable-panel position keys may remain in local storage for backward compatibility, but the map-mode right rail ignores them; collapsed states still persist at `godsEyeView.v6.panelCollapsed.<panel-id>`.
 - Flight/military tracked entities cache dead-reckoned positions per frame to avoid callback desync flicker.
-- Aircraft 3D-model and tracking invariants are covered by `npm run test:track`; run this before touching `flights.js`, `militaryFlights.js`, `detection.js`, or `trackedReadout.js`.
+- Aircraft 3D-model and tracking invariants are covered by `pnpm run test:track`; run this before touching `flights.js`, `militaryFlights.js`, `detection.js`, or `trackedReadout.js`.
 - Annotation resolver behavior is pinned by `src/annotations/annotationResolver.test.mjs`; re-run that suite before changing place-resolution scoring.
 - Layer input handlers (click + keydown) are detached on disable for flights/military/satellites/AIS vessels.
 - Traffic tile cache is capped and traffic layer supports explicit destroy cleanup.
@@ -2764,12 +2774,12 @@ Replay transport uses one Play/Pause toggle plus Cancel. During ascent only the 
 - `tools/streetview-headings.mjs`: heading sweep capture; supports neighbor traversal.
 - `tools/pano-pinhole.mjs`: equirectangular-to-pinhole reprojection.
 - `tools/sat-ortho.mjs`: Map Tiles ortho stitch and centered crop with georef corners.
-- `scripts/track-regression.mjs`: headless real-app regression harness for aircraft tracking/model/detection invariants (`npm run test:track`).
+- `scripts/track-regression.mjs`: headless real-app regression harness for aircraft tracking/model/detection invariants (`pnpm run test:track`).
 - `scripts/qa-map-source-tray.mjs`: browser proof for the four-source Map Source
   tray — presentation, keyboard disclosure, responsive bounds, unpinned
   auto-dismiss, ACQUIRING status, and retired/unknown stack-id restore
-  (`QA_BASE_URL=http://localhost:4173 npm run qa:map-source-tray`). Add
-  `-- --keyless` to force the no-ion-token expectations on a keyed server; both
+  (`QA_BASE_URL=http://localhost:4173 pnpm run qa:map-source-tray`). Add
+  `--keyless` to force the no-ion-token expectations on a keyed server; both
   invocations are gates.
 - `scripts/qa-l9-matrix.mjs`: the L9 release-candidate QA matrix in one command
   (`node scripts/qa-l9-matrix.mjs --url http://localhost:4173`). Orchestrates
@@ -2788,4 +2798,4 @@ The lockfile uses DOMPurify 3.4.15, protobufjs 8.8.0, PostCSS 8.5.28, and
 nanoid 3.3.19. Cesium remains on 1.138.0. Browser QA uses Puppeteer 25.10.0;
 image-processing tools use Sharp 0.35.4. QA scripts await Puppeteer's asynchronous
 executable-path lookup before testing or passing the path to Chrome. Supported Node versions remain
-24.14.x and 26.x. Use `npm ci` to reproduce the checked-in dependency tree.
+24.14.x and 26.x. Use `pnpm install --frozen-lockfile` to reproduce the checked-in dependency tree.

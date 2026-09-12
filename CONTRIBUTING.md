@@ -4,16 +4,18 @@ Thanks for being here. God's Eye View is an open foundation for live spatial int
 
 ## Getting set up
 
-Use Node.js 24.14.x or 26.x (also enforced by `package.json`).
+Use Node.js 24.14.x or 26.x (also enforced by `package.json`) and pnpm 11.
+Once pnpm is installed (for example with `npm install --global pnpm@11`), it
+switches to the exact version pinned in `package.json`.
 
 ```bash
 git clone https://github.com/bilawalsidhu/gods-eye-view.git
 cd gods-eye-view
 nvm install 24.14.0
 nvm use 24.14.0
-npm install
-npm run doctor
-./scripts/dev-fresh.sh        # or: npm run dev (keys are optional)
+pnpm install
+pnpm run doctor
+./scripts/dev-fresh.sh        # or: pnpm run dev (keys are optional)
 ```
 
 No key is required to start: the app boots on keyless Esri World Imagery with
@@ -25,7 +27,7 @@ the Keychain; on any platform you can pass them as env vars or use a `.env`.
 People who only want to run the app can instead install the repository directly
 through Pinokio; the terminal path above remains the contributor path.
 
-Open `http://localhost:4173`. Before sending a PR run `npm run build`, `npm test`, and `npm run test:track` (dev server must be up) — **all three must stay green.**
+Open `http://localhost:4173`. Before sending a PR run `pnpm run build`, `pnpm test`, and `pnpm run test:track` (dev server must be up) — **all three must stay green.**
 
 ## Good first contributions
 
@@ -53,12 +55,14 @@ The highest-leverage places to jump in:
 
 ## Formatting and reusable components
 
-Run `npm run format` before submitting changes to adopted modules, then
-`npm run format:check` and `npm run check:boundaries`. Formatting uses the
-explicit file list in `scripts/format-scope.json`; add newly extracted modules
-and tests there in a separate mechanical commit. Keep unadopted files consistent
-with their surrounding style. CI checks all adopted files and package boundaries
-on Linux and Windows.
+Run `pnpm run format` before submitting changes to adopted modules, then
+`pnpm run format:check` and `pnpm run check:boundaries`. Formatting uses Biome
+and the explicit file list in `files.includes` of `biome.json`; add newly
+extracted modules and tests there in a separate mechanical commit. `pnpm install`
+also installs a Lefthook pre-commit hook that formats staged files from that
+list; set `LEFTHOOK=0` to skip it for one commit. Keep unadopted files
+consistent with their surrounding style. CI checks all adopted files and package
+boundaries on Linux and Windows.
 
 Reusable package exports own their state and receive application operations
 through explicit callbacks. They must not import the standalone bootstrap or
@@ -70,7 +74,7 @@ ownership and adoption process.
 ## Pull requests
 
 1. Branch off `main`.
-2. Keep `npm run build`, `npm test`, and `npm run test:track` green and avoid new console errors.
+2. Keep `pnpm run build`, `pnpm test`, and `pnpm run test:track` green and avoid new console errors.
 3. If you change runtime behavior, update `docs/CURRENT-STATE.md` and `CHANGELOG.md` in the same PR.
 4. If you add or change a data source, update [DATA_SOURCES.md](DATA_SOURCES.md) with its license and attribution. **Don't add data you don't have the right to redistribute** — fetch it at runtime instead.
 5. Describe what you changed and how you verified it (screenshots welcome for anything visual).

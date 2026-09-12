@@ -72,10 +72,10 @@ export function hasRequiredDependencies(rootDir = ROOT) {
   }
 }
 
-/** Return the npm command and spawn mode required by the target platform. */
-export function npmProcessSpec(platform = process.platform) {
-  const windows = platform === 'win32';
-  return { command: windows ? 'npm.cmd' : 'npm', shell: windows };
+/** Return the pnpm command and spawn mode required by the target platform. */
+export function pnpmProcessSpec(platform = process.platform) {
+  // Windows installs pnpm as pnpm.cmd or pnpm.exe; its shell resolves either.
+  return { command: 'pnpm', shell: platform === 'win32' };
 }
 
 /** Read one key from Vite's dotenv file ladder without depending on Vite. */
@@ -154,10 +154,10 @@ export function buildCapabilitySummary(credentials) {
 
 export function inspectSetup({ includeKeychain = true, authoritativeEnvironment = false } = {}) {
   const node = classifyNodeVersion();
-  const npm = npmProcessSpec();
-  const npmResult = spawnSync(npm.command, ['--version'], {
+  const pnpm = pnpmProcessSpec();
+  const pnpmResult = spawnSync(pnpm.command, ['--version'], {
     encoding: 'utf8',
-    shell: npm.shell,
+    shell: pnpm.shell,
   });
   const credentials = Object.fromEntries(CREDENTIALS.map((spec) => [
     spec.name,
@@ -165,10 +165,10 @@ export function inspectSetup({ includeKeychain = true, authoritativeEnvironment 
   ]));
   const dependenciesInstalled = hasRequiredDependencies();
   return {
-    ready: node.level !== 'error' && npmResult.status === 0 && dependenciesInstalled,
+    ready: node.level !== 'error' && pnpmResult.status === 0 && dependenciesInstalled,
     node: { version: process.versions.node, ...node },
-    npm: npmResult.status === 0
-      ? { available: true, version: String(npmResult.stdout || '').trim() }
+    pnpm: pnpmResult.status === 0
+      ? { available: true, version: String(pnpmResult.stdout || '').trim() }
       : { available: false, version: null },
     dependenciesInstalled,
     credentials,
@@ -187,13 +187,13 @@ export function formatSetupReport(report, { readyMessage } = {}) {
     .some((credential) => credential?.source === 'macOS Keychain');
   const resolvedReadyMessage = readyMessage || (hasKeychainSource
     ? 'Ready. Run ./scripts/dev-fresh.sh, then open http://localhost:4173.'
-    : 'Ready. Run npm run dev, then open http://localhost:4173.');
+    : 'Ready. Run pnpm run dev, then open http://localhost:4173.');
   const lines = [
     "God's Eye View setup doctor",
     '',
     `[${symbol(report.node.level)}] Node ${report.node.version}: ${report.node.summary}`,
-    report.npm.available ? `[OK] npm ${report.npm.version}` : '[ERROR] npm was not found',
-    report.dependenciesInstalled ? '[OK] dependencies installed' : '[WARN] dependencies missing; run npm install',
+    report.pnpm.available ? `[OK] pnpm ${report.pnpm.version}` : '[ERROR] pnpm was not found; install pnpm 11',
+    report.dependenciesInstalled ? '[OK] dependencies installed' : '[WARN] dependencies missing; run pnpm install',
     '',
     `Map:     ${report.capabilities.map}`,
     `Flights: ${report.capabilities.flights}`,

@@ -15,6 +15,12 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 
 ### Development
 
+- Replace Prettier with Biome for the adopted formatting scope, now listed in
+  `biome.json`, and manage dependencies with pnpm 11 instead of npm. Installing
+  sets up a Lefthook pre-commit hook that formats staged adopted files, and
+  Dependabot opens weekly grouped updates for npm packages and GitHub Actions.
+  Biome does not format Markdown, so the two adopted documents left the scope.
+
 - Extract application lifecycle and viewer exports. Split standalone startup into
   scene setup, controls, layer registration, tools and loading UI. Startup failure
   and terminal shutdown release acquired resources and cancel delayed work.

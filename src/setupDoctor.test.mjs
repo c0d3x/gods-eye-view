@@ -10,7 +10,7 @@ import {
   formatSetupReport,
   hasRequiredDependencies,
   isConfiguredValue,
-  npmProcessSpec,
+  pnpmProcessSpec,
   readDoctorDotenvValue,
   resolveCredential,
 } from '../scripts/setup-doctor.mjs';
@@ -57,10 +57,10 @@ test('placeholder values are never counted as configured credentials', () => {
   assert.equal(isConfiguredValue('configured-value'), true);
 });
 
-test('doctor selects a Windows-safe npm process without changing Unix behavior', () => {
-  assert.deepEqual(npmProcessSpec('win32'), { command: 'npm.cmd', shell: true });
-  assert.deepEqual(npmProcessSpec('darwin'), { command: 'npm', shell: false });
-  assert.deepEqual(npmProcessSpec('linux'), { command: 'npm', shell: false });
+test('doctor selects a Windows-safe pnpm process without changing Unix behavior', () => {
+  assert.deepEqual(pnpmProcessSpec('win32'), { command: 'pnpm', shell: true });
+  assert.deepEqual(pnpmProcessSpec('darwin'), { command: 'pnpm', shell: false });
+  assert.deepEqual(pnpmProcessSpec('linux'), { command: 'pnpm', shell: false });
 });
 
 test('doctor recognizes every OpenSky OAuth keychain alias used by dev-fresh', () => {
@@ -168,7 +168,7 @@ test('doctor describes the credential ladder without exposing values', () => {
   const report = formatSetupReport({
     ready: true,
     node: { version: '25.6.1', level: 'warn', summary: 'usable but EOL' },
-    npm: { available: true, version: '11.0.0' },
+    pnpm: { available: true, version: '11.26.0' },
     dependenciesInstalled: true,
     credentials,
     capabilities,
@@ -180,13 +180,13 @@ test('doctor describes the credential ladder without exposing values', () => {
   const pinokioReport = formatSetupReport({
     ready: true,
     node: { version: '24.14.0', level: 'ok', summary: 'supported' },
-    npm: { available: true, version: '11.0.0' },
+    pnpm: { available: true, version: '11.26.0' },
     dependenciesInstalled: true,
     credentials,
     capabilities,
   }, { readyMessage: 'Ready. Return to Pinokio and choose Start.' });
   assert.match(pinokioReport, /Return to Pinokio and choose Start/);
-  assert.doesNotMatch(pinokioReport, /npm run dev/);
+  assert.doesNotMatch(pinokioReport, /pnpm run dev/);
 });
 
 test('doctor sends Keychain-backed reports to dev-fresh and describes OpenSky as presence only', () => {
@@ -209,13 +209,13 @@ test('doctor sends Keychain-backed reports to dev-fresh and describes OpenSky as
   const output = formatSetupReport({
     ready: true,
     node: { level: 'ok', version: '24.14.0', summary: 'supported' },
-    npm: { available: true, version: '11.0.0' },
+    pnpm: { available: true, version: '11.26.0' },
     dependenciesInstalled: true,
     capabilities,
     credentials,
   });
   assert.match(output, /Run \.\/scripts\/dev-fresh\.sh/);
-  assert.doesNotMatch(output, /Run npm run dev/);
+  assert.doesNotMatch(output, /Run pnpm run dev/);
   assert.match(capabilities.flights, /credentials present/);
   assert.match(capabilities.flights, /runtime mode and validity not verified/);
   assert.doesNotMatch(capabilities.flights, /polling/);
@@ -237,12 +237,12 @@ test('doctor never calls a dependency-missing setup ready', () => {
   const output = formatSetupReport({
     ready: false,
     node: { level: 'ok', version: '24.14.0', summary: 'supported' },
-    npm: { available: true, version: '11.0.0' },
+    pnpm: { available: true, version: '11.26.0' },
     dependenciesInstalled: false,
     capabilities: buildCapabilitySummary(credentials),
     credentials,
   });
-  assert.match(output, /dependencies missing; run npm install/);
+  assert.match(output, /dependencies missing; run pnpm install/);
   assert.match(output, /Setup needs attention/);
   assert.doesNotMatch(output, /Ready\. Run/);
 });

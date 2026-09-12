@@ -19,7 +19,7 @@
  *   --key       Google Maps API key (default: reads GOOGLE_MAPS_API_KEY from .env or env)
  *
  * Requires: Map Tiles API enabled on the Google Cloud project.
- * Dependencies: sharp (npm install sharp)
+ * Dependencies: sharp (a devDependency; run pnpm install)
  */
 
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';

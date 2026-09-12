@@ -1,0 +1,50 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "files": {
+    "includes": [
+      "biome.json",
+      "package.json",
+      "scripts/package-boundaries.json",
+      "scripts/check-package-boundaries.mjs",
+      "src/tooling/format.test.mjs",
+      "src/tooling/packageBoundaries.test.mjs",
+      "src/tooling/packageManager.test.mjs",
+      "src/data/infrastructure.js",
+      "src/data/infrastructure.test.mjs",
+      "src/data/localGeojsonCore.js",
+      "src/data/localGeojsonLod.js",
+      "src/main.js",
+      "scripts/qa-application.mjs",
+      "src/app/application.js",
+      "src/app/application.test.mjs",
+      "src/app/mapLifecycle.test.mjs",
+      "src/app/startupCamera.test.mjs",
+      "src/app/viewer.js",
+      "src/editions/local/application.js",
+      "src/editions/local/controls.js",
+      "src/editions/local/data.js",
+      "src/editions/local/errors.js",
+      "src/editions/local/scene.js",
+      "src/editions/local/startupChrome.js",
+      "src/editions/local/startupChrome.test.mjs",
+      "src/editions/local/tools.js"
+    ]
+  },
+  "formatter": {
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always"
+    }
+  },
+  "linter": {
+    "enabled": false
+  },
+  "assist": {
+    "enabled": false
+  }
+}

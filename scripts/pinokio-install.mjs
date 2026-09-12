@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyPinokioEnvironment } from './pinokio-environment.mjs';
-import { formatSetupReport, inspectSetup, npmProcessSpec } from './setup-doctor.mjs';
+import { formatSetupReport, inspectSetup, pnpmProcessSpec } from './setup-doctor.mjs';
 
 const MODULE_PATH = fileURLToPath(import.meta.url);
 const ROOT = realpathSync(path.resolve(path.dirname(MODULE_PATH), '..'));
@@ -24,8 +24,8 @@ export function runChecked(command, args, { shell = false } = {}) {
 export function installPinokioDependencies() {
   applyPinokioEnvironment();
   rmSync(READY_FILE, { force: true });
-  const npm = npmProcessSpec();
-  runChecked(npm.command, ['ci'], { shell: npm.shell });
+  const pnpm = pnpmProcessSpec();
+  runChecked(pnpm.command, ['install', '--frozen-lockfile'], { shell: pnpm.shell });
 
   // Pinokio starts Vite directly and loads only its ENVIRONMENT file plus the
   // normal dotenv ladder. Unlike dev-fresh.sh, it does not import macOS

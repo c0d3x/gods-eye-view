@@ -107,15 +107,16 @@ Version 8.2 fixes the launcher installation issue;
 
 ### Path 2 — Terminal / coding agent
 
-Use **Node.js 24.x (24.14.0 or later) or 26.x**. The setup doctor warns about
-Node 25, which is end-of-life.
+Use **Node.js 24.x (24.14.0 or later) or 26.x** with **pnpm 11** (for example
+`npm install --global pnpm@11`; pnpm then switches to the version the project
+pins). The setup doctor warns about Node 25, which is end-of-life.
 
 ```bash
 git clone https://github.com/bilawalsidhu/gods-eye-view.git
 cd gods-eye-view
-npm ci
-npm run doctor
-npm run dev
+pnpm install --frozen-lockfile
+pnpm run doctor
+pnpm run dev
 ```
 
 Open **`http://localhost:4173`**. Choose **Live Contacts**, **Space Missions**,
@@ -399,10 +400,10 @@ Six keys. Four have a free tier, and the two 🔴 ones are metered:
 
 Add these if you need higher polling allowances.
 
-`npm run doctor` reports Node/npm readiness, the primary provider routes, and
+`pnpm run doctor` reports Node/pnpm readiness, the primary provider routes, and
 where each configured provider was found without printing credential values.
 On macOS its Keychain-aware result previews `./scripts/dev-fresh.sh`; plain
-`npm run dev` reads only explicit environment and Vite dotenv values. The
+`pnpm run dev` reads only explicit environment and Vite dotenv values. The
 OpenSky summary reports only OAuth client-pair presence, not the resolved
 runtime mode or credential validity; Basic and credentials-file modes remain
 advanced `dev-fresh.sh` configuration.
@@ -414,7 +415,7 @@ For headless machines, coding agents, or scripted setups:
 
 ```bash
 # Put keys in .env (see .env.example), or pass them as env vars:
-OPENAI_API_KEY="…" AISSTREAM_API_KEY="…" npm run dev -- --host localhost --port 4173
+OPENAI_API_KEY="…" AISSTREAM_API_KEY="…" pnpm run dev --host localhost --port 4173
 
 # On macOS, store any of them in the Keychain and dev-fresh.sh pulls them in:
 security add-generic-password -U -s "google-maps-api" -a "api-key" -w
@@ -453,7 +454,7 @@ Everything above is the deliberately cheap baseline — enough to get a real tas
 
 ### 🔒 Sharing an instance
 
-By default nobody else can reach your server — it binds to localhost. To share on your LAN, opt in explicitly (`npm run dev -- --host 0.0.0.0 --port 4173`, or `HOST=0.0.0.0 ./scripts/dev-fresh.sh` on macOS/Linux) — but know that ⚠️ **a LAN-visible server brokers your configured API keys to anyone who can reach it.** Set the per-IP throttles (`GEV_RATELIMIT_OPENAI_PER_MIN`, `GEV_RATELIMIT_GOOGLE_PER_MIN` — see `.env.example`) and, before anything else, **configure provider quotas, usage limits, and billing alerts**: app-level throttles are not billing caps, and a budget alert alone does not stop spending. Full threat model in [SECURITY.md](SECURITY.md).
+By default nobody else can reach your server — it binds to localhost. To share on your LAN, opt in explicitly (`pnpm run dev --host 0.0.0.0 --port 4173`, or `HOST=0.0.0.0 ./scripts/dev-fresh.sh` on macOS/Linux) — but know that ⚠️ **a LAN-visible server brokers your configured API keys to anyone who can reach it.** Set the per-IP throttles (`GEV_RATELIMIT_OPENAI_PER_MIN`, `GEV_RATELIMIT_GOOGLE_PER_MIN` — see `.env.example`) and, before anything else, **configure provider quotas, usage limits, and billing alerts**: app-level throttles are not billing caps, and a budget alert alone does not stop spending. Full threat model in [SECURITY.md](SECURITY.md).
 
 Provider Settings is disabled when the server is shared, so remote users cannot
 access the key-entry panel.

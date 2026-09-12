@@ -1,18 +1,21 @@
 # Formatting and component boundaries
 
-Run `npm run format` to format the files in `scripts/format-scope.json` and
-`npm run format:check` to check that same list without writing. CI checks the
-entire adopted list on Linux and Windows. Prettier is pinned in the development
-dependencies; use the installed version so local and CI output agree. The shared
-configuration specifies two spaces, single quotes, semicolons and LF endings.
+Run `pnpm run format` to format the files listed in `files.includes` of
+`biome.json` and `pnpm run format:check` to check that same list without
+writing. CI checks the entire adopted list on Linux and Windows. Biome is pinned
+in the development dependencies; use the installed version so local and CI
+output agree. The shared configuration specifies two spaces, single quotes,
+semicolons and LF endings. The Lefthook pre-commit hook formats staged files
+from the same list and leaves every other file untouched.
 
 Add new reusable modules and their tests to the list as they are extracted.
 Keep mechanical formatting in its own commit after behavior is stable. Existing
 source-text regression assertions still apply; investigate failures and preserve
 their behavioral coverage when a move or line wrap changes a tested shape.
 Files outside the list retain their surrounding style until deliberately adopted.
-Generated output, local configuration, browser evidence and bundled datasets are
-excluded. The formatter validates every entry before writing any file.
+The list names individual JavaScript and JSON files; `pnpm test` rejects globs,
+duplicates, links and missing files. Biome does not format Markdown, so
+documentation stays outside the list.
 
 ## Current component ownership
 
@@ -29,7 +32,7 @@ exports instead of importing standalone startup or reaching into internal files.
 The application owns the viewer, context store, overlay host and render scheduler;
 layers use the supplied callbacks. See [the infrastructure contract](INFRASTRUCTURE-LAYERS.md).
 
-`npm run check:boundaries` builds every declared package export, with app Vite
+`pnpm run check:boundaries` builds every declared package export, with app Vite
 configuration disabled. `scripts/package-boundaries.json` lists each export's
 component, owned modules and external runtime dependencies. A new export must be
 classified. Imports outside the declared modules fail, including unused and

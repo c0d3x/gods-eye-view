@@ -1,0 +1,13 @@
+# pnpm settings for this single-package repository.
+#
+# pnpm fails the install when a dependency has an install script that is not
+# reviewed here. Record each decision when a dependency adds one.
+allowBuilds:
+  # Verifies the platform binary that Vite uses.
+  esbuild: true
+  # Optional macOS file watcher; its bundled binary is used without node-gyp.
+  fsevents: false
+  # Installs the Git hooks in lefthook.yml (skipped when CI is set).
+  lefthook: true
+  # Downloads Chrome for the QA harnesses unless PUPPETEER_SKIP_DOWNLOAD=1.
+  puppeteer: true

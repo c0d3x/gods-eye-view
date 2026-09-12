@@ -1,0 +1,58 @@
+# Weekly grouped dependency updates. pnpm projects use the npm ecosystem:
+# Dependabot installs the pnpm version pinned by packageManager in package.json
+# and supports pnpm up to major version 11.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # pnpm 11 refuses to resolve releases younger than one day
+    # (minimumReleaseAge), so version updates must wait at least that long; a
+    # week also leaves time for compromised releases to be pulled. Security
+    # updates are not delayed.
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: chore
+      include: scope
+    # A dependency joins the first group it matches. Major updates outside the
+    # Biome and Cesium groups arrive as individual pull requests.
+    groups:
+      # Biome releases can change formatting output, so they arrive on their
+      # own with whatever reformatting they need.
+      biome:
+        patterns:
+          - '@biomejs/*'
+      # Cesium's monthly minor releases can remove deprecated APIs.
+      cesium:
+        patterns:
+          - cesium
+      production-dependencies:
+        dependency-type: production
+        update-types:
+          - minor
+          - patch
+      development-dependencies:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - '*'
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      github-actions:
+        patterns:
+          - '*'

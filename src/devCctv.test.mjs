@@ -29,7 +29,7 @@ async function launch(overrides = {}, dotenv = '') {
     for (const command of ['security', 'pkill', 'lsof']) {
       await fs.writeFile(path.join(root, 'bin', command), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
     }
-    await fs.writeFile(path.join(root, 'bin', 'npm'), `#!/usr/bin/env node
+    await fs.writeFile(path.join(root, 'bin', 'pnpm'), `#!/usr/bin/env node
 const fs = require('node:fs');
 fs.writeFileSync(process.env.CCTV_TEST_CAPTURE, JSON.stringify({ args: process.argv.slice(2), env: process.env, cwd: process.cwd() }));
 `, { mode: 0o755 });
@@ -47,7 +47,7 @@ fs.writeFileSync(process.env.CCTV_TEST_CAPTURE, JSON.stringify({ args: process.a
 
 bashTest('CCTV preset starts keyless on localhost through the normal launcher', async () => {
   const result = await launch();
-  assert.deepEqual(result.args, ['run', 'dev', '--', '--host', 'localhost', '--port', '4173', '--force']);
+  assert.deepEqual(result.args, ['run', 'dev', '--host', 'localhost', '--port', '4173', '--force']);
   assert.equal(result.cwd, result.root);
   assert.equal(result.env.CCTV_SOURCES_FILE, 'config/cctv_sources.austin.json');
   assert.equal(result.env.CCTV_PREFER_AUSTIN, '1');

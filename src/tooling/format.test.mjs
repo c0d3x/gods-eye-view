@@ -1,95 +1,97 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
 import {
+  lstat,
   mkdtemp,
-  mkdir,
-  writeFile,
   readFile,
+  realpath,
   rm,
-  symlink,
+  writeFile,
 } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { formatAdoptedFiles } from '../../scripts/format.mjs';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 
-async function fixture(t, scope = ['adopted.js']) {
-  const root = await mkdtemp(path.join(tmpdir(), 'gev-format-'));
-  t.after(() => rm(root, { recursive: true, force: true }));
-  await mkdir(path.join(root, 'scripts'));
-  await writeFile(
-    path.join(root, 'scripts/format-scope.json'),
-    JSON.stringify(scope),
-  );
-  await writeFile(
-    path.join(root, '.prettierrc.json'),
-    JSON.stringify({
-      singleQuote: true,
-      semi: true,
-      tabWidth: 2,
-      endOfLine: 'lf',
-    }),
-  );
-  await writeFile(path.join(root, '.prettierignore'), 'ignored.js\n');
-  await writeFile(path.join(root, 'adopted.js'), 'const value="yes"\r\n');
-  return root;
+const run = promisify(execFile);
+const root = await realpath(fileURLToPath(new URL('../../', import.meta.url)));
+const biome = createRequire(import.meta.url).resolve(
+  '@biomejs/biome/bin/biome',
+);
+const config = JSON.parse(
+  await readFile(path.join(root, 'biome.json'), 'utf8'),
+);
+
+/** Run the pinned Biome formatter in a directory and return its exit code. */
+async function format(cwd, ...args) {
+  try {
+    await run(process.execPath, [biome, 'format', ...args], { cwd });
+    return 0;
+  } catch (error) {
+    if (typeof error.code !== 'number') throw error;
+    return error.code;
+  }
 }
 
-test('format check is read-only; write only changes adopted files and is repeatable', async (t) => {
-  const root = await fixture(t);
-  const outside = 'const untouched="yes"';
-  await writeFile(path.join(root, 'legacy.js'), outside);
-  assert.deepEqual((await formatAdoptedFiles(root, '--check')).changed, [
-    'adopted.js',
-  ]);
-  assert.equal(
-    await readFile(path.join(root, 'adopted.js'), 'utf8'),
-    'const value="yes"\r\n',
+async function fixture(t) {
+  const dir = await mkdtemp(path.join(tmpdir(), 'gev-format-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  await writeFile(
+    path.join(dir, 'biome.json'),
+    JSON.stringify({
+      ...config,
+      $schema: undefined,
+      files: { includes: ['adopted.js'] },
+    }),
   );
-  await formatAdoptedFiles(root, '--write');
-  assert.equal(
-    await readFile(path.join(root, 'adopted.js'), 'utf8'),
-    "const value = 'yes';\n",
-  );
-  assert.equal(await readFile(path.join(root, 'legacy.js'), 'utf8'), outside);
-  assert.deepEqual((await formatAdoptedFiles(root, '--check')).changed, []);
-  assert.deepEqual((await formatAdoptedFiles(root, '--write')).changed, []);
-});
+  await writeFile(path.join(dir, 'adopted.js'), 'const value="yes"\r\n');
+  await writeFile(path.join(dir, 'legacy.js'), 'const untouched="yes"');
+  return { dir, read: (name) => readFile(path.join(dir, name), 'utf8') };
+}
 
-test('invalid, ignored and missing scope entries fail before any file is written', async (t) => {
-  for (const scope of [
-    [],
-    ['adopted.js', 'adopted.js'],
-    ['adopted.js', '../escape.js'],
-    ['adopted.js', 'ignored.js'],
-    ['adopted.js', 'missing.js'],
-  ]) {
-    const root = await fixture(t, scope);
-    await writeFile(path.join(root, 'ignored.js'), 'const ignored=1');
-    await assert.rejects(formatAdoptedFiles(root, '--write'));
+test('the adopted scope lists unique regular files inside the repository', async () => {
+  const scope = config.files.includes;
+  assert.ok(Array.isArray(scope) && scope.length);
+  assert.equal(new Set(scope).size, scope.length);
+  for (const name of scope) {
+    // Globs, negations and links would adopt files that nobody listed.
+    assert.ok(
+      name
+        .split('/')
+        .every((part) => /^[\w.-]+$/.test(part) && !/^\.\.?$/.test(part)),
+      `Not a plain repository path: ${name}`,
+    );
+    assert.match(name, /\.(?:js|mjs|cjs|json|jsonc)$/, name);
+    const file = path.join(root, name);
+    assert.ok((await lstat(file)).isFile(), `Not a regular file: ${name}`);
     assert.equal(
-      await readFile(path.join(root, 'adopted.js'), 'utf8'),
-      'const value="yes"\r\n',
+      path.relative(root, await realpath(file)),
+      path.normalize(name),
     );
   }
 });
 
-test(
-  'formatting rejects a symlink outside the repository',
-  { skip: process.platform === 'win32' },
-  async (t) => {
-    const root = await fixture(t, ['adopted.js', 'outside.js']);
-    const other = await fixture(t);
-    await symlink(
-      path.join(other, 'adopted.js'),
-      path.join(root, 'outside.js'),
-    );
-    await assert.rejects(
-      formatAdoptedFiles(root, '--write'),
-      /repository files/,
-    );
-    assert.equal(
-      await readFile(path.join(root, 'adopted.js'), 'utf8'),
-      'const value="yes"\r\n',
-    );
-  },
-);
+test('format check is read-only; write only changes adopted files and is repeatable', async (t) => {
+  const { dir, read } = await fixture(t);
+  assert.notEqual(await format(dir), 0);
+  assert.equal(await read('adopted.js'), 'const value="yes"\r\n');
+  assert.equal(await format(dir, '--write'), 0);
+  assert.equal(await read('adopted.js'), "const value = 'yes';\n");
+  assert.equal(await read('legacy.js'), 'const untouched="yes"');
+  assert.equal(await format(dir), 0);
+  assert.equal(await format(dir, '--write'), 0);
+  assert.equal(await read('adopted.js'), "const value = 'yes';\n");
+});
+
+test('a named file outside the scope is left untouched', async (t) => {
+  // The pre-commit hook passes every staged file; only adopted files change.
+  const { dir, read } = await fixture(t);
+  assert.equal(
+    await format(dir, '--write', '--no-errors-on-unmatched', 'legacy.js'),
+    0,
+  );
+  assert.equal(await read('legacy.js'), 'const untouched="yes"');
+  assert.equal(await read('adopted.js'), 'const value="yes"\r\n');
+});

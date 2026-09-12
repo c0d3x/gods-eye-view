@@ -41,12 +41,12 @@ KEY_SETUP_EXTERNAL_KEYS=()
 [[ -n "${LL2_API_TOKEN:-}" ]] && KEY_SETUP_EXTERNAL_KEYS+=(LL2_API_TOKEN)
 KEY_SETUP_EXTERNAL_KEYS_CSV="$(IFS=,; printf '%s' "${KEY_SETUP_EXTERNAL_KEYS[*]:-}")"
 
-if command -v npm >/dev/null 2>&1; then
-  DEV_COMMAND=(npm run dev --)
-elif command -v pnpm >/dev/null 2>&1; then
+if command -v pnpm >/dev/null 2>&1; then
   DEV_COMMAND=(pnpm run dev)
+elif command -v npm >/dev/null 2>&1; then
+  DEV_COMMAND=(npm run dev --)
 else
-  echo "error: neither npm nor pnpm found"
+  echo "error: neither pnpm nor npm found"
   exit 1
 fi
 
@@ -233,7 +233,8 @@ fi
 
 echo "Stopping all existing God's Eye View dev servers..."
 pkill -f "${ROOT_DIR}/node_modules/.bin/vite" >/dev/null 2>&1 || true
-pkill -f "${ROOT_DIR}/node_modules/vite/bin/vite.js" >/dev/null 2>&1 || true
+# pnpm's shim runs node_modules/.bin/../vite/bin/vite.js; npm links it directly.
+pkill -f "${ROOT_DIR}/node_modules/.*vite/bin/vite.js" >/dev/null 2>&1 || true
 
 # Also clear the requested port in case it is held by a stale wrapper or a
 # server started through a different package-manager command.
