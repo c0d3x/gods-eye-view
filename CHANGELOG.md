@@ -15,6 +15,9 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 
 ### Development
 
+- Sort imports in the adopted files with Biome's organize-imports assist,
+  checked by `pnpm run lint` and applied by the pre-commit hook.
+
 - Enable Biome's recommended lint rules for the adopted files. `pnpm run lint`
   in CI and the pre-commit hook fail on warnings as well as errors. Fix the
   findings: unused layer parameters, conditions that read better as optional

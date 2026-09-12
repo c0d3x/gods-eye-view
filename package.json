@@ -36,7 +36,7 @@
     "doctor": "node scripts/setup-doctor.mjs",
     "format": "biome format --write",
     "format:check": "biome format",
-    "lint": "biome lint --error-on-warnings",
+    "lint": "biome check --formatter-enabled=false --error-on-warnings",
     "dev": "vite",
     "dev:secure": "./scripts/dev-secure.sh",
     "opensky:import": "./scripts/opensky-import-client.sh",

@@ -2,11 +2,11 @@
 # skip them for a single Git command.
 pre-commit:
   commands:
-    # Formats and lints staged files in the adopted Biome scope (biome.json),
-    # applies safe fixes and stages the result; lint errors and warnings stop
-    # the commit. Files outside that scope are left untouched. Biome runs
-    # directly because `pnpm exec` first reinstalls dependencies whenever the
-    # lockfile and node_modules differ.
+    # Formats, lints and sorts the imports of staged files in the adopted Biome
+    # scope (biome.json), applies safe fixes and stages the result; lint errors
+    # and warnings stop the commit. Files outside that scope are left untouched.
+    # Biome runs directly because `pnpm exec` first reinstalls dependencies
+    # whenever the lockfile and node_modules differ.
     biome:
       glob: '*.{js,mjs,cjs,json,jsonc}'
       run: node_modules/.bin/biome check --write --error-on-warnings --no-errors-on-unmatched {staged_files}

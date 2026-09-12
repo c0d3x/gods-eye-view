@@ -17,8 +17,9 @@ helpers do not import the standalone entry or discover configuration. See
 ## Scoped formatting and package checks
 
 `pnpm run format`, `pnpm run format:check` and `pnpm run lint` run Biome, with
-its recommended lint rules, on the explicit adopted-file list in `biome.json`,
-and a Lefthook pre-commit hook formats and lints staged files from that list.
+its recommended lint rules and import sorting, on the explicit adopted-file list
+in `biome.json`, and a Lefthook pre-commit hook formats, lints and sorts the
+imports of staged files from that list.
 `pnpm run check:boundaries` checks the browser dependency graph of all current
 package exports; infrastructure owns its three implementation modules and takes
 Cesium from the consumer. CI runs these checks on Linux and Windows. The
