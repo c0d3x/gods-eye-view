@@ -7817,5 +7817,10 @@ export default defineConfig(({ mode }) => {
       // so the build log isn't dominated by an expected chunk-size notice.
       chunkSizeWarningLimit: 1500,
     },
+    // satellite.js ships an optional WASM propagator whose worker uses
+    // top-level await, which only module workers support.
+    worker: {
+      format: 'es',
+    },
   };
 });

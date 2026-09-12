@@ -98,7 +98,7 @@ export async function checkPackageBoundaries(root) {
         write: false,
         minify: false,
         assetsInlineLimit: 0,
-        rollupOptions: {
+        rolldownOptions: {
           input,
           external: group.external,
           // Unused imports must still obey ownership; tree shaking is not a boundary.

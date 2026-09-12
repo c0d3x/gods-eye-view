@@ -15,6 +15,12 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 
 ### Development
 
+- Upgrade Vite 6 to 8, CesiumJS 1.138 to 1.145, satellite.js 6 to 7 and mgrs to
+  their latest releases, and CI's checkout and setup-node actions to v7. Vite
+  now bundles workers as ES modules, which satellite.js's optional WASM
+  propagator requires even though the app does not use it. The Cesium 1.139–1.145
+  breaking changes do not touch any API the app uses.
+
 - Replace Prettier with Biome for the adopted formatting scope, now listed in
   `biome.json`, and manage dependencies with pnpm 11 instead of npm. Installing
   sets up a Lefthook pre-commit hook that formats staged adopted files, and
