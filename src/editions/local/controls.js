@@ -1,6 +1,6 @@
-import { StyleManager } from '../../ui.js';
 import { flyToAustin } from '../../camera.js';
 import { initCockpitCloudEffects } from '../../cockpitCloudEffects.js';
+import { StyleManager } from '../../ui.js';
 
 /** Construct the existing controls and camera presentation. */
 export function createLocalControls({

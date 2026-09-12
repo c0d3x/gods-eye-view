@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import { flyToAustin } from '../camera.js';
 
 test('teardown before the initial camera delay prevents a late flight', (t) => {

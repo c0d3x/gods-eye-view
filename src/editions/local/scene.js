@@ -1,10 +1,10 @@
 import * as Cesium from 'cesium';
 import { createApplicationViewer } from '../../app/viewer.js';
-import { registerDataCredits } from '../../data/dataCredits.js';
 import { configureCreditKeyboardAccess } from '../../creditKeyboard.js';
+import { registerDataCredits } from '../../data/dataCredits.js';
+import { initLogoGaze } from '../../logoGaze.js';
 import { MapStackController } from '../../mapStackController.js';
 import { loadPhotorealisticTileset } from '../../mapStartup.js';
-import { initLogoGaze } from '../../logoGaze.js';
 import { uninstallRenderGovernor } from '../../renderGovernor.js';
 import { describeError } from './errors.js';
 

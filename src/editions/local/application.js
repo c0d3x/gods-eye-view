@@ -1,7 +1,7 @@
 import { createApplication } from '../../app/application.js';
-import { createLocalScene } from './scene.js';
 import { createLocalControls } from './controls.js';
 import { createLocalData } from './data.js';
+import { createLocalScene } from './scene.js';
 import { createLocalTools } from './tools.js';
 
 // The existing controls and layer catalog contain page-scoped state.

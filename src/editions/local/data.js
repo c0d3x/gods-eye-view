@@ -1,18 +1,18 @@
-import { DataLayerManager } from '../../data/manager.js';
-import flightsLayer from '../../data/flights.js';
-import militaryFlightsLayer from '../../data/militaryFlights.js';
-import earthquakesLayer from '../../data/earthquakes.js';
-import satellitesLayer from '../../data/satellites.js';
-import rocketLaunchesLayer from '../../data/rocketLaunches.js';
-import trafficLayer from '../../data/traffic.js';
-import cctvLayer from '../../data/cctv.js';
-import radioLayer from '../../data/radio.js';
-import bikeshareLayer from '../../data/bikeshare.js';
 import aisLiveVesselsLayer from '../../data/aisLiveVessels.js';
-import militaryInstallationsLayer from '../../data/militaryInstallations.js';
-import militaryAwarenessLayer from '../../data/militaryAwareness.js';
-import localDataLayers from '../../data/localLayers.js';
+import bikeshareLayer from '../../data/bikeshare.js';
+import cctvLayer from '../../data/cctv.js';
+import earthquakesLayer from '../../data/earthquakes.js';
+import flightsLayer from '../../data/flights.js';
 import { LAYER_STATE_REGISTRY } from '../../data/layerState.js';
+import localDataLayers from '../../data/localLayers.js';
+import { DataLayerManager } from '../../data/manager.js';
+import militaryAwarenessLayer from '../../data/militaryAwareness.js';
+import militaryFlightsLayer from '../../data/militaryFlights.js';
+import militaryInstallationsLayer from '../../data/militaryInstallations.js';
+import radioLayer from '../../data/radio.js';
+import rocketLaunchesLayer from '../../data/rocketLaunches.js';
+import satellitesLayer from '../../data/satellites.js';
+import trafficLayer from '../../data/traffic.js';
 
 /** Register the standalone layer catalog before allowing state restoration. */
 export function createLocalData({

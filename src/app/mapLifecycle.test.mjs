@@ -1,12 +1,12 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import { MapStackController } from '../mapStackController.js';
 import {
+  getRenderGovernorDiagnostics,
+  governorRequestRender,
+  holdContinuousRender,
   installRenderGovernor,
   uninstallRenderGovernor,
-  holdContinuousRender,
-  governorRequestRender,
-  getRenderGovernorDiagnostics,
 } from '../renderGovernor.js';
 
 test('destroy invalidates a pending imagery provider before it can touch the viewer', async () => {

@@ -1,7 +1,7 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import test from 'node:test';
 import * as Cesium from 'cesium';
 import { createInfrastructureLayers } from 'gods-eye-view/infrastructure';
 import { createLocalGeoJsonLayer } from 'gods-eye-view/infrastructure/geojson';

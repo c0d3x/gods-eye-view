@@ -1,14 +1,14 @@
-import { SceneDirector } from '../../scenes/director.js';
 import { initAnnotations } from '../../annotations/index.js';
-import { initGevVoiceCommands } from '../../voice/gevRealtime.js';
-import { installScopeMask, destroyScopeMask } from '../../scopeMask.js';
 import {
-  installRenderGovernor,
   getRenderGovernorDiagnostics,
   governorRequestRender,
   holdContinuousRender,
+  installRenderGovernor,
   releaseContinuousRender,
 } from '../../renderGovernor.js';
+import { SceneDirector } from '../../scenes/director.js';
+import { destroyScopeMask, installScopeMask } from '../../scopeMask.js';
+import { initGevVoiceCommands } from '../../voice/gevRealtime.js';
 import { startLocalChrome } from './startupChrome.js';
 
 /** Attach scene tools, rendering listeners and the standalone debug handle. */

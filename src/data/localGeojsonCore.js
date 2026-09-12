@@ -1,7 +1,7 @@
 import * as Cesium from 'cesium';
 import {
-  selectInfraLod,
   applyInfraEvictionGrace,
+  selectInfraLod,
   shouldRecomputeInfraLod,
 } from './localGeojsonLod.js';
 

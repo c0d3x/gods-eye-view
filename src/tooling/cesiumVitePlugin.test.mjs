@@ -1,10 +1,10 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import http from 'node:http';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import test from 'node:test';
 import vm from 'node:vm';
 import { build, createServer } from 'vite';
 import cesium, {

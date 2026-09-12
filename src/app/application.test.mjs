@@ -1,6 +1,6 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import test from 'node:test';
 import { createApplication } from './application.js';
 
 const phases = ['Scene', 'Controls', 'Data', 'Tools'];
