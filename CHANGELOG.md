@@ -15,6 +15,12 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 
 ### Development
 
+- Replace vite-plugin-cesium with a local Vite plugin that keeps its behavior:
+  development serves Cesium's unminified build at `/cesium/`, and builds load
+  the global `Cesium.js`, rewrite `cesium` imports to it and copy its runtime
+  files. The build no longer depends on Rollup 2 or the deprecated
+  sourcemap-codec package.
+
 - Upgrade Vite 6 to 8, CesiumJS 1.138 to 1.145, satellite.js 6 to 7 and mgrs to
   their latest releases, and CI's checkout and setup-node actions to v7. Vite
   now bundles workers as ES modules, which satellite.js's optional WASM

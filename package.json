@@ -60,7 +60,6 @@
     "puppeteer": "^25.10.0",
     "sharp": "^0.35.4",
     "vite": "^8.3.0",
-    "vite-plugin-cesium": "^1.2.23",
     "ws": "^8.21.3"
   },
   "exports": {
