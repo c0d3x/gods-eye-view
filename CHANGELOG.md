@@ -15,11 +15,11 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 
 ### Development
 
-- Enable Biome's recommended lint rules for the adopted files, enforced by
-  `pnpm run lint` in CI and by the pre-commit hook, and fix their findings:
-  unused layer parameters, conditions that read better as optional chains, a
-  `forEach` callback that returned a value and a test variable that shadowed
-  the global `escape`.
+- Enable Biome's recommended lint rules for the adopted files. `pnpm run lint`
+  in CI and the pre-commit hook fail on warnings as well as errors. Fix the
+  findings: unused layer parameters, conditions that read better as optional
+  chains, a `forEach` callback that returned a value and a test variable that
+  shadowed the global `escape`.
 
 - Replace vite-plugin-cesium with a local Vite plugin that keeps its behavior:
   development serves Cesium's unminified build at `/cesium/`, and builds load
