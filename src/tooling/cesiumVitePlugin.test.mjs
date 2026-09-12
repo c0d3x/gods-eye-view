@@ -155,8 +155,8 @@ test('the dev server serves unminified Cesium and defines its base URL', async (
     '/cesium/Workers%2F..%2F..%2Fpackage.json',
     '/cesium/Workers%5C..%5C..%5Cpackage.json',
   ]) {
-    const escape = await get(port, rawPath);
-    assert.equal(escape.headers['access-control-allow-origin'], undefined);
+    const outside = await get(port, rawPath);
+    assert.equal(outside.headers['access-control-allow-origin'], undefined);
   }
 
   const html = await (await fetch(`${base}/`)).text();

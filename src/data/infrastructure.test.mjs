@@ -145,9 +145,9 @@ test('two viewers use their supplied contexts and dispose independently', async 
     };
     return { layer, viewer, click: () => click({ position: {} }) };
   });
-  t.after(() =>
-    instances.forEach(({ layer, viewer }) => layer.destroy(viewer)),
-  );
+  t.after(() => {
+    for (const { layer, viewer } of instances) layer.destroy(viewer);
+  });
   await Promise.all(instances.map(({ layer, viewer }) => layer.enable(viewer)));
   assert.equal(hosts[0].records.size, 1);
   assert.equal(hosts[1].records.size, 1);

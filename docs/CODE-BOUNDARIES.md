@@ -2,11 +2,12 @@
 
 Run `pnpm run format` to format the files listed in `files.includes` of
 `biome.json` and `pnpm run format:check` to check that same list without
-writing. CI checks the entire adopted list on Linux and Windows. Biome is pinned
-in the development dependencies; use the installed version so local and CI
-output agree. The shared configuration specifies two spaces, single quotes,
-semicolons and LF endings. The Lefthook pre-commit hook formats staged files
-from the same list and leaves every other file untouched.
+writing; `pnpm run lint` applies Biome's recommended lint rules to it. CI checks
+the entire adopted list on Linux and Windows. Biome is pinned in the development
+dependencies; use the installed version so local and CI output agree. The shared
+configuration specifies two spaces, single quotes, semicolons and LF endings.
+The Lefthook pre-commit hook formats and lints staged files from the same list
+and leaves every other file untouched.
 
 Add new reusable modules and their tests to the list as they are extracted.
 Keep mechanical formatting in its own commit after behavior is stable. Existing

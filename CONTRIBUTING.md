@@ -56,11 +56,12 @@ The highest-leverage places to jump in:
 ## Formatting and reusable components
 
 Run `pnpm run format` before submitting changes to adopted modules, then
-`pnpm run format:check` and `pnpm run check:boundaries`. Formatting uses Biome
-and the explicit file list in `files.includes` of `biome.json`; add newly
-extracted modules and tests there in a separate mechanical commit. `pnpm install`
-also installs a Lefthook pre-commit hook that formats staged files from that
-list; set `LEFTHOOK=0` to skip it for one commit. Keep unadopted files
+`pnpm run format:check`, `pnpm run lint` and `pnpm run check:boundaries`.
+Formatting and linting use Biome, with its recommended lint rules, and the
+explicit file list in `files.includes` of `biome.json`; add newly extracted
+modules and tests there in a separate mechanical commit. `pnpm install` also
+installs a Lefthook pre-commit hook that formats and lints staged files from
+that list; set `LEFTHOOK=0` to skip it for one commit. Keep unadopted files
 consistent with their surrounding style. CI checks all adopted files and package
 boundaries on Linux and Windows.
 

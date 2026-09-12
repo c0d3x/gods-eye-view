@@ -464,11 +464,11 @@ export function createLocalGeoJsonLayer(
     updateInterval: 0,
     statsRefreshInterval: 1000,
 
-    init: async (viewer) => {
+    init: async (_viewer) => {
       // DataLayerManager calls this once
     },
 
-    update: async (viewer) => {
+    update: async (_viewer) => {
       // DataLayerManager calls this when enabled
     },
 
@@ -599,8 +599,7 @@ export function createLocalGeoJsonLayer(
                       Cesium.JulianDate.now(),
                     );
                     if (
-                      hierarchy &&
-                      hierarchy.positions &&
+                      hierarchy?.positions &&
                       hierarchy.positions.length > 0
                     ) {
                       pos = Cesium.BoundingSphere.fromPoints(
@@ -733,7 +732,7 @@ export function createLocalGeoJsonLayer(
                 if (!_enabled) return;
                 const picked = viewer.scene.pick(click.position);
 
-                if (picked && picked.id && picked.id.__localLayerId === id) {
+                if (picked?.id && picked.id.__localLayerId === id) {
                   const entity = picked.id;
                   viewer.selectedEntity = entity;
                   selectEntityContext(entity);
@@ -749,7 +748,7 @@ export function createLocalGeoJsonLayer(
                     if (positions && positions.length > 0) {
                       targetPos = positions[0];
                     }
-                  } else if (entity.polygon && entity.polygon.hierarchy) {
+                  } else if (entity.polygon?.hierarchy) {
                     // If it's a polygon, just fly to its center
                     const hierarchy = entity.polygon.hierarchy.getValue(
                       Cesium.JulianDate.now(),

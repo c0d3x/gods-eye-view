@@ -7,7 +7,7 @@
 export function describeError(error) {
   if (!error) return 'Unknown initialization error';
   if (error instanceof Error) {
-    if (error.message && error.message.trim()) return error.message.trim();
+    if (error.message?.trim()) return error.message.trim();
     return error.name || 'Initialization error';
   }
   if (typeof error === 'string' && error.trim()) return error.trim();

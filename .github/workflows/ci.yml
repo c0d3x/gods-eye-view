@@ -49,6 +49,9 @@ jobs:
       - name: Check adopted formatting
         run: pnpm run format:check
 
+      - name: Lint adopted files
+        run: pnpm run lint
+
       - name: Check package boundaries
         run: pnpm run check:boundaries
 
@@ -85,6 +88,9 @@ jobs:
 
       - name: Check adopted formatting
         run: pnpm run format:check
+
+      - name: Lint adopted files
+        run: pnpm run lint
 
       - name: Check package boundaries
         run: pnpm run check:boundaries
