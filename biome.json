@@ -78,7 +78,9 @@
       "src/aisKeyFingerprint.test.mjs",
       "src/rssText.test.mjs",
       "scripts/lib/qaUrl.mjs",
-      "src/tooling/qaUrl.test.mjs"
+      "src/tooling/qaUrl.test.mjs",
+      "scripts/changelog.mjs",
+      "src/tooling/changelog.test.mjs"
     ]
   },
   "formatter": {

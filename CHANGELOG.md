@@ -1,19 +1,14 @@
 # Changelog
 
-## September 8, 2026
-
-Earthquake refreshes validate the complete feed and construct replacement entities before clearing the previous snapshot. Malformed rows and duplicate rendered IDs retain the last good entities, overlays, count and timestamp and report a malformed response; unknown magnitude is excluded from M2.5+ rendering.
-
-Non-object or array-valued properties reject the response instead of being treated as an unknown magnitude.
-
-Launch payloads with missing records now say PAYLOAD DATA UNAVAILABLE. Missing names use Unnamed payload; absent or invalid mass stays unknown instead of appearing as 0 KG.
-
-This changelog records public product changes. For the authoritative description
-of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
+All notable changes to this project are documented in this file. The format
+follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions
+follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html). It records
+public product changes; for the authoritative description of current runtime
+behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ## [Unreleased]
 
-### Development
+### Added
 
 - Run the browser QA nightly, and on demand from the Actions tab. The QA
   workflow starts the dev server without keys, runs `pnpm run test:track`
@@ -28,11 +23,6 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   scanning. Dependency review checks every push to main and every pull
   request for new dependencies with known vulnerabilities.
 
-- Pin every GitHub Action in CI to a full commit SHA, with its version in a
-  comment, instead of a tag such as `@v7` that can be moved to other code.
-  Dependabot's weekly updates move the SHA and the comment together, and a
-  test fails if a workflow uses an unpinned action.
-
 - Measure test coverage in CI. The Node 24 job runs its tests under Node's
   coverage and writes the line, branch and function totals to the job
   summary, by area, with the largest source files no test loads and the
@@ -40,6 +30,18 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   `pnpm run test:coverage` does the same locally. There is no threshold yet.
   Coverage makes the Node 24 job about a minute slower, so it is now CI's
   longest, at a little over two minutes.
+
+- Separate optional Google server credentials for Places and Street View from
+  the browser key, contributed by Tom-Neverwinter (#110). Provider Settings,
+  Pinokio's app-specific credential handling and setup diagnostics recognize
+  both keys. The Street View tool prefers the server key across environment
+  and `.env` sources. Existing single-key and keyless setups remain supported.
+
+- Datacenter and dam factories are available through scoped package exports with
+  explicit context, overlay and render callbacks. The standalone app uses the
+  same implementation and bundled datasets.
+
+### Changed
 
 - Run the allocation microbenchmarks in their own CI job, in parallel with
   the test jobs, instead of after the Node 24 job's tests, so push CI
@@ -89,7 +91,30 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   infrastructure modules and their consumer tests. Package boundary checks keep
   those exports separate from app startup and local Node services.
 
+- Datacenter and dam marker stems use bounded, zoom-dependent active sets with
+  stable selection during camera motion. Close-up stems scale to the actual
+  camera distance; source totals and submarine cables remain unchanged.
+
+- CCTV testing uses the normal launcher for keyless startup, credential loading,
+  localhost binding, and explicit LAN-exposure warnings while retaining its
+  smaller source-pack limits.
+
+- Visual presets explain their effects on hover. Unavailable map sources name
+  missing credentials and Provider Settings, while configured-but-failed
+  Google 3D routes explain the failure without asking for another key.
+
 ### Fixed
+
+- Earthquake refreshes validate the complete feed and build the replacement
+  entities before clearing the previous snapshot. Malformed rows and duplicate
+  rendered IDs keep the last good entities, overlays, count and timestamp and
+  report a malformed response; unknown magnitude is excluded from M2.5+
+  rendering. Non-object or array-valued properties reject the response instead
+  of being treated as an unknown magnitude.
+
+- Launch payloads with missing records now say PAYLOAD DATA UNAVAILABLE.
+  Missing names use Unnamed payload; absent or invalid mass stays unknown
+  instead of appearing as 0 KG.
 
 - Move focus out of the first-run launcher before hiding it. It set
   `aria-hidden` while the button you had just used still held focus, so
@@ -171,12 +196,6 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   plain text on 127.0.0.1 only, and a CCTV QA harness passes camera IDs to
   the page as arguments instead of splicing them into code.
 
-- Separate optional Google server credentials for Places and Street View from
-  the browser key, contributed by Tom-Neverwinter (#110). Provider Settings,
-  Pinokio's app-specific credential handling and setup diagnostics recognize
-  both keys. The Street View tool prefers the server key across environment
-  and `.env` sources. Existing single-key and keyless setups remain supported.
-
 - Complete the first-run, view-target prewarm, cockpit-plates and floor-hold
   browser harness renderer portability fixes contributed by Tom-Neverwinter.
   macOS retains Metal; other platforms default to SwiftShader. Cockpit renderer
@@ -184,11 +203,6 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   explicitly selects its measured 2D billboard mode and keeps its mesh and terrain assertions; software runs are not real-GPU evidence.
   First-run QA now checks the existing attribution Escape-close/focus-return
   behavior while preserving the launcher-underneath regression checks.
-
-
-- Datacenter and dam factories are available through scoped package exports with
-  explicit context, overlay and render callbacks. The standalone app uses the
-  same implementation and bundled datasets.
 
 - Local GeoJSON layers share concurrent loads, cancel pending fetches on destruction,
   discard late results, and remove their entity-context records on teardown.
@@ -198,62 +212,60 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   below its loaded surface; roofs and valid below-sea-level heights are retained.
   Already sampled markers also follow higher terrain as close-up tiles refine.
 
-- Datacenter and dam marker stems use bounded, zoom-dependent active sets with
-  stable selection during camera motion. Close-up stems scale to the actual
-  camera distance; source totals and submarine cables remain unchanged.
-
 - Keyboard focus rings now survive active/selected button styles across the
   interface. Visual Styles, Location cities and points of interest, search,
   Context/mission actions, Cockpit utilities, and sliders retain a distinct
   focus indicator.
+
 - A short Space press activates a focused control only on key release. Holding
   Space for 500 ms blurs that control before push-to-talk starts, and release is
   then consumed so it cannot also activate the old control. The same hold works
   from the map or page background; text-entry controls remain protected.
+
 - The Location disclosure is reachable with Tab and shows keyboard focus;
   its city, point-of-interest, and search controls do too. Escape from inside
   the tray returns focus to its disclosure and discards any unfinished search;
   Escape on the disclosure itself closes the tray and clears that focus.
+
 - Data Layers ON/OFF buttons show a keyboard focus ring independently of
   their enabled and feed-status colors.
+
 - Display buttons, layout selectors, mode buttons, and sliders show a visible
   keyboard focus ring, including the controls used in Cockpit Display. Enabled
   CCTV camera dropdowns also show keyboard focus.
+
 - Context tabs keep a distinct keyboard ring when selected. Their existing
   Left/Right arrow navigation continues to switch Contacts and Space Missions,
   and both choices remain reachable through ordinary Tab navigation.
+
 - Tabbing through the Space Missions roster now drives the same temporary globe
   rotation and mission-marker highlight as pointer hover, without selecting the
   mission. Keyboard and pointer previews no longer cancel each other.
+
 - Radio power controls, Search Nearby Sites, and Clear Selected Layers retain
   keyboard focus while their async work is busy. They expose that busy state to
   assistive technology and ignore repeated activation until the work settles.
+
 - Live Contacts results retain keyboard focus by contact identity when counts,
   distance order, or pages refresh. If a focused contact departs or rotates off
   the visible page, focus moves to the named explanatory note at the end of the
   list and survives later refreshes there, so the next Tab proceeds beyond the
   list instead of restarting at Contacts or silently selecting another contact.
+
 - Cockpit Live Signals retains keyboard focus during live updates and contact
   reordering, allowing Tab to continue to Display and Radio. If the focused
   contact leaves the list, focus moves to the current briefing tab.
+
 - Cockpit-only Display and Radio launchers show complete inset focus rings.
+
 - Escape collapses the nearest expanded panel containing keyboard focus and
   returns focus to that panel's disclosure when closing from its contents.
   Escape on the disclosure itself closes without leaving the collapsed control
   focused. Cockpit Contact and Live Signals panels follow the same nesting rule.
+
 - Cesium's bottom-left Data attribution control and lightbox Close control are
   in the Tab order and support Enter and Space. Close, Escape, and backdrop
   dismissal restore focus and synchronize the disclosure state.
-
-- CCTV testing uses the normal launcher for keyless startup, credential loading,
-  localhost binding, and explicit LAN-exposure warnings while retaining its
-  smaller source-pack limits.
-- CelesTrak, Launch Library, terrain-height, and aircraft-enrichment failures
-  return generic error messages. Related diagnostics omit raw exception details
-  and upstream error bodies; response statuses and cache fallback remain intact.
-  Includes the security fixes contributed by Tom-Neverwinter in PR #171.
-
-### Fixed
 
 - Map Source keyboard opening retries focus until the selected tile is visible.
   Leaving the disclosure, pointer interaction, or closing the tray cancels the
@@ -261,23 +273,25 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 
 - Scope, Bloom, Sharpen, location search and generated style sliders expose
   explicit accessible names. The first-run checkbox retains its native label.
+
 - FIRMS records a source as successful only after appending its rows, avoiding
   contradictory success/failure status if aggregation throws.
+
 - Radio country filtering and voice country requests now resolve common English
   names and exonyms that `Intl.DisplayNames`' primary label omits, so requests
   like "play radio in Turkey" no longer fail closed (Turkey → Türkiye, plus
   Myanmar/Burma, UAE, Holland, Swaziland, East Timor, Cabo Verde, Vatican).
   Ambiguous names such as a bare "Congo" or "Korea" still fail closed.
+
 - Mapped-site outages show their scheduled retry countdown and distinguish
   known Overpass rate limits, timeouts, and query failures. Search feedback no
   longer claims a refresh succeeded while the layer is unavailable or loading.
+
 - Mapped installations retain valid ways and relations that provide bounds but
   no center. Invalid, inverted, and excessively wide bounds are rejected.
+
 - Clicking a selected installation again or clicking elsewhere clears its
   selection; later refreshes no longer reclaim it after a click-away.
-- Visual presets explain their effects on hover. Unavailable map sources name
-  missing credentials and Provider Settings, while configured-but-failed
-  Google 3D routes explain the failure without asking for another key.
 
 - The Overpass proxy now rotates to the next mirror on any non-2xx upstream
   response, not only on 5xx. `overpass-api.de` and its `lz4` alias answer 406 to
@@ -286,13 +300,11 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   mirrors untried. The refusal was also cached to memory and disk and served as
   data — boundary-class queries hold a month-long TTL — which affected every
   Overpass-backed feature: road geometry, annotation outlines and place lookup.
+
 - Existing cached refusals are now ignored immediately, including during
   stale-data fallback. Concurrent identical requests share the same last-good
   fallback when all mirrors refuse, without duplicating upstream requests.
 
-- Refresh vulnerable transitive dependencies and update browser/image tooling
-  to Puppeteer 25.10.0 and Sharp 0.35.4. Cesium remains on 1.138.0.
-  Browser QA awaits the new asynchronous executable-path lookup.
 - CCTV cameras without a live feed no longer request a new, billed Google
   Street View image on every 10–60 second refresh. Street View fallback frames
   are cached for 30 minutes per camera pose, keeping at most 64, so repeated
@@ -300,23 +312,40 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 
 ### Security
 
+- Pin every GitHub Action in CI to a full commit SHA, with its version in a
+  comment, instead of a tag such as `@v7` that can be moved to other code.
+  Dependabot's weekly updates move the SHA and the comment together, and a
+  test fails if a workflow uses an unpinned action.
+
+- CelesTrak, Launch Library, terrain-height, and aircraft-enrichment failures
+  return generic error messages. Related diagnostics omit raw exception details
+  and upstream error bodies; response statuses and cache fallback remain intact.
+  Includes the security fixes contributed by Tom-Neverwinter in PR #171.
+
+- Refresh vulnerable transitive dependencies and update browser/image tooling
+  to Puppeteer 25.10.0 and Sharp 0.35.4.
+  Browser QA awaits the new asynchronous executable-path lookup.
+
 - Refuse cross-site requests to the dev server's `/api` routes. While the
   server ran, a page from another website open in the same browser could call
   them. That could spend the configured Google and OpenAI quota and write to
   the voice debug log. Browser requests must now come from the app's own
   origin, and request bodies must be JSON; the Overpass proxy keeps its
   form-encoded queries. Scripts and other non-browser clients are unaffected.
+
 - Rate-limit the routes that spend provider quota by default: 30 OpenAI and
   120 Google requests per minute per client IP. `GEV_RATELIMIT_OPENAI_PER_MIN`
   and `GEV_RATELIMIT_GOOGLE_PER_MIN` still change the limits, and `0` or `off`
   turns one off. An unreadable value now keeps the default instead of
   removing the limit. The CCTV Street View fallback, which had no limit, gets
   its own Google budget and shows the synthetic frame once it's spent.
+
 - Turn off Vite's default CORS for the dev and preview servers. It let a page
   on any other localhost port read API responses, including the voice
   session's short-lived OpenAI token, and any file the server serves. The dev
   server also stops serving `.gev-logs/` (voice debug transcripts),
   `.gev-cache/` and `.claude/`, which were readable over HTTP.
+
 - Make the voice debug log opt-in. Every voice session used to be recorded
   to `.gev-logs/realtime-conversations.jsonl`, trusting the browser to redact,
   with 8 MiB records, no size limit, a world-readable file and parser errors
@@ -325,11 +354,13 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   record, caps records at 256 KiB, rotates the file at 20 MB keeping one
   previous file, makes it readable only by your user, and returns generic
   errors.
+
 - Keep Vite's Host check on in LAN mode. `HOST=0.0.0.0` used to turn it off,
   and local mode accepted any `.local` name. That left the API routes open to
   DNS-rebinding attacks while the server was reachable from the network. Both
   modes now answer only IP addresses, `localhost`, this machine's hostname
   and `<hostname>.local`, plus names listed in the new `GEV_ALLOWED_HOSTS`.
+
 - Bound the server's caches. The terrain-heights cache kept every point any
   client asked for, and the adsbdb cache every aircraft and callsign. They
   now keep at most 20,000 points and 5,000 of each, dropping the oldest. The
@@ -337,6 +368,7 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   startup and after writes: Overpass 90 days and 64 MB, military
   installations 90 days and 32 MB, TomTom tiles one day and 64 MB. TomTom's
   daily request budget file is never removed.
+
 - Put a deadline on every upstream call. Nine had none: the OpenSky token and
   states, CCTV media, adsb.lol, two OpenAI calls and two Google Places
   searches, so a stalled provider could hold a request open indefinitely. They
@@ -345,6 +377,7 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   relaying OpenAI's, Google's and the data feeds' own error text, and
   exception messages, to the browser: they answer in their own words and log
   the details on the server.
+
 - Harden the CCTV proxy. It relayed whatever a camera URL returned, HTML and
   SVG included, from the app's own origin, and it followed redirects
   anywhere, so a camera host could point it at a private address such as
@@ -355,26 +388,33 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   resolve to public addresses, and the connection is pinned to them. Cameras
   in your own `CCTV_SOURCES_FILE` or `CCTV_SOURCES_JSON` can still be on your
   network.
+
 - Keep API keys out of process argument lists, where `ps` and process
   monitors can read them. `scripts/dev-fresh.sh` passed every configured key
   to `env` as a `KEY=value` argument until the dev server started, and
   `scripts/opensky-import-client.sh` passed the OpenSky client ID and secret
   to `security`. The launcher now exports the keys and starts the server
   itself, and the import script hands the values to `security -i` on stdin.
+
 - Cap every upstream response the proxies read. CelesTrak, TomTom tiles,
   FIRMS, adsbdb, GBFS, the CCTV camera lists, CCTV and Street View frames and
   terrain heights were read whole, however large, and an AISStream message
   could be up to 100 MiB; it is now capped at 1 MiB. GBFS's deadline now
   covers the whole response, not just its headers.
+
 - Answer an oversized Provider Settings save with 413. The server reset the
   connection instead, so the browser never learned why the save failed.
+
 - Build the POI pills and the data-layer rows from DOM nodes. Both put a
   name into `innerHTML`; the names are local today, but a name from a remote
   source would have been parsed as markup.
+
 - Turn on private vulnerability reporting for this repository, and point
   SECURITY.md at it instead of the upstream repository.
 
-## [0.1.1] — 2026-09-01 — Installation and live-data fixes
+## [0.1.1] - 2026-09-01
+
+Installation and live-data fixes.
 
 ### Changed
 
@@ -404,9 +444,12 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   `GBFS_MAX_BODY_BYTES` limit holds for multi-byte payloads and cannot be
   overrun by non-ASCII upstream responses.
 
-## [0.1.0] — 2026-08-31 — One-click install, keyless boot, Provider Settings
+## [0.1.0] - 2026-08-31
+
+One-click install, keyless boot and Provider Settings.
 
 ### Added
+
 - **One-click install** via Pinokio. Keyless boot lands on a live Esri World
   Imagery satellite globe with keyless terrain; OSM takes over automatically if
   Esri is unreachable, and the globe continues without terrain if its source is
@@ -422,6 +465,7 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   test suite out of the box (#81 — thanks @ethanstoner).
 
 ### Changed
+
 - README rewritten keyless-first around the provider ladder: zero keys → free
   Cesium ion (eligible personal, non-commercial use) → billing-enabled Google
   Maps.
@@ -431,19 +475,21 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   and say so plainly when enrichment is unavailable instead of guessing.
 
 ### Security
+
 - Provider Settings answers only local, unproxied requests and disables itself
   entirely whenever the server is shared. Public datacenter and dam datasets
   omit contact-oriented fields (see the dataset READMEs).
 
-## Pre-release development history
+## Pre-release history
 
-The dated entries and internal milestone numbers below predate the first
-tagged GitHub Release. They are retained as project history and do not
-represent previously published GitHub Releases.
+These entries predate the first tagged GitHub Release. They are kept as
+project history and were never published as releases. The February 2026
+entries used an earlier prototype numbering; the published releases started
+again at 0.1.0.
 
-## [Unreleased] — 2026-08-24
+### 2026-08-24
 
-### Added
+#### Added
 
 - Added honest aircraft identity narration: callsign, operator, registration,
   type, and route come only from selected-contact context, and missing operator,
@@ -453,7 +499,7 @@ represent previously published GitHub Releases.
 - Added regression coverage for aircraft identity narration and optional-key
   loading feedback.
 
-### Changed
+#### Changed
 
 - First-run presentation now opens with Detection `DENSE` at 75%, `ELASTIC`
   allocation, Fade 7%, Outside 1%, scope feather 11%, and aircraft 3D models in
@@ -466,7 +512,7 @@ represent previously published GitHub Releases.
 - Public documentation and the L9 release matrix no longer reference non-public
   planning material or repository history.
 
-### Fixed
+#### Fixed
 
 - A missing optional FIRMS key no longer turns the complete Environmental
   mission into `LOAD FAILED`. The FIRMS row still reports `KEY REQUIRED`, while
@@ -482,23 +528,23 @@ represent previously published GitHub Releases.
   takes over from its billboard.
 - Cockpit altitude uses aviation MSL data rather than Cesium render height.
 
-### Security
+#### Security
 
 - Production transitive dependencies resolve to patched DOMPurify and
   protobufjs releases without changing the Cesium version or application APIs.
 - Production dependency audit reports no known advisories; remaining audit
   findings are confined to development and QA tooling.
 
-## [Unreleased] — 2026-08-23
+### 2026-08-23
 
-### Added
+#### Added
 
 - Added a first-run mission launcher for Contacts, Space Missions,
   Environmental, and manual exploration.
 - Added terrain-validity gating and bounded last-known placement for grounded
   aircraft models.
 
-### Changed
+#### Changed
 
 - Environmental consistently presents both earthquakes and NASA FIRMS fires,
   with honest optional-key degradation.
@@ -506,9 +552,9 @@ represent previously published GitHub Releases.
   stable across headings, with minor hull overlap allowed and no conspicuous
   top, bottom, or lateral projection.
 
-## [Unreleased] — 2026-08-18 to 2026-08-22
+### 2026-08-18 to 2026-08-22
 
-### Added
+#### Added
 
 - Added the four-source Map Source tray, share-link v2 state, cockpit/context
   voice parity, MSL altitude readouts, and close-range tracked aircraft models.
@@ -517,7 +563,7 @@ represent previously published GitHub Releases.
 - Added deterministic first-run, map-source, floor, overlay, tracking, and
   aircraft-model regression harnesses.
 
-### Changed
+#### Changed
 
 - Consolidated world labels, cards, tracked readouts, CCTV thumbnails, cable
   labels, mission labels, and detection presentation under shared allocation and
@@ -526,7 +572,7 @@ represent previously published GitHub Releases.
 - Improved cockpit layout, context restoration, keyless feed honesty, and
   aircraft 2D/3D handoffs.
 
-### Fixed
+#### Fixed
 
 - Fixed degenerate depth picks, map-source restore states, route-camera motion,
   bright-ground label readability, grounded display flooring, and cross-layer
@@ -534,9 +580,9 @@ represent previously published GitHub Releases.
 - Fixed stale overlay callbacks, parked-idle render leaks, cable-label sweep
   starvation, and several share-link state conflicts.
 
-## [Unreleased] — 2026-08-02 to 2026-08-16
+### 2026-08-02 to 2026-08-16
 
-### Added
+#### Added
 
 - Added Global Context modes, Cockpit briefing surfaces, Radio context,
   satellite mission replay, and real per-class aircraft models with adjacent
@@ -544,7 +590,7 @@ represent previously published GitHub Releases.
 - Added a shared screen-space overlay system with bounded allocation for labels,
   cards, callouts, detection brackets, and selected-object presentation.
 
-### Changed
+#### Changed
 
 - Unified right-side product controls and responsive cockpit/map layouts.
 - Migrated public-safe neighborhood geometry to DataSF and tightened safe local
@@ -552,9 +598,9 @@ represent previously published GitHub Releases.
 - Improved proxy resilience, annotation outline bounds, CCTV enable pacing,
   contact de-emphasis, and deterministic visual stacking.
 
-## [Unreleased] — July 2026
+### July 2026
 
-### Added
+#### Added
 
 - Added live NASA FIRMS fires, optional live TomTom traffic, Caltrans and TfL
   CCTV packs, CCTV viewsheds and direct-manipulation calibration, citywide CCTV
@@ -564,15 +610,15 @@ represent previously published GitHub Releases.
 - Added aircraft class silhouettes, path-derived display heading, ADSBDB
   enrichment, cached CelesTrak TLE lookup, and next-ISS-pass prediction.
 
-### Fixed
+#### Fixed
 
 - Fixed elevated-airport aircraft placement, vessel sea-surface placement,
   close-zoom FIRMS anchors, antimeridian region framing, annotation resolution,
   cross-layer tracking ownership, and CCTV projection lifecycle issues.
 
-## [Unreleased] — June 2026
+### June 2026
 
-### Added
+#### Added
 
 - Added OpenAI Realtime voice control, scene-aware entity context, viewport image
   grounding, the AI HUD summary, live AIS vessels, infrastructure layers, map
@@ -582,21 +628,21 @@ represent previously published GitHub Releases.
 - Added MIT source licensing, security guidance, contribution guidance, data
   source notices, and third-party asset boundaries.
 
-### Changed
+#### Changed
 
 - Removed the experimental AI video-edit style and retained seven deterministic
   visual styles.
 - Moved Realtime text-history trimming to the server-side retention policy while
   keeping only the latest viewport image in conversation context.
 
-## [0.7.0] — 2026-02-18
+### Prototype 0.7.0 - 2026-02-18
 
 - Added the Bikeshare Pulse layer and panoptic label improvements.
 - Improved tracked-item boxes, post-render alignment, and CCTV projection
   quality.
 - Removed the experimental shift-drag CCTV calibration interaction.
 
-## [0.6.0] — 2026-02-10
+### Prototype 0.6.0 - 2026-02-10
 
 - Added the initial multi-layer 3D globe experience, visual styles, live
   aircraft, satellites, earthquakes, CCTV, traffic, FIRMS, infrastructure, and
@@ -604,6 +650,6 @@ represent previously published GitHub Releases.
 - Added entity inspection, tracking, scenes, keyboard controls, and shareable
   views.
 
-## [0.1.0] — 2026-02-09
+### Prototype 0.1.0 - 2026-02-09
 
 - Initial project version.
