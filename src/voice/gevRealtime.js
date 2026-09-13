@@ -486,6 +486,9 @@ export class GevRealtimeController {
         sdpLength: offer.sdp?.length || 0,
         connection: this.connectionDiagnostics(),
       });
+      // Not fetchJson: the answer is SDP text, and a failure's body goes into
+      // the error message. The deadline keeps a stalled exchange from hanging
+      // the mic start.
       const sdpResponse = await fetch(REALTIME_CALLS_URL, {
         method: 'POST',
         body: offer.sdp,
@@ -493,6 +496,7 @@ export class GevRealtimeController {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/sdp',
         },
+        signal: AbortSignal.timeout(20_000),
       });
       if (this.abandonStart(epoch, { localStream, localPc })) return;
       if (!sdpResponse.ok) {
@@ -2201,6 +2205,8 @@ function postDebugLog(record) {
       const blob = new Blob([body], { type: 'application/json' });
       if (navigator.sendBeacon(DEBUG_LOG_URL, blob)) return;
     }
+    // Not fetchJson: fire-and-forget and keepalive, so it may outlive the
+    // page; only a 404 (the log is off) is read, to stop posting.
     fetch(DEBUG_LOG_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2351,7 +2357,9 @@ function isNearlyBlackFrame(ctx, width, height) {
  */
 async function fetchRealtimeToken(tier = DEFAULT_VOICE_TIER) {
   const url = `${TOKEN_URL}?tier=${encodeURIComponent(resolveVoiceModel(tier).tier)}`;
-  const response = await fetch(url, { cache: 'no-store' });
+  // Not fetchJson: a failure's JSON body carries the reason shown to the
+  // user. The deadline outlasts the server's own 20 s one.
+  const response = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(25_000) });
   const data = await response.json().catch(() => null);
   // Server echo first (authoritative, always present); the minted session
   // config is the fallback when a proxy strips headers.

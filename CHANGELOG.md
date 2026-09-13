@@ -92,6 +92,13 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   orbits. It now holds only while its dots or rings are shown or a satellite
   is being followed.
 
+- Give the app's own API calls a deadline and a status check. The geocoder
+  parsed a failed response as if it had succeeded, and it and nine other
+  calls (CCTV sources and health, flight type lookups, rocket launches and
+  their satellite catalog, the TomTom status check, the radio click count and
+  the voice connection) could wait forever. A shared fetchJson helper covers
+  most of them; the rest take a deadline directly.
+
 - Separate optional Google server credentials for Places and Street View from
   the browser key, contributed by Tom-Neverwinter (#110). Provider Settings,
   Pinokio's app-specific credential handling and setup diagnostics recognize

@@ -59,6 +59,8 @@ async function runSearch(viewer, options, { result = AUSTIN_RESULT, query = 'aus
   const priorFetch = globalThis.fetch;
   globalThis.window = { __GOOGLE_MAPS_API_KEY__: 'test-key' };
   globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
     json: async () => ({ status: 'OK', results: [result] }),
   });
   try {

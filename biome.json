@@ -67,7 +67,9 @@
       "src/poiPillMarkup.test.mjs",
       "src/keySetupBodyLimit.test.mjs",
       "src/data/satellitesPropagation.test.mjs",
-      "src/data/satellitesRenderHold.test.mjs"
+      "src/data/satellitesRenderHold.test.mjs",
+      "src/fetchJson.js",
+      "src/fetchJson.test.mjs"
     ]
   },
   "formatter": {

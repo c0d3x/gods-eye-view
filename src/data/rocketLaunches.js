@@ -11,6 +11,7 @@ import {
   setOverlaySourceVisible,
 } from '../overlays/worldOverlay.js';
 import { holdContinuousRender, releaseContinuousRender } from '../renderGovernor.js';
+import { fetchChecked, fetchJson } from '../fetchJson.js';
 
 const WINDOW_DAYS = 30;
 const API_URL = '/api/launches';
@@ -3382,11 +3383,9 @@ function schedulePostTleRetry(token) {
 function ensureActiveTleLookup(token) {
   if (_activeTleText) return Promise.resolve(_activeTleText);
   if (_activeTlePromise && _activeTlePromiseToken === token) return _activeTlePromise;
-  const request = fetch('/api/celestrak/active')
-    .then((activeResponse) => {
-      if (!activeResponse.ok) throw new Error(`HTTP ${activeResponse.status}`);
-      return activeResponse.text();
-    })
+  // The whole active catalog: a couple of MB of TLE text.
+  const request = fetchChecked('/api/celestrak/active', { timeoutMs: 30_000 })
+    .then((activeResponse) => activeResponse.text())
     .then((text) => {
       if (!_enabled || token !== _lifecycleToken) return null;
       _activeTleText = text;
@@ -3469,9 +3468,7 @@ async function restoreSatelliteDependency() {
 async function performMissionUpdate(token) {
   try {
     ensureActiveTleLookup(token);
-    const response = await fetch(API_URL);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const launches = normalizeRocketLaunches(await response.json());
+    const launches = normalizeRocketLaunches(await fetchJson(API_URL, { timeoutMs: 20_000 }));
     if (!_enabled || token !== _lifecycleToken || !_dataSource) return;
     const activeTleText = _activeTleText;
     if (_replayCameraLaunchId) stopMissionReplay();

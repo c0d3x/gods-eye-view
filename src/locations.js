@@ -1,5 +1,6 @@
 import * as Cesium from 'cesium';
 import { viewportBias, placesNearViewRecovery } from './annotations/annotationResolver.js';
+import { fetchJson } from './fetchJson.js';
 
 /**
  * Points of Interest per city.
@@ -359,8 +360,7 @@ export async function searchAndFlyTo(viewer, query, options = {}) {
   let url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`;
   const bias = viewportBias(viewer);
   if (bias) url += `&bounds=${bias}`;
-  const response = await fetch(url);
-  const data = await response.json();
+  const data = await fetchJson(url, { timeoutMs: 10_000 });
 
   const result = (data.status === 'OK' && data.results?.length) ? data.results[0] : null;
   let lat = result?.geometry.location.lat;

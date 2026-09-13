@@ -99,6 +99,7 @@ import {
   onFocusTargetAppear,
 } from './focusDeemphasis.js';
 import { holdContinuousRender, releaseContinuousRender } from '../renderGovernor.js';
+import { fetchJson } from '../fetchJson.js';
 
 // ---------------------------------------------------------------------------
 // API endpoints
@@ -1093,9 +1094,8 @@ function cityIdByName(cityName) {
  */
 async function loadCameraSources() {
   try {
-    const resp = await fetch(SOURCE_ENDPOINT, { cache: 'no-store' });
-    if (!resp.ok) return [];
-    const data = await resp.json();
+    // The server may still be building the catalog from three live feeds.
+    const data = await fetchJson(SOURCE_ENDPOINT, { cache: 'no-store', timeoutMs: 30_000 });
     if (!Array.isArray(data?.sources)) return [];
     return data.sources;
   } catch {
@@ -4131,9 +4131,7 @@ async function syncHealthState(force = false) {
   _lastHealthSyncAt = now;
 
   try {
-    const resp = await fetch(HEALTH_ENDPOINT, { cache: 'no-store' });
-    if (!resp.ok) return;
-    const data = await resp.json();
+    const data = await fetchJson(HEALTH_ENDPOINT, { cache: 'no-store', timeoutMs: 10_000 });
     const rows = Array.isArray(data?.cameras) ? data.cameras : [];
     const next = new Map();
     for (const row of rows) {

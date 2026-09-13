@@ -13,6 +13,7 @@ import {
 import { queuePlatoons, locateAlongRoad } from './trafficQueue.js';
 import { registerDynamicCredit, TOMTOM_CREDIT } from './dataCredits.js';
 import { holdContinuousRender, releaseContinuousRender } from '../renderGovernor.js';
+import { fetchJson } from '../fetchJson.js';
 
 /**
  * @file Street Traffic — animated dots along OSM road polylines, colored by
@@ -1290,8 +1291,7 @@ export function trafficFeedPresentation({
  */
 function ensureFlowStatus() {
   if (!_flowStatusPromise) {
-    _flowStatusPromise = fetch('/api/tomtom/status')
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`))))
+    _flowStatusPromise = fetchJson('/api/tomtom/status', { timeoutMs: 10_000 })
       .then((status) => {
         _liveMode = Boolean(status?.hasKey);
         _flowStatusUnavailable = false;

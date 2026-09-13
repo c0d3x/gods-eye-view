@@ -94,6 +94,7 @@ import {
 } from './contextStore.js';
 import { CONTACT_MATCH_TIER, contactMatchWins, rankContactMatch } from './contactMatch.js';
 import { holdContinuousRender, releaseContinuousRender } from '../renderGovernor.js';
+import { fetchJson } from '../fetchJson.js';
 
 const FOCUS_EVIDENCE_DEV = import.meta.env?.DEV === true;
 
@@ -810,8 +811,7 @@ function _drainEnrich() {
     _enrichLastDispatchMs = Date.now();
     const job = _enrichQueue.shift();
     _enrichActive += 1;
-    fetch(job.url)
-      .then((r) => (r.ok ? r.json() : null))
+    fetchJson(job.url, { timeoutMs: 10_000 })
       .then((data) => { if (data && data.found) job.onData(data); })
       .catch(() => { /* enrichment never surfaces errors */ })
       .finally(() => { _enrichActive -= 1; _drainEnrich(); });

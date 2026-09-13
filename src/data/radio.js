@@ -1760,7 +1760,12 @@ function tryRadioFallback(
 }
 
 function recordDirectoryClick(id) {
-  fetch(`/api/radio/click/${encodeURIComponent(id)}`, { method: 'POST' }).catch(() => {});
+  // Not fetchJson: fire-and-forget, so nothing reads the answer. The deadline
+  // keeps a stalled request from holding a connection.
+  fetch(`/api/radio/click/${encodeURIComponent(id)}`, {
+    method: 'POST',
+    signal: AbortSignal.timeout(10_000),
+  }).catch(() => {});
 }
 
 /** Play the selected broadcaster stream after an explicit user action. */
