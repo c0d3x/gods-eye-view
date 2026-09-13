@@ -8,6 +8,18 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ## [Unreleased]
 
+### Added
+
+- The setup doctor (`pnpm run doctor`) checks more of what breaks a setup, and
+  says how to fix each problem: the pnpm version against `packageManager`,
+  whether `node_modules` matches `pnpm-lock.yaml` and the lockfile matches
+  `package.json`, whether `ws` loads, whether the dev server's port is free,
+  Lefthook's Git hook, Chrome for the QA scripts, and the OpenSky settings
+  (the auth mode, a client ID without its secret, the credentials file, and a
+  username and password OpenSky no longer accepts). It lists the optional TfL
+  app key too, and a `.node-version` file names Node 24.14.0 for version
+  managers.
+
 ### Changed
 
 - `.env.example` lists every variable the server reads. The AISStream URL,

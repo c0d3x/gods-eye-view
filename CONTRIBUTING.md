@@ -6,7 +6,9 @@ Thanks for being here. God's Eye View is an open foundation for live spatial int
 
 Use Node.js 24.14.x or 26.x (also enforced by `package.json`) and pnpm 11.
 Once pnpm is installed (for example with `npm install --global pnpm@11`), it
-switches to the exact version pinned in `package.json`.
+switches to the exact version pinned in `package.json`. Version managers that
+read `.node-version` (fnm, mise, nodenv, asdf) take Node 24.14.0 from it; nvm
+reads only `.nvmrc`, so use the commands below.
 
 ```bash
 git clone https://github.com/bilawalsidhu/gods-eye-view.git
@@ -17,6 +19,10 @@ pnpm install
 pnpm run doctor
 ./scripts/dev-fresh.sh        # or: pnpm run dev (keys are optional)
 ```
+
+`pnpm run doctor` checks the toolchain, the installed packages, the dev
+server's port, the Git hook and Chrome for the QA scripts, and says how to fix
+each problem it finds.
 
 No key is required to start: the app boots on keyless Esri World Imagery with
 keyless terrain, and OSM takes over automatically if Esri is unreachable.

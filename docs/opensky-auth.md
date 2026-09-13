@@ -44,6 +44,9 @@ Launchers resolve OAuth creds in this order:
 
 ## Troubleshooting
 
+`pnpm run doctor` checks the auth mode, that both halves of the client are
+set, and the credentials file, without starting the server.
+
 Inspect proxy headers:
 
 ```bash

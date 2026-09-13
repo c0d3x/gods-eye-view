@@ -68,6 +68,7 @@ export const CREDENTIALS = Object.freeze([
     ),
   },
   { name: 'LL2_API_TOKEN', label: 'Launch Library 2', keychain: [] },
+  { name: 'TFL_APP_KEY', label: 'TfL cameras', keychain: [] },
 ]);
 
 /**

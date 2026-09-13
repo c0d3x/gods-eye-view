@@ -400,13 +400,18 @@ Six keys. Four have a free tier, and the two 🔴 ones are metered:
 
 Add these if you need higher polling allowances.
 
-`pnpm run doctor` reports Node/pnpm readiness, the primary provider routes, and
-where each configured provider was found without printing credential values.
-On macOS its Keychain-aware result previews `./scripts/dev-fresh.sh`; plain
-`pnpm run dev` reads only explicit environment and Vite dotenv values. The
-OpenSky summary reports only OAuth client-pair presence, not the resolved
-runtime mode or credential validity; Basic and credentials-file modes remain
-advanced `dev-fresh.sh` configuration.
+`pnpm run doctor` checks Node and pnpm against the versions this repository
+pins, that `node_modules` matches `pnpm-lock.yaml` and the lockfile matches
+`package.json`, that `ws` loads for the vessel relay, that the dev server's
+port is free, that Lefthook's Git hook is installed, and whether Chrome for the
+QA scripts is there. Each problem comes with a hint on how to fix it. It also
+reports the primary provider routes and where each configured provider was
+found, without printing credential values. On macOS its Keychain-aware result
+previews `./scripts/dev-fresh.sh`; plain `pnpm run dev` reads only explicit
+environment and Vite dotenv values. For OpenSky it checks the auth mode, that
+both halves of the OAuth client are set, and the file `OPENSKY_CREDENTIALS_FILE`
+names, which only `dev-fresh.sh` reads; only OpenSky can tell whether the
+credentials are valid.
 
 <details>
 <summary>Advanced setup: environment variables and macOS Keychain</summary>
