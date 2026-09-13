@@ -57,7 +57,26 @@ jobs:
 
       # The allocation microbenchmarks run in their own job, in parallel.
       - name: Run unit tests
+        if: matrix.node != '24.14.0'
         run: node scripts/run-unit-tests.mjs --skip-allocations
+
+      # On Node 24 the same run also measures coverage.
+      - name: Run unit tests with coverage
+        if: matrix.node == '24.14.0'
+        run: node scripts/run-unit-tests.mjs --skip-allocations --coverage
+
+      - name: Summarize coverage
+        if: matrix.node == '24.14.0'
+        run: node scripts/coverage-summary.mjs coverage/lcov.info >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        if: matrix.node == '24.14.0'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Build production bundle
         run: pnpm run build

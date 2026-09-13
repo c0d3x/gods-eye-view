@@ -13,3 +13,6 @@ output/
 3d-models/
 pinokio/ENVIRONMENT
 pinokio/.installed
+
+# Test coverage from pnpm run test:coverage
+coverage/

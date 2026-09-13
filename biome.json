@@ -71,7 +71,9 @@
       "src/fetchJson.js",
       "src/fetchJson.test.mjs",
       "src/panelLayoutStorage.js",
-      "src/panelLayoutStorage.test.mjs"
+      "src/panelLayoutStorage.test.mjs",
+      "scripts/coverage-summary.mjs",
+      "src/tooling/coverageSummary.test.mjs"
     ]
   },
   "formatter": {

@@ -1,4 +1,4 @@
-import { readdirSync } from 'node:fs';
+import { mkdirSync, readdirSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -100,25 +100,56 @@ export const UNIT_TEST_MODES = Object.freeze({
   '--allocations-only': Object.freeze({ parallel: false, allocations: true }),
 });
 
+/** Where `--coverage` writes lcov.info. */
+export const COVERAGE_DIRECTORY = 'coverage';
+
 /**
- * Which halves of the suite to run. With no arguments, both: the parallel
- * tests, then the allocation microbenchmarks.
- * @param {string[]} argv - Arguments after the script path.
- * @returns {{ parallel: boolean, allocations: boolean }}
+ * Flags that measure the parallel tests' coverage: spec results on stdout,
+ * and an lcov report for tools and the CI summary.
  */
-export function parseUnitTestArgs(argv = []) {
-  if (argv.length === 0) return { parallel: true, allocations: true };
-  const mode = argv.length === 1 ? UNIT_TEST_MODES[argv[0]] : undefined;
-  if (!mode) {
-    throw new Error(`Usage: node scripts/run-unit-tests.mjs [${Object.keys(UNIT_TEST_MODES).join(' | ')}]`);
-  }
-  return { ...mode };
+export function coverageFlags(directory = COVERAGE_DIRECTORY) {
+  return [
+    '--experimental-test-coverage',
+    '--test-reporter=spec',
+    '--test-reporter-destination=stdout',
+    '--test-reporter=lcov',
+    `--test-reporter-destination=${directory}/lcov.info`,
+  ];
 }
 
-export function runUnitTests({ parallel = true, allocations = true } = {}) {
+/** The Node invocation for the parallel tests. */
+export function parallelTestArgs(files, { coverage = false } = {}) {
+  return ['--test', ...unitTestFlags(), ...(coverage ? coverageFlags() : []), ...files];
+}
+
+/**
+ * Which parts of the suite to run. With no arguments, both halves: the
+ * parallel tests, then the allocation microbenchmarks. `--coverage` measures
+ * the parallel tests only; it would skew the microbenchmarks' allocations.
+ * @param {string[]} argv - Arguments after the script path.
+ * @returns {{ parallel: boolean, allocations: boolean, coverage: boolean }}
+ */
+export function parseUnitTestArgs(argv = []) {
+  const flags = new Set(argv);
+  const coverage = flags.delete('--coverage');
+  const modes = [...flags];
+  const mode = modes.length === 0
+    ? { parallel: true, allocations: true }
+    : UNIT_TEST_MODES[modes[0]];
+  const repeated = flags.size + Number(coverage) !== argv.length;
+  if (!mode || modes.length > 1 || repeated || (coverage && !mode.parallel)) {
+    throw new Error(
+      `Usage: node scripts/run-unit-tests.mjs [${Object.keys(UNIT_TEST_MODES).join(' | ')}] [--coverage]`,
+    );
+  }
+  return { ...mode, coverage };
+}
+
+export function runUnitTests({ parallel = true, allocations = true, coverage = false } = {}) {
   const plan = buildUnitTestPlan(discoverUnitTestFiles());
   if (parallel) {
-    const parallelStatus = runTests(['--test', ...unitTestFlags(), ...plan.parallel]);
+    if (coverage) mkdirSync(COVERAGE_DIRECTORY, { recursive: true });
+    const parallelStatus = runTests(parallelTestArgs(plan.parallel, { coverage }));
     if (parallelStatus !== 0 || !allocations) return parallelStatus;
   }
 

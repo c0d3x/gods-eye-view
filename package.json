@@ -44,6 +44,7 @@
     "preview": "vite preview",
     "test": "node scripts/run-unit-tests.mjs",
     "test:allocations": "node scripts/run-unit-tests.mjs --allocations-only",
+    "test:coverage": "node scripts/run-unit-tests.mjs --skip-allocations --coverage && node scripts/coverage-summary.mjs",
     "test:track": "node scripts/track-regression.mjs",
     "qa:map-source-tray": "node scripts/qa-map-source-tray.mjs",
     "check:boundaries": "node scripts/check-package-boundaries.mjs"

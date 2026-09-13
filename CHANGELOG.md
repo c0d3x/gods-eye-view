@@ -15,6 +15,12 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 
 ### Development
 
+- Measure test coverage in CI. The Node 24 job runs its tests under Node's
+  coverage and writes the line, branch and function totals to the job
+  summary, by area, with the largest source files no test loads and the
+  least-covered ones; lcov.info is kept as an artifact for 30 days.
+  `pnpm run test:coverage` does the same locally. There is no threshold yet.
+
 - Run the allocation microbenchmarks in their own CI job, in parallel with
   the test jobs, instead of after the Node 24 job's tests, so push CI
   finishes about half a minute sooner. `pnpm test` still runs everything,

@@ -11,8 +11,10 @@ import {
   allocationTestArgs,
   assertNode24AllocationRuntime,
   buildUnitTestPlan,
+  coverageFlags,
   discoverUnitTestFiles,
   isCalibratedAllocationRuntime,
+  parallelTestArgs,
   parseUnitTestArgs,
   unitTestFlags,
 } from '../scripts/run-unit-tests.mjs';
@@ -85,8 +87,9 @@ test('npm test stays green on every supported engine, not only the calibrated on
 test('every run gives each test a deadline and exits once its tests finish', () => {
   assert.deepEqual(unitTestFlags(), [`--test-timeout=${UNIT_TEST_TIMEOUT_MS}`, '--test-force-exit']);
   assert.deepEqual(unitTestFlags({ timeoutMs: 500 }), ['--test-timeout=500', '--test-force-exit']);
+  assert.deepEqual(parallelTestArgs(['a.test.mjs']), ['--test', ...unitTestFlags(), 'a.test.mjs']);
   const runner = readFileSync(new URL('../scripts/run-unit-tests.mjs', import.meta.url), 'utf8');
-  assert.match(runner, /runTests\(\['--test', \.\.\.unitTestFlags\(\), \.\.\.plan\.parallel\]\)/);
+  assert.match(runner, /runTests\(parallelTestArgs\(plan\.parallel, \{ coverage \}\)\)/);
 });
 
 test('a hung test fails at its deadline, and the timer it leaks does not hold the run', () => {
@@ -134,11 +137,24 @@ test('the Windows job runs the DACL test, with the same deadline', () => {
 });
 
 test('the suite runs whole by default, or either half on its own', () => {
-  assert.deepEqual(parseUnitTestArgs([]), { parallel: true, allocations: true });
-  assert.deepEqual(parseUnitTestArgs(['--skip-allocations']), { parallel: true, allocations: false });
-  assert.deepEqual(parseUnitTestArgs(['--allocations-only']), { parallel: false, allocations: true });
+  assert.deepEqual(parseUnitTestArgs([]), { parallel: true, allocations: true, coverage: false });
+  assert.deepEqual(
+    parseUnitTestArgs(['--skip-allocations']),
+    { parallel: true, allocations: false, coverage: false },
+  );
+  assert.deepEqual(
+    parseUnitTestArgs(['--allocations-only']),
+    { parallel: false, allocations: true, coverage: false },
+  );
+  assert.deepEqual(
+    parseUnitTestArgs(['--skip-allocations', '--coverage']),
+    { parallel: true, allocations: false, coverage: true },
+  );
+  assert.deepEqual(parseUnitTestArgs(['--coverage']), { parallel: true, allocations: true, coverage: true });
   assert.throws(() => parseUnitTestArgs(['--allocation-only']), /Usage/);
   assert.throws(() => parseUnitTestArgs(['--skip-allocations', '--allocations-only']), /Usage/);
+  assert.throws(() => parseUnitTestArgs(['--allocations-only', '--coverage']), /Usage/, 'coverage skews allocations');
+  assert.throws(() => parseUnitTestArgs(['--coverage', '--coverage']), /Usage/);
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(pkg.scripts['test:allocations'], 'node scripts/run-unit-tests.mjs --allocations-only');
 });
@@ -159,4 +175,21 @@ test('CI runs the allocation microbenchmarks in their own job, on the calibrated
   assert.match(allocations, /node-version: 24\./);
   assert.match(allocations, /GEV_REQUIRE_ALLOCATION_GATE: '1'/);
   assert.match(allocations, /run: pnpm run test:allocations\n/);
+});
+
+test('coverage measures the parallel tests into an lcov report, and CI publishes it', () => {
+  assert.deepEqual(
+    parallelTestArgs(['a.test.mjs'], { coverage: true }),
+    ['--test', ...unitTestFlags(), ...coverageFlags(), 'a.test.mjs'],
+  );
+  assert.ok(coverageFlags().includes('--experimental-test-coverage'));
+  assert.ok(coverageFlags().includes('--test-reporter-destination=coverage/lcov.info'));
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.match(pkg.scripts['test:coverage'], /--skip-allocations --coverage && node scripts\/coverage-summary\.mjs$/);
+  const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const verify = workflow.slice(workflow.indexOf('\n  verify:\n'), workflow.indexOf('\n  allocation-budgets:\n'));
+  assert.match(verify, /run: node scripts\/run-unit-tests\.mjs --skip-allocations --coverage\n/);
+  assert.match(verify, /run: node scripts\/coverage-summary\.mjs coverage\/lcov\.info >> "\$GITHUB_STEP_SUMMARY"\n/);
+  assert.match(verify, /uses: actions\/upload-artifact@[0-9a-f]{40} # v\d+\.\d+\.\d+\n/);
+  assert.match(verify, /path: coverage\/lcov\.info\n/);
 });
