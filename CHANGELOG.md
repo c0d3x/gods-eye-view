@@ -86,6 +86,12 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   opens Provider Settings. NASA FIRMS on a first run without a key was the
   common case. A real failure in the same load still reads LOAD FAILED.
 
+- Stop the Satellites layer from keeping the render loop busy while it shows
+  nothing. It held continuous rendering whenever it was on, and Space
+  Missions keeps it on with its dots and orbit rings hidden, only to look up
+  orbits. It now holds only while its dots or rings are shown or a satellite
+  is being followed.
+
 - Separate optional Google server credentials for Places and Street View from
   the browser key, contributed by Tom-Neverwinter (#110). Provider Settings,
   Pinokio's app-specific credential handling and setup diagnostics recognize

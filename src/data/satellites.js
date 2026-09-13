@@ -741,6 +741,7 @@ function _clearTracking(skipViewerUntrack = false, { origin = 'programmatic' } =
   }
   _trackedNorad = null;
   _syncIssOverlay();
+  _syncContinuousRenderHold();
   clearTrackedSubjectContext('satellites');
   _contextRefreshedAtMs = 0;
   _emitAwarenessEvent('gev:awareness-subject-cleared', {
@@ -987,6 +988,7 @@ function _trackSatellite(noradId, { origin = 'programmatic' } = {}) {
   _trackedFrameNumber = -1;
   _trackedFrameGeo = null;
   _syncIssOverlay();
+  _syncContinuousRenderHold(); // the camera follows it every frame
 
   // Hide the primitive — the tracked ENTITY renders the dot below. The
   // entity must own a point graphic so the Viewer's tracking camera can
@@ -1238,6 +1240,19 @@ function _removeDenseCatalog() {
   _denseCursor = 0;
   _count = _points.size;
   _catalogRevision++;
+}
+
+/**
+ * Hold continuous rendering only while something here moves every frame: the
+ * dots, the orbit rings, or a tracked satellite the camera follows. Space
+ * Missions keeps this layer on with dots and rings hidden, just to look up
+ * TLEs, and must not keep the render loop from idling.
+ */
+function _syncContinuousRenderHold() {
+  const animating = _enabled
+    && (_params.showPoints || _params.showOrbits || _trackedNorad !== null);
+  if (animating) holdContinuousRender('satellites');
+  else releaseContinuousRender('satellites');
 }
 
 /**
@@ -1617,7 +1632,8 @@ const satellitesLayer = {
 
   enable(viewer) {
     _enabled = true;
-    holdContinuousRender('satellites'); // per-frame animator (perf wave 2)
+    // Per-frame animator (perf wave 2), held only while something moves.
+    _syncContinuousRenderHold();
     if (_pointCollection) _pointCollection.show = satelliteVisualsVisible(_enabled, _params.showPoints);
     // Orbit ring primitives + persistent ISS host label — show them
     for (const path of _orbitPaths.values()) path.primitive.show = satelliteVisualsVisible(_enabled, _params.showOrbits);
@@ -2128,6 +2144,7 @@ const satellitesLayer = {
       for (const path of _orbitPaths.values()) path.primitive.show = satelliteVisualsVisible(_enabled, _params.showOrbits);
       _syncIssOverlay();
     }
+    _syncContinuousRenderHold();
     if (catalogChanged && catalog === 'dense') {
       _denseLoadPromise = _loadDenseCatalog();
     } else if (catalog === 'core') {
