@@ -99,6 +99,11 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   the voice connection) could wait forever. A shared fetchJson helper covers
   most of them; the rest take a deadline directly.
 
+- Keep the military-aircraft registry from growing all session. It kept
+  every military aircraft the adsb.lol feed had ever listed. An aircraft no
+  poll has listed for six hours now drops out, and the registry holds at most
+  4,096, forgetting the least recently seen first.
+
 - Separate optional Google server credentials for Places and Street View from
   the browser key, contributed by Tom-Neverwinter (#110). Provider Settings,
   Pinokio's app-specific credential handling and setup diagnostics recognize

@@ -14,9 +14,17 @@
  */
 
 const MIL_POLL_INTERVAL_MS = 60000;
+/** Most hexes the registry keeps; the least recently seen go first. */
+export const MILITARY_REGISTRY_MAX_ENTRIES = 4096;
+/** A hex that no poll has listed for this long is forgotten. */
+export const MILITARY_REGISTRY_TTL_MS = 6 * 60 * 60 * 1000;
 
-/** @type {Set<string>} Lowercase ICAO24 hexes known to be military. */
-const _milIcaos = new Set();
+/**
+ * @type {Map<string, number>} Lowercase ICAO24 hexes known to be military,
+ * each mapped to when a poll last listed it. Insertion order is last-seen
+ * order, oldest first, so pruning reads from the front.
+ */
+const _milIcaos = new Map();
 /** @type {boolean} True while the dedicated military layer is enabled. */
 let _militaryLayerActive = false;
 /** @type {Set<(active: boolean) => void>} Fired on active-state TRANSITIONS. */
@@ -69,18 +77,29 @@ export function onMilitaryLayerActiveChange(listener) {
 }
 
 /**
- * Replaces/extends the known-military set from a fresh poll.
- * Adds only — transient dropouts from one poll must not declassify an
- * aircraft mid-session (the set stays small: a few hundred hexes).
+ * Extends the known-military set from a fresh poll.
+ * A transient dropout from one poll must not declassify an aircraft, so a
+ * hex stays until no poll has listed it for MILITARY_REGISTRY_TTL_MS. Past
+ * MILITARY_REGISTRY_MAX_ENTRIES the least recently seen go first, so a long
+ * session can't grow the registry without bound.
  * @param {Iterable<string>} icaos - ICAO24 hexes from a /v2/mil response.
+ * @param {number} [now] - Epoch ms of the poll.
  * @returns {void}
  */
-export function registerMilitaryIcaos(icaos) {
+export function registerMilitaryIcaos(icaos, now = Date.now()) {
   for (const icao of icaos || []) {
     const hex = String(icao || '').trim().toLowerCase();
-    if (hex) _milIcaos.add(hex);
+    if (!hex) continue;
+    // Delete first so the hex moves to the end: newest last.
+    _milIcaos.delete(hex);
+    _milIcaos.set(hex, now);
   }
-  _lastRefreshMs = Date.now();
+  _lastRefreshMs = now;
+  for (const [hex, seenMs] of _milIcaos) {
+    const expired = now - seenMs > MILITARY_REGISTRY_TTL_MS;
+    if (!expired && _milIcaos.size <= MILITARY_REGISTRY_MAX_ENTRIES) break;
+    _milIcaos.delete(hex);
+  }
 }
 
 /**
@@ -90,6 +109,17 @@ export function registerMilitaryIcaos(icaos) {
  */
 export function isMilitaryIcao(icao24) {
   return _milIcaos.has(String(icao24 || '').toLowerCase());
+}
+
+/** Test hook: how many hexes the registry holds. */
+export function _militaryRegistrySizeForTest() {
+  return _milIcaos.size;
+}
+
+/** Test hook: empties the registry and marks it never refreshed. */
+export function _resetMilitaryRegistryForTest() {
+  _milIcaos.clear();
+  _lastRefreshMs = 0;
 }
 
 /**
