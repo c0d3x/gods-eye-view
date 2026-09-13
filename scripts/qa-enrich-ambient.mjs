@@ -46,7 +46,7 @@
  * Visual output (qa-shots/enrich-ambient/, untracked): before/after top-down
  * spreads of the row.
  *
- * Run:  node scripts/qa-enrich-ambient.mjs --url http://localhost:4304
+ * Run:  node scripts/qa-enrich-ambient.mjs --url <app-url>
  * Exits non-zero if any assertion fails. Never commits anything.
  */
 
@@ -55,6 +55,7 @@ import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { classifyAircraft, CLASS_SCALE_2D } from '../src/data/aircraftClass.js';
 import { aircraftIcon } from '../src/data/aircraftIcons.js';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 // ---------------------------------------------------------------------------
 // Args (same shape as qa-sprites-b5.mjs)
@@ -66,7 +67,7 @@ const getOpt = (name, dflt) => {
   return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
 };
 
-const APP_URL = getOpt('--url', 'http://localhost:4173');
+const APP_URL = getOpt('--url', qaUrl());
 const HEADFUL = getFlag('--headful');
 const SHOT_DIR = path.resolve('qa-shots/enrich-ambient');
 

@@ -4,7 +4,7 @@
  * legibility over bright ground.
  *
  * Run:
- *   node scripts/qa-label-readability.mjs --url http://localhost:4244 --tag after
+ *   node scripts/qa-label-readability.mjs --url <app-url> --tag after
  *
  * Every scene pins its own camera pose AND substitutes a deterministic
  * synthetic contact field for the live pollers, so a `before` run and an
@@ -29,6 +29,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const argv = process.argv.slice(2);
 const getOpt = (name, fallback) => {
@@ -36,7 +37,7 @@ const getOpt = (name, fallback) => {
   return index >= 0 && argv[index + 1] ? argv[index + 1] : fallback;
 };
 
-const APP_URL = getOpt('--url', 'http://localhost:4244');
+const APP_URL = getOpt('--url', qaUrl());
 const TAG = getOpt('--tag', 'after');
 /** Comma-separated scene-id prefixes. Empty runs the whole set. */
 const SCENE_FILTER = getOpt('--scenes', '')

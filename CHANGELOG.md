@@ -15,6 +15,13 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 
 ### Development
 
+- Run the browser QA nightly, and on demand from the Actions tab. The QA
+  workflow starts the dev server without keys, runs `pnpm run test:track`
+  and a list of QA harnesses headless with SwiftShader, and keeps their
+  screenshots. Every harness now finds the app at `GEV_QA_URL` (default
+  `http://localhost:4173`) instead of its own hard-coded port; `--url` still
+  overrides it.
+
 - Scan the code and the supply chain. CodeQL analyzes the JavaScript and the
   GitHub workflows on every push to main and weekly, OpenSSF Scorecard checks
   the repository's practices weekly, and both report under Security → Code

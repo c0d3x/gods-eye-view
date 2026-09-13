@@ -25,7 +25,7 @@
  * zooms per layer showing per-class model scale differences. The PNGs are the
  * acceptance test — read them.
  *
- * Run:  node scripts/qa-sprites-b5.mjs --url http://localhost:4300
+ * Run:  node scripts/qa-sprites-b5.mjs --url <app-url>
  * Exits non-zero if any assertion fails. Never commits anything.
  */
 
@@ -33,6 +33,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 import { classifyAircraft, CLASS_SCALE_2D, CLASS_SCALE_3D, CLASS_MODEL_REAL } from '../src/data/aircraftClass.js';
+import { qaUrl } from './lib/qaUrl.mjs';
 // Hangar fleet (2026-08-16): real per-class GLBs render at scale 1; military
 // heavies (airliner/quadjet/glider) render airplane.glb at 1 x class; only
 // fastjet/unknown keep the per-layer jet/airplane MODEL_SCALE formula.
@@ -53,7 +54,7 @@ const getOpt = (name, dflt) => {
   return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
 };
 
-const APP_URL = getOpt('--url', 'http://localhost:4173');
+const APP_URL = getOpt('--url', qaUrl());
 const HEADFUL = getFlag('--headful');
 const SHOT_DIR = path.resolve('qa-shots/b5');
 

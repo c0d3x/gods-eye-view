@@ -14,7 +14,7 @@
  * because Austin is off-peak at 22:00 CT while Mumbai is in live morning
  * rush, guaranteeing jam-bucket coverage in the drama shots.
  *
- * Run:  node scripts/qa-traffic-jamviz-ab.mjs --url http://localhost:4412
+ * Run:  node scripts/qa-traffic-jamviz-ab.mjs --url <app-url>
  * Exits non-zero on harness failure (missing live mode, zero dots, etc.).
  */
 
@@ -22,6 +22,7 @@ import puppeteer from 'puppeteer';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -31,7 +32,7 @@ const getOpt = (name, dflt) => {
   const i = argv.indexOf(name);
   return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
 };
-const APP_URL = getOpt('--url', 'http://localhost:4412');
+const APP_URL = getOpt('--url', qaUrl());
 const OUT_DIR = path.resolve(REPO_ROOT, getOpt('--out', 'qa-shots/jamviz'));
 
 const VIEWS = [

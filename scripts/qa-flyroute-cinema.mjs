@@ -5,7 +5,7 @@
  * rendered frame, so the proof is the shot the owner will watch, not our own
  * internal numbers.
  *
- *   node scripts/qa-flyroute-cinema.mjs --url http://localhost:4247
+ *   node scripts/qa-flyroute-cinema.mjs --url <app-url>
  *
  * Writes a screenshot sequence plus a JSON trace to qa-shots/flyroute/.
  */
@@ -14,13 +14,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 import sharp from 'sharp';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const getOpt = (flag, fallback) => {
   const i = process.argv.indexOf(flag);
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
 };
-const APP_URL = getOpt('--url', 'http://localhost:4247');
+const APP_URL = getOpt('--url', qaUrl());
 const OUT_DIR = getOpt('--out', path.join(ROOT, 'qa-shots', 'flyroute'));
 const MIRROR_DIR = getOpt('--mirror', '');
 const SHOT_EVERY_MS = Number(getOpt('--shot-ms', '2000'));

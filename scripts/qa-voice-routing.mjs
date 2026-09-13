@@ -22,7 +22,7 @@
  * Usage:
  *   node scripts/qa-voice-routing.mjs                 # both layers, :4415
  *   node scripts/qa-voice-routing.mjs --layer routing --budget 120
- *   node scripts/qa-voice-routing.mjs --layer behavior --url http://localhost:4173
+ *   node scripts/qa-voice-routing.mjs --layer behavior --url <app-url>
  *
  * House gotchas honored: camera.cancelFlight() before every teleport; puppeteer
  * suites must run sequentially with other harnesses (SwiftShader saturation);
@@ -34,6 +34,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import WebSocket from 'ws';
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -52,7 +53,7 @@ function getOpt(flag, fallback) {
   const i = process.argv.indexOf(flag);
   return i >= 0 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
 }
-const APP_URL = getOpt('--url', 'http://localhost:4415');
+const APP_URL = getOpt('--url', qaUrl());
 const LAYER = getOpt('--layer', 'all'); // routing | behavior | all
 const TURN_BUDGET = Number(getOpt('--budget', '120'));
 const PHRASES_PER_SESSION = Number(getOpt('--batch', '6'));

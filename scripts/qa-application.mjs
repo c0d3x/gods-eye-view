@@ -2,10 +2,11 @@
 /** Prove standalone startup and terminal resource ownership in a real browser. */
 import assert from 'node:assert/strict';
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const args = process.argv.slice(2);
 const urlIndex = args.indexOf('--url');
-const url = urlIndex >= 0 ? args[urlIndex + 1] : 'http://localhost:4173';
+const url = urlIndex >= 0 ? args[urlIndex + 1] : qaUrl();
 const browser = await puppeteer.launch({
   headless: true,
   executablePath:

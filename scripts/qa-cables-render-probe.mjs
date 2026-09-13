@@ -9,12 +9,13 @@
  *     wait 650 ms, 20 timed `viewer.render()` calls }. Reports per-cycle
  *     mean/max and the worst frame across cycles, cables ON vs OFF.
  *
- * Usage: node scripts/qa-cables-render-probe.mjs [--url http://localhost:4216]
+ * Usage: node scripts/qa-cables-render-probe.mjs [--url <app-url>]
  */
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const argv = process.argv;
-const url = argv.includes('--url') ? argv[argv.indexOf('--url') + 1] : 'http://localhost:4216';
+const url = argv.includes('--url') ? argv[argv.indexOf('--url') + 1] : qaUrl();
 const LAYER_ID = 'telegeography-submarine-cables';
 
 const browser = await puppeteer.launch({

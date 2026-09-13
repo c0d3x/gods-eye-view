@@ -68,14 +68,15 @@
  * "world-overlay honours occluder churn as paint work" in
  * the project roadmap.
  *
- * Usage: node scripts/qa-perf.mjs [--url http://localhost:4173]
+ * Usage: node scripts/qa-perf.mjs [--url <app-url>]
  * Requires a running dev server. Headless; flags disable occlusion
  * throttling so rAF cadence is trustworthy (hidden-pane gotcha).
  */
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const argv = process.argv;
-const url = argv.includes('--url') ? argv[argv.indexOf('--url') + 1] : 'http://localhost:4173';
+const url = argv.includes('--url') ? argv[argv.indexOf('--url') + 1] : qaUrl();
 
 const results = [];
 function check(name, pass, detail) {

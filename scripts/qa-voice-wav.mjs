@@ -2,16 +2,17 @@
 /**
  * Credentialed AI voice acceptance using a prerecorded Chromium microphone.
  *
- * Run: node scripts/qa-voice-wav.mjs http://localhost:4189
+ * Run: node scripts/qa-voice-wav.mjs [<app-url>]
  */
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const appUrl = process.argv[2] || 'http://localhost:4189';
+const appUrl = process.argv[2] || qaUrl();
 const wavPath = process.argv[3]
   || path.join(repoRoot, 'scripts', 'fixtures', 'voice', 'full-globe-turn-on-radio.wav');
 const expectedFixtureSha256 = 'b57af70db1922b72fec2c6c58348ccd3309e10aa1e8edec2890277dff26cc7bb';

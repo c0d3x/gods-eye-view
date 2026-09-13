@@ -19,7 +19,7 @@
  *
  * Visual proof saved to qa-shots/ (gitignored).
  *
- * Usage: node scripts/qa-infra-lod.mjs [--url http://localhost:5180] [--control] [--headful]
+ * Usage: node scripts/qa-infra-lod.mjs [--url <app-url>] [--control] [--headful]
  * Requires a running dev server with the bundled local_data present. Headless;
  * rAF throttling disabled so the frame clock is honest. Exits non-zero on any
  * FAIL. Commits nothing.
@@ -32,6 +32,7 @@ import {
   INFRA_LOD_ACTIVE_MIN,
   INFRA_LOD_ACTIVE_MAX,
 } from '../src/data/localGeojsonLod.js';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -42,7 +43,7 @@ const getOpt = (name, dflt) => {
   const i = argv.indexOf(name);
   return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
 };
-const APP_URL = getOpt('--url', 'http://localhost:5180');
+const APP_URL = getOpt('--url', qaUrl());
 const CONTROL = argv.includes('--control');
 const HEADFUL = argv.includes('--headful');
 

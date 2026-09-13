@@ -8,12 +8,13 @@
  * independence, restoration without autoplay, responsive UI, and a clean
  * console. Screenshots are written under the gitignored `qa-shots/radio/`.
  *
- * Run: node scripts/qa-radio.mjs --url http://localhost:4173
+ * Run: node scripts/qa-radio.mjs --url <app-url>
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -23,7 +24,7 @@ const option = (name, fallback) => {
   const index = args.indexOf(name);
   return index >= 0 && args[index + 1] ? args[index + 1] : fallback;
 };
-const APP_URL = option('--url', process.env.QA_BASE_URL || 'http://localhost:4173');
+const APP_URL = option('--url', qaUrl());
 const APP_ORIGIN = new URL(APP_URL).origin;
 const HEADFUL = args.includes('--headful');
 

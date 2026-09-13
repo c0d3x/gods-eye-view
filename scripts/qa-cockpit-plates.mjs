@@ -42,9 +42,9 @@
  *                  become "no plates anywhere".
  *
  * Run (dev server already up):
- *   node scripts/qa-cockpit-plates.mjs --url http://localhost:4268
- *   node scripts/qa-cockpit-plates.mjs --url http://localhost:4268 --tag before
- *   node scripts/qa-cockpit-plates.mjs --url http://localhost:4268 --teeth
+ *   node scripts/qa-cockpit-plates.mjs --url <app-url>
+ *   node scripts/qa-cockpit-plates.mjs --url <app-url> --tag before
+ *   node scripts/qa-cockpit-plates.mjs --url <app-url> --teeth
  *
  * Defaults to ANGLE/Metal on macOS and software GL elsewhere. `--swiftshader` selects software GL,
  * which is deterministic but is NOT real-GPU evidence; the banner says which
@@ -53,13 +53,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const argv = process.argv.slice(2);
 const getOpt = (name, fallback) => {
   const index = argv.indexOf(name);
   return index >= 0 && argv[index + 1] ? argv[index + 1] : fallback;
 };
-const APP_URL = getOpt('--url', 'http://localhost:4173');
+const APP_URL = getOpt('--url', qaUrl());
 const APP_ORIGIN = new URL(APP_URL).origin;
 const TAG = getOpt('--tag', 'after');
 const HEADFUL = argv.includes('--headful');

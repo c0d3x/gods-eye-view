@@ -76,7 +76,9 @@
       "src/tooling/coverageSummary.test.mjs",
       "src/tooling/workflowPins.test.mjs",
       "src/aisKeyFingerprint.test.mjs",
-      "src/rssText.test.mjs"
+      "src/rssText.test.mjs",
+      "scripts/lib/qaUrl.mjs",
+      "src/tooling/qaUrl.test.mjs"
     ]
   },
   "formatter": {

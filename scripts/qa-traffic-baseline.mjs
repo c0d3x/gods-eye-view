@@ -24,10 +24,10 @@
  * `waypoint-materialization`, so those segments slightly overstate production.
  *
  * Run with deterministic software GL (relative comparisons only):
- *   node scripts/qa-traffic-baseline.mjs --url http://localhost:4173
+ *   node scripts/qa-traffic-baseline.mjs --url <app-url>
  *
  * Run headful on the owner's real-GPU browser surface for reportable numbers:
- *   node scripts/qa-traffic-baseline.mjs --url http://localhost:4173 --headful
+ *   node scripts/qa-traffic-baseline.mjs --url <app-url> --headful
  *
  * SwiftShader `scene.sampleHeight` durations are NOT representative of a real
  * GPU. The script prints the detected renderer and repeats this warning when
@@ -37,6 +37,7 @@
 
 import puppeteer from 'puppeteer';
 import fs from 'node:fs';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const argv = process.argv.slice(2);
 const getOpt = (name, dflt) => {
@@ -48,7 +49,7 @@ const getNumberOpt = (name, dflt) => {
   return Number.isFinite(value) ? value : dflt;
 };
 
-const APP_URL = getOpt('--url', 'http://localhost:4173');
+const APP_URL = getOpt('--url', qaUrl());
 const HEADFUL = argv.includes('--headful');
 const TIMEOUT_MS = Math.max(10_000, getNumberOpt('--timeout-ms', 120_000));
 const DEGRADED_DELAY_MS = Math.max(0, getNumberOpt('--degraded-delay-ms', 2500));

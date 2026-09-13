@@ -92,13 +92,14 @@
  *   exceeds 15°/s (truth is 2°/s; the pre-fix snap replayed ~120° of frozen
  *   divergence at the 60°/s slew cap).
  *
- * Run:  node scripts/qa-heading-b3.mjs --url http://localhost:4300
+ * Run:  node scripts/qa-heading-b3.mjs --url <app-url>
  * Exits non-zero if any assertion fails. Never commits anything.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 // ---------------------------------------------------------------------------
 // Args (same shape as track-regression.mjs)
@@ -110,7 +111,7 @@ const getOpt = (name, dflt) => {
   return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
 };
 
-const APP_URL = getOpt('--url', 'http://localhost:4173');
+const APP_URL = getOpt('--url', qaUrl());
 const HEADFUL = getFlag('--headful');
 const SHOT_DIR = path.resolve('qa-shots/b3');
 const SHOT_DIR_V2 = path.resolve('qa-shots/heading-v2');

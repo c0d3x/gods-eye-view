@@ -11,8 +11,8 @@
  * It also captures the owner's taste-pass screenshots into qa-shots/firstrun/.
  *
  * Usage:
- *   node scripts/qa-firstrun.mjs --url http://localhost:4278
- *   node scripts/qa-firstrun.mjs --url http://localhost:4278 --teeth
+ *   node scripts/qa-firstrun.mjs --url <app-url>
+ *   node scripts/qa-firstrun.mjs --url <app-url> --teeth
  *
  * `--teeth` is the negative control: it suppresses the launcher's own reveal, so
  * every rendered/behavioral assertion below must go RED. A green --teeth run
@@ -22,13 +22,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const args = process.argv.slice(2);
 const getOpt = (flag, fallback) => {
   const index = args.indexOf(flag);
   return index >= 0 && args[index + 1] ? args[index + 1] : fallback;
 };
-const APP_URL = getOpt('--url', 'http://localhost:4173').replace(/\/$/, '');
+const APP_URL = getOpt('--url', qaUrl()).replace(/\/$/, '');
 const TEETH = args.includes('--teeth');
 const HEADFUL = args.includes('--headful');
 

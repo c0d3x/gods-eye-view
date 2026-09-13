@@ -23,7 +23,7 @@
  *
  * Visual proof saved to qa-shots/ (gitignored).
  *
- * Run:  node scripts/qa-firms.mjs --url http://localhost:4420
+ * Run:  node scripts/qa-firms.mjs --url <app-url>
  * Exits non-zero on any FAIL. Does not commit anything.
  */
 
@@ -31,6 +31,7 @@ import puppeteer from 'puppeteer';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -41,7 +42,7 @@ const getOpt = (name, dflt) => {
   const i = argv.indexOf(name);
   return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
 };
-const APP_URL = getOpt('--url', 'http://localhost:4420');
+const APP_URL = getOpt('--url', qaUrl());
 const HEADFUL = argv.includes('--headful');
 
 const CHROME_EXECUTABLE_CANDIDATES = [

@@ -18,7 +18,7 @@
  * Shots + per-shot layer stats land in --out
  * (default qa-shots/preset-traffic, gitignored).
  *
- * Run:  node scripts/qa-traffic-preset-ab.mjs --url http://localhost:4390
+ * Run:  node scripts/qa-traffic-preset-ab.mjs --url <app-url>
  * Exits non-zero on harness failure (no live mode, zero dots, style or
  * param not adopted by the layer).
  */
@@ -27,6 +27,7 @@ import puppeteer from 'puppeteer';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -36,7 +37,7 @@ const getOpt = (name, dflt) => {
   const i = argv.indexOf(name);
   return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
 };
-const APP_URL = getOpt('--url', 'http://localhost:4390');
+const APP_URL = getOpt('--url', qaUrl());
 const OUT_DIR = path.resolve(REPO_ROOT, getOpt('--out', 'qa-shots/preset-traffic'));
 
 // Framing note: at shallow oblique pitch the camera sits 5+ km from the

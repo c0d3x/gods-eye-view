@@ -3,7 +3,7 @@
  * Deterministic QA for the detection overlay's bounded two-lane label pipeline.
  *
  * Run:
- *   node scripts/qa-labels.mjs --url http://localhost:4173
+ *   node scripts/qa-labels.mjs --url <app-url>
  *
  * The harness replaces only the three detection read APIs in the loaded page.
  * It does not enable their network pollers or mutate repository data. The field
@@ -14,6 +14,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const argv = process.argv.slice(2);
 const getFlag = (name) => argv.includes(name);
@@ -22,7 +23,7 @@ const getOpt = (name, fallback) => {
   return index >= 0 && argv[index + 1] ? argv[index + 1] : fallback;
 };
 
-const APP_URL = getOpt('--url', 'http://localhost:4173');
+const APP_URL = getOpt('--url', qaUrl());
 const APP_ORIGIN = new URL(APP_URL).origin;
 const HEADFUL = getFlag('--headful');
 const SHOT_DIR = path.resolve('qa-shots/labels');

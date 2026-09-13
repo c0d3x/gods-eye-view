@@ -21,9 +21,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const CHROME_EXECUTABLE = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const DEFAULT_URL = 'http://localhost:4176';
+const DEFAULT_URL = qaUrl();
 const VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 const SAMPLE_MS = 5_000;
 const BETWEEN_PHASE_SETTLE_MS = 1_000;

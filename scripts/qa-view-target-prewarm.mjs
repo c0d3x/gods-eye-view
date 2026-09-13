@@ -13,7 +13,7 @@
  * This harness flies the camera the way the demo does and asserts the flight
  * produces zero uncaught errors and zero unhandled rejections.
  *
- *   QA_BASE_URL=http://localhost:4173 node scripts/qa-view-target-prewarm.mjs
+ *   GEV_QA_URL=<app-url> node scripts/qa-view-target-prewarm.mjs
  *
  * `QA_LABEL=before` names the evidence files so a before/after pair can sit
  * side by side in qa-shots/prewarm/.
@@ -22,10 +22,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const shotsDir = path.join(repoRoot, 'qa-shots', 'prewarm');
-const appUrl = process.env.QA_BASE_URL || 'http://localhost:4173';
+const appUrl = qaUrl();
 const label = process.env.QA_LABEL || 'after';
 const headful = process.argv.includes('--headful');
 fs.mkdirSync(shotsDir, { recursive: true });

@@ -26,7 +26,7 @@
  *
  * Run:
  *   node scripts/qa-l9-matrix.mjs                        # against :4173
- *   node scripts/qa-l9-matrix.mjs --url http://localhost:4220
+ *   node scripts/qa-l9-matrix.mjs --url <app-url>
  *   node scripts/qa-l9-matrix.mjs --cheap                # read-only, no heavy harnesses
  *   node scripts/qa-l9-matrix.mjs --only A,B             # groups or ids
  *   node scripts/qa-l9-matrix.mjs --skip D8,D12          # drop specific checks
@@ -41,6 +41,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
@@ -53,7 +54,7 @@ function getOpt(flag, def) {
 }
 const has = (flag) => argv.includes(flag);
 
-const APP_URL = getOpt('--url', 'http://localhost:4173').replace(/\/$/, '');
+const APP_URL = getOpt('--url', qaUrl()).replace(/\/$/, '');
 const APP_ORIGIN = new URL(APP_URL).origin;
 const CHEAP = has('--cheap');
 const HEADFUL = has('--headful');
@@ -507,7 +508,7 @@ function harness({ id, script, args = [], parse = readResultLine, timeoutMs = 90
     mkdirSync(HARNESS_LOG_DIR, { recursive: true });
     const r = await sh(process.execPath, [resolve(REPO_ROOT, 'scripts', script), ...args], {
       timeoutMs,
-      env: { QA_BASE_URL: APP_URL, ...envExtra },
+      env: { GEV_QA_URL: APP_URL, ...envExtra },
     });
     const verdict = applyKnownConditions(parse(r), knownConditions, `${r.out}\n${r.err}`);
     // A dev server whose dependency optimizer re-runs mid-test answers 504

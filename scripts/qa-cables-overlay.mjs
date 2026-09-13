@@ -15,14 +15,15 @@
  *       present for the source, idle stays near-zero, and a clean OFF→ON cycle
  *       (no orphan host entries after disable).
  *
- * Usage: node scripts/qa-cables-overlay.mjs [--url http://localhost:4214] [--legacy]
+ * Usage: node scripts/qa-cables-overlay.mjs [--url <app-url>] [--legacy]
  * Requires a running dev server. Headless; rAF throttling disabled so the
  * frame clock is honest (hidden-pane gotcha).
  */
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const argv = process.argv;
-const url = argv.includes('--url') ? argv[argv.indexOf('--url') + 1] : 'http://localhost:4214';
+const url = argv.includes('--url') ? argv[argv.indexOf('--url') + 1] : qaUrl();
 const legacy = argv.includes('--legacy');
 // --control: never enable the layer; measure the empty-scene orbit cost so the
 // cables layer's share of frame time is attributable.

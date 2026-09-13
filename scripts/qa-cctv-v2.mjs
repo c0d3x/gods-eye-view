@@ -72,7 +72,7 @@
  * via a Node-side search against the SAME `computeFrustumGeometry` oracle,
  * chosen to clear the ground clamp with margin, then resets it afterward.
  *
- * Run:  node scripts/qa-cctv-v2.mjs --url http://localhost:4173
+ * Run:  node scripts/qa-cctv-v2.mjs --url <app-url>
  *
  * Exit 0 = all asserts passed. Non-zero = a hard failure.
  */
@@ -82,6 +82,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { computeFrustumGeometry, FRUSTUM_GROUND_CLEARANCE_M } from '../src/data/cctv.js';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -93,7 +94,7 @@ const getOpt = (name, dflt) => {
 };
 const getFlag = (name) => argv.includes(name);
 
-const BASE_URL = process.env.QA_BASE_URL || 'http://localhost:4173';
+const BASE_URL = qaUrl();
 const APP_URL = getOpt('--url', BASE_URL);
 const HEADFUL = getFlag('--headful');
 const SHOTS_DIR = path.join(REPO_ROOT, 'qa-shots', 'cctv-v2');

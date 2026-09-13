@@ -15,7 +15,7 @@
  *   node scripts/qa-vessel-cards.mjs --tag new              # current code
  *   node scripts/qa-vessel-cards.mjs --tag old              # after swapping in the old layer file
  *   node scripts/qa-vessel-cards.mjs --ports rotterdam      # subset
- *   node scripts/qa-vessel-cards.mjs --url http://localhost:4173
+ *   node scripts/qa-vessel-cards.mjs --url <app-url>
  *   node scripts/qa-vessel-cards.mjs --data synthetic       # deterministic test fixture
  *   node scripts/qa-vessel-cards.mjs --data synthetic --headful  # real-GPU capture
  *
@@ -30,6 +30,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const argv = process.argv.slice(2);
 const getOpt = (name, dflt) => {
@@ -37,7 +38,7 @@ const getOpt = (name, dflt) => {
   return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
 };
 
-const APP_URL = getOpt('--url', 'http://localhost:4173');
+const APP_URL = getOpt('--url', qaUrl());
 const TAG = getOpt('--tag', 'new');
 const PORT_KEYS = getOpt('--ports', 'rotterdam,houston').split(',').map((s) => s.trim()).filter(Boolean);
 const OUT_DIR = getOpt('--out', 'qa-shots');

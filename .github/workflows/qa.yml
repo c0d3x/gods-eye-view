@@ -1,0 +1,91 @@
+name: QA
+
+on:
+  schedule:
+    # Nightly at 02:41 UTC.
+    - cron: '41 2 * * *'
+  workflow_dispatch:
+    inputs:
+      harnesses:
+        description: QA harnesses to run after the track regression (scripts/<name>.mjs, space-separated)
+        required: false
+        default: qa-application qa-firstrun qa-map-source-tray
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qa:
+    name: Track regression and QA harnesses
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      GEV_QA_URL: http://localhost:4173
+      # A scheduled run has no inputs, so it gets the default list.
+      HARNESSES: ${{ inputs.harnesses || 'qa-application qa-firstrun qa-map-source-tray' }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Use pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      - name: Use Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      # Installing also downloads Puppeteer's pinned Chrome for Testing.
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Start the dev server without keys
+        run: |
+          pnpm exec vite --host localhost --port 4173 --strictPort > vite.log 2>&1 &
+          for attempt in $(seq 1 90); do
+            if curl --silent --fail --output /dev/null "$GEV_QA_URL/"; then
+              # Load the entry module once so the first harness doesn't pay
+              # for the dependency pre-bundling.
+              curl --silent --output /dev/null "$GEV_QA_URL/src/main.js" || true
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::The dev server did not answer at $GEV_QA_URL"
+          cat vite.log
+          exit 1
+
+      - name: Track regression
+        run: pnpm run test:track
+
+      - name: QA harnesses
+        if: ${{ !cancelled() }}
+        run: |
+          status=0
+          for harness in $HARNESSES; do
+            echo "::group::$harness"
+            if ! node "scripts/$harness.mjs"; then
+              echo "::error::$harness failed"
+              status=1
+            fi
+            echo "::endgroup::"
+          done
+          exit "$status"
+
+      - name: Keep the screenshots and the server log
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: qa-screenshots
+          path: |
+            qa-shots/
+            vite.log
+          if-no-files-found: warn
+          retention-days: 14

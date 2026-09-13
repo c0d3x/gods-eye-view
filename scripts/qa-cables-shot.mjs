@@ -2,13 +2,14 @@
 /**
  * qa-cables-shot — capture the cables layer at two fixed cameras for
  * before/after visual-identity comparison. Writes to gitignored qa-shots/.
- * Usage: node scripts/qa-cables-shot.mjs [--url http://localhost:4214] [--tag before]
+ * Usage: node scripts/qa-cables-shot.mjs [--url <app-url>] [--tag before]
  */
 import puppeteer from 'puppeteer';
 import { mkdirSync } from 'node:fs';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const argv = process.argv;
-const url = argv.includes('--url') ? argv[argv.indexOf('--url') + 1] : 'http://localhost:4214';
+const url = argv.includes('--url') ? argv[argv.indexOf('--url') + 1] : qaUrl();
 const tag = argv.includes('--tag') ? argv[argv.indexOf('--tag') + 1] : 'shot';
 const LAYER_ID = 'telegeography-submarine-cables';
 mkdirSync(new URL('../qa-shots', import.meta.url), { recursive: true });

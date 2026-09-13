@@ -8,7 +8,7 @@
  * jitter → pull-out → cross-layer orphan), each fix sometimes revealing the
  * next. This script locks the invariants so they can't silently break again.
  *
- * It drives the REAL app (http://localhost:4173) in headless Chromium with the
+ * It drives the REAL app (at GEV_QA_URL) in headless Chromium with the
  * same WebGL launch flags the existing Cesium render harness uses
  * (tools/cesium-render.mjs): --use-gl=angle / --use-angle=swiftshader.
  *
@@ -85,7 +85,7 @@
  * Exits non-zero if ANY invariant fails. DOES NOT COMMIT anything.
  *
  * Flags:
- *   --url <url>        App URL (default http://localhost:4173)
+ *   --url <url>        App URL (default: GEV_QA_URL, else the dev server's)
  *   --headful          Show the browser (debugging)
  *   --keep-open        Leave the browser open after the run (debugging)
  */
@@ -94,6 +94,7 @@ import fs from 'node:fs';
 import puppeteer from 'puppeteer';
 import { classifyAircraft, CLASS_SCALE_3D, CLASS_MODEL_REAL } from '../src/data/aircraftClass.js';
 import { ensureGeoidReady, geoidHeight } from '../src/data/geoid.js';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 // ---------------------------------------------------------------------------
 // Args
@@ -105,7 +106,7 @@ const getOpt = (name, dflt) => {
   return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
 };
 
-const APP_URL = getOpt('--url', 'http://localhost:4173');
+const APP_URL = getOpt('--url', qaUrl());
 const APP_ORIGIN = new URL(APP_URL).origin;
 const HEADFUL = getFlag('--headful');
 const KEEP_OPEN = getFlag('--keep-open');

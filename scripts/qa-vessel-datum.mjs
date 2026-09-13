@@ -16,11 +16,12 @@
  *
  * Usage:
  *   node scripts/qa-vessel-datum.mjs
- *   node scripts/qa-vessel-datum.mjs --ports rotterdam --url http://localhost:4173
+ *   node scripts/qa-vessel-datum.mjs --ports rotterdam --url <app-url>
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const argv = process.argv.slice(2);
 const getOpt = (name, dflt) => {
@@ -28,7 +29,7 @@ const getOpt = (name, dflt) => {
   return i >= 0 && argv[i + 1] ? argv[i + 1] : dflt;
 };
 
-const APP_URL = getOpt('--url', 'http://localhost:4173');
+const APP_URL = getOpt('--url', qaUrl());
 const PORT_KEYS = getOpt('--ports', 'rotterdam,houston').split(',').map((s) => s.trim()).filter(Boolean);
 const OUT_DIR = getOpt('--out', 'qa-shots');
 

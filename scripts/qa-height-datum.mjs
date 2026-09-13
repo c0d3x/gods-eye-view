@@ -3,7 +3,7 @@
  * (docs/plans/2026-07-05-entity-height-datum-fix.md Task 8).
  *
  * Scaffold reused verbatim from qa-cctv-v2.mjs: the puppeteer launcher
- * (Chrome executable discovery, headless flags), `QA_BASE_URL` env,
+ * (Chrome executable discovery, headless flags), `GEV_QA_URL` env,
  * `record()`/tally pattern, and the Google-Maps-key-injection dev-server
  * recipe documented in its header comment. See that file for the reasoning
  * behind the launch flags and the SwiftShader caveats they share.
@@ -81,7 +81,7 @@
  * GL-dependent tile settling (the Google-3D one-shot ground snap actually
  * completing under headless SwiftShader) is likewise inconclusive-on-timeout.
  *
- * Run:  QA_BASE_URL=http://localhost:4300 node scripts/qa-height-datum.mjs
+ * Run:  GEV_QA_URL=<app-url> node scripts/qa-height-datum.mjs
  *
  * Exit 0 = no hard failures. Non-zero = at least one hard FAIL (or harness error).
  */
@@ -91,6 +91,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ensureGeoidReady, geoidHeight } from '../src/data/geoid.js';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -102,7 +103,7 @@ const getOpt = (name, dflt) => {
 };
 const getFlag = (name) => argv.includes(name);
 
-const BASE_URL = process.env.QA_BASE_URL || 'http://localhost:4173';
+const BASE_URL = qaUrl();
 const APP_URL = getOpt('--url', BASE_URL);
 const HEADFUL = getFlag('--headful');
 const SHOTS_DIR = path.join(REPO_ROOT, 'qa-shots', 'height-datum-qa');

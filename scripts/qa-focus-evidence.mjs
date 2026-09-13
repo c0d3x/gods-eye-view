@@ -3,11 +3,11 @@
  * Moving visual evidence for focus de-emphasis and aircraft recession.
  *
  * The operator owns the live dev server; this script never starts one:
- *   node scripts/qa-focus-evidence.mjs --url http://localhost:4173 \
+ *   node scripts/qa-focus-evidence.mjs --url <app-url> \
  *     --screenshots-dir qa-shots/focus-evidence \
  *     --json qa-shots/focus-evidence/report.json
  *   node scripts/qa-focus-evidence.mjs --headful --smoke
- *   node scripts/qa-focus-evidence.mjs --url http://localhost:4173 \
+ *   node scripts/qa-focus-evidence.mjs --url <app-url> \
  *     --params '{"focus":{"dimFloor":0.35},"horizon":{"scaleFloor":0.5}}'
  *   node scripts/qa-focus-evidence.mjs --headful --basemap osm
  *
@@ -21,6 +21,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const argv = process.argv.slice(2);
 const getOpt = (name, fallback = null) => {
@@ -29,7 +30,7 @@ const getOpt = (name, fallback = null) => {
 };
 const hasFlag = (name) => argv.includes(name);
 
-const APP_URL = getOpt('--url', 'http://localhost:4173');
+const APP_URL = getOpt('--url', qaUrl());
 const JSON_PATH = path.resolve(getOpt('--json', 'qa-shots/focus-evidence/report.json'));
 const SCREENSHOTS_DIR = path.resolve(getOpt('--screenshots-dir', 'qa-shots/focus-evidence'));
 const HEADFUL = hasFlag('--headful');

@@ -7,10 +7,11 @@
 // with the poison fix + simplified chain live.
 import puppeteer from 'puppeteer';
 import fs from 'node:fs';
+import { qaUrl } from './lib/qaUrl.mjs';
 
-// QA_BASE_URL matches the sibling harnesses (qa-height-datum / qa-cctv-v2) so a
+// GEV_QA_URL matches the sibling harnesses (qa-height-datum / qa-cctv-v2) so a
 // secondary checkout can verify against its own dev server instead of the default :4173.
-const APP_URL = process.env.QA_BASE_URL || 'http://localhost:4173';
+const APP_URL = qaUrl();
 // CLI: --lat --lon --floor-min --floor-max (defaults: Austin airport)
 const argv = Object.fromEntries(process.argv.slice(2).map((a) => a.split('=')).filter((x) => x.length === 2).map(([k, v]) => [k.replace(/^--/, ''), Number(v)]));
 const SITE = {

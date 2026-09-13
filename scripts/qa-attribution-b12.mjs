@@ -14,12 +14,13 @@
  *   (iii) toggling clean-view keeps #cesium-credits visible (screenshot);
  *   (iv)  toggling recording-mode keeps #cesium-credits visible (screenshot).
  *
- * Run:  node scripts/qa-attribution-b12.mjs --url http://localhost:4300
+ * Run:  node scripts/qa-attribution-b12.mjs --url <app-url>
  */
 import puppeteer from 'puppeteer';
 import { existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
@@ -27,7 +28,7 @@ function getOpt(flag, def) {
   const i = argv.indexOf(flag);
   return i >= 0 && argv[i + 1] ? argv[i + 1] : def;
 }
-const APP_URL = getOpt('--url', 'http://localhost:4300');
+const APP_URL = getOpt('--url', qaUrl());
 const APP_ORIGIN = new URL(APP_URL).origin;
 const SHOT_DIR = resolve(__dirname, '..', 'qa-shots', 'b12');
 mkdirSync(SHOT_DIR, { recursive: true });

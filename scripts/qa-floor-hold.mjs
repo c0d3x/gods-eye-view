@@ -17,7 +17,7 @@
  *
  *   node scripts/qa-floor-hold.mjs                       # Metal on macOS, SwiftShader elsewhere
  *   node scripts/qa-floor-hold.mjs --headful             # watch it
- *   QA_BASE_URL=http://localhost:4257 node scripts/qa-floor-hold.mjs
+ *   GEV_QA_URL=<app-url> node scripts/qa-floor-hold.mjs
  *
  * GPU BACKEND MATTERS. `scene.sampleHeight` answers on both backends, but
  * software rasterization streams a coarser LOD. Measured directly, one probe
@@ -34,8 +34,9 @@
 import puppeteer from 'puppeteer';
 import fs from 'node:fs';
 import path from 'node:path';
+import { qaUrl } from './lib/qaUrl.mjs';
 
-const APP_URL = process.env.QA_BASE_URL || 'http://localhost:4173';
+const APP_URL = qaUrl();
 const argv = Object.fromEntries(process.argv.slice(2)
   .map((a) => a.replace(/^--/, '').split('=')).map(([k, v]) => [k, v ?? true]));
 // Metal is a macOS-only ANGLE backend; defaulting to it off-Mac fails WebGL init.

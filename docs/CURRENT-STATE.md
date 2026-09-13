@@ -1725,7 +1725,7 @@ This is the current runtime/source-of-truth snapshot for the project.
 >   bridges) and contacts moving faster than the 30 s warm batch can still read
 >   metres low. `qa-floor-verify.mjs` now **exits non-zero on FAIL** (1 = FAIL,
 >   2 = INCONCLUSIVE); it previously exited 0 on every verdict, which is how the
->   burial stayed invisible. It also honours `QA_BASE_URL` and puppeteer's
+>   burial stayed invisible. It also honours `GEV_QA_URL` and puppeteer's
 >   pinned Chrome-for-Testing, like the other harnesses.
 > - **2026-07-16:** the FIRMS Active Fires layer is **LIVE** —
 >   the bundled 2026-05-25 snapshot (58 MB) is deleted; a new `/api/firms` proxy
@@ -2782,7 +2782,7 @@ Replay transport uses one Play/Pause toggle plus Cancel. During ascent only the 
 - `scripts/qa-map-source-tray.mjs`: browser proof for the four-source Map Source
   tray — presentation, keyboard disclosure, responsive bounds, unpinned
   auto-dismiss, ACQUIRING status, and retired/unknown stack-id restore
-  (`QA_BASE_URL=http://localhost:4173 pnpm run qa:map-source-tray`). Add
+  (`pnpm run qa:map-source-tray`; set `GEV_QA_URL` for another server). Add
   `--keyless` to force the no-ion-token expectations on a keyed server; both
   invocations are gates.
 - `scripts/qa-l9-matrix.mjs`: the L9 release-candidate QA matrix in one command

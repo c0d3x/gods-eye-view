@@ -27,7 +27,7 @@
  *        would pass on scanlines alone and no longer assert what it names.
  *        (Absent-by-default is pinned in src/data/detectionHost.test.mjs.)
  *
- * Run:  node scripts/qa-failstate-b10.mjs --url http://localhost:4300
+ * Run:  node scripts/qa-failstate-b10.mjs --url <app-url>
  * Exits non-zero if any assertion fails. DOES NOT COMMIT anything.
  */
 
@@ -35,6 +35,7 @@ import puppeteer from 'puppeteer';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -46,7 +47,7 @@ const getOpt = (name, dflt) => {
 };
 const getFlag = (name) => argv.includes(name);
 
-const APP_URL = getOpt('--url', 'http://localhost:4300');
+const APP_URL = getOpt('--url', qaUrl());
 
 /**
  * Check (iii) asserts the detection MODE BANNER is drawn on a zero-object frame.
