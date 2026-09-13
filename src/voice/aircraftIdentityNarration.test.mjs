@@ -2,13 +2,14 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const voiceConfig = readFileSync(new URL('../../vite.config.js', import.meta.url), 'utf8');
+// The Realtime session instructions live in the OpenAI proxy.
+const instructions = readFileSync(new URL('../../server/proxies/openai.mjs', import.meta.url), 'utf8');
 const realtime = readFileSync(new URL('./gevRealtime.js', import.meta.url), 'utf8');
 
 test('aircraft identity narration acknowledges missing enrichment', () => {
-  const start = voiceConfig.indexOf("'For \"what is this aircraft?\" answers");
+  const start = instructions.indexOf("'For \"what is this aircraft?\" answers");
   assert.ok(start >= 0, 'aircraft identity honesty instruction is missing');
-  const text = voiceConfig.slice(start, voiceConfig.indexOf('\n', start));
+  const text = instructions.slice(start, instructions.indexOf('\n', start));
   assert.match(text, /get_entity_context selected\.properties/);
   assert.match(text, /callsign, operator, registration, type, and route/);
   assert.match(text, /route, routeOrigin, and routeDestination as the only authoritative route fields/);

@@ -778,13 +778,15 @@ test('the voice TOOL SCHEMA is byte-identical to main — the mission mapping is
   // ...and the mapping that makes them reachable by voice is one instruction
   // string, whose rollback is deleting that string. Anchored to a LIVE array
   // entry — a quote at the start of its own line — so commenting the paragraph
-  // out reads as the removal it is, not as a passing substring match.
+  // out reads as the removal it is, not as a passing substring match. The
+  // session instructions live in the OpenAI proxy.
+  const instructions = fs.readFileSync(new URL('../server/proxies/openai.mjs', import.meta.url), 'utf8');
   assert.match(
-    src,
+    instructions,
     /\n\s+'NAMED VIEWS are shorthand/,
     'the mission mapping must be an active instruction entry, not commented out',
   );
-  const mapping = src.slice(src.indexOf('NAMED VIEWS are shorthand'));
+  const mapping = instructions.slice(instructions.indexOf('NAMED VIEWS are shorthand'));
   const paragraph = mapping.slice(0, mapping.indexOf("',\n"));
   for (const layerId of [
     'local-datacenters', 'local-dams', 'telegeography-submarine-cables', 'local-firms', 'earthquakes',

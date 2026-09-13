@@ -9,6 +9,7 @@ const radio = readFileSync(new URL('./data/radio.js', import.meta.url), 'utf8');
 const rocketLaunches = readFileSync(new URL('./data/rocketLaunches.js', import.meta.url), 'utf8');
 const realtime = readFileSync(new URL('./voice/gevRealtime.js', import.meta.url), 'utf8');
 const voice = readFileSync(new URL('../vite.config.js', import.meta.url), 'utf8');
+const instructions = readFileSync(new URL('../server/proxies/openai.mjs', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 
 /** Parse the Realtime tool array out of the Vite config as real data. */
@@ -47,11 +48,11 @@ test('the counting contract is stated in the Realtime instructions', () => {
   // Owner ruling: "near" has one meaning per state, and every count names its
   // scope. Instruction text is the only place the narration rules can live, so
   // it is pinned — a silent trim here is a silent behaviour change.
-  const start = voice.indexOf("'COUNTING CONTRACT");
+  const start = instructions.indexOf("'COUNTING CONTRACT");
   assert.ok(start >= 0, 'the counting contract instruction is missing');
   // One instruction per source line; the string carries escaped quotes, so take
   // the line rather than trying to match a quoted literal.
-  const text = voice.slice(start, voice.indexOf('\n', start));
+  const text = instructions.slice(start, instructions.indexOf('\n', start));
   assert.match(text, /Contacts is ACTIVE/, 'rule 1: active means the Contacts window');
   assert.match(text, /contactsWindow/, 'rule 1 names its mechanism');
   assert.match(text, /call set_context_mode\{mode:"contacts"\} first/);
@@ -65,9 +66,9 @@ test('the counting contract is stated in the Realtime instructions', () => {
 });
 
 test('Context panel opening stays distinct from Contacts activation', () => {
-  const start = voice.indexOf("'For requests to open, show, reveal, or focus a menu/panel");
+  const start = instructions.indexOf("'For requests to open, show, reveal, or focus a menu/panel");
   assert.ok(start >= 0, 'panel-routing instruction is missing');
-  const text = voice.slice(start, voice.indexOf('\n', start));
+  const text = instructions.slice(start, instructions.indexOf('\n', start));
   assert.match(text, /"Open Context" means only set_panel_open/);
   assert.match(text, /does not activate a Context sub-mode/);
   assert.match(text, /"Open Contacts" means set_context_mode\{mode:"contacts"\}/);
@@ -75,9 +76,9 @@ test('Context panel opening stays distinct from Contacts activation', () => {
 });
 
 test('nearest-aircraft selection stays out of Contacts and Cockpit', () => {
-  const start = voice.indexOf("'For a request to enable an aircraft layer and SELECT or FIND");
+  const start = instructions.indexOf("'For a request to enable an aircraft layer and SELECT or FIND");
   assert.ok(start >= 0, 'nearest-aircraft selection routing instruction is missing');
-  const text = voice.slice(start, voice.indexOf('\n', start));
+  const text = instructions.slice(start, instructions.indexOf('\n', start));
   assert.match(text, /Turn on flights and select the closest aircraft to Austin/);
   assert.match(text, /call select_nearest_aircraft once/);
   assert.match(text, /atomically turns on the requested aircraft layer first/);
