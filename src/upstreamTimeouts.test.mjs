@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { Readable } from 'node:stream';
@@ -138,22 +139,36 @@ function closingQuote(text, open) {
   throw new Error('unterminated string');
 }
 
-test('every upstream fetch in vite.config.js can be aborted', () => {
+test('every upstream fetch in the dev server can be aborted', () => {
+  // vite.config.js and the modules under server/, where its routes move.
+  const modules = execFileSync('git', ['ls-files', 'server'], {
+    cwd: new URL('..', import.meta.url),
+    encoding: 'utf8',
+  })
+    .split('\n')
+    .filter((file) => file.endsWith('.mjs') && !file.endsWith('.test.mjs'));
   const calls = [];
-  for (const match of source.matchAll(/(?<![\w.])fetch\(/g)) {
-    const lineStart = source.lastIndexOf('\n', match.index) + 1;
-    const line = source.slice(lineStart, source.indexOf('\n', match.index));
-    // Skip mentions of fetch() in comments.
-    if (/^\s*(\/\*|\*|\/\/)/.test(line)) continue;
-    calls.push({
-      line: source.slice(0, match.index).split('\n').length,
-      args: callArguments(source, match.index + 'fetch('.length),
-    });
+  for (const file of ['vite.config.js', ...modules]) {
+    const text =
+      file === 'vite.config.js'
+        ? source
+        : readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    for (const match of text.matchAll(/(?<![\w.])fetch\(/g)) {
+      const lineStart = text.lastIndexOf('\n', match.index) + 1;
+      const line = text.slice(lineStart, text.indexOf('\n', match.index));
+      // Skip mentions of fetch() in comments.
+      if (/^\s*(\/\*|\*|\/\/)/.test(line)) continue;
+      calls.push({
+        file,
+        line: text.slice(0, match.index).split('\n').length,
+        args: callArguments(text, match.index + 'fetch('.length),
+      });
+    }
   }
   assert.ok(calls.length >= 10, `found only ${calls.length} fetch() calls`);
   const bare = calls
     .filter((call) => !/\bsignal\b/.test(call.args))
-    .map((call) => `vite.config.js:${call.line}`);
+    .map((call) => `${call.file}:${call.line}`);
   assert.deepEqual(bare, [], 'give these a signal, or use fetchWithTimeout');
 });
 

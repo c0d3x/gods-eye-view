@@ -25,7 +25,7 @@
  * @module vite.config
  */
 
-import { resolveGoogleServerKey } from './server/lib/googleServerKey.mjs';
+import { googleServerApiKey } from './server/lib/googleServerKey.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import { promises as fsp } from 'node:fs';
@@ -84,6 +84,15 @@ import {
   isDebugLogEnabled,
 } from './server/lib/debugLog.mjs';
 import { writeJson } from './server/lib/jsonResponse.mjs';
+import { coalesceProxyRequest } from './server/lib/coalesce.mjs';
+import { haversineKm } from './server/lib/geo.mjs';
+import { PROJECT_URL } from './server/lib/projectUrl.mjs';
+import { requiredFiniteQueryNumber } from './server/lib/queryParams.mjs';
+import {
+  readResponseBytesCapped,
+  readResponseJsonCapped,
+  readResponseTextCapped,
+} from './server/lib/upstreamBody.mjs';
 import { readBodyWithin } from './server/lib/requestBody.mjs';
 import { createApiRequestGuard } from './server/lib/requestGuard.mjs';
 import {
@@ -113,6 +122,18 @@ import {
   validTerrainResult,
 } from './server/terrainHeightsProxy.mjs';
 import { VOICE_MODELS, isKnownVoiceTier, resolveVoiceModel } from './src/voice/voiceCost.js';
+
+// These helpers now live in server/lib/; callers that import them from here
+// keep working.
+export {
+  coalesceProxyRequest,
+  googleServerApiKey,
+  PROJECT_URL,
+  readResponseBytesCapped,
+  readResponseJsonCapped,
+  readResponseTextCapped,
+  requiredFiniteQueryNumber,
+};
 
 /** Resolve __dirname for ESM context. */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -702,52 +723,6 @@ function sanitizeOverpassBody(rawBody) {
   return { ok: true, body: `data=${encodeURIComponent(clamped)}` };
 }
 
-/**
- * Read a fetch() Response body as text with a hard byte cap. Rejects early on an
- * oversized Content-Length, then streams with a running cap so a chunked or
- * length-omitted response cannot blow past the limit. Throws { code:'RESPONSE_TOO_LARGE' }.
- */
-export async function readResponseTextCapped(response, maxBytes) {
-  const declared = Number(response.headers.get('content-length'));
-  if (Number.isFinite(declared) && declared > maxBytes) {
-    const err = new Error('Upstream response too large');
-    err.code = 'RESPONSE_TOO_LARGE';
-    throw err;
-  }
-  const reader = response.body?.getReader?.();
-  if (!reader) {
-    const text = await response.text();
-    if (Buffer.byteLength(text) > maxBytes) {
-      const err = new Error('Upstream response too large');
-      err.code = 'RESPONSE_TOO_LARGE';
-      throw err;
-    }
-    return text;
-  }
-  const decoder = new TextDecoder();
-  let out = '';
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > maxBytes) {
-      try { await reader.cancel(); } catch { /* no-op */ }
-      const err = new Error('Upstream response too large');
-      err.code = 'RESPONSE_TOO_LARGE';
-      throw err;
-    }
-    out += decoder.decode(value, { stream: true });
-  }
-  out += decoder.decode();
-  return out;
-}
-
-/** Parse a fetch() JSON response only after enforcing a hard byte cap. */
-export async function readResponseJsonCapped(response, maxBytes) {
-  return JSON.parse(await readResponseTextCapped(response, maxBytes));
-}
-
 /** Parse text as a JSON object; anything else reads as an empty object. */
 function parseJsonObject(text) {
   try {
@@ -756,59 +731,6 @@ function parseJsonObject(text) {
   } catch {
     return {};
   }
-}
-
-/**
- * Read a fetch() Response body as bytes with a hard cap, the way
- * readResponseTextCapped reads text. Throws { code:'RESPONSE_TOO_LARGE' }.
- */
-export async function readResponseBytesCapped(response, maxBytes) {
-  const tooLarge = () => {
-    const err = new Error('Upstream response too large');
-    err.code = 'RESPONSE_TOO_LARGE';
-    return err;
-  };
-  const declared = Number(response.headers.get('content-length'));
-  if (Number.isFinite(declared) && declared > maxBytes) {
-    try { await response.body?.cancel(); } catch { /* no-op */ }
-    throw tooLarge();
-  }
-  const reader = response.body?.getReader?.();
-  if (!reader) {
-    const bytes = Buffer.from(await response.arrayBuffer());
-    if (bytes.length > maxBytes) throw tooLarge();
-    return bytes;
-  }
-  const chunks = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > maxBytes) {
-      try { await reader.cancel(); } catch { /* no-op */ }
-      throw tooLarge();
-    }
-    chunks.push(value);
-  }
-  return Buffer.concat(chunks, total);
-}
-
-/**
- * Return the existing promise for a cache key, or create one and remove it
- * only when that exact promise settles.
- */
-export function coalesceProxyRequest(inFlight, key, create) {
-  const existing = inFlight.get(key);
-  if (existing) return { promise: existing, shared: true };
-  let promise;
-  promise = Promise.resolve()
-    .then(create)
-    .finally(() => {
-      if (inFlight.get(key) === promise) inFlight.delete(key);
-    });
-  inFlight.set(key, promise);
-  return { promise, shared: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -823,8 +745,6 @@ const RADIO_DIRECTORY_LIMIT = 750;
 const RADIO_CATALOG_MIN_SUCCESSFUL_QUERIES = 5;
 const RADIO_CATALOG_HEALTHY_MIN_STATIONS = Math.ceil(RADIO_DIRECTORY_LIMIT / 2);
 const RADIO_USER_AGENT = 'GodsEyeView/1.0 (Radio Browser directory client)';
-/** The project page upstream APIs ask clients to name as a contact point. */
-export const PROJECT_URL = 'https://github.com/c0d3x/gods-eye-view';
 const RADIO_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RADIO_FALLBACK_MIRRORS = Object.freeze([
   'https://de1.api.radio-browser.info',
@@ -3797,24 +3717,6 @@ function rowArrayToObject(row, columns) {
 }
 
 /**
- * Haversine great-circle distance between two WGS-84 points.
- *
- * @param {number} lat1 - Latitude of point A (degrees).
- * @param {number} lon1 - Longitude of point A (degrees).
- * @param {number} lat2 - Latitude of point B (degrees).
- * @param {number} lon2 - Longitude of point B (degrees).
- * @returns {number} Distance in kilometers.
- */
-function haversineKm(lat1, lon1, lat2, lon2) {
-  const toRad = (value) => value * Math.PI / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat / 2) ** 2
-    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-/**
  * Distance-prioritizes cameras to a cap: keeps the maxCount cameras closest
  * to ANY of the given anchor points (min distance over anchors), tie-broken
  * by original array order. Used by every live source pack (Austin: one
@@ -5467,18 +5369,6 @@ export function keylessGooglePlacesResponse(apiKey) {
     statusCode: 200,
     payload: { configured: false, error: null, places: [] },
   };
-}
-
-/**
- * Google API key for the SERVER-SIDE calls (Places nearby/text search, the
- * CCTV Street View fallback). These never reach the browser, so this key can
- * be restricted by server IP and scoped to Places API + Street View Static
- * API — while GOOGLE_MAPS_API_KEY stays referrer-restricted to Map Tiles +
- * Geocoding for the browser (#33). Splitting them is opt-in: unset, this
- * falls back to the shared browser key and nothing changes.
- */
-export function googleServerApiKey() {
-  return resolveGoogleServerKey(process.env);
 }
 
 /**
@@ -7222,13 +7112,6 @@ const _weatherEffectsInFlight = new Map();
 const _weatherEffectsRateLimiter = createRateLimiter({ windowMs: 60_000, max: 45, globalMax: 120 });
 let _nominatimQueue = Promise.resolve();
 let _nominatimLastRequestAt = 0;
-
-export function requiredFiniteQueryNumber(params, key) {
-  const value = params.get(key);
-  if (value === null || value.trim() === '') return null;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-}
 
 export function validRegionalPoint(params) {
   const latitude = requiredFiniteQueryNumber(params, 'latitude');

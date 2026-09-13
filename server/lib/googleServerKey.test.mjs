@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { resolveGoogleServerKey } from './googleServerKey.mjs';
+import {
+  googleServerApiKey,
+  resolveGoogleServerKey,
+} from './googleServerKey.mjs';
 
 test('the server key wins over the browser key', () => {
   assert.equal(
@@ -47,4 +50,12 @@ test('the environment overrides each default key on its own', () => {
     ),
     'env-browser',
   );
+});
+
+test('googleServerApiKey resolves from the environment it is given', () => {
+  assert.equal(
+    googleServerApiKey({ GOOGLE_MAPS_API_KEY: 'browser' }),
+    'browser',
+  );
+  assert.equal(googleServerApiKey({}), '');
 });

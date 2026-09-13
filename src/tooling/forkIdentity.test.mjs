@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { PROJECT_URL } from '../../server/lib/projectUrl.mjs';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const read = (file) =>
@@ -39,10 +40,7 @@ test('the package metadata and code owners name the fork', () => {
 });
 
 test('the server gives upstream APIs the fork as its contact point', () => {
-  assert.match(
-    read('vite.config.js'),
-    new RegExp(`^export const PROJECT_URL = '${FORK}';$`, 'm'),
-  );
+  assert.equal(PROJECT_URL, FORK);
 });
 
 test('the upstream project is named only in credits and attribution', () => {

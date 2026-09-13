@@ -108,7 +108,16 @@
       "server/aisStreamAdapter.test.mjs",
       "server/aisWatchdog.mjs",
       "server/aisWatchdog.test.mjs",
-      "server/aisWatchdogTransport.test.mjs"
+      "server/aisWatchdogTransport.test.mjs",
+      "server/lib/upstreamBody.mjs",
+      "server/lib/upstreamBody.test.mjs",
+      "server/lib/coalesce.mjs",
+      "server/lib/coalesce.test.mjs",
+      "server/lib/projectUrl.mjs",
+      "server/lib/queryParams.mjs",
+      "server/lib/queryParams.test.mjs",
+      "server/lib/geo.mjs",
+      "server/lib/geo.test.mjs"
     ]
   },
   "formatter": {

@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createBoundedCache } from '../server/lib/boundedCache.mjs';
+import { coalesceProxyRequest } from '../server/lib/coalesce.mjs';
 import { writeJson } from '../server/lib/jsonResponse.mjs';
+import { readResponseTextCapped } from '../server/lib/upstreamBody.mjs';
 import { ADSBDB_CACHE_MAX_ENTRIES, PROJECT_URL, TERRAIN_CACHE_MAX_POINTS } from '../vite.config.js';
 
 const source = readFileSync(new URL('../vite.config.js', import.meta.url), 'utf8');
@@ -38,9 +40,11 @@ function fixture(name, overrides = {}, preview = false) {
     ADSBDB_CACHE_MAX_ENTRIES,
     PROJECT_URL,
     writeJson,
+    readResponseTextCapped,
+    coalesceProxyRequest,
     ...overrides,
   };
-  const helpers = ['readResponseTextCapped', 'coalesceProxyRequest', 'launchLibraryRequestHeaders'].map(extract).join('\n');
+  const helpers = ['launchLibraryRequestHeaders'].map(extract).join('\n');
   const plugin = new Function(...Object.keys(deps), `${helpers}\n${extract(name)}\nreturn ${name}();`)(...Object.values(deps));
   let middleware;
   plugin[preview ? 'configurePreviewServer' : 'configureServer']({ middlewares: { use(_route, handler) { middleware = handler; } } });
