@@ -8,11 +8,11 @@ const ui = readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
 const radio = readFileSync(new URL('./data/radio.js', import.meta.url), 'utf8');
 const rocketLaunches = readFileSync(new URL('./data/rocketLaunches.js', import.meta.url), 'utf8');
 const realtime = readFileSync(new URL('./voice/gevRealtime.js', import.meta.url), 'utf8');
-const voice = readFileSync(new URL('../vite.config.js', import.meta.url), 'utf8');
-const instructions = readFileSync(new URL('../server/proxies/openai.mjs', import.meta.url), 'utf8');
+const voice = readFileSync(new URL('../server/realtime/tools.mjs', import.meta.url), 'utf8');
+const instructions = readFileSync(new URL('../server/realtime/openai.mjs', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 
-/** Parse the Realtime tool array out of the Vite config as real data. */
+/** Parse the Realtime tool array out of its module as real data. */
 function realtimeTools() {
   const start = voice.indexOf('const GEV_REALTIME_TOOLS = [');
   const end = voice.indexOf('\n];', start);

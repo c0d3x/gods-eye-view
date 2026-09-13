@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 // The Realtime session instructions live in the OpenAI proxy.
-const instructions = readFileSync(new URL('../../server/proxies/openai.mjs', import.meta.url), 'utf8');
+const instructions = readFileSync(new URL('../../server/realtime/openai.mjs', import.meta.url), 'utf8');
 const realtime = readFileSync(new URL('./gevRealtime.js', import.meta.url), 'utf8');
 
 test('aircraft identity narration acknowledges missing enrichment', () => {

@@ -1,7 +1,8 @@
 /**
- * OpenAI routes: /api/realtime/token mints a short-lived Realtime client secret
- * for a voice session, /api/openai/hud-summary writes the HUD's five-word
- * summary, and /api/realtime/debug-log keeps the opt-in voice debug log.
+ * The voice agent's OpenAI routes: /api/realtime/token mints a short-lived
+ * Realtime client secret for a voice session, created with the tools in
+ * tools.mjs; /api/openai/hud-summary writes the HUD's five-word summary; and
+ * /api/realtime/debug-log keeps the opt-in voice debug log.
  */
 
 import { fileURLToPath } from 'node:url';
@@ -34,6 +35,7 @@ import {
   parseJsonObject,
   readResponseTextCapped,
 } from '../lib/upstreamBody.mjs';
+import { GEV_REALTIME_TOOLS } from './tools.mjs';
 
 // The cost limiter (server/lib/rateLimit.mjs) for the routes that spend OpenAI
 // quota, from GEV_RATELIMIT_OPENAI_PER_MIN.
@@ -82,11 +84,11 @@ export const OPENAI_TIMEOUT_MS = 20_000;
  * @param {object} [options]
  * @param {string} [options.debugLogDirectory] Where the debug log is written.
  * @param {object[]} [options.tools] The function tools each voice session is
- *   created with.
+ *   created with; the voice tool schema by default.
  */
-export function createOpenAiRealtimeProxy({
+export function openAiRealtimeProxy({
   debugLogDirectory = REALTIME_DEBUG_LOG_DIR,
-  tools = [],
+  tools = GEV_REALTIME_TOOLS,
 } = {}) {
   const debugLog = createDebugLogWriter({ directory: debugLogDirectory });
   function install(middlewares) {

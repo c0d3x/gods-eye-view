@@ -73,8 +73,8 @@ shipped tools (`set_layer_visibility`'s enum already carries
 `local-datacenters`, `local-dams`, `telegeography-submarine-cables`,
 `local-firms`, `earthquakes`; `zoom_to_globe` supplies the camera), so
 `GEV_REALTIME_TOOLS` is **byte-identical to `main`** and pinned by sha256 in
-the unit suite. One instruction paragraph in `vite.config.js` teaches the
-phrase mapping; deleting it is the complete rollback.
+the unit suite. One instruction paragraph in `server/realtime/openai.mjs`
+teaches the phrase mapping; deleting it is the complete rollback.
 
 **ESC arbitration — three rules, do not collapse them into one.** (1) The
 launcher **yields**: a MutationObserver watches `body` for the surfaces that

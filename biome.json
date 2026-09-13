@@ -135,7 +135,7 @@
       "server/proxies/tomtom.test.mjs",
       "server/proxies/opensky.mjs",
       "server/proxies/opensky.test.mjs",
-      "server/proxies/openai.mjs",
+      "server/realtime/openai.mjs",
       "server/proxies/googlePlaces.mjs"
     ]
   },

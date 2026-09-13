@@ -371,9 +371,10 @@ src/                        # The browser app
 └── styles/                 # Visual styles as GLSL post-process shaders
 server/                     # Dev-server modules: key setup, terrain heights, AIS relay
 ├── ais/                    # AISStream relay, its socket adapter and watchdog
-├── proxies/                # Route plugins: OpenSky, TomTom, OpenAI, Places, CCTV and more
+├── realtime/               # Voice agent: Realtime routes and the tool schema
+├── proxies/                # Route plugins: OpenSky, TomTom, Places, CCTV and more
 └── lib/                    # Shared helpers: request guard, JSON, rate limits, caches
-vite.config.js              # Dev server wiring, remaining proxies, voice tool schemas
+vite.config.js              # Dev server wiring and the remaining proxies
 scripts/                    # Launchers, setup doctor, test runner, QA harnesses
 pinokio/                    # One-click Pinokio launcher
 config/                     # CCTV source packs
