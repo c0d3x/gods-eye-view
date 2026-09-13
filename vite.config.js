@@ -76,9 +76,12 @@ import { coalesceProxyRequest } from './server/lib/coalesce.mjs';
 import { PROJECT_URL } from './server/lib/projectUrl.mjs';
 import { requiredFiniteQueryNumber } from './server/lib/queryParams.mjs';
 import {
+  parseJsonObject,
+  PROVIDER_JSON_MAX_BYTES,
   readResponseBytesCapped,
   readResponseJsonCapped,
   readResponseTextCapped,
+  readResponseTextWithin,
 } from './server/lib/upstreamBody.mjs';
 import { readBodyWithin } from './server/lib/requestBody.mjs';
 import { createApiRequestGuard } from './server/lib/requestGuard.mjs';
@@ -298,16 +301,6 @@ function googleRateLimiter() {
   return _googleRateLimiter;
 }
 
-/** Parse text as a JSON object; anything else reads as an empty object. */
-function parseJsonObject(text) {
-  try {
-    const value = JSON.parse(text);
-    return value && typeof value === 'object' ? value : {};
-  } catch {
-    return {};
-  }
-}
-
 // ---------------------------------------------------------------------------
 // GBFS (General Bikeshare Feed Specification) proxy constants
 // ---------------------------------------------------------------------------
@@ -409,7 +402,6 @@ export const OPENAI_TIMEOUT_MS = 20_000;
 export const GOOGLE_PLACES_TIMEOUT_MS = 10_000;
 const OPENSKY_STATES_MAX_BYTES = 32 * 1024 * 1024;
 const ADSBLOL_MAX_BYTES = 16 * 1024 * 1024;
-const PROVIDER_JSON_MAX_BYTES = 2 * 1024 * 1024;
 
 /**
  * Obtain a valid OpenSky OAuth2 bearer token, refreshing if needed.
@@ -1990,7 +1982,7 @@ function gbfsProxy() {
 
           // Limit response size to prevent memory exhaustion from malicious upstream
           const GBFS_MAX_BODY_BYTES = 5 * 1024 * 1024; // 5 MB
-          const { tooLarge, text: body } = await readCappedResponseText(upstream, GBFS_MAX_BODY_BYTES);
+          const { tooLarge, text: body } = await readResponseTextWithin(upstream, GBFS_MAX_BODY_BYTES);
           if (tooLarge) {
             res.writeHead(502, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
             res.end(JSON.stringify({ error: 'GBFS upstream response too large' }));
@@ -2023,52 +2015,6 @@ function gbfsProxy() {
       });
     },
   };
-}
-
-/**
- * Pipe an upstream fetch Response (image or video) to the client HTTP response.
- *
- * Forwards Content-Type, Content-Length, Content-Range, Accept-Ranges, and
- * Cache-Control headers from the upstream. Falls back to buffered arrayBuffer
- * if the body is not streamable.
- *
- * @param {import('http').ServerResponse} res
- * @param {Response} upstream - fetch() Response object.
- * @param {object} [opts]
- * @param {string} [opts.sourceHeader='upstream'] - Value for X-CCTV-Source header.
- */
-/**
- * Read a fetch Response body as text while enforcing a hard byte cap during
- * the read — so a malicious or buggy upstream that streams an unbounded body
- * (no/oversized Content-Length, chunked) can't OOM the proxy. Returns
- * { tooLarge, text }. Cancels the stream as soon as the cap is crossed.
- * @param {Response} upstream - fetch() response.
- * @param {number} maxBytes - hard ceiling on decoded bytes.
- * @returns {Promise<{tooLarge: boolean, text: string}>}
- */
-async function readCappedResponseText(upstream, maxBytes) {
-  const declared = Number(upstream.headers.get('content-length'));
-  if (Number.isFinite(declared) && declared > maxBytes) {
-    try { await upstream.body?.cancel(); } catch { /* no-op */ }
-    return { tooLarge: true, text: '' };
-  }
-  if (!upstream.body || typeof upstream.body[Symbol.asyncIterator] !== 'function') {
-    const text = await upstream.text();
-    return text.length > maxBytes ? { tooLarge: true, text: '' } : { tooLarge: false, text };
-  }
-  const decoder = new TextDecoder();
-  let text = '';
-  let total = 0;
-  for await (const chunk of upstream.body) {
-    total += chunk.length;
-    if (total > maxBytes) {
-      try { await upstream.body.cancel(); } catch { /* no-op */ }
-      return { tooLarge: true, text: '' };
-    }
-    text += decoder.decode(chunk, { stream: true });
-  }
-  text += decoder.decode();
-  return { tooLarge: false, text };
 }
 
 /**
@@ -2257,7 +2203,7 @@ function trackBackfillProxies() {
       return;
     }
     const upstream = await fetch(upstreamUrl, { headers, signal: AbortSignal.timeout(12000) });
-    const { tooLarge, text } = await readCappedResponseText(upstream, RESPONSE_CAP_BYTES);
+    const { tooLarge, text } = await readResponseTextWithin(upstream, RESPONSE_CAP_BYTES);
     let body;
     if (tooLarge) {
       body = JSON.stringify({ error: 'Upstream track response too large' });

@@ -1122,6 +1122,19 @@ function toReadable(body) {
   return null;
 }
 
+/**
+ * Relay an upstream fetch Response (image or video) to the client.
+ *
+ * Forwards Content-Type, Cache-Control, Content-Length, Content-Range and
+ * Accept-Ranges from the upstream, with the relay safety headers. Refuses a
+ * body declared over 64 MiB, and reads a body that can't be streamed through
+ * the capped byte reader.
+ *
+ * @param {import('http').ServerResponse} res
+ * @param {Response} upstream - fetch() Response object.
+ * @param {object} [opts]
+ * @param {string} [opts.sourceHeader='upstream'] - Value for X-CCTV-Source header.
+ */
 async function proxyMediaResponse(
   res,
   upstream,

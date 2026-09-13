@@ -50,7 +50,6 @@ test('the dev server reads every upstream body through a capped reader', () => {
   // readResponseJsonCapped.
   const allowed = new Set([
     'const text = await response.text();',
-    'const text = await upstream.text();',
     'const bytes = Buffer.from(await response.arrayBuffer());',
     "if (data && typeof data.text === 'function') return data.text();",
     'readJson = (res) => res.json(),',

@@ -3,6 +3,9 @@
  * hostile upstream can't make the dev server buffer an unbounded body.
  */
 
+/** The cap on a provider's JSON answer: OpenSky tokens, OpenAI and Google Places. */
+export const PROVIDER_JSON_MAX_BYTES = 2 * 1024 * 1024;
+
 /**
  * Read a fetch() Response body as text with a hard byte cap. Rejects early on an
  * oversized Content-Length, then streams with a running cap so a chunked or
@@ -11,6 +14,11 @@
 export async function readResponseTextCapped(response, maxBytes) {
   const declared = Number(response.headers.get('content-length'));
   if (Number.isFinite(declared) && declared > maxBytes) {
+    try {
+      await response.body?.cancel();
+    } catch {
+      /* no-op */
+    }
     const err = new Error('Upstream response too large');
     err.code = 'RESPONSE_TOO_LARGE';
     throw err;
@@ -48,9 +56,35 @@ export async function readResponseTextCapped(response, maxBytes) {
   return out;
 }
 
+/**
+ * readResponseTextCapped for a caller that answers an oversized body itself:
+ * resolves { tooLarge, text } instead of throwing RESPONSE_TOO_LARGE.
+ */
+export async function readResponseTextWithin(response, maxBytes) {
+  try {
+    return {
+      tooLarge: false,
+      text: await readResponseTextCapped(response, maxBytes),
+    };
+  } catch (error) {
+    if (error?.code !== 'RESPONSE_TOO_LARGE') throw error;
+    return { tooLarge: true, text: '' };
+  }
+}
+
 /** Parse a fetch() JSON response only after enforcing a hard byte cap. */
 export async function readResponseJsonCapped(response, maxBytes) {
   return JSON.parse(await readResponseTextCapped(response, maxBytes));
+}
+
+/** Parse text as a JSON object; anything else reads as an empty object. */
+export function parseJsonObject(text) {
+  try {
+    const value = JSON.parse(text);
+    return value && typeof value === 'object' ? value : {};
+  } catch {
+    return {};
+  }
 }
 
 /**
