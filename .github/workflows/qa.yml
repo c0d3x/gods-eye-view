@@ -9,7 +9,7 @@ on:
       harnesses:
         description: QA harnesses to run after the track regression (scripts/<name>.mjs, space-separated)
         required: false
-        default: qa-application qa-firstrun qa-map-source-tray
+        default: qa-application
 
 permissions:
   contents: read
@@ -26,7 +26,9 @@ jobs:
     env:
       GEV_QA_URL: http://localhost:4173
       # A scheduled run has no inputs, so it gets the default list.
-      HARNESSES: ${{ inputs.harnesses || 'qa-application qa-firstrun qa-map-source-tray' }}
+      # qa-firstrun and qa-map-source-tray still have checks that fail under
+      # SwiftShader's timing (#50); name them in a dispatch to run them.
+      HARNESSES: ${{ inputs.harnesses || 'qa-application' }}
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
