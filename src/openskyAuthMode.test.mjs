@@ -23,7 +23,11 @@ test('OpenSky auth is oauth or anon, and the retired Basic modes mean oauth', (t
 });
 
 test('neither the proxy nor the launcher sends a username and password', async () => {
-  for (const file of ['../vite.config.js', '../scripts/dev-fresh.sh']) {
+  for (const file of [
+    '../vite.config.js',
+    '../server/proxies/opensky.mjs',
+    '../scripts/dev-fresh.sh',
+  ]) {
     const source = await readFile(new URL(file, import.meta.url), 'utf8');
     assert.doesNotMatch(source, /OPENSKY_(USERNAME|PASSWORD)/, file);
     assert.doesNotMatch(source, /Authorization = `Basic /, file);
