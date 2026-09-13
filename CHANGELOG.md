@@ -16,6 +16,13 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
   QA variables, and a test fails when the code reads a variable documented in
   neither.
 
+- `scripts/dev-secure.sh` (`pnpm run dev:secure`) is now `dev-fresh.sh` pinned
+  to 127.0.0.1, whatever `HOST` says. Its old copy of the launcher refused to
+  start without a Google Maps key, ignored `.env` and most keys, and had
+  drifted from the normal launcher. The launcher and the setup doctor now read
+  the macOS Keychain through one table of items, in
+  `scripts/lib/credentials.mjs`.
+
 ### Removed
 
 - Drop OpenSky's Basic-auth modes. OpenSky's API accepts only OAuth2 client

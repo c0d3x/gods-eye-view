@@ -39,7 +39,11 @@ function environmentReads(source) {
 }
 
 function trackedFiles() {
-  return execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
+  return execFileSync(
+    'git',
+    ['ls-files', '--cached', '--others', '--exclude-standard'],
+    { cwd: ROOT, encoding: 'utf8' },
+  )
     .split('\n')
     .filter(Boolean);
 }

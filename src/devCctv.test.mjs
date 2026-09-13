@@ -10,14 +10,15 @@ import { promisify } from 'node:util';
 const run = promisify(execFile);
 const bashTest = process.platform === 'win32' ? test.skip : test;
 
-async function launch(overrides = {}, dotenv = '') {
+async function launch(overrides = {}, dotenv = '', script = 'dev-cctv.sh') {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'gev-cctv-launch-'));
   try {
     await fs.mkdir(path.join(root, 'scripts'));
     await fs.mkdir(path.join(root, 'bin'));
     await fs.mkdir(path.join(root, 'src', 'data'), { recursive: true });
     await fs.copyFile(new URL('./data/cctv.js', import.meta.url), path.join(root, 'src', 'data', 'cctv.js'));
-    for (const name of ['dev-cctv.sh', 'dev-fresh.sh', 'read-dotenv-value.mjs']) {
+    await fs.mkdir(path.join(root, 'scripts', 'lib'));
+    for (const name of ['dev-cctv.sh', 'dev-fresh.sh', 'dev-secure.sh', 'read-dotenv-value.mjs', 'read-keychain-value.mjs', 'lib/credentials.mjs']) {
       await fs.copyFile(new URL(`../scripts/${name}`, import.meta.url), path.join(root, 'scripts', name));
     }
     await fs.mkdir(path.join(root, 'src', 'editions', 'local'), { recursive: true });
@@ -38,7 +39,7 @@ const fs = require('node:fs');
 fs.writeFileSync(process.env.CCTV_TEST_CAPTURE, JSON.stringify({ args: process.argv.slice(2), env: process.env, cwd: process.cwd() }));
 `, { mode: 0o755 });
     const capture = path.join(root, 'capture.json');
-    const result = await run('bash', [path.join(root, 'scripts', 'dev-cctv.sh')], {
+    const result = await run('bash', [path.join(root, 'scripts', script)], {
       cwd: os.tmpdir(),
       env: { PATH: `${path.join(root, 'bin')}${path.delimiter}${process.env.PATH}`, CCTV_TEST_CAPTURE: capture, ...overrides },
       timeout: 30_000,
@@ -91,4 +92,24 @@ bashTest('the launcher hands keys to the dev server without putting them in an a
   assert.equal(result.env.TOMTOM_API_KEY, 'fixture-argv-probe-traffic');
   assert.doesNotMatch(result.envArgs, /fixture-argv-probe/);
   assert.doesNotMatch(JSON.stringify(result.args), /fixture-argv-probe/);
+});
+
+bashTest('the secure launcher pins the loopback address, whatever HOST says, and starts keyless', async () => {
+  const result = await launch({ HOST: '0.0.0.0' }, '', 'dev-secure.sh');
+  assert.deepEqual(result.args, ['run', 'dev', '--host', '127.0.0.1', '--port', '4173', '--force']);
+  assert.equal(result.env.GOOGLE_MAPS_API_KEY, undefined);
+  assert.match(result.output, /Local-only mode/);
+  assert.doesNotMatch(result.output, /!! WARNING/);
+});
+
+bashTest('the secure launcher reads keys from .env like the normal launcher', async () => {
+  const result = await launch(
+    {},
+    'OPENAI_API_KEY=fixture-secure-voice\nGOOGLE_MAPS_API_KEY=fixture-secure-maps\n',
+    'dev-secure.sh',
+  );
+  assert.equal(result.env.OPENAI_API_KEY, 'fixture-secure-voice');
+  assert.equal(result.env.GOOGLE_MAPS_API_KEY, 'fixture-secure-maps');
+  assert.equal(result.env.GEV_KEY_SETUP_EXTERNAL_KEYS, '');
+  assert.doesNotMatch(result.output, /fixture-secure/);
 });

@@ -2461,7 +2461,7 @@ silently demoting every later lookup for the session.
 
 ## Auth + Launch
 
-- Recommended launcher: `./scripts/dev-fresh.sh` (also: `dev-secure.sh` for stricter bindings, `dev-cctv.sh` for CCTV source-pack tuning)
+- Recommended launcher: `./scripts/dev-fresh.sh` (also: `dev-secure.sh`, the same launcher pinned to 127.0.0.1, and `dev-cctv.sh` for CCTV source-pack tuning)
 - A successful Pinokio install writes the owner-only `pinokio/.installed`
   marker. The nested launcher menu resolves that marker from its own directory:
   an absent marker exposes Install, a present marker exposes Start, and a

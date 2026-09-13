@@ -84,7 +84,10 @@
       "src/tooling/releaseWorkflow.test.mjs",
       "src/openskyAuthMode.test.mjs",
       "src/tooling/envDocs.test.mjs",
-      "scripts/lib/unfinishedTestsReporter.mjs"
+      "scripts/lib/unfinishedTestsReporter.mjs",
+      "scripts/lib/credentials.mjs",
+      "scripts/read-keychain-value.mjs",
+      "src/tooling/credentials.test.mjs"
     ]
   },
   "formatter": {
