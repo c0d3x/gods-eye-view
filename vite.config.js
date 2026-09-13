@@ -1,23 +1,24 @@
 /**
  * Vite configuration for God's Eye View — a cinematic geospatial app.
  *
- * Registers the dev-server proxy middlewares that bypass CORS and add
- * caching/auth for upstream APIs:
+ * Installs the dev-server proxy middlewares that bypass CORS and add
+ * caching/auth for upstream APIs. These are still defined here:
  *   1. OpenSky  — aircraft state vectors (OAuth / anon)
  *   2. CelesTrak — satellite TLE orbital elements
- *   3. Overpass  — OpenStreetMap road geometry queries
- *   4. GBFS     — bike-share station feeds
- *   5. CCTV     — traffic-camera frames, media streams, and fallback SVG
- *   6. adsb.lol — military aircraft tracking
- *   7. AIS live — AISStream websocket-backed live vessel positions
- *   8. Terrain heights — Re:Earth keyless point-height lookups (ellipsoidal ground)
- *   9. TomTom   — live traffic-flow vector tiles (budget-governed, keyless-degradable)
- *  10. NASA FIRMS — live active-fire detections (VIIRS ×3, trailing 24 h)
- *  11. Military-installation context — bounded, cached OpenStreetMap features
- *  12. Regional briefing — cached place, weather, and recent location-matched news
- *  13. Weather effects — camera-local Open-Meteo observations without news/geocoding overhead
- *  14. Rocket launches — recent Launch Library 2 mission metadata
- *  15. Radio Browser — public-domain station directory and click counting
+ *   3. GBFS     — bike-share station feeds
+ *   4. adsb.lol — military aircraft tracking
+ *   5. AIS live — AISStream websocket-backed live vessel positions
+ *   6. Terrain heights — Re:Earth keyless point-height lookups (ellipsoidal ground)
+ *   7. TomTom   — live traffic-flow vector tiles (budget-governed, keyless-degradable)
+ *   8. NASA FIRMS — live active-fire detections (VIIRS ×3, trailing 24 h)
+ *   9. Rocket launches — recent Launch Library 2 mission metadata
+ *
+ * These live in server/proxies/ and are installed from here:
+ *   - overpass.mjs — OpenStreetMap road geometry queries and walking/driving routes
+ *   - cctv.mjs — traffic-camera frames, media streams, and fallback SVG
+ *   - militaryInstallations.mjs — bounded, cached OpenStreetMap features
+ *   - regional.mjs — regional briefings and camera-local weather effects
+ *   - radio.mjs — Radio Browser station directory and click counting
  *
  * Also exposes Cesium and Google 3D Tiles API keys to the
  * client via `import.meta.env.*` defines.

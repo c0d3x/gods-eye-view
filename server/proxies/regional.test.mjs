@@ -89,7 +89,10 @@ test('both routes answer only a GET for a valid point', async () => {
 test('weather effects fetch Open-Meteo once, then answer from memory', async (t) => {
   const handler = route(weatherEffectsProxy(), '/api/weather-effects');
   const fetchMock = t.mock.method(globalThis, 'fetch', async (url) => {
-    assert.match(String(url), /^https:\/\/api\.open-meteo\.com\/v1\/forecast\?/);
+    assert.match(
+      String(url),
+      /^https:\/\/api\.open-meteo\.com\/v1\/forecast\?/,
+    );
     return Response.json(WEATHER);
   });
   const query = 'latitude=30.27&longitude=-97.74';

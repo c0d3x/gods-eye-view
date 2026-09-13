@@ -61,14 +61,23 @@ test('only a GET for a bounded bbox is answered', async () => {
   const tooWide = { south: 0, west: 0, north: 1, east: 20 };
   assert.equal((await request(handler, { query: query(tooWide) })).status, 400);
   const inverted = { south: 1, west: 0, north: 0, east: 1 };
-  assert.equal((await request(handler, { query: query(inverted) })).status, 400);
+  assert.equal(
+    (await request(handler, { query: query(inverted) })).status,
+    400,
+  );
 });
 
 test('a miss asks Overpass once, persists, and then answers from memory', async (t) => {
   const handler = route();
   const box = freshBox();
   const file = diskFile(box);
-  const element = { type: 'node', id: 1, lat: box.south + 0.1, lon: box.west + 0.1, tags: { military: 'airfield' } };
+  const element = {
+    type: 'node',
+    id: 1,
+    lat: box.south + 0.1,
+    lon: box.west + 0.1,
+    tags: { military: 'airfield' },
+  };
   const fetchMock = t.mock.method(globalThis, 'fetch', async () =>
     Response.json({ elements: [element] }),
   );

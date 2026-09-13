@@ -62,10 +62,11 @@ become smaller modules with explicit lifecycle owners as their callers migrate.
 ## Server boundary
 
 The dev server's code lives outside the browser tree: its modules under
-`server/`, and the helpers they share under `server/lib/`. Those helpers are
-the request guard, JSON responses, request bodies, rate limits, fetch
-timeouts, caches, camera fetching and the Google server key, each defined
-once. Server code may import browser modules that are safe on both sides, such
+`server/`, the route plugins `vite.config.js` installs under
+`server/proxies/`, and the helpers they share under `server/lib/`. Those
+helpers are the request guard, JSON responses, request bodies, capped
+upstream reads, rate limits, fetch timeouts, caches and their disk limits,
+camera fetching and the Google server key, each defined once. Server code may import browser modules that are safe on both sides, such
 as the provider catalog in `src/keySetupCatalog.js`. Browser code never imports
 `server/`: `pnpm run check:boundaries` builds the app's browser graph from
 `src/main.js` and fails when it reaches a module under `server/`.

@@ -117,7 +117,16 @@
       "server/lib/queryParams.mjs",
       "server/lib/queryParams.test.mjs",
       "server/lib/geo.mjs",
-      "server/lib/geo.test.mjs"
+      "server/lib/geo.test.mjs",
+      "server/lib/diskCacheLimits.mjs",
+      "server/proxies/radio.mjs",
+      "server/proxies/overpass.mjs",
+      "server/proxies/overpass.test.mjs",
+      "server/proxies/militaryInstallations.mjs",
+      "server/proxies/militaryInstallations.test.mjs",
+      "server/proxies/regional.mjs",
+      "server/proxies/regional.test.mjs",
+      "server/proxies/cctv.mjs"
     ]
   },
   "formatter": {

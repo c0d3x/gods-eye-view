@@ -7,7 +7,10 @@
 import { createHash } from 'node:crypto';
 import { promises as fsp } from 'node:fs';
 import path from 'node:path';
-import { DISK_CACHE_LIMITS, diskCachePruners } from '../lib/diskCacheLimits.mjs';
+import {
+  DISK_CACHE_LIMITS,
+  diskCachePruners,
+} from '../lib/diskCacheLimits.mjs';
 import { haversineKm } from '../lib/geo.mjs';
 import { createRateLimiter, rateLimitKey } from '../lib/rateLimit.mjs';
 import { readBodyWithin } from '../lib/requestBody.mjs';
@@ -69,7 +72,9 @@ export function isOverpassBoundaryQuery(cacheKey) {
 
 /** Disk TTL for a query: boundary geometry keeps for a month, the rest 7 days. */
 function overpassDiskTtlMs(cacheKey) {
-  return isOverpassBoundaryQuery(cacheKey) ? OVERPASS_BOUNDARY_DISK_TTL_MS : OVERPASS_DISK_TTL_MS;
+  return isOverpassBoundaryQuery(cacheKey)
+    ? OVERPASS_BOUNDARY_DISK_TTL_MS
+    : OVERPASS_DISK_TTL_MS;
 }
 
 /** Iterative Douglas-Peucker on [{lat,lon},...] (planar-degree approx — fine at
@@ -123,7 +128,10 @@ function simplifyElementGeometry(el, minPoints, toleranceDeg) {
   }
   if (Array.isArray(el?.members)) {
     for (const member of el.members) {
-      if (Array.isArray(member?.geometry) && member.geometry.length >= minPoints) {
+      if (
+        Array.isArray(member?.geometry) &&
+        member.geometry.length >= minPoints
+      ) {
         member.geometry = douglasPeucker(member.geometry, toleranceDeg);
       }
     }
@@ -145,7 +153,8 @@ export function simplifyOverpassPayloadBody(bodyText, opts = {}) {
   const minBytes = opts.minBytes ?? OVERPASS_SIMPLIFY_MIN_BYTES;
   const minPoints = opts.minPoints ?? OVERPASS_SIMPLIFY_MIN_POINTS;
   const toleranceDeg = opts.toleranceDeg ?? OVERPASS_SIMPLIFY_TOLERANCE_DEG;
-  if (typeof bodyText !== 'string' || bodyText.length < minBytes) return bodyText;
+  if (typeof bodyText !== 'string' || bodyText.length < minBytes)
+    return bodyText;
   let data;
   try {
     data = JSON.parse(bodyText);
@@ -153,7 +162,8 @@ export function simplifyOverpassPayloadBody(bodyText, opts = {}) {
     return bodyText;
   }
   if (!Array.isArray(data?.elements)) return bodyText;
-  for (const el of data.elements) simplifyElementGeometry(el, minPoints, toleranceDeg);
+  for (const el of data.elements)
+    simplifyElementGeometry(el, minPoints, toleranceDeg);
   try {
     return JSON.stringify(data);
   } catch {
@@ -163,7 +173,10 @@ export function simplifyOverpassPayloadBody(bodyText, opts = {}) {
 
 /** Normalized Overpass query -> stable disk-cache file path. */
 function overpassDiskPath(cacheKey) {
-  return path.join(OVERPASS_DISK_DIR, `${createHash('sha1').update(cacheKey).digest('hex')}.json`);
+  return path.join(
+    OVERPASS_DISK_DIR,
+    `${createHash('sha1').update(cacheKey).digest('hex')}.json`,
+  );
 }
 
 /**
@@ -175,7 +188,12 @@ export async function readOverpassDisk(cacheKey, maxAgeMs) {
   try {
     const raw = await fsp.readFile(overpassDiskPath(cacheKey), 'utf8');
     const payload = JSON.parse(raw);
-    if (!payload || typeof payload.body !== 'string' || !Number.isFinite(payload.cachedAt)) return null;
+    if (
+      !payload ||
+      typeof payload.body !== 'string' ||
+      !Number.isFinite(payload.cachedAt)
+    )
+      return null;
     // Older versions persisted 4xx refusals with normal data TTLs. Ignore
     // them on both fresh and stale reads so an upgrade can recover immediately.
     if (!overpassPayloadIsData(payload)) return null;
@@ -188,10 +206,18 @@ export async function readOverpassDisk(cacheKey, maxAgeMs) {
 
 /** Fire-and-forget disk write for a successful Overpass payload. */
 function writeOverpassDisk(cacheKey, payload) {
-  fsp.mkdir(OVERPASS_DISK_DIR, { recursive: true })
-    .then(() => fsp.writeFile(overpassDiskPath(cacheKey), JSON.stringify(payload)))
+  fsp
+    .mkdir(OVERPASS_DISK_DIR, { recursive: true })
+    .then(() =>
+      fsp.writeFile(overpassDiskPath(cacheKey), JSON.stringify(payload)),
+    )
     .then(() => diskCachePruners.overpass.afterWrite())
-    .catch((err) => console.warn('[Overpass Proxy] disk cache write failed:', err?.message || err));
+    .catch((err) =>
+      console.warn(
+        '[Overpass Proxy] disk cache write failed:',
+        err?.message || err,
+      ),
+    );
 }
 
 /**
@@ -220,7 +246,8 @@ export async function resolveOverpassPreflight({
   cacheMs = OVERPASS_CACHE_MS,
 }) {
   const cached = memoryCache.get(cacheKey);
-  if (overpassPayloadIsData(cached) && now - cached.cachedAt <= cacheMs) return { source: 'HIT', payload: cached };
+  if (overpassPayloadIsData(cached) && now - cached.cachedAt <= cacheMs)
+    return { source: 'HIT', payload: cached };
 
   const pending = inFlight.get(cacheKey);
   if (pending) return { source: 'INFLIGHT', payload: await pending };
@@ -236,7 +263,9 @@ export async function resolveOverpassPreflight({
 /** Return only last-good Overpass data, regardless of its age. */
 async function readStaleOverpass(cacheKey) {
   const cached = _overpassCache.get(cacheKey);
-  return overpassPayloadIsData(cached) ? cached : readOverpassDisk(cacheKey, Infinity);
+  return overpassPayloadIsData(cached)
+    ? cached
+    : readOverpassDisk(cacheKey, Infinity);
 }
 /** OSM routing (FOSSGIS OSRM) cache: profile|coords -> { payload, cachedAt }. */
 const ROUTE_CACHE_MS = 600000;
@@ -279,9 +308,17 @@ const ROUTE_MAX_TOTAL_KM = 2500;
  * Fixed-window backstops (server/lib/rateLimit.mjs) so a runaway client can't
  * hammer the public Overpass / OSRM mirrors or exhaust this process.
  */
-const _overpassRateLimiter = createRateLimiter({ windowMs: 60_000, max: 90, globalMax: 300 });
+const _overpassRateLimiter = createRateLimiter({
+  windowMs: 60_000,
+  max: 90,
+  globalMax: 300,
+});
 
-const _routeRateLimiter = createRateLimiter({ windowMs: 60_000, max: 60, globalMax: 200 });
+const _routeRateLimiter = createRateLimiter({
+  windowMs: 60_000,
+  max: 60,
+  globalMax: 200,
+});
 
 /** Server-side timeout ceiling (seconds) we allow inside an Overpass QL query. */
 const OVERPASS_MAX_QL_TIMEOUT = 30;
@@ -296,11 +333,17 @@ const OVERPASS_MAX_BBOX_DEG = 12;
  */
 const OVERPASS_ELEMENT_TYPES = 'node|way|relation|nwr|nw|nr|wr|rel';
 /** Element-selector (incl. `area`) whose statements must be individually bounded. */
-const OVERPASS_SELECTOR_RE = new RegExp(`\\b(?:${OVERPASS_ELEMENT_TYPES}|area)\\b`);
+const OVERPASS_SELECTOR_RE = new RegExp(
+  `\\b(?:${OVERPASS_ELEMENT_TYPES}|area)\\b`,
+);
 /** An element selector bounded BY an area — the country-scan abuse shape. */
-const OVERPASS_AREA_ELEMENT_RE = new RegExp(`\\b(?:${OVERPASS_ELEMENT_TYPES})\\s*\\(\\s*area\\b`, 'i');
+const OVERPASS_AREA_ELEMENT_RE = new RegExp(
+  `\\b(?:${OVERPASS_ELEMENT_TYPES})\\s*\\(\\s*area\\b`,
+  'i',
+);
 /** A single bbox 4-tuple `(s,w,n,e)` (non-global so it does not advance lastIndex). */
-const OVERPASS_BBOX_RE = /\(\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*\)/;
+const OVERPASS_BBOX_RE =
+  /\(\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*\)/;
 
 /**
  * Validate + clamp an Overpass form body. Defends the generic proxy against
@@ -333,8 +376,14 @@ function stripOverpassNoise(src) {
       const quote = c;
       i += 1;
       while (i < n) {
-        if (src[i] === '\\') { i += 2; continue; } // escaped char
-        if (src[i] === quote) { i += 1; break; } // closing quote
+        if (src[i] === '\\') {
+          i += 2;
+          continue;
+        } // escaped char
+        if (src[i] === quote) {
+          i += 1;
+          break;
+        } // closing quote
         i += 1;
       }
       out += quote + quote; // collapse the literal to empty quotes
@@ -361,11 +410,16 @@ function stripOverpassNoise(src) {
 
 function sanitizeOverpassBody(rawBody) {
   let params;
-  try { params = new URLSearchParams(rawBody); } catch { return { ok: false, error: 'Malformed query body' }; }
+  try {
+    params = new URLSearchParams(rawBody);
+  } catch {
+    return { ok: false, error: 'Malformed query body' };
+  }
   const all = params.getAll('data');
-  if (all.length !== 1) return { ok: false, error: 'Exactly one data query is required' };
+  if (all.length !== 1)
+    return { ok: false, error: 'Exactly one data query is required' };
   const data = all[0];
-  if (!data || !data.trim()) return { ok: false, error: 'Missing Overpass data query' };
+  if (!data?.trim()) return { ok: false, error: 'Missing Overpass data query' };
 
   // Blank quoted literals + strip comments in one lexer pass so a fake bound or a
   // `//` inside a string can't hide an unbounded selector (or satisfy a bound).
@@ -381,9 +435,17 @@ function sanitizeOverpassBody(rawBody) {
     }
   }
   // Reject world-sized / oversized bboxes.
-  for (const m of stripped.matchAll(/\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g)) {
-    const s = Number(m[1]); const w = Number(m[2]); const n = Number(m[3]); const e = Number(m[4]);
-    if (Math.abs(n - s) > OVERPASS_MAX_BBOX_DEG || Math.abs(e - w) > OVERPASS_MAX_BBOX_DEG) {
+  for (const m of stripped.matchAll(
+    /\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g,
+  )) {
+    const s = Number(m[1]);
+    const w = Number(m[2]);
+    const n = Number(m[3]);
+    const e = Number(m[4]);
+    if (
+      Math.abs(n - s) > OVERPASS_MAX_BBOX_DEG ||
+      Math.abs(e - w) > OVERPASS_MAX_BBOX_DEG
+    ) {
       return { ok: false, error: 'Overpass bbox too large' };
     }
   }
@@ -414,7 +476,10 @@ function sanitizeOverpassBody(rawBody) {
     // misread as a spatial bound. Bounds live in (...) / function calls / set
     // refs, never inside [...], so the probe loses nothing real.
     const outSets = [];
-    const body = stmt.replace(/->\s*\.(\w+)/g, (_, name) => { outSets.push(name); return ' '; });
+    const body = stmt.replace(/->\s*\.(\w+)/g, (_, name) => {
+      outSets.push(name);
+      return ' ';
+    });
     const probe = body.replace(/\[[^\]]*\]/g, ' ');
 
     // Reject element-in-area scans on the TAG-STRIPPED probe, so a tag filter
@@ -423,15 +488,21 @@ function sanitizeOverpassBody(rawBody) {
     // SELECTS admin areas (area.set) and pivots (rel(pivot.x)), never node/way/
     // relation(area...). The probe collapses tags so `way (area.a)` is caught.
     if (OVERPASS_AREA_ELEMENT_RE.test(probe)) {
-      return { ok: false, error: 'Overpass area-bounded element selector not allowed' };
+      return {
+        ok: false,
+        error: 'Overpass area-bounded element selector not allowed',
+      };
     }
 
     const hasSelector = OVERPASS_SELECTOR_RE.test(probe);
-    const inputSets = [...probe.matchAll(/(?<!\d)\.([a-z_]\w*)/gi)].map((m) => m[1]);
-    const directBound = /around:\s*\d/.test(probe)
-      || OVERPASS_BBOX_RE.test(probe)
-      || /is_in\s*\(/.test(probe)                 // is_in(lat,lon) — the function form only
-      || /\barea\s*\(/.test(probe);               // area(id) — bounded as a set definition
+    const inputSets = [...probe.matchAll(/(?<!\d)\.([a-z_]\w*)/gi)].map(
+      (m) => m[1],
+    );
+    const directBound =
+      /around:\s*\d/.test(probe) ||
+      OVERPASS_BBOX_RE.test(probe) ||
+      /is_in\s*\(/.test(probe) || // is_in(lat,lon) — the function form only
+      /\barea\s*\(/.test(probe); // area(id) — bounded as a set definition
 
     const setBound = inputSets.some((s) => boundedSets.has(s));
     const bounded = directBound || setBound;
@@ -445,7 +516,8 @@ function sanitizeOverpassBody(rawBody) {
 
   const clamped = data.replace(
     /\[timeout:\s*(\d+)\s*\]/gi,
-    (_, n) => `[timeout:${Math.min(Number(n) || OVERPASS_MAX_QL_TIMEOUT, OVERPASS_MAX_QL_TIMEOUT)}]`,
+    (_, n) =>
+      `[timeout:${Math.min(Number(n) || OVERPASS_MAX_QL_TIMEOUT, OVERPASS_MAX_QL_TIMEOUT)}]`,
   );
   return { ok: true, body: `data=${encodeURIComponent(clamped)}` };
 }
@@ -461,10 +533,12 @@ function sanitizeOverpassBody(rawBody) {
  */
 function overpassLooksRateLimited(bodyText) {
   const text = String(bodyText || '').toLowerCase();
-  return text.includes('rate_limited')
-    || text.includes('quota of your ip address')
-    || text.includes('dispatcher_client::request_read_and_idx::rate_limited')
-    || text.includes('too many requests');
+  return (
+    text.includes('rate_limited') ||
+    text.includes('quota of your ip address') ||
+    text.includes('dispatcher_client::request_read_and_idx::rate_limited') ||
+    text.includes('too many requests')
+  );
 }
 
 /**
@@ -474,9 +548,11 @@ function overpassLooksRateLimited(bodyText) {
  */
 function overpassLooksRuntimeError(bodyText) {
   const text = String(bodyText || '').toLowerCase();
-  return text.includes('runtime error')
-    || text.includes('timed out')
-    || text.includes('out of memory');
+  return (
+    text.includes('runtime error') ||
+    text.includes('timed out') ||
+    text.includes('out of memory')
+  );
 }
 
 /** Evict oldest Overpass cache entries until size is within the cap. */
@@ -516,10 +592,13 @@ function sendOverpassResponse(res, payload, cacheStatus = 'MISS') {
  */
 export function overpassPayloadIsData(payload) {
   const status = Number(payload?.status);
-  return Number.isFinite(status)
-    && status >= 200 && status < 300
-    && !payload.rateLimited
-    && !payload.runtimeError;
+  return (
+    Number.isFinite(status) &&
+    status >= 200 &&
+    status < 300 &&
+    !payload.rateLimited &&
+    !payload.runtimeError
+  );
 }
 
 /**
@@ -531,12 +610,16 @@ export function overpassPayloadIsData(payload) {
  * @param {object} [options] Server-only endpoint and I/O overrides for tests.
  * @returns {Promise<{status:number,body:string,contentType:string,endpoint:string,rateLimited:boolean}>}
  */
-export async function fetchOverpassPayload(body, maxResponseBytes = OVERPASS_MAX_RESPONSE_BYTES, {
-  endpoints = OVERPASS_UPSTREAMS,
-  fetchImpl = fetch,
-  readBody = readResponseTextCapped,
-  simplify = simplifyOverpassPayloadBody,
-} = {}) {
+export async function fetchOverpassPayload(
+  body,
+  maxResponseBytes = OVERPASS_MAX_RESPONSE_BYTES,
+  {
+    endpoints = OVERPASS_UPSTREAMS,
+    fetchImpl = fetch,
+    readBody = readResponseTextCapped,
+    simplify = simplifyOverpassPayloadBody,
+  } = {},
+) {
   let lastError = null;
   let lastRateLimitPayload = null;
   let lastRefusalPayload = null;
@@ -557,9 +640,11 @@ export async function fetchOverpassPayload(body, maxResponseBytes = OVERPASS_MAX
       });
 
       const responseBody = await readBody(upstream, maxResponseBytes);
-      const contentType = upstream.headers.get('content-type') || 'application/json';
+      const contentType =
+        upstream.headers.get('content-type') || 'application/json';
       const status = upstream.status;
-      const rateLimited = status === 429 || overpassLooksRateLimited(responseBody);
+      const rateLimited =
+        status === 429 || overpassLooksRateLimited(responseBody);
       const runtimeError = overpassLooksRuntimeError(responseBody);
       const payload = {
         status,
@@ -590,7 +675,9 @@ export async function fetchOverpassPayload(body, maxResponseBytes = OVERPASS_MAX
       // every mirror has had the chance to answer it.
       if (status < 200 || status >= 300) {
         if (!lastRefusalPayload) lastRefusalPayload = payload;
-        lastError = new Error(`Overpass upstream returned ${status} (${endpoint})`);
+        lastError = new Error(
+          `Overpass upstream returned ${status} (${endpoint})`,
+        );
         continue;
       }
 
@@ -643,7 +730,7 @@ export function overpassProxy() {
             res.end(JSON.stringify({ error: 'Overpass query too large' }));
             return;
           }
-          let body = bodyRead.text;
+          const body = bodyRead.text;
           if (!body) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Missing Overpass query body' }));
@@ -668,11 +755,15 @@ export function overpassProxy() {
             inFlight: _overpassInFlight,
             // Fresh-enough disk entries survive restarts and skip the public
             // mirrors; boundary-class queries keep their month-long TTL.
-            readDisk: () => readOverpassDisk(cacheKey, overpassDiskTtlMs(cacheKey)),
+            readDisk: () =>
+              readOverpassDisk(cacheKey, overpassDiskTtlMs(cacheKey)),
             allowUpstream: () => _overpassRateLimiter(rateLimitKey(req)),
           });
           if (preflight.source === 'RATE_LIMITED') {
-            res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '5' });
+            res.writeHead(429, {
+              'Content-Type': 'application/json',
+              'Retry-After': '5',
+            });
             res.end(JSON.stringify({ error: 'Rate limit exceeded' }));
             return;
           }
@@ -697,8 +788,15 @@ export function overpassProxy() {
           // From here onward the request is genuinely upstream-bound and has
           // consumed one local limiter slot. Cache and dedupe hits above do not.
           if (_overpassConcurrent >= OVERPASS_MAX_CONCURRENT) {
-            res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '2' });
-            res.end(JSON.stringify({ error: 'Overpass proxy busy — try again shortly' }));
+            res.writeHead(503, {
+              'Content-Type': 'application/json',
+              'Retry-After': '2',
+            });
+            res.end(
+              JSON.stringify({
+                error: 'Overpass proxy busy — try again shortly',
+              }),
+            );
             return;
           }
           _overpassConcurrent += 1;
@@ -736,9 +834,7 @@ export function overpassProxy() {
           sendOverpassResponse(res, payload, 'MISS');
         } catch (e) {
           // Every mirror threw (network-level). Same serve-stale rule.
-          const stale = cacheKey
-            ? await readStaleOverpass(cacheKey)
-            : null;
+          const stale = cacheKey ? await readStaleOverpass(cacheKey) : null;
           if (stale) {
             sendOverpassResponse(res, stale, 'STALE');
             return;
@@ -758,20 +854,31 @@ export function overpassProxy() {
         };
         try {
           if (!_routeRateLimiter(rateLimitKey(req))) {
-            res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '5' });
+            res.writeHead(429, {
+              'Content-Type': 'application/json',
+              'Retry-After': '5',
+            });
             res.end(JSON.stringify({ ok: false, error: 'rate limited' }));
             return;
           }
           const url = new URL(req.url, 'http://localhost');
           const raw = (url.searchParams.get('profile') || 'foot').toLowerCase();
-          const profile = (raw === 'car' || raw === 'driving') ? 'car'
-            : (raw === 'bike' || raw === 'cycling' || raw === 'bicycle') ? 'bike'
-              : (raw === 'foot' || raw === 'walking' || raw === 'walk') ? 'foot'
-                : null;
+          const profile =
+            raw === 'car' || raw === 'driving'
+              ? 'car'
+              : raw === 'bike' || raw === 'cycling' || raw === 'bicycle'
+                ? 'bike'
+                : raw === 'foot' || raw === 'walking' || raw === 'walk'
+                  ? 'foot'
+                  : null;
           if (!profile) return fail('invalid profile');
           const osrmProfile = profile === 'car' ? 'driving' : profile;
-          const pairs = (url.searchParams.get('coords') || '').split(';').map((s) => s.trim()).filter(Boolean);
-          if (pairs.length < 2 || pairs.length > 12) return fail('need 2-12 coordinates');
+          const pairs = (url.searchParams.get('coords') || '')
+            .split(';')
+            .map((s) => s.trim())
+            .filter(Boolean);
+          if (pairs.length < 2 || pairs.length > 12)
+            return fail('need 2-12 coordinates');
           const clean = [];
           const pts = [];
           for (const pr of pairs) {
@@ -779,7 +886,12 @@ export function overpassProxy() {
             if (parts.length !== 2) return fail('invalid coordinate');
             const lon = Number(parts[0]);
             const lat = Number(parts[1]);
-            if (!Number.isFinite(lon) || !Number.isFinite(lat) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+            if (
+              !Number.isFinite(lon) ||
+              !Number.isFinite(lat) ||
+              Math.abs(lat) > 90 ||
+              Math.abs(lon) > 180
+            ) {
               return fail('invalid coordinate');
             }
             clean.push(`${lon},${lat}`);
@@ -791,7 +903,12 @@ export function overpassProxy() {
           let totalKm = 0;
           for (let i = 1; i < pts.length; i += 1) {
             // pts are [lon, lat]; existing haversineKm takes (lat1, lon1, lat2, lon2).
-            const legKm = haversineKm(pts[i - 1][1], pts[i - 1][0], pts[i][1], pts[i][0]);
+            const legKm = haversineKm(
+              pts[i - 1][1],
+              pts[i - 1][0],
+              pts[i][1],
+              pts[i][0],
+            );
             if (legKm > ROUTE_MAX_LEG_KM) return fail('route leg too long');
             totalKm += legKm;
           }
@@ -817,13 +934,17 @@ export function overpassProxy() {
             if (!upstreamRes.ok) return fail('no route found');
             const ctype = upstreamRes.headers.get('content-type') || '';
             if (!ctype.includes('json')) return fail('no route found');
-            const text = await readResponseTextCapped(upstreamRes, ROUTE_MAX_RESPONSE_BYTES);
+            const text = await readResponseTextCapped(
+              upstreamRes,
+              ROUTE_MAX_RESPONSE_BYTES,
+            );
             osrm = JSON.parse(text);
           } finally {
             clearTimeout(timer);
           }
           const route = osrm?.routes?.[0];
-          if (osrm?.code !== 'Ok' || !route?.geometry?.coordinates?.length) return fail('no route found');
+          if (osrm?.code !== 'Ok' || !route?.geometry?.coordinates?.length)
+            return fail('no route found');
           const payload = {
             ok: true,
             profile,
@@ -832,7 +953,8 @@ export function overpassProxy() {
             geometry: route.geometry.coordinates,
           };
           _routeCache.set(cacheKey, { payload, cachedAt: now });
-          if (_routeCache.size > 200) _routeCache.delete(_routeCache.keys().next().value);
+          if (_routeCache.size > 200)
+            _routeCache.delete(_routeCache.keys().next().value);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify(payload));
         } catch (e) {

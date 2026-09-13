@@ -26,7 +26,8 @@ describes how the app behaves now; `CHANGELOG.md` records how it got here.
 - Voice map whiteboard annotations in `src/annotations/`
 - 3D aircraft/model tracking surfaces in `src/data/flights.js` and `src/data/militaryFlights.js`
 - Detection overlay and tracked-target readout in `src/data/detection.js`, `src/data/detectionDraw.js`, and `src/data/trackedReadout.js`
-- Proxy middleware and API wiring in `vite.config.js`
+- API wiring in `vite.config.js`, with proxy modules under `server/proxies/`
+  and the helpers they share in `server/lib/`
 
 ## Canonical Docs Order
 

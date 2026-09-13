@@ -11,13 +11,28 @@ import { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { directionToHeading } from '../../src/data/directionText.js';
 import { createBoundedCache } from '../lib/boundedCache.mjs';
-import { CameraRedirectError, fetchCameraResponse, mediaTypeKind } from '../lib/cameraFetch.mjs';
-import { ClientGoneError, fetchWithTimeout, upstreamErrorStatus } from '../lib/fetchWithTimeout.mjs';
+import {
+  CameraRedirectError,
+  fetchCameraResponse,
+  mediaTypeKind,
+} from '../lib/cameraFetch.mjs';
+import {
+  ClientGoneError,
+  fetchWithTimeout,
+  upstreamErrorStatus,
+} from '../lib/fetchWithTimeout.mjs';
 import { haversineKm } from '../lib/geo.mjs';
 import { googleServerApiKey } from '../lib/googleServerKey.mjs';
 import { PrivateAddressError } from '../lib/publicAddress.mjs';
-import { createCostRateLimiter, DEFAULT_GOOGLE_REQUESTS_PER_MINUTE, rateLimitKey } from '../lib/rateLimit.mjs';
-import { readResponseBytesCapped, readResponseJsonCapped } from '../lib/upstreamBody.mjs';
+import {
+  createCostRateLimiter,
+  DEFAULT_GOOGLE_REQUESTS_PER_MINUTE,
+  rateLimitKey,
+} from '../lib/rateLimit.mjs';
+import {
+  readResponseBytesCapped,
+  readResponseJsonCapped,
+} from '../lib/upstreamBody.mjs';
 
 let _streetViewRateLimiter;
 
@@ -29,7 +44,10 @@ let _streetViewRateLimiter;
  */
 function streetViewRateLimiter() {
   if (_streetViewRateLimiter === undefined) {
-    _streetViewRateLimiter = createCostRateLimiter('GEV_RATELIMIT_GOOGLE_PER_MIN', DEFAULT_GOOGLE_REQUESTS_PER_MINUTE);
+    _streetViewRateLimiter = createCostRateLimiter(
+      'GEV_RATELIMIT_GOOGLE_PER_MIN',
+      DEFAULT_GOOGLE_REQUESTS_PER_MINUTE,
+    );
   }
   return _streetViewRateLimiter;
 }
@@ -75,7 +93,9 @@ function escapeXml(text) {
  * @returns {string} Normalized feed type.
  */
 function normalizeFeedType(value) {
-  const raw = String(value || '').trim().toLowerCase();
+  const raw = String(value || '')
+    .trim()
+    .toLowerCase();
   if (!raw) return 'image';
   if (raw === 'jpeg' || raw === 'jpg' || raw === 'png') return 'image';
   if (raw === 'mjpg') return 'mjpeg';
@@ -102,7 +122,8 @@ const REPO_ROOT = fileURLToPath(new URL('../../', import.meta.url));
 /** Path to the optional static CCTV source list (JSON array). */
 const DEFAULT_CCTV_SOURCE_FILE = 'config/cctv_sources.austin.json';
 /** Austin Open Data portal endpoint for traffic camera records. */
-const DEFAULT_AUSTIN_ROWS_URL = 'https://data.austintexas.gov/api/views/b4k4-adkb/rows.json?accessType=DOWNLOAD';
+const DEFAULT_AUSTIN_ROWS_URL =
+  'https://data.austintexas.gov/api/views/b4k4-adkb/rows.json?accessType=DOWNLOAD';
 /** Default cap on Austin cameras after distance-based prioritization. */
 const DEFAULT_AUSTIN_MAX_SOURCES = 250;
 /** Global cap on total CCTV sources served by the proxy. */
@@ -124,7 +145,8 @@ const CALTRANS_ANCHORS = [
 ];
 /** TfL JamCams: one keyless list endpoint; frames live on a public S3 bucket. */
 const TFL_JAMCAM_URL = 'https://api.tfl.gov.uk/Place/Type/JamCam';
-const TFL_IMAGE_ORIGIN = 'https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/';
+const TFL_IMAGE_ORIGIN =
+  'https://s3-eu-west-1.amazonaws.com/jamcams.tfl.gov.uk/';
 const DEFAULT_TFL_MAX_SOURCES = 250;
 const LONDON_CENTER = { lat: 51.5074, lon: -0.1278 };
 /** Camera CATALOGS change rarely; 15 min keeps multi-megabyte upstream list refetches (Austin rows.json + 4 Caltrans districts + TfL) infrequent. Frames are fetched per-request and are unaffected. */
@@ -156,8 +178,10 @@ const CCTV_RELAY_SAFETY_HEADERS = Object.freeze({
 /** A camera's health message for a failed media fetch, in our own words. */
 function cameraFailureMessage(error, status) {
   if (status === 504) return 'Upstream did not answer in time';
-  if (error instanceof PrivateAddressError) return 'Camera address is not allowed';
-  if (error instanceof CameraRedirectError) return 'Camera redirect was not followed';
+  if (error instanceof PrivateAddressError)
+    return 'Camera address is not allowed';
+  if (error instanceof CameraRedirectError)
+    return 'Camera redirect was not followed';
   return 'Media fetch failed';
 }
 /** How long a Street View fallback frame is reused. The imagery is static,
@@ -215,7 +239,11 @@ function loadSourcesFromFile() {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch (error) {
-    console.warn('[CCTV] failed to read source file:', resolved, error?.message || error);
+    console.warn(
+      '[CCTV] failed to read source file:',
+      resolved,
+      error?.message || error,
+    );
     return [];
   }
 }
@@ -236,7 +264,6 @@ function loadSourcesFromEnv() {
   }
 }
 
-
 /**
  * Parse a WKT POINT string (e.g. "POINT(-97.74 30.27)") into lat/lon.
  *
@@ -246,7 +273,9 @@ function loadSourcesFromEnv() {
  * @returns {{lat:number, lon:number}}
  */
 function parsePointString(value) {
-  const match = String(value || '').match(/POINT\s*\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)/i);
+  const match = String(value || '').match(
+    /POINT\s*\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)/i,
+  );
   if (!match) return { lat: NaN, lon: NaN };
   return {
     lon: toFiniteNumber(match[1]),
@@ -276,11 +305,16 @@ function coerceLatLon(value) {
 
   const lat = toFiniteNumber(
     value.latitude ?? value.lat ?? value.y ?? value.Latitude ?? value.Lat,
-    NaN
+    NaN,
   );
   const lon = toFiniteNumber(
-    value.longitude ?? value.lon ?? value.lng ?? value.x ?? value.Longitude ?? value.Lon,
-    NaN
+    value.longitude ??
+      value.lon ??
+      value.lng ??
+      value.x ??
+      value.Longitude ??
+      value.Lon,
+    NaN,
   );
   return { lat, lon };
 }
@@ -305,16 +339,24 @@ function extractAustinCoords(record) {
   ];
   for (const candidate of candidates) {
     const parsed = coerceLatLon(candidate);
-    if (Number.isFinite(parsed.lat) && Number.isFinite(parsed.lon)) return parsed;
+    if (Number.isFinite(parsed.lat) && Number.isFinite(parsed.lon))
+      return parsed;
   }
 
   const lat = toFiniteNumber(
-    record.latitude ?? record.lat ?? record.camera_latitude ?? record.location_latitude,
-    NaN
+    record.latitude ??
+      record.lat ??
+      record.camera_latitude ??
+      record.location_latitude,
+    NaN,
   );
   const lon = toFiniteNumber(
-    record.longitude ?? record.lon ?? record.lng ?? record.camera_longitude ?? record.location_longitude,
-    NaN
+    record.longitude ??
+      record.lon ??
+      record.lng ??
+      record.camera_longitude ??
+      record.location_longitude,
+    NaN,
   );
   return { lat, lon };
 }
@@ -392,11 +434,19 @@ function extractAustinName(record, cameraId) {
  * @returns {number} Heading in degrees [0..360), or NaN if unknown.
  */
 function extractAustinHeading(record) {
-  const direct = toFiniteNumber(record.heading_deg ?? record.heading ?? record.bearing, NaN);
+  const direct = toFiniteNumber(
+    record.heading_deg ?? record.heading ?? record.bearing,
+    NaN,
+  );
   if (Number.isFinite(direct)) return ((direct % 360) + 360) % 360;
 
   // Dedicated direction fields: bare cardinal words ("West") are real facings.
-  const directionKeys = ['direction', 'travel_direction', 'facing', 'facing_direction'];
+  const directionKeys = [
+    'direction',
+    'travel_direction',
+    'facing',
+    'facing_direction',
+  ];
   for (const key of directionKeys) {
     const heading = directionToHeading(record[key], true);
     if (Number.isFinite(heading)) return heading;
@@ -413,7 +463,9 @@ function extractAustinHeading(record) {
     record.cross_street,
     record.description,
     record.name,
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
   const inferred = directionToHeading(nameProbe);
   if (Number.isFinite(inferred)) return inferred;
 
@@ -429,7 +481,7 @@ function extractAustinHeading(record) {
  */
 function isLikelyAustinCoordinate(lat, lon) {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
-  return lat >= 30.02 && lat <= 30.58 && lon >= -98.12 && lon <= -97.40;
+  return lat >= 30.02 && lat <= 30.58 && lon >= -98.12 && lon <= -97.4;
 }
 
 /**
@@ -477,18 +529,26 @@ function rowArrayToObject(row, columns) {
 function prioritizeSources(cameras, maxCount, anchors) {
   const list = Array.isArray(cameras) ? cameras : [];
   const anchorList = (Array.isArray(anchors) ? anchors : []).filter(
-    (a) => Number.isFinite(a?.lat) && Number.isFinite(a?.lon)
+    (a) => Number.isFinite(a?.lat) && Number.isFinite(a?.lon),
   );
-  if (!Number.isFinite(maxCount) || maxCount <= 0 || list.length <= maxCount || !anchorList.length) {
+  if (
+    !Number.isFinite(maxCount) ||
+    maxCount <= 0 ||
+    list.length <= maxCount ||
+    !anchorList.length
+  ) {
     return list;
   }
 
   const scored = list.map((camera, idx) => {
     const lat = Number(camera?.lat);
     const lon = Number(camera?.lon);
-    const distKm = Number.isFinite(lat) && Number.isFinite(lon)
-      ? Math.min(...anchorList.map((a) => haversineKm(lat, lon, a.lat, a.lon)))
-      : Number.POSITIVE_INFINITY;
+    const distKm =
+      Number.isFinite(lat) && Number.isFinite(lon)
+        ? Math.min(
+            ...anchorList.map((a) => haversineKm(lat, lon, a.lat, a.lon)),
+          )
+        : Number.POSITIVE_INFINITY;
     return { camera, idx, distKm };
   });
 
@@ -513,13 +573,21 @@ function prioritizeSources(cameras, maxCount, anchors) {
 async function loadAustinSourcesFromOpenData() {
   const endpoint = process.env.CCTV_AUSTIN_ROWS_URL || DEFAULT_AUSTIN_ROWS_URL;
   try {
-    const resp = await fetch(endpoint, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS) });
+    const resp = await fetch(endpoint, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS),
+    });
     if (!resp.ok) {
       console.warn('[CCTV] Austin source download failed:', resp.status);
       return [];
     }
-    const payload = await readResponseJsonCapped(resp, CCTV_SOURCE_LIST_MAX_BYTES);
-    const columns = Array.isArray(payload?.meta?.view?.columns) ? payload.meta.view.columns : [];
+    const payload = await readResponseJsonCapped(
+      resp,
+      CCTV_SOURCE_LIST_MAX_BYTES,
+    );
+    const columns = Array.isArray(payload?.meta?.view?.columns)
+      ? payload.meta.view.columns
+      : [];
     const rows = Array.isArray(payload?.data) ? payload.data : [];
     if (!columns.length || !rows.length) return [];
 
@@ -534,7 +602,9 @@ async function loadAustinSourcesFromOpenData() {
       // REMOVED and VOID rows whose frame URLs never resolve — those cameras
       // would render as permanent Street View / synthetic fallbacks. Tolerate
       // a missing column (keep the row) so a schema change fails open.
-      const status = String(record.camera_status || '').trim().toUpperCase();
+      const status = String(record.camera_status || '')
+        .trim()
+        .toUpperCase();
       if (status && status !== 'TURNED_ON') continue;
 
       const { lat, lon } = extractAustinCoords(record);
@@ -543,7 +613,9 @@ async function loadAustinSourcesFromOpenData() {
 
       const extractedHeading = extractAustinHeading(record);
       const hasHeading = Number.isFinite(extractedHeading);
-      const headingDeg = hasHeading ? extractedHeading : fallbackHeadingFromId(cameraId);
+      const headingDeg = hasHeading
+        ? extractedHeading
+        : fallbackHeadingFromId(cameraId);
       cameras.push({
         id: cameraId,
         name: extractAustinName(record, cameraId),
@@ -567,18 +639,29 @@ async function loadAustinSourcesFromOpenData() {
       });
     }
 
-    const unique = Array.from(new Map(cameras.map((camera) => [camera.id, camera])).values());
-    const maxRaw = Number(process.env.CCTV_AUSTIN_MAX_SOURCES || DEFAULT_AUSTIN_MAX_SOURCES);
-    const maxCount = Number.isFinite(maxRaw) ? Math.max(8, Math.min(300, Math.floor(maxRaw))) : DEFAULT_AUSTIN_MAX_SOURCES;
+    const unique = Array.from(
+      new Map(cameras.map((camera) => [camera.id, camera])).values(),
+    );
+    const maxRaw = Number(
+      process.env.CCTV_AUSTIN_MAX_SOURCES || DEFAULT_AUSTIN_MAX_SOURCES,
+    );
+    const maxCount = Number.isFinite(maxRaw)
+      ? Math.max(8, Math.min(300, Math.floor(maxRaw)))
+      : DEFAULT_AUSTIN_MAX_SOURCES;
     const prioritized = prioritizeSources(unique, maxCount, [AUSTIN_DOWNTOWN]);
     if (prioritized.length < unique.length) {
-      console.log(`[CCTV] Loaded Austin camera sources: ${unique.length} (using nearest ${prioritized.length})`);
+      console.log(
+        `[CCTV] Loaded Austin camera sources: ${unique.length} (using nearest ${prioritized.length})`,
+      );
     } else {
       console.log('[CCTV] Loaded Austin camera sources:', prioritized.length);
     }
     return prioritized;
   } catch (error) {
-    console.warn('[CCTV] Austin source download error:', error?.message || error);
+    console.warn(
+      '[CCTV] Austin source download error:',
+      error?.message || error,
+    );
     return [];
   }
 }
@@ -595,7 +678,8 @@ async function loadAustinSourcesFromOpenData() {
  * @returns {Promise<Array<object>>} Normalized camera source objects.
  */
 async function loadCaltransSourcesFromOpenData() {
-  const districtsRaw = process.env.CCTV_CALTRANS_DISTRICTS ?? DEFAULT_CALTRANS_DISTRICTS;
+  const districtsRaw =
+    process.env.CCTV_CALTRANS_DISTRICTS ?? DEFAULT_CALTRANS_DISTRICTS;
   const districts = String(districtsRaw)
     .split(',')
     .map((token) => Number(token.trim()))
@@ -604,18 +688,27 @@ async function loadCaltransSourcesFromOpenData() {
 
   const settled = await Promise.allSettled(
     districts.map(async (district) => {
-      const resp = await fetch(CALTRANS_CCTV_URL(district), { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS) });
+      const resp = await fetch(CALTRANS_CCTV_URL(district), {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS),
+      });
       if (!resp.ok) throw new Error(`D${district} HTTP ${resp.status}`);
-      const payload = await readResponseJsonCapped(resp, CCTV_SOURCE_LIST_MAX_BYTES);
+      const payload = await readResponseJsonCapped(
+        resp,
+        CCTV_SOURCE_LIST_MAX_BYTES,
+      );
       const rows = Array.isArray(payload?.data) ? payload.data : [];
       return { district, rows };
-    })
+    }),
   );
 
   const cameras = [];
   for (const result of settled) {
     if (result.status !== 'fulfilled') {
-      console.warn('[CCTV] Caltrans district fetch failed:', result.reason?.message || result.reason);
+      console.warn(
+        '[CCTV] Caltrans district fetch failed:',
+        result.reason?.message || result.reason,
+      );
       continue;
     }
     const { district, rows } = result.value;
@@ -634,13 +727,17 @@ async function loadCaltransSourcesFromOpenData() {
       const locationName = String(loc.locationName || '').trim();
       // Leading token of locationName is the stable camera code ("TV102 -- I-580 : …").
       const codeMatch = /^([A-Za-z0-9_-]+)\s*--/.exec(locationName);
-      const code = (codeMatch ? codeMatch[1] : `x${cameras.length}`).toLowerCase();
+      const code = (
+        codeMatch ? codeMatch[1] : `x${cameras.length}`
+      ).toLowerCase();
       const cameraId = `ca-d${district}-${code}`;
 
       // loc.direction is a dedicated field ("West", "South") → allow bare words.
       const heading = directionToHeading(loc.direction, true);
       const hasHeading = Number.isFinite(heading);
-      const label = locationName.replace(/^([A-Za-z0-9_-]+)\s*--\s*/, '') || `Caltrans D${district} ${code}`;
+      const label =
+        locationName.replace(/^([A-Za-z0-9_-]+)\s*--\s*/, '') ||
+        `Caltrans D${district} ${code}`;
       cameras.push({
         id: cameraId,
         name: loc.nearbyPlace ? `${label} (${loc.nearbyPlace})` : label,
@@ -667,7 +764,9 @@ async function loadCaltransSourcesFromOpenData() {
         // so it must be right-ish on its own.
         groundElevationM: (() => {
           const ft = toFiniteNumber(loc.elevation, NaN);
-          return Number.isFinite(ft) ? Math.max(-100, Math.min(4000, ft * 0.3048)) : 150;
+          return Number.isFinite(ft)
+            ? Math.max(-100, Math.min(4000, ft * 0.3048))
+            : 150;
         })(),
         feedType: 'image',
         url: imageUrl,
@@ -678,10 +777,16 @@ async function loadCaltransSourcesFromOpenData() {
     }
   }
 
-  const maxRaw = Number(process.env.CCTV_CALTRANS_MAX_SOURCES || DEFAULT_CALTRANS_MAX_SOURCES);
-  const maxCount = Number.isFinite(maxRaw) ? Math.max(8, Math.min(600, Math.floor(maxRaw))) : DEFAULT_CALTRANS_MAX_SOURCES;
+  const maxRaw = Number(
+    process.env.CCTV_CALTRANS_MAX_SOURCES || DEFAULT_CALTRANS_MAX_SOURCES,
+  );
+  const maxCount = Number.isFinite(maxRaw)
+    ? Math.max(8, Math.min(600, Math.floor(maxRaw)))
+    : DEFAULT_CALTRANS_MAX_SOURCES;
   const prioritized = prioritizeSources(cameras, maxCount, CALTRANS_ANCHORS);
-  console.log(`[CCTV] Loaded Caltrans camera sources: ${cameras.length} inService (using nearest ${prioritized.length})`);
+  console.log(
+    `[CCTV] Loaded Caltrans camera sources: ${cameras.length} inService (using nearest ${prioritized.length})`,
+  );
   return prioritized;
 }
 
@@ -698,13 +803,21 @@ async function loadCaltransSourcesFromOpenData() {
 async function loadTflSourcesFromOpenData() {
   try {
     const appKey = String(process.env.TFL_APP_KEY || '').trim();
-    const url = appKey ? `${TFL_JAMCAM_URL}?app_key=${encodeURIComponent(appKey)}` : TFL_JAMCAM_URL;
-    const resp = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS) });
+    const url = appKey
+      ? `${TFL_JAMCAM_URL}?app_key=${encodeURIComponent(appKey)}`
+      : TFL_JAMCAM_URL;
+    const resp = await fetch(url, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS),
+    });
     if (!resp.ok) {
       console.warn('[CCTV] TfL JamCam download failed:', resp.status);
       return [];
     }
-    const places = await readResponseJsonCapped(resp, CCTV_SOURCE_LIST_MAX_BYTES);
+    const places = await readResponseJsonCapped(
+      resp,
+      CCTV_SOURCE_LIST_MAX_BYTES,
+    );
     if (!Array.isArray(places)) return [];
 
     const cameras = [];
@@ -750,10 +863,16 @@ async function loadTflSourcesFromOpenData() {
       });
     }
 
-    const maxRaw = Number(process.env.CCTV_TFL_MAX_SOURCES || DEFAULT_TFL_MAX_SOURCES);
-    const maxCount = Number.isFinite(maxRaw) ? Math.max(8, Math.min(600, Math.floor(maxRaw))) : DEFAULT_TFL_MAX_SOURCES;
+    const maxRaw = Number(
+      process.env.CCTV_TFL_MAX_SOURCES || DEFAULT_TFL_MAX_SOURCES,
+    );
+    const maxCount = Number.isFinite(maxRaw)
+      ? Math.max(8, Math.min(600, Math.floor(maxRaw)))
+      : DEFAULT_TFL_MAX_SOURCES;
     const prioritized = prioritizeSources(cameras, maxCount, [LONDON_CENTER]);
-    console.log(`[CCTV] Loaded TfL JamCam sources: ${cameras.length} available (using nearest ${prioritized.length})`);
+    console.log(
+      `[CCTV] Loaded TfL JamCam sources: ${cameras.length} available (using nearest ${prioritized.length})`,
+    );
     return prioritized;
   } catch (error) {
     console.warn('[CCTV] TfL JamCam download error:', error?.message || error);
@@ -777,7 +896,9 @@ function normalizeSourceItem(item) {
     lat: toFiniteNumber(item.lat),
     lon: toFiniteNumber(item.lon),
     headingDeg: toFiniteNumber(item.headingDeg),
-    headingConfidence: String(item.headingConfidence || item.headingSource || '').toLowerCase(),
+    headingConfidence: String(
+      item.headingConfidence || item.headingSource || '',
+    ).toLowerCase(),
     pitchDeg: toFiniteNumber(item.pitchDeg),
     fovDeg: toFiniteNumber(item.fovDeg),
     rangeM: toFiniteNumber(item.rangeM),
@@ -808,14 +929,19 @@ function normalizeSourceItem(item) {
  */
 async function getCctvSources() {
   const now = Date.now();
-  if (_cctvSourceCache.length && now - _cctvSourceCacheAt <= CCTV_SOURCE_CACHE_MS) {
+  if (
+    _cctvSourceCache.length &&
+    now - _cctvSourceCacheAt <= CCTV_SOURCE_CACHE_MS
+  ) {
     return _cctvSourceCache;
   }
   // Single-flight: a burst of requests arriving past the TTL shares ONE refresh
   // instead of each launching the full multi-provider refetch. The `.finally`
   // clears the ref so the next post-TTL cycle starts fresh.
   if (_cctvSourceInflight) return _cctvSourceInflight;
-  _cctvSourceInflight = refreshCctvSources().finally(() => { _cctvSourceInflight = null; });
+  _cctvSourceInflight = refreshCctvSources().finally(() => {
+    _cctvSourceInflight = null;
+  });
   return _cctvSourceInflight;
 }
 
@@ -830,12 +956,15 @@ async function refreshCctvSources() {
   const fromFile = loadSourcesFromFile();
   const fromEnv = loadSourcesFromEnv();
 
-  const forceAustin = String(process.env.CCTV_FORCE_AUSTIN || '').trim() === '1';
-  const preferAustin = String(process.env.CCTV_PREFER_AUSTIN || '1').trim() !== '0';
+  const forceAustin =
+    String(process.env.CCTV_FORCE_AUSTIN || '').trim() === '1';
+  const preferAustin =
+    String(process.env.CCTV_PREFER_AUSTIN || '1').trim() !== '0';
   // Live open-data packs (Austin + Caltrans + TfL) load unless a file/env pack
   // is configured and live packs aren't forced — same gate that governed the
   // Austin-only fetch, now governing all three. Each pack fails independently.
-  const needsLiveSources = forceAustin || ((fromFile.length + fromEnv.length) === 0 && preferAustin);
+  const needsLiveSources =
+    forceAustin || (fromFile.length + fromEnv.length === 0 && preferAustin);
   const tflEnabled = String(process.env.CCTV_TFL_ENABLED || '1').trim() !== '0';
 
   let fromAustin = [];
@@ -848,11 +977,18 @@ async function refreshCctvSources() {
       tflEnabled ? loadTflSourcesFromOpenData() : Promise.resolve([]),
     ]);
     fromAustin = austinResult.status === 'fulfilled' ? austinResult.value : [];
-    fromCaltrans = caltransResult.status === 'fulfilled' ? caltransResult.value : [];
+    fromCaltrans =
+      caltransResult.status === 'fulfilled' ? caltransResult.value : [];
     fromTfl = tflResult.status === 'fulfilled' ? tflResult.value : [];
   }
   // Live sources first so file/env overrides win on duplicate IDs (Map last-write).
-  const merged = [...fromAustin, ...fromCaltrans, ...fromTfl, ...fromFile, ...fromEnv];
+  const merged = [
+    ...fromAustin,
+    ...fromCaltrans,
+    ...fromTfl,
+    ...fromFile,
+    ...fromEnv,
+  ];
 
   // Only the operator's own file/env entries may point at a private address
   // (a camera on their network); feed cameras must stay public.
@@ -869,12 +1005,21 @@ async function refreshCctvSources() {
   }
 
   const mergedSources = Array.from(byId.values());
-  const maxRaw = Number(process.env.CCTV_MAX_SOURCES || DEFAULT_CCTV_MAX_SOURCES);
-  const maxCount = Number.isFinite(maxRaw) ? Math.max(8, Math.min(1200, Math.floor(maxRaw))) : DEFAULT_CCTV_MAX_SOURCES;
+  const maxRaw = Number(
+    process.env.CCTV_MAX_SOURCES || DEFAULT_CCTV_MAX_SOURCES,
+  );
+  const maxCount = Number.isFinite(maxRaw)
+    ? Math.max(8, Math.min(1200, Math.floor(maxRaw)))
+    : DEFAULT_CCTV_MAX_SOURCES;
   if (mergedSources.length > maxCount) {
-    console.warn(`[CCTV] source catalog ${mergedSources.length} exceeds cap ${maxCount}; keeping the first ${maxCount} (raise CCTV_MAX_SOURCES or lower a per-pack cap to change which).`);
+    console.warn(
+      `[CCTV] source catalog ${mergedSources.length} exceeds cap ${maxCount}; keeping the first ${maxCount} (raise CCTV_MAX_SOURCES or lower a per-pack cap to change which).`,
+    );
   }
-  const capped = mergedSources.length > maxCount ? mergedSources.slice(0, maxCount) : mergedSources;
+  const capped =
+    mergedSources.length > maxCount
+      ? mergedSources.slice(0, maxCount)
+      : mergedSources;
   if (capped.length > 0 || _cctvSourceCache.length === 0) {
     _cctvSourceCache = capped;
   } else {
@@ -882,7 +1027,9 @@ async function refreshCctvSources() {
     // but a good catalog is already cached — serve it stale rather than blanking
     // every CCTV route. Advancing the timestamp waits one TTL before retrying,
     // which (with single-flight) bounds load on a persistently-down upstream.
-    console.warn(`[CCTV] source refresh returned empty; serving ${_cctvSourceCache.length} stale cameras`);
+    console.warn(
+      `[CCTV] source refresh returned empty; serving ${_cctvSourceCache.length} stale cameras`,
+    );
   }
   _cctvSourceCacheAt = Date.now();
   return _cctvSourceCache;
@@ -908,7 +1055,10 @@ function buildSyntheticCctvSvg({ cameraId, label, city, status }) {
   const hue = seed % 360;
   const hue2 = (hue + 46) % 360;
   const now = new Date();
-  const ts = now.toISOString().replace('T', ' ').replace(/\.\d+Z$/, 'Z');
+  const ts = now
+    .toISOString()
+    .replace('T', ' ')
+    .replace(/\.\d+Z$/, 'Z');
   const safeLabel = escapeXml(label);
   const safeCity = escapeXml(city || 'GLOBAL GRID');
   const safeId = escapeXml(cameraId);
@@ -972,8 +1122,13 @@ function toReadable(body) {
   return null;
 }
 
-async function proxyMediaResponse(res, upstream, { sourceHeader = 'upstream' } = {}) {
-  const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
+async function proxyMediaResponse(
+  res,
+  upstream,
+  { sourceHeader = 'upstream' } = {},
+) {
+  const contentType =
+    upstream.headers.get('content-type') || 'application/octet-stream';
   const cacheControl = upstream.headers.get('cache-control') || 'no-store';
   const contentLength = upstream.headers.get('content-length');
   const contentRange = upstream.headers.get('content-range');
@@ -992,10 +1147,20 @@ async function proxyMediaResponse(res, upstream, { sourceHeader = 'upstream' } =
   // Live MJPEG/HLS streams are unbounded by design and send no content-length,
   // so they pipe normally (piping streams to the client, never buffering).
   const MEDIA_DECLARED_CAP_BYTES = 64 * 1024 * 1024;
-  if (Number.isFinite(Number(contentLength)) && Number(contentLength) > MEDIA_DECLARED_CAP_BYTES) {
-    res.writeHead(502, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+  if (
+    Number.isFinite(Number(contentLength)) &&
+    Number(contentLength) > MEDIA_DECLARED_CAP_BYTES
+  ) {
+    res.writeHead(502, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-store',
+    });
     res.end(JSON.stringify({ error: 'Upstream media exceeds size cap' }));
-    try { await upstream.body?.cancel(); } catch { /* no-op */ }
+    try {
+      await upstream.body?.cancel();
+    } catch {
+      /* no-op */
+    }
     return;
   }
 
@@ -1003,7 +1168,10 @@ async function proxyMediaResponse(res, upstream, { sourceHeader = 'upstream' } =
 
   const stream = toReadable(upstream.body);
   if (!stream) {
-    const buf = await readResponseBytesCapped(upstream, MEDIA_DECLARED_CAP_BYTES);
+    const buf = await readResponseBytesCapped(
+      upstream,
+      MEDIA_DECLARED_CAP_BYTES,
+    );
     res.end(buf);
     return;
   }
@@ -1032,16 +1200,21 @@ async function proxyMediaResponse(res, upstream, { sourceHeader = 'upstream' } =
  * @param {Function} [options.lookup] - DNS lookup for the address checks.
  * @returns {Promise<{ok:true,body:Buffer,contentType:string}|null>}
  */
-export async function fetchCctvImageFromUpstream(url, {
-  fetchImpl = null,
-  timeoutMs = CCTV_FRAME_FETCH_TIMEOUT_MS,
-  localConfig = false,
-  lookup,
-} = {}) {
+export async function fetchCctvImageFromUpstream(
+  url,
+  {
+    fetchImpl = null,
+    timeoutMs = CCTV_FRAME_FETCH_TIMEOUT_MS,
+    localConfig = false,
+    lookup,
+  } = {},
+) {
   if (!url || !/^https?:\/\//i.test(url)) return null;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
-    controller.abort(new DOMException('CCTV upstream frame fetch timed out', 'TimeoutError'));
+    controller.abort(
+      new DOMException('CCTV upstream frame fetch timed out', 'TimeoutError'),
+    );
   }, timeoutMs);
   try {
     const upstream = await fetchCameraResponse(url, {
@@ -1054,7 +1227,11 @@ export async function fetchCctvImageFromUpstream(url, {
     const contentType = upstream.headers.get('content-type') || '';
     // Raster images only: an SVG can carry script.
     if (!upstream.ok || mediaTypeKind(contentType) !== 'image') {
-      try { await upstream.body?.cancel(); } catch { /* no-op */ }
+      try {
+        await upstream.body?.cancel();
+      } catch {
+        /* no-op */
+      }
       return null;
     }
     return {
@@ -1122,7 +1299,8 @@ export function cctvProxy() {
         : null,
       frameUrl: `/api/cctv/frame/${encodeURIComponent(cameraId)}`,
       provider: source?.provider || '',
-      sourceKind: source?.sourceKind || (source?.url ? 'configured' : 'fallback'),
+      sourceKind:
+        source?.sourceKind || (source?.url ? 'configured' : 'fallback'),
     };
   };
 
@@ -1145,20 +1323,31 @@ export function cctvProxy() {
    * counts against the client's Street View budget (streetViewRateLimiter);
    * once that is spent this returns `{ ok: false, rateLimited: true }`.
    */
-  const streetViewFallback = async ({ lat, lon, heading, fov, pitch, rateLimitKey }) => {
+  const streetViewFallback = async ({
+    lat,
+    lon,
+    heading,
+    fov,
+    pitch,
+    rateLimitKey,
+  }) => {
     const streetViewKey = googleServerApiKey();
-    if (!streetViewKey || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    if (!streetViewKey || !Number.isFinite(lat) || !Number.isFinite(lon))
+      return null;
     const pose = {
       location: `${lat.toFixed(5)},${lon.toFixed(5)}`,
       heading: String(Number.isFinite(heading) ? heading : 0),
       fov: String(Number.isFinite(fov) ? Math.max(20, Math.min(120, fov)) : 80),
-      pitch: String(Number.isFinite(pitch) ? Math.max(-40, Math.min(20, pitch)) : 0),
+      pitch: String(
+        Number.isFinite(pitch) ? Math.max(-40, Math.min(20, pitch)) : 0,
+      ),
     };
     const cacheKey = `${pose.location}|${pose.heading}|${pose.fov}|${pose.pitch}`;
     const cached = streetViewFrames.get(cacheKey);
     if (cached) return cached;
     const limiter = streetViewRateLimiter();
-    if (limiter && !limiter(rateLimitKey)) return { ok: false, rateLimited: true };
+    if (limiter && !limiter(rateLimitKey))
+      return { ok: false, rateLimited: true };
     try {
       const sv = new URL('https://maps.googleapis.com/maps/api/streetview');
       sv.searchParams.set('size', '960x540');
@@ -1193,7 +1382,9 @@ export function cctvProxy() {
       server.middlewares.use('/api/cctv', async (req, res) => {
         try {
           const sources = await getCctvSources();
-          const sourceById = new Map(sources.map((source) => [source.id, source]));
+          const sourceById = new Map(
+            sources.map((source) => [source.id, source]),
+          );
           const url = new URL(req.url || '/', 'http://localhost');
 
           if (url.pathname === '/sources') {
@@ -1214,33 +1405,47 @@ export function cctvProxy() {
                 mountHeightM: source.mountHeightM,
                 groundElevationM: source.groundElevationM,
                 feedType: normalizeFeedType(source.feedType),
-                sourceKind: source.sourceKind || (source.url ? 'configured' : 'fallback'),
+                sourceKind:
+                  source.sourceKind || (source.url ? 'configured' : 'fallback'),
                 poseSource: source.poseSource,
                 license: source.license,
               })),
             };
-            res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+            res.writeHead(200, {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store',
+            });
             res.end(JSON.stringify(body));
             return;
           }
 
           if (url.pathname === '/health') {
-            res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+            res.writeHead(200, {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store',
+            });
             res.end(JSON.stringify({ cameras: listHealth() }));
             return;
           }
 
           if (url.pathname.startsWith('/stream/')) {
-            const cameraId = decodeURIComponent(url.pathname.replace('/stream/', '').trim()) || 'camera';
+            const cameraId =
+              decodeURIComponent(url.pathname.replace('/stream/', '').trim()) ||
+              'camera';
             const source = sourceById.get(cameraId);
             const payload = buildStreamPayload(source, cameraId);
-            res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+            res.writeHead(200, {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store',
+            });
             res.end(JSON.stringify(payload));
             return;
           }
 
           if (url.pathname.startsWith('/media/')) {
-            const cameraId = decodeURIComponent(url.pathname.replace('/media/', '').trim()) || 'camera';
+            const cameraId =
+              decodeURIComponent(url.pathname.replace('/media/', '').trim()) ||
+              'camera';
             const source = sourceById.get(cameraId);
             const mediaUrl = source?.url || '';
             const feedType = normalizeFeedType(source?.feedType || 'image');
@@ -1252,13 +1457,22 @@ export function cctvProxy() {
                 label: source?.provider || 'No upstream URL',
                 message: 'No stream URL configured',
               });
-              res.writeHead(404, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-              res.end(JSON.stringify({ error: 'No media URL configured for this camera' }));
+              res.writeHead(404, {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store',
+              });
+              res.end(
+                JSON.stringify({
+                  error: 'No media URL configured for this camera',
+                }),
+              );
               return;
             }
 
             try {
-              const upstreamHeaders = { 'User-Agent': 'gods-eye-view-cctv-proxy/1.0' };
+              const upstreamHeaders = {
+                'User-Agent': 'gods-eye-view-cctv-proxy/1.0',
+              };
               const requestRange = req.headers?.range;
               if (requestRange) upstreamHeaders.Range = requestRange;
               // A live stream runs as long as the viewer watches, so the
@@ -1272,11 +1486,12 @@ export function cctvProxy() {
                   timeoutMs: CCTV_MEDIA_HEADERS_TIMEOUT_MS,
                   response: res,
                   headersOnly: true,
-                  fetchImpl: (target, init) => fetchCameraResponse(target, {
-                    ...init,
-                    localConfig: source?.localConfig === true,
-                  }),
-                }
+                  fetchImpl: (target, init) =>
+                    fetchCameraResponse(target, {
+                      ...init,
+                      localConfig: source?.localConfig === true,
+                    }),
+                },
               );
               const contentType = upstream.headers.get('content-type') || '';
               if (!upstream.ok) {
@@ -1286,9 +1501,20 @@ export function cctvProxy() {
                   label: source?.provider || 'Configured source',
                   message: `Upstream HTTP ${upstream.status}`,
                 });
-                try { await upstream.body?.cancel(); } catch { /* no-op */ }
-                res.writeHead(upstream.status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-                res.end(JSON.stringify({ error: `Upstream returned ${upstream.status}` }));
+                try {
+                  await upstream.body?.cancel();
+                } catch {
+                  /* no-op */
+                }
+                res.writeHead(upstream.status, {
+                  'Content-Type': 'application/json',
+                  'Cache-Control': 'no-store',
+                });
+                res.end(
+                  JSON.stringify({
+                    error: `Upstream returned ${upstream.status}`,
+                  }),
+                );
                 return;
               }
 
@@ -1296,15 +1522,26 @@ export function cctvProxy() {
               if (!mediaKind) {
                 // Images, video and HLS only: anything else (an HTML page, an
                 // SVG) would be served from the app's own origin.
-                try { await upstream.body?.cancel(); } catch { /* no-op */ }
+                try {
+                  await upstream.body?.cancel();
+                } catch {
+                  /* no-op */
+                }
                 setHealth(cameraId, {
                   status: 'degraded',
                   sourceKind: 'upstream',
                   label: source?.provider || 'Configured source',
                   message: 'Camera sent an unsupported media type',
                 });
-                res.writeHead(502, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-                res.end(JSON.stringify({ error: 'Camera sent an unsupported media type' }));
+                res.writeHead(502, {
+                  'Content-Type': 'application/json',
+                  'Cache-Control': 'no-store',
+                });
+                res.end(
+                  JSON.stringify({
+                    error: 'Camera sent an unsupported media type',
+                  }),
+                );
                 return;
               }
               if (isVideoFeedType(feedType) && mediaKind !== 'video') {
@@ -1319,17 +1556,24 @@ export function cctvProxy() {
                   status: 'ok',
                   sourceKind: isVideoFeedType(feedType) ? 'live' : 'snapshot',
                   label: source?.provider || 'Configured source',
-                  message: isVideoFeedType(feedType) ? 'Live stream connected' : 'Snapshot feed connected',
+                  message: isVideoFeedType(feedType)
+                    ? 'Live stream connected'
+                    : 'Snapshot feed connected',
                 });
               }
 
               await proxyMediaResponse(res, upstream, {
-                sourceHeader: isVideoFeedType(feedType) ? 'live-media' : 'upstream-image',
+                sourceHeader: isVideoFeedType(feedType)
+                  ? 'live-media'
+                  : 'upstream-image',
               });
               return;
             } catch (error) {
               if (error instanceof ClientGoneError) return;
-              console.warn('[CCTV Proxy] media fetch failed:', error?.message || error);
+              console.warn(
+                '[CCTV Proxy] media fetch failed:',
+                error?.message || error,
+              );
               const status = upstreamErrorStatus(error);
               setHealth(cameraId, {
                 status: 'degraded',
@@ -1341,7 +1585,10 @@ export function cctvProxy() {
                 res.end();
                 return;
               }
-              res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+              res.writeHead(status, {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store',
+              });
               res.end(JSON.stringify({ error: 'Media proxy failed' }));
               return;
             }
@@ -1353,25 +1600,37 @@ export function cctvProxy() {
             return;
           }
 
-          const cameraId = decodeURIComponent(url.pathname.replace('/frame/', '').trim()) || 'camera';
+          const cameraId =
+            decodeURIComponent(url.pathname.replace('/frame/', '').trim()) ||
+            'camera';
           const source = sourceById.get(cameraId);
-          const label = url.searchParams.get('label') || source?.name || cameraId;
+          const label =
+            url.searchParams.get('label') || source?.name || cameraId;
           const city = url.searchParams.get('city') || source?.city || '';
           const lat = Number(url.searchParams.get('lat') || source?.lat);
           const lon = Number(url.searchParams.get('lon') || source?.lon);
-          const heading = Number(url.searchParams.get('heading') || source?.headingDeg);
+          const heading = Number(
+            url.searchParams.get('heading') || source?.headingDeg,
+          );
           const fov = Number(url.searchParams.get('fov') || source?.fovDeg);
-          const pitch = Number(url.searchParams.get('pitch') || source?.pitchDeg);
+          const pitch = Number(
+            url.searchParams.get('pitch') || source?.pitchDeg,
+          );
 
           // Only use server-registered upstream URLs — never accept client-supplied URLs
           // (prevents SSRF via ?upstream= query parameter)
           const upstreamCandidate =
-            source?.snapshotUrl
-            || (!isVideoFeedType(normalizeFeedType(source?.feedType)) ? source?.url : '');
+            source?.snapshotUrl ||
+            (!isVideoFeedType(normalizeFeedType(source?.feedType))
+              ? source?.url
+              : '');
 
-          const upstreamImage = await fetchCctvImageFromUpstream(upstreamCandidate, {
-            localConfig: source?.localConfig === true,
-          });
+          const upstreamImage = await fetchCctvImageFromUpstream(
+            upstreamCandidate,
+            {
+              localConfig: source?.localConfig === true,
+            },
+          );
           if (upstreamImage?.ok) {
             setHealth(cameraId, {
               status: 'ok',
@@ -1389,7 +1648,14 @@ export function cctvProxy() {
             return;
           }
 
-          const sv = await streetViewFallback({ lat, lon, heading, fov, pitch, rateLimitKey: rateLimitKey(req) });
+          const sv = await streetViewFallback({
+            lat,
+            lon,
+            heading,
+            fov,
+            pitch,
+            rateLimitKey: rateLimitKey(req),
+          });
           if (sv?.ok) {
             setHealth(cameraId, {
               status: 'degraded',

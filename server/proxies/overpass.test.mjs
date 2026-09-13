@@ -69,7 +69,10 @@ test('a route is fetched once from OSRM and then served from the cache', async (
       routes: [{ distance: 1234.4, duration: 99.6, geometry: { coordinates } }],
     });
   });
-  const params = { profile: 'walking', coords: '-97.7431,30.2672;-97.7400,30.2700' };
+  const params = {
+    profile: 'walking',
+    coords: '-97.7431,30.2672;-97.7400,30.2700',
+  };
   const expected = {
     ok: true,
     profile: 'foot',

@@ -4,12 +4,19 @@
  * with memory caches, coalesced refreshes and stale fallback.
  */
 
-import { normalizeRegionalArticles, normalizeRegionalPlace, normalizeRegionalWeather } from '../../src/data/regionalBrief.js';
+import {
+  normalizeRegionalArticles,
+  normalizeRegionalPlace,
+  normalizeRegionalWeather,
+} from '../../src/data/regionalBrief.js';
 import { coalesceProxyRequest } from '../lib/coalesce.mjs';
 import { PROJECT_URL } from '../lib/projectUrl.mjs';
 import { requiredFiniteQueryNumber } from '../lib/queryParams.mjs';
 import { createRateLimiter, rateLimitKey } from '../lib/rateLimit.mjs';
-import { readResponseJsonCapped, readResponseTextCapped } from '../lib/upstreamBody.mjs';
+import {
+  readResponseJsonCapped,
+  readResponseTextCapped,
+} from '../lib/upstreamBody.mjs';
 
 // ---------------------------------------------------------------------------
 // Regional cockpit briefing proxy
@@ -20,14 +27,22 @@ const REGIONAL_BRIEF_MAX_CACHE = 120;
 const REGIONAL_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const _regionalBriefCache = new Map();
 const _regionalBriefInFlight = new Map();
-const _regionalBriefRateLimiter = createRateLimiter({ windowMs: 60_000, max: 30, globalMax: 90 });
+const _regionalBriefRateLimiter = createRateLimiter({
+  windowMs: 60_000,
+  max: 30,
+  globalMax: 90,
+});
 const WEATHER_EFFECTS_CACHE_MS = 5 * 60_000;
 const WEATHER_EFFECTS_STALE_MS = 30 * 60_000;
 const WEATHER_EFFECTS_MAX_CACHE = 180;
 const WEATHER_EFFECTS_MAX_RESPONSE_BYTES = 512 * 1024;
 const _weatherEffectsCache = new Map();
 const _weatherEffectsInFlight = new Map();
-const _weatherEffectsRateLimiter = createRateLimiter({ windowMs: 60_000, max: 45, globalMax: 120 });
+const _weatherEffectsRateLimiter = createRateLimiter({
+  windowMs: 60_000,
+  max: 45,
+  globalMax: 120,
+});
 let _nominatimQueue = Promise.resolve();
 let _nominatimLastRequestAt = 0;
 
@@ -35,7 +50,8 @@ export function validRegionalPoint(params) {
   const latitude = requiredFiniteQueryNumber(params, 'latitude');
   const longitude = requiredFiniteQueryNumber(params, 'longitude');
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
-  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)
+    return null;
   return { latitude, longitude };
 }
 
@@ -55,11 +71,14 @@ function trimWeatherEffectsCache() {
   }
 }
 
-async function fetchRegionalJson(url, {
-  headers = {},
-  timeoutMs = 9000,
-  maxBytes = REGIONAL_MAX_RESPONSE_BYTES,
-} = {}) {
+async function fetchRegionalJson(
+  url,
+  {
+    headers = {},
+    timeoutMs = 9000,
+    maxBytes = REGIONAL_MAX_RESPONSE_BYTES,
+  } = {},
+) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -71,11 +90,14 @@ async function fetchRegionalJson(url, {
   }
 }
 
-async function fetchRegionalText(url, {
-  headers = {},
-  timeoutMs = 9000,
-  maxBytes = REGIONAL_MAX_RESPONSE_BYTES,
-} = {}) {
+async function fetchRegionalText(
+  url,
+  {
+    headers = {},
+    timeoutMs = 9000,
+    maxBytes = REGIONAL_MAX_RESPONSE_BYTES,
+  } = {},
+) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -95,25 +117,39 @@ async function fetchRegionalText(url, {
 export function decodeRssText(value) {
   return String(value || '')
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&')
-    .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function rssTag(block, tag) {
-  return decodeRssText(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`, 'i').exec(block)?.[1] || '');
+  return decodeRssText(
+    new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`, 'i').exec(
+      block,
+    )?.[1] || '',
+  );
 }
 
 function normalizeRssArticles(xml, limit = 5) {
   const seen = new Set();
   const articles = [];
-  for (const match of String(xml || '').matchAll(/<item>([\s\S]*?)<\/item>/gi)) {
+  for (const match of String(xml || '').matchAll(
+    /<item>([\s\S]*?)<\/item>/gi,
+  )) {
     const item = match[1];
     const title = rssTag(item, 'title').slice(0, 180);
     const url = rssTag(item, 'link');
     let parsedUrl;
-    try { parsedUrl = new URL(url); } catch { continue; }
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      continue;
+    }
     if (!title || !['http:', 'https:'].includes(parsedUrl.protocol)) continue;
     const source = rssTag(item, 'source');
     const signature = `${title.toLowerCase()}|${source.toLowerCase() || parsedUrl.hostname}`;
@@ -124,7 +160,9 @@ function normalizeRssArticles(xml, limit = 5) {
       title,
       url: parsedUrl.href,
       domain: source || parsedUrl.hostname.replace(/^www\./, ''),
-      publishedAt: Number.isNaN(Date.parse(rawDate)) ? null : new Date(rawDate).toISOString(),
+      publishedAt: Number.isNaN(Date.parse(rawDate))
+        ? null
+        : new Date(rawDate).toISOString(),
       sourceCountry: null,
     });
     if (articles.length >= limit) break;
@@ -145,12 +183,15 @@ function fetchRegionalPlace(point) {
       addressdetails: '1',
       'accept-language': 'en',
     });
-    const payload = await fetchRegionalJson(`https://nominatim.openstreetmap.org/reverse?${params}`, {
-      headers: {
-        'User-Agent': `GodsEyeView/0.1 (+${PROJECT_URL})`,
-        Referer: PROJECT_URL,
+    const payload = await fetchRegionalJson(
+      `https://nominatim.openstreetmap.org/reverse?${params}`,
+      {
+        headers: {
+          'User-Agent': `GodsEyeView/0.1 (+${PROJECT_URL})`,
+          Referer: PROJECT_URL,
+        },
       },
-    });
+    );
     return normalizeRegionalPlace(payload);
   });
   _nominatimQueue = task.catch(() => null);
@@ -159,7 +200,8 @@ function fetchRegionalPlace(point) {
 
 async function fetchRegionalNews(place) {
   const query = place?.locality || place?.region || place?.country;
-  if (!query) return { status: 'unavailable', query: null, articles: [], source: null };
+  if (!query)
+    return { status: 'unavailable', query: null, articles: [], source: null };
   const rssParams = new URLSearchParams({
     q: String(query).replace(/["\\]/g, ' ').trim(),
     hl: 'en-US',
@@ -167,13 +209,19 @@ async function fetchRegionalNews(place) {
     ceid: 'US:en',
   });
   try {
-    const xml = await fetchRegionalText(`https://news.google.com/rss/search?${rssParams}`, {
-      headers: { 'User-Agent': 'GodsEyeView/0.1' },
-      timeoutMs: 12_000,
-    });
+    const xml = await fetchRegionalText(
+      `https://news.google.com/rss/search?${rssParams}`,
+      {
+        headers: { 'User-Agent': 'GodsEyeView/0.1' },
+        timeoutMs: 12_000,
+      },
+    );
     const articles = normalizeRssArticles(xml, 5);
-    if (articles.length) return { status: 'ready', query, articles, source: 'Google News RSS' };
-  } catch { /* fall through to the existing free index */ }
+    if (articles.length)
+      return { status: 'ready', query, articles, source: 'Google News RSS' };
+  } catch {
+    /* fall through to the existing free index */
+  }
   const params = new URLSearchParams({
     query: `"${String(query).replace(/["\\]/g, ' ').trim()}"`,
     mode: 'artlist',
@@ -183,12 +231,20 @@ async function fetchRegionalNews(place) {
     timespan: '48h',
   });
   try {
-    const payload = await fetchRegionalJson(`https://api.gdeltproject.org/api/v2/doc/doc?${params}`, {
-      headers: { 'User-Agent': 'GodsEyeView/0.1' },
-      timeoutMs: 12_000,
-    });
+    const payload = await fetchRegionalJson(
+      `https://api.gdeltproject.org/api/v2/doc/doc?${params}`,
+      {
+        headers: { 'User-Agent': 'GodsEyeView/0.1' },
+        timeoutMs: 12_000,
+      },
+    );
     const articles = normalizeRegionalArticles(payload, 5);
-    return { status: articles.length ? 'ready' : 'empty', query, articles, source: 'GDELT fallback' };
+    return {
+      status: articles.length ? 'ready' : 'empty',
+      query,
+      articles,
+      source: 'GDELT fallback',
+    };
   } catch {
     return { status: 'unavailable', query, articles: [], source: null };
   }
@@ -198,13 +254,17 @@ async function fetchRegionalWeather(point) {
   const params = new URLSearchParams({
     latitude: point.latitude.toFixed(5),
     longitude: point.longitude.toFixed(5),
-    current: 'temperature_2m,apparent_temperature,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,visibility',
+    current:
+      'temperature_2m,apparent_temperature,precipitation,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,visibility',
     timezone: 'UTC',
   });
   try {
-    const payload = await fetchRegionalJson(`https://api.open-meteo.com/v1/forecast?${params}`, {
-      maxBytes: WEATHER_EFFECTS_MAX_RESPONSE_BYTES,
-    });
+    const payload = await fetchRegionalJson(
+      `https://api.open-meteo.com/v1/forecast?${params}`,
+      {
+        maxBytes: WEATHER_EFFECTS_MAX_RESPONSE_BYTES,
+      },
+    );
     return normalizeRegionalWeather(payload);
   } catch {
     return null;
@@ -223,13 +283,15 @@ export function regionalBriefProxy() {
       fetchRegionalWeather(point),
     ]);
     const place = placeResult.status === 'fulfilled' ? placeResult.value : null;
-    const weather = weatherResult.status === 'fulfilled' ? weatherResult.value : null;
+    const weather =
+      weatherResult.status === 'fulfilled' ? weatherResult.value : null;
     const news = await fetchRegionalNews(place);
     if (!regionalBriefHasAnySource({ place, weather, news })) {
       throw new Error('All regional briefing sources unavailable');
     }
     const payload = {
-      status: place && weather && news.status !== 'unavailable' ? 'ready' : 'partial',
+      status:
+        place && weather && news.status !== 'unavailable' ? 'ready' : 'partial',
       retrievedAt: new Date().toISOString(),
       coordinates: point,
       place,
@@ -254,7 +316,10 @@ export function regionalBriefProxy() {
         return;
       }
       if (!_regionalBriefRateLimiter(rateLimitKey(req))) {
-        res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '10' });
+        res.writeHead(429, {
+          'Content-Type': 'application/json',
+          'Retry-After': '10',
+        });
         res.end(JSON.stringify({ error: 'Rate limit exceeded' }));
         return;
       }
@@ -262,18 +327,28 @@ export function regionalBriefProxy() {
       const point = validRegionalPoint(url.searchParams);
       if (!point) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Valid latitude and longitude are required' }));
+        res.end(
+          JSON.stringify({
+            error: 'Valid latitude and longitude are required',
+          }),
+        );
         return;
       }
       const key = `${(Math.round(point.latitude * 10) / 10).toFixed(1)},${(Math.round(point.longitude * 10) / 10).toFixed(1)}`;
       const now = Date.now();
       const cached = _regionalBriefCache.get(key);
       if (cached && now - cached.cachedAt <= REGIONAL_BRIEF_CACHE_MS) {
-        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60', 'X-Regional-Brief': 'HIT' });
+        res.writeHead(200, {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'public, max-age=60',
+          'X-Regional-Brief': 'HIT',
+        });
         res.end(JSON.stringify({ ...cached.payload, status: 'cached' }));
         return;
       }
-      const request = coalesceProxyRequest(_regionalBriefInFlight, key, () => refresh(point, key));
+      const request = coalesceProxyRequest(_regionalBriefInFlight, key, () =>
+        refresh(point, key),
+      );
       try {
         const payload = await request.promise;
         res.writeHead(200, {
@@ -284,12 +359,23 @@ export function regionalBriefProxy() {
         res.end(JSON.stringify(payload));
       } catch {
         if (cached && now - cached.cachedAt <= REGIONAL_BRIEF_STALE_MS) {
-          res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Regional-Brief': 'STALE' });
+          res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store',
+            'X-Regional-Brief': 'STALE',
+          });
           res.end(JSON.stringify({ ...cached.payload, status: 'stale' }));
           return;
         }
-        res.writeHead(503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-        res.end(JSON.stringify({ error: 'Regional briefing is temporarily unavailable' }));
+        res.writeHead(503, {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+        });
+        res.end(
+          JSON.stringify({
+            error: 'Regional briefing is temporarily unavailable',
+          }),
+        );
       }
     });
   }
@@ -328,7 +414,10 @@ export function weatherEffectsProxy() {
         return;
       }
       if (!_weatherEffectsRateLimiter(rateLimitKey(req))) {
-        res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '10' });
+        res.writeHead(429, {
+          'Content-Type': 'application/json',
+          'Retry-After': '10',
+        });
         res.end(JSON.stringify({ error: 'Rate limit exceeded' }));
         return;
       }
@@ -336,7 +425,11 @@ export function weatherEffectsProxy() {
       const point = validRegionalPoint(url.searchParams);
       if (!point) {
         res.writeHead(400, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Valid latitude and longitude are required' }));
+        res.end(
+          JSON.stringify({
+            error: 'Valid latitude and longitude are required',
+          }),
+        );
         return;
       }
       const key = `${(Math.round(point.latitude * 10) / 10).toFixed(1)},${(Math.round(point.longitude * 10) / 10).toFixed(1)}`;
@@ -351,7 +444,9 @@ export function weatherEffectsProxy() {
         res.end(JSON.stringify({ ...cached.payload, status: 'cached' }));
         return;
       }
-      const request = coalesceProxyRequest(_weatherEffectsInFlight, key, () => refresh(point, key));
+      const request = coalesceProxyRequest(_weatherEffectsInFlight, key, () =>
+        refresh(point, key),
+      );
       try {
         const payload = await request.promise;
         res.writeHead(200, {
@@ -370,8 +465,15 @@ export function weatherEffectsProxy() {
           res.end(JSON.stringify({ ...cached.payload, status: 'stale' }));
           return;
         }
-        res.writeHead(503, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-        res.end(JSON.stringify({ error: 'Weather effects are temporarily unavailable' }));
+        res.writeHead(503, {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-store',
+        });
+        res.end(
+          JSON.stringify({
+            error: 'Weather effects are temporarily unavailable',
+          }),
+        );
       }
     });
   }
