@@ -227,6 +227,16 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   relaying OpenAI's, Google's and the data feeds' own error text, and
   exception messages, to the browser: they answer in their own words and log
   the details on the server.
+- Harden the CCTV proxy. It relayed whatever a camera URL returned, HTML and
+  SVG included, from the app's own origin, and it followed redirects
+  anywhere, so a camera host could point it at a private address such as
+  `169.254.169.254`. It now relays only images, video and HLS playlists,
+  marked `nosniff` and with a sandboxing Content-Security-Policy. It follows
+  at most three redirects itself: a camera from the Austin, Caltrans or TfL
+  feeds, or a redirect away from a configured camera's own origin, must
+  resolve to public addresses, and the connection is pinned to them. Cameras
+  in your own `CCTV_SOURCES_FILE` or `CCTV_SOURCES_JSON` can still be on your
+  network.
 
 ## [0.1.1] — 2026-09-01 — Installation and live-data fixes
 

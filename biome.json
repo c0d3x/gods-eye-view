@@ -56,7 +56,12 @@
       "src/cacheBounds.test.mjs",
       "server/lib/fetchWithTimeout.mjs",
       "server/lib/fetchWithTimeout.test.mjs",
-      "src/upstreamTimeouts.test.mjs"
+      "src/upstreamTimeouts.test.mjs",
+      "server/lib/publicAddress.mjs",
+      "server/lib/publicAddress.test.mjs",
+      "server/lib/cameraFetch.mjs",
+      "server/lib/cameraFetch.test.mjs",
+      "src/cctvMediaProxy.test.mjs"
     ]
   },
   "formatter": {

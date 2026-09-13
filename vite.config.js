@@ -33,7 +33,6 @@ import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { Readable } from 'node:stream';
-import https from 'node:https';
 import { lookup as lookupDns } from 'node:dns/promises';
 import { directionToHeading } from './src/data/directionText.js';
 import {
@@ -90,6 +89,18 @@ import {
   upstreamErrorMessage,
   upstreamErrorStatus,
 } from './server/lib/fetchWithTimeout.mjs';
+import {
+  CameraRedirectError,
+  fetchCameraResponse,
+  mediaTypeKind,
+} from './server/lib/cameraFetch.mjs';
+import {
+  isNonGlobalIpv4,
+  isPublicAddress,
+  PrivateAddressError,
+  requestPinned,
+  resolvePublicAddresses,
+} from './server/lib/publicAddress.mjs';
 import {
   fetchTerrainChunkWithRetry,
   parseTerrainPoints,
@@ -871,24 +882,6 @@ function cleanRadioText(value, maxLength) {
   return String(value ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLength).trim();
 }
 
-function isNonGlobalIpv4(hostname) {
-  const pieces = hostname.split('.');
-  if (pieces.length !== 4 || pieces.some((piece) => !/^\d{1,3}$/.test(piece))) return false;
-  const values = pieces.map(Number);
-  if (values.some((value) => value > 255)) return true;
-  const [a, b, c] = values;
-  return a === 0 || a === 10 || a === 127 || a >= 224
-    || (a === 100 && b >= 64 && b <= 127)
-    || (a === 169 && b === 254)
-    || (a === 172 && b >= 16 && b <= 31)
-    || (a === 192 && b === 0)
-    || (a === 192 && b === 88 && c === 99)
-    || (a === 192 && b === 168)
-    || (a === 198 && (b === 18 || b === 19))
-    || (a === 198 && b === 51 && c === 100)
-    || (a === 203 && b === 0 && c === 113);
-}
-
 /** Return a normalized public HTTPS URL, or null for local/private targets. */
 export function publicRadioHttpsUrl(value) {
   try {
@@ -993,37 +986,7 @@ function radioMirrorOrigin(value) {
 
 /** Return whether a resolved Radio Browser address is safe for an outbound request. */
 export function isPublicRadioAddress(value) {
-  const address = String(value ?? '').trim().toLowerCase().replace(/^\[|\]$/g, '');
-  if (!address) return false;
-  if (!address.includes(':')) {
-    const ipv4 = address.split('.');
-    return ipv4.length === 4
-      && ipv4.every((part) => /^\d{1,3}$/.test(part) && Number(part) <= 255)
-      && !isNonGlobalIpv4(address);
-  }
-  const pieces = address.split('::');
-  if (pieces.length > 2) return false;
-  const left = pieces[0] ? pieces[0].split(':') : [];
-  const right = pieces[1] ? pieces[1].split(':') : [];
-  const missing = 8 - left.length - right.length;
-  if ((pieces.length === 1 && missing !== 0) || (pieces.length === 2 && missing < 1)) return false;
-  const groups = [...left, ...Array(Math.max(0, missing)).fill('0'), ...right];
-  if (groups.length !== 8 || groups.some((group) => !/^[0-9a-f]{1,4}$/.test(group))) return false;
-  const numeric = groups.reduce((total, group) => (total << 16n) | BigInt(`0x${group}`), 0n);
-  const inCidr = (base, prefix) => {
-    const shift = 128n - BigInt(prefix);
-    return (numeric >> shift) === (base >> shift);
-  };
-  const base = (text) => text.split(':').reduce(
-    (total, group) => (total << 16n) | BigInt(`0x${group || '0'}`),
-    0n,
-  );
-  const cidr = (text, prefix) => inCidr(base(text), prefix);
-  return cidr('2000:0:0:0:0:0:0:0', 3)
-    && !cidr('2001:0:0:0:0:0:0:0', 23)
-    && !cidr('2001:db8:0:0:0:0:0:0', 32)
-    && !cidr('2002:0:0:0:0:0:0:0', 16)
-    && !cidr('3fff:0:0:0:0:0:0:0', 20);
+  return isPublicAddress(value);
 }
 
 function radioProxyDestination(value) {
@@ -1051,43 +1014,14 @@ function radioProxyDestination(value) {
 }
 
 async function resolveRadioProxyAddresses(hostname, lookupImpl) {
-  const resolved = await lookupImpl(hostname, { all: true, verbatim: true });
-  const rows = Array.isArray(resolved) ? resolved : [resolved];
-  const addresses = rows
-    .map((row) => ({ address: String(row?.address || ''), family: Number(row?.family) || undefined }))
-    .filter((row) => row.address);
-  if (!addresses.length || addresses.some((row) => !isPublicRadioAddress(row.address))) {
-    throw new Error('Radio Browser resolved to a forbidden address');
+  try {
+    return await resolvePublicAddresses(hostname, lookupImpl);
+  } catch (error) {
+    if (error instanceof PrivateAddressError) {
+      throw new Error('Radio Browser resolved to a forbidden address');
+    }
+    throw error;
   }
-  return addresses;
-}
-
-function fetchPinnedRadioResponse(url, options, addresses) {
-  return new Promise((resolve, reject) => {
-    const address = addresses[0];
-    const request = https.request(url, {
-      method: 'GET',
-      headers: options.headers,
-      signal: options.signal,
-      lookup(_hostname, lookupOptions, callback) {
-        if (lookupOptions?.all) callback(null, addresses);
-        else callback(null, address.address, address.family);
-      },
-    }, (response) => {
-      const headers = new Headers();
-      for (const [name, value] of Object.entries(response.headers)) {
-        if (Array.isArray(value)) value.forEach((item) => headers.append(name, item));
-        else if (value !== undefined) headers.set(name, String(value));
-      }
-      resolve(new Response(Readable.toWeb(response), {
-        status: response.statusCode || 500,
-        statusText: response.statusMessage || '',
-        headers,
-      }));
-    });
-    request.on('error', reject);
-    request.end();
-  });
 }
 
 async function mapRadioConcurrent(values, concurrency, mapper) {
@@ -1132,7 +1066,7 @@ export function createRadioProxyMiddleware({ fetchImpl = null, lookupImpl = look
       };
       const response = fetchImpl
         ? await fetchImpl(destination.href, options)
-        : await fetchPinnedRadioResponse(destination, options, addresses);
+        : await requestPinned(destination, options, addresses);
       if (response.status >= 300 && response.status < 400) {
         try { await response.body?.cancel?.(); } catch { /* no-op */ }
         throw new Error('Radio Browser redirects are refused');
@@ -3671,6 +3605,24 @@ const CCTV_SOURCE_FETCH_TIMEOUT_MS = 15 * 1000;
  * client refresh cadence. A bounded miss can fall through to Street View or
  * the synthetic frame instead of leaving the browser preview pending. */
 export const CCTV_FRAME_FETCH_TIMEOUT_MS = 8 * 1000;
+
+/**
+ * Sent with every CCTV frame and media response. nosniff stops a browser
+ * from reading a relayed body as another type, and the CSP turns scripts off
+ * if one is ever opened as a page.
+ */
+const CCTV_RELAY_SAFETY_HEADERS = Object.freeze({
+  'X-Content-Type-Options': 'nosniff',
+  'Content-Security-Policy': "default-src 'none'; sandbox",
+});
+
+/** A camera's health message for a failed media fetch, in our own words. */
+function cameraFailureMessage(error, status) {
+  if (status === 504) return 'Upstream did not answer in time';
+  if (error instanceof PrivateAddressError) return 'Camera address is not allowed';
+  if (error instanceof CameraRedirectError) return 'Camera redirect was not followed';
+  return 'Media fetch failed';
+}
 /** How long a Street View fallback frame is reused. The imagery is static,
  * while the CCTV panel re-polls each camera every 10–60 s. */
 export const CCTV_STREET_VIEW_CACHE_TTL_MS = 30 * 60 * 1000;
@@ -4383,12 +4335,17 @@ async function refreshCctvSources() {
   // Live sources first so file/env overrides win on duplicate IDs (Map last-write).
   const merged = [...fromAustin, ...fromCaltrans, ...fromTfl, ...fromFile, ...fromEnv];
 
+  // Only the operator's own file/env entries may point at a private address
+  // (a camera on their network); feed cameras must stay public.
+  const localEntries = new Set([...fromFile, ...fromEnv]);
+
   // Deduplicate by camera ID (last-write wins because of Map.set)
   const byId = new Map();
   for (const item of merged) {
     if (!item || typeof item !== 'object') continue;
     const normalized = normalizeSourceItem(item);
     if (!normalized.id) continue;
+    normalized.localConfig = localEntries.has(item);
     byId.set(normalized.id, normalized);
   }
 
@@ -4552,6 +4509,7 @@ async function proxyMediaResponse(res, upstream, { sourceHeader = 'upstream' } =
     'Content-Type': contentType,
     'Cache-Control': cacheControl,
     'X-CCTV-Source': sourceHeader,
+    ...CCTV_RELAY_SAFETY_HEADERS,
   };
   if (contentLength) headers['Content-Length'] = contentLength;
   if (contentRange) headers['Content-Range'] = contentRange;
@@ -4587,18 +4545,25 @@ async function proxyMediaResponse(res, upstream, { sourceHeader = 'upstream' } =
  * Fetch one upstream CCTV image within the frame-refresh budget.
  *
  * A timeout is treated like every other upstream miss so the caller can
- * continue through the Street View and synthetic fallback chain. `fetchImpl`
- * and `timeoutMs` are injectable only to keep the timeout contract unit-testable.
+ * continue through the Street View and synthetic fallback chain. `fetchImpl`,
+ * `lookup` and `timeoutMs` are injectable only to keep these contracts
+ * unit-testable. fetchCameraResponse follows and checks redirects.
  *
  * @param {string} url - Server-registered upstream image URL.
  * @param {object} [options]
- * @param {typeof fetch} [options.fetchImpl=fetch] - Fetch implementation.
+ * @param {typeof fetch | null} [options.fetchImpl] - Makes each request
+ *   (see fetchCameraResponse).
  * @param {number} [options.timeoutMs=CCTV_FRAME_FETCH_TIMEOUT_MS] - Abort timeout.
+ * @param {boolean} [options.localConfig=false] - The URL is from the local
+ *   camera config, so it may point at a private address.
+ * @param {Function} [options.lookup] - DNS lookup for the address checks.
  * @returns {Promise<{ok:true,body:Buffer,contentType:string}|null>}
  */
 export async function fetchCctvImageFromUpstream(url, {
-  fetchImpl = fetch,
+  fetchImpl = null,
   timeoutMs = CCTV_FRAME_FETCH_TIMEOUT_MS,
+  localConfig = false,
+  lookup,
 } = {}) {
   if (!url || !/^https?:\/\//i.test(url)) return null;
   const controller = new AbortController();
@@ -4606,12 +4571,19 @@ export async function fetchCctvImageFromUpstream(url, {
     controller.abort(new DOMException('CCTV upstream frame fetch timed out', 'TimeoutError'));
   }, timeoutMs);
   try {
-    const upstream = await fetchImpl(url, {
+    const upstream = await fetchCameraResponse(url, {
       headers: { 'User-Agent': 'gods-eye-view-cctv-proxy/1.0' },
       signal: controller.signal,
+      localConfig,
+      lookup,
+      fetchImpl,
     });
     const contentType = upstream.headers.get('content-type') || '';
-    if (!upstream.ok || !contentType.startsWith('image/')) return null;
+    // Raster images only: an SVG can carry script.
+    if (!upstream.ok || mediaTypeKind(contentType) !== 'image') {
+      try { await upstream.body?.cancel(); } catch { /* no-op */ }
+      return null;
+    }
     return {
       ok: true,
       body: Buffer.from(await upstream.arrayBuffer()),
@@ -4818,11 +4790,20 @@ export function cctvProxy() {
               if (requestRange) upstreamHeaders.Range = requestRange;
               // A live stream runs as long as the viewer watches, so the
               // deadline covers only the headers; the call ends when the
-              // viewer disconnects.
+              // viewer disconnects. fetchCameraResponse follows and checks
+              // redirects.
               const upstream = await fetchWithTimeout(
                 mediaUrl,
                 { headers: upstreamHeaders },
-                { timeoutMs: CCTV_MEDIA_HEADERS_TIMEOUT_MS, response: res, headersOnly: true }
+                {
+                  timeoutMs: CCTV_MEDIA_HEADERS_TIMEOUT_MS,
+                  response: res,
+                  headersOnly: true,
+                  fetchImpl: (target, init) => fetchCameraResponse(target, {
+                    ...init,
+                    localConfig: source?.localConfig === true,
+                  }),
+                }
               );
               const contentType = upstream.headers.get('content-type') || '';
               if (!upstream.ok) {
@@ -4838,12 +4819,27 @@ export function cctvProxy() {
                 return;
               }
 
-              if (isVideoFeedType(feedType) && !(contentType.startsWith('video/') || contentType.includes('mpegurl'))) {
+              const mediaKind = mediaTypeKind(contentType);
+              if (!mediaKind) {
+                // Images, video and HLS only: anything else (an HTML page, an
+                // SVG) would be served from the app's own origin.
+                try { await upstream.body?.cancel(); } catch { /* no-op */ }
                 setHealth(cameraId, {
                   status: 'degraded',
                   sourceKind: 'upstream',
                   label: source?.provider || 'Configured source',
-                  message: `Unexpected media type ${contentType || 'unknown'}`,
+                  message: 'Camera sent an unsupported media type',
+                });
+                res.writeHead(502, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+                res.end(JSON.stringify({ error: 'Camera sent an unsupported media type' }));
+                return;
+              }
+              if (isVideoFeedType(feedType) && mediaKind !== 'video') {
+                setHealth(cameraId, {
+                  status: 'degraded',
+                  sourceKind: 'upstream',
+                  label: source?.provider || 'Configured source',
+                  message: 'Camera sent a still image instead of video',
                 });
               } else {
                 setHealth(cameraId, {
@@ -4866,7 +4862,7 @@ export function cctvProxy() {
                 status: 'degraded',
                 sourceKind: 'upstream',
                 label: source?.provider || 'Configured source',
-                message: status === 504 ? 'Upstream did not answer in time' : 'Media fetch failed',
+                message: cameraFailureMessage(error, status),
               });
               if (res.headersSent) {
                 res.end();
@@ -4900,7 +4896,9 @@ export function cctvProxy() {
             source?.snapshotUrl
             || (!isVideoFeedType(normalizeFeedType(source?.feedType)) ? source?.url : '');
 
-          const upstreamImage = await fetchCctvImageFromUpstream(upstreamCandidate);
+          const upstreamImage = await fetchCctvImageFromUpstream(upstreamCandidate, {
+            localConfig: source?.localConfig === true,
+          });
           if (upstreamImage?.ok) {
             setHealth(cameraId, {
               status: 'ok',
@@ -4912,6 +4910,7 @@ export function cctvProxy() {
               'Content-Type': upstreamImage.contentType,
               'Cache-Control': 'no-store',
               'X-CCTV-Source': 'upstream-image',
+              ...CCTV_RELAY_SAFETY_HEADERS,
             });
             res.end(upstreamImage.body);
             return;
@@ -4929,6 +4928,7 @@ export function cctvProxy() {
               'Content-Type': sv.contentType,
               'Cache-Control': 'no-store',
               'X-CCTV-Source': 'streetview',
+              ...CCTV_RELAY_SAFETY_HEADERS,
             });
             res.end(sv.body);
             return;
@@ -4957,6 +4957,7 @@ export function cctvProxy() {
             'Content-Type': 'image/svg+xml',
             'Cache-Control': 'no-store',
             'X-CCTV-Source': 'synthetic',
+            ...CCTV_RELAY_SAFETY_HEADERS,
           });
           res.end(svg);
         } catch (error) {

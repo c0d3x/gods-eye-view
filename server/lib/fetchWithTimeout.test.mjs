@@ -6,6 +6,7 @@ import {
   ClientGoneError,
   describeUpstreamFailure,
   fetchWithTimeout,
+  raceAbort,
   UpstreamTimeoutError,
   upstreamErrorMessage,
   upstreamErrorStatus,
@@ -90,6 +91,35 @@ test("the caller's own signal still aborts the call", async (t) => {
   );
   controller.abort(new Error('caller stopped'));
   await assert.rejects(pending, /caller stopped/);
+});
+
+test('a fetchImpl that ignores its signal is still abandoned in time', async () => {
+  let received;
+  const pending = fetchWithTimeout(
+    'https://camera.example/',
+    {},
+    {
+      timeoutMs: 50,
+      fetchImpl: (_url, init) => {
+        received = init.signal;
+        return new Promise(() => {});
+      },
+    },
+  );
+  await assert.rejects(pending, UpstreamTimeoutError);
+  assert.equal(received.aborted, true);
+});
+
+test('raceAbort settles with the promise, or with the abort', async () => {
+  assert.equal(await raceAbort(Promise.resolve('value')), 'value');
+  assert.equal(
+    await raceAbort(Promise.resolve('value'), new AbortController().signal),
+    'value',
+  );
+  await assert.rejects(
+    raceAbort(new Promise(() => {}), AbortSignal.abort(new Error('stopped'))),
+    /stopped/,
+  );
 });
 
 test("error messages use our own words, never the provider's", () => {

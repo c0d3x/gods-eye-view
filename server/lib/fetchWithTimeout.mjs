@@ -43,12 +43,14 @@ function clientGoneSignal(response) {
  * @param {number} options.timeoutMs
  * @param {import('node:http').ServerResponse} [options.response]
  * @param {boolean} [options.headersOnly]
+ * @param {typeof fetch} [options.fetchImpl] Makes the request; fetch() by
+ *   default. It gets the combined signal, and is abandoned once that aborts.
  * @returns {Promise<Response>}
  */
 export async function fetchWithTimeout(
   url,
   init = {},
-  { timeoutMs, response, headersOnly = false } = {},
+  { timeoutMs, response, headersOnly = false, fetchImpl = fetch } = {},
 ) {
   const deadline = new AbortController();
   const timer = setTimeout(
@@ -63,7 +65,10 @@ export async function fetchWithTimeout(
   }
   const signal = signals.length === 1 ? signals[0] : AbortSignal.any(signals);
   try {
-    const upstream = await fetch(url, { ...init, signal });
+    const upstream = await raceAbort(
+      fetchImpl(url, { ...init, signal }),
+      signal,
+    );
     if (headersOnly) clearTimeout(timer);
     return upstream;
   } catch (error) {
@@ -73,6 +78,33 @@ export async function fetchWithTimeout(
     if (signal.aborted && signal.reason instanceof Error) throw signal.reason;
     throw error;
   }
+}
+
+/**
+ * Settle as `promise` does, or reject with the signal's reason as soon as it
+ * aborts. For work that takes no signal itself, such as a DNS lookup.
+ * @template T
+ * @param {Promise<T>} promise
+ * @param {AbortSignal} [signal]
+ * @returns {Promise<T>}
+ */
+export function raceAbort(promise, signal) {
+  if (!signal) return promise;
+  return new Promise((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    if (signal.aborted) onAbort();
+    else signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (error) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(error);
+      },
+    );
+  });
 }
 
 /**
