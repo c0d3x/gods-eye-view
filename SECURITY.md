@@ -89,6 +89,12 @@ The dev server is a **key broker**: every server-side key above is spendable by 
   loopback only. Use a separately reviewed authentication proxy for remote
   access and keep provider-side quotas as the spend backstop.
 
+## Supply chain
+
+- **Reviewed install scripts.** `pnpm-workspace.yaml` lists every dependency allowed to run an install script, and pnpm fails the install when a new one appears.
+- **Locked, delayed updates.** CI installs with `pnpm install --frozen-lockfile`. Dependabot proposes weekly grouped updates for npm packages and GitHub Actions, and waits seven days after a release before proposing it, so a compromised release has time to be pulled. Security updates aren't delayed.
+- **Pinned CI actions.** Every GitHub Action in `.github/workflows/` is pinned to a full commit SHA, with its version in a comment, so a moved tag can't change the code CI runs; a test fails on an unpinned action. Workflows get a read-only token (`permissions: contents: read`), and checkouts don't keep it (`persist-credentials: false`).
+
 ## Scope & expectations
 
 - The Vite server is a **development/preview** server. If you expose it beyond localhost, put it behind your own auth/proxy and review the bindings (see the threat model above).

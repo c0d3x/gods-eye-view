@@ -73,7 +73,8 @@
       "src/panelLayoutStorage.js",
       "src/panelLayoutStorage.test.mjs",
       "scripts/coverage-summary.mjs",
-      "src/tooling/coverageSummary.test.mjs"
+      "src/tooling/coverageSummary.test.mjs",
+      "src/tooling/workflowPins.test.mjs"
     ]
   },
   "formatter": {

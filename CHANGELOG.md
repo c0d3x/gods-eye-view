@@ -15,6 +15,11 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 
 ### Development
 
+- Pin every GitHub Action in CI to a full commit SHA, with its version in a
+  comment, instead of a tag such as `@v7` that can be moved to other code.
+  Dependabot's weekly updates move the SHA and the comment together, and a
+  test fails if a workflow uses an unpinned action.
+
 - Measure test coverage in CI. The Node 24 job runs its tests under Node's
   coverage and writes the line, branch and function totals to the job
   summary, by area, with the largest source files no test loads and the
