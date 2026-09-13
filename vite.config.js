@@ -68,6 +68,11 @@ import {
   validateKeySetupUpdates,
 } from './src/keySetupCore.mjs';
 import { hardenCredentialFile } from './src/keySetupHardening.mjs';
+import {
+  DEFAULT_GOOGLE_REQUESTS_PER_MINUTE,
+  DEFAULT_OPENAI_REQUESTS_PER_MINUTE,
+  resolveRateLimit,
+} from './server/lib/rateLimit.mjs';
 import { createApiRequestGuard } from './server/lib/requestGuard.mjs';
 import {
   fetchTerrainChunkWithRetry,
@@ -482,53 +487,76 @@ const _overpassRateLimiter = makeRateLimiter({ windowMs: 60_000, max: 90, global
 const _militaryInstallationsRateLimiter = makeRateLimiter({ windowMs: 60_000, max: 90, globalMax: 300 });
 const _routeRateLimiter = makeRateLimiter({ windowMs: 60_000, max: 60, globalMax: 200 });
 
+/** GEV_RATELIMIT_* variables already reported as unreadable. */
+const _rateLimitWarnings = new Set();
 /**
- * Opt-in per-IP rate limiter for the cost-bearing API proxies (OpenAI / Google).
- * DEFAULT IS UNLIMITED: when the env var is unset, `0`, or non-numeric, this
- * returns `null` and the caller skips the check entirely — a runtime no-op that
- * preserves the original behavior. Only a positive integer N enables a fixed
- * 60s window of N requests/IP (built lazily once, then reused so its per-IP
- * window state persists across requests). The global backstop is set to a
- * generous multiple of the per-IP cap so a single host can't starve the rest.
+ * Per-IP rate limiter for a route family that spends provider quota (OpenAI
+ * or Google). On by default: server/lib/rateLimit.mjs holds the defaults and
+ * reads the GEV_RATELIMIT_* value. The limit is a fixed 60 s window of N
+ * requests per client IP, with a global backstop of 20N so one busy host
+ * can't starve the rest. `0` or `off` disables it (null); an unreadable value
+ * keeps the default and logs one warning per variable.
  *
- * @param {string|undefined} envValue - Raw env value (requests/min/IP).
- * @returns {((key:string)=>boolean)|null} An `allow(key)` fn, or null when unlimited.
+ * @param {string} envName - The GEV_RATELIMIT_* variable to read.
+ * @param {number} fallback - Default requests per minute per IP.
+ * @returns {((key:string)=>boolean)|null} An `allow(key)` fn, or null when disabled.
  */
-function makeOptInRateLimiter(envValue) {
-  const max = Number(envValue);
-  if (!Number.isFinite(max) || max <= 0) return null; // unset/0/garbage -> unlimited
-  return makeRateLimiter({ windowMs: 60_000, max: Math.floor(max), globalMax: Math.floor(max) * 20 });
+function makeCostRateLimiter(envName, fallback) {
+  const raw = process.env[envName];
+  const { perMinute, status } = resolveRateLimit(raw, fallback);
+  if (status === 'invalid' && !_rateLimitWarnings.has(envName)) {
+    _rateLimitWarnings.add(envName);
+    console.warn(`[RateLimit] ${envName}=${JSON.stringify(String(raw).slice(0, 40))} is not a number, 0 or off; using the default of ${fallback} per minute.`);
+  }
+  if (perMinute === null) return null;
+  return makeRateLimiter({ windowMs: 60_000, max: perMinute, globalMax: perMinute * 20 });
 }
 // Built LAZILY on first request, NOT at module load: `.env` values are applied to process.env later
 // (the plugin config hook calls loadEnv → process.env, AFTER this module is imported), so reading
-// process.env here at import time would always see them unset and silently stay unlimited even when
-// configured via .env. Building on first request (like the OPENAI_API_KEY reads) sees the loaded env;
-// the result is cached so the limiter's per-IP window state persists. `null` = unlimited (default).
-let _openAiRateLimiter; // undefined = not built yet; null = unlimited; fn = active limiter
+// process.env here at import time would miss a limit configured in .env. Building on first request
+// (like the OPENAI_API_KEY reads) sees the loaded env; the result is cached so the limiter's per-IP
+// window state persists.
+let _openAiRateLimiter; // undefined = not built yet; null = disabled; fn = active limiter
 let _googleRateLimiter;
-/** OpenAI cost endpoints (realtime/token + hud-summary). Null = unlimited (default). */
+let _streetViewRateLimiter;
+/** OpenAI cost endpoints (realtime/token + hud-summary). */
 function openAiRateLimiter() {
-  if (_openAiRateLimiter === undefined) _openAiRateLimiter = makeOptInRateLimiter(process.env.GEV_RATELIMIT_OPENAI_PER_MIN);
+  if (_openAiRateLimiter === undefined) {
+    _openAiRateLimiter = makeCostRateLimiter('GEV_RATELIMIT_OPENAI_PER_MIN', DEFAULT_OPENAI_REQUESTS_PER_MINUTE);
+  }
   return _openAiRateLimiter;
 }
-/** Google cost endpoint (nearby-places). Null = unlimited (default). */
+/** Google Places endpoints (nearby-places + text-search), one shared budget. */
 function googleRateLimiter() {
-  if (_googleRateLimiter === undefined) _googleRateLimiter = makeOptInRateLimiter(process.env.GEV_RATELIMIT_GOOGLE_PER_MIN);
+  if (_googleRateLimiter === undefined) {
+    _googleRateLimiter = makeCostRateLimiter('GEV_RATELIMIT_GOOGLE_PER_MIN', DEFAULT_GOOGLE_REQUESTS_PER_MINUTE);
+  }
   return _googleRateLimiter;
+}
+/**
+ * CCTV Street View fallback. Read from the same GEV_RATELIMIT_GOOGLE_PER_MIN
+ * setting as Places, but a separate budget: the CCTV panel re-polls frames
+ * every 10–60 s per camera, and a shared budget would let busy cameras
+ * starve the Places lookups.
+ */
+function streetViewRateLimiter() {
+  if (_streetViewRateLimiter === undefined) {
+    _streetViewRateLimiter = makeCostRateLimiter('GEV_RATELIMIT_GOOGLE_PER_MIN', DEFAULT_GOOGLE_REQUESTS_PER_MINUTE);
+  }
+  return _streetViewRateLimiter;
 }
 
 /**
- * Apply an opt-in limiter to a request, writing a 429 when over the cap.
- * When `limiter` is null (unlimited, the default) this is a no-op returning
- * `true`, so the handler proceeds exactly as before.
+ * Apply a cost limiter to a request, writing a 429 when over the cap. A null
+ * limiter (turned off with 0 or off) lets every request through.
  *
  * @param {((key:string)=>boolean)|null} limiter
  * @param {import('http').IncomingMessage} req
  * @param {import('http').ServerResponse} res
  * @returns {boolean} True if the request may proceed; false if a 429 was sent.
  */
-function enforceOptInRateLimit(limiter, req, res) {
-  if (!limiter) return true; // unlimited (default) — no behavior change
+function enforceRateLimit(limiter, req, res) {
+  if (!limiter) return true; // turned off with 0 or off
   if (limiter(clientKey(req))) return true;
   res.statusCode = 429;
   res.setHeader('Content-Type', 'application/json');
@@ -4521,7 +4549,7 @@ export async function fetchCctvImageFromUpstream(url, {
  *
  * @returns {import('vite').Plugin}
  */
-function cctvProxy() {
+export function cctvProxy() {
   /** @type {Map<string,{id:string,status:string,sourceKind:string,label:string,message:string,updatedAt:number}>} */
   const health = new Map();
   /** Cap on health map entries to prevent unbounded growth. Sized to cover the
@@ -4571,10 +4599,16 @@ function cctvProxy() {
    * (#33: a key scoped to Street View Static/Places, restricted by server IP
    * rather than HTTP referrer) and falls back to the browser-exposed
    * GOOGLE_MAPS_API_KEY for setups that haven't split the two yet.
+   *
+   * Each frame is a billed request, so it counts against the client's Street
+   * View budget (streetViewRateLimiter). Once that is spent this returns
+   * `{ ok: false, rateLimited: true }` without calling Google.
    */
-  const streetViewFallback = async ({ lat, lon, heading, fov, pitch }) => {
+  const streetViewFallback = async ({ lat, lon, heading, fov, pitch, rateLimitKey }) => {
     const streetViewKey = googleServerApiKey();
     if (!streetViewKey || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    const limiter = streetViewRateLimiter();
+    if (limiter && !limiter(rateLimitKey)) return { ok: false, rateLimited: true };
     try {
       const sv = new URL('https://maps.googleapis.com/maps/api/streetview');
       sv.searchParams.set('size', '960x540');
@@ -4765,7 +4799,7 @@ function cctvProxy() {
             return;
           }
 
-          const sv = await streetViewFallback({ lat, lon, heading, fov, pitch });
+          const sv = await streetViewFallback({ lat, lon, heading, fov, pitch, rateLimitKey: clientKey(req) });
           if (sv?.ok) {
             setHealth(cameraId, {
               status: 'degraded',
@@ -4782,18 +4816,23 @@ function cctvProxy() {
             return;
           }
 
+          const [frameStatus, healthMessage] = sv?.rateLimited
+            ? ['STREET VIEW RATE LIMITED', 'Street View rate limit reached']
+            : source?.url
+              ? ['UPSTREAM UNAVAILABLE', 'Upstream unavailable']
+              : ['NO UPSTREAM CONFIGURED', 'No source configured'];
           const svg = buildSyntheticCctvSvg({
             cameraId,
             label,
             city,
-            status: source?.url ? 'UPSTREAM UNAVAILABLE' : 'NO UPSTREAM CONFIGURED',
+            status: frameStatus,
           });
 
           setHealth(cameraId, {
             status: 'degraded',
             sourceKind: 'synthetic',
             label: source?.provider || 'Synthetic fallback',
-            message: source?.url ? 'Upstream unavailable' : 'No source configured',
+            message: healthMessage,
           });
 
           res.writeHead(200, {
@@ -5092,10 +5131,10 @@ export function openAiRealtimeProxy() {
         return;
       }
 
-      // Opt-in per-IP throttle (GEV_RATELIMIT_OPENAI_PER_MIN). Keyless HUD
+      // Per-IP throttle (GEV_RATELIMIT_OPENAI_PER_MIN, on by default). Keyless HUD
       // fallback has no provider cost and resolves above without consuming a
       // paid-endpoint quota slot.
-      if (!enforceOptInRateLimit(openAiRateLimiter(), req, res)) return;
+      if (!enforceRateLimit(openAiRateLimiter(), req, res)) return;
 
       try {
         const body = await readRequestBody(req, 64 * 1024);
@@ -5169,8 +5208,8 @@ export function openAiRealtimeProxy() {
         return;
       }
 
-      // Opt-in per-IP throttle (GEV_RATELIMIT_OPENAI_PER_MIN). No-op when unset.
-      if (!enforceOptInRateLimit(openAiRateLimiter(), req, res)) return;
+      // Per-IP throttle (GEV_RATELIMIT_OPENAI_PER_MIN, on by default).
+      if (!enforceRateLimit(openAiRateLimiter(), req, res)) return;
 
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) {
@@ -5438,7 +5477,7 @@ export function googlePlacesContextProxy() {
         return;
       }
 
-      // Opt-in per-IP throttle (GEV_RATELIMIT_GOOGLE_PER_MIN). No-op when unset.
+      // Per-IP throttle (GEV_RATELIMIT_GOOGLE_PER_MIN, on by default).
       // Inlined (not the shared helper) so the 429 body keeps this endpoint's
       // `places: []` contract that the client expects on every error response.
       const _grl = googleRateLimiter();
@@ -5557,7 +5596,7 @@ export function googlePlacesContextProxy() {
         return;
       }
 
-      // Opt-in per-IP throttle (GEV_RATELIMIT_GOOGLE_PER_MIN). No-op when unset.
+      // Per-IP throttle (GEV_RATELIMIT_GOOGLE_PER_MIN, on by default).
       // Inlined (like nearby-places) so the 429 body keeps the `places: []`
       // contract the client expects on every error response.
       const _grl = googleRateLimiter();

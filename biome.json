@@ -32,7 +32,10 @@
       "src/editions/local/tools.js",
       "server/lib/requestGuard.mjs",
       "server/lib/requestGuard.test.mjs",
-      "src/apiRequestGuard.test.mjs"
+      "src/apiRequestGuard.test.mjs",
+      "server/lib/rateLimit.mjs",
+      "server/lib/rateLimit.test.mjs",
+      "src/costRateLimits.test.mjs"
     ]
   },
   "formatter": {

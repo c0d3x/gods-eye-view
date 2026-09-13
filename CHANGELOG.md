@@ -184,6 +184,12 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   the voice debug log. Browser requests must now come from the app's own
   origin, and request bodies must be JSON; the Overpass proxy keeps its
   form-encoded queries. Scripts and other non-browser clients are unaffected.
+- Rate-limit the routes that spend provider quota by default: 30 OpenAI and
+  120 Google requests per minute per client IP. `GEV_RATELIMIT_OPENAI_PER_MIN`
+  and `GEV_RATELIMIT_GOOGLE_PER_MIN` still change the limits, and `0` or `off`
+  turns one off. An unreadable value now keeps the default instead of
+  removing the limit. The CCTV Street View fallback, which had no limit, gets
+  its own Google budget and shows the synthetic frame once it's spent.
 
 ## [0.1.1] — 2026-09-01 — Installation and live-data fixes
 
