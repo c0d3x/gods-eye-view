@@ -1,14 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   ALLOCATION_TEST_FILES,
+  UNIT_TEST_TIMEOUT_MS,
   allocationTestArgs,
   assertNode24AllocationRuntime,
   buildUnitTestPlan,
   discoverUnitTestFiles,
   isCalibratedAllocationRuntime,
+  unitTestFlags,
 } from '../scripts/run-unit-tests.mjs';
 
 test('unit runner serializes only GC-bracketed allocation microbenchmarks', () => {
@@ -30,7 +35,7 @@ test('unit runner serializes only GC-bracketed allocation microbenchmarks', () =
   assert.equal(plan.parallel.some((file) => ALLOCATION_TEST_FILES.includes(file)), false);
   for (const file of ALLOCATION_TEST_FILES) {
     assert.deepEqual(allocationTestArgs(file), [
-      '--expose-gc', '--test', '--test-concurrency=1', file,
+      '--expose-gc', '--test', '--test-concurrency=1', ...unitTestFlags(), file,
     ]);
   }
   assert.throws(
@@ -74,4 +79,55 @@ test('npm test stays green on every supported engine, not only the calibrated on
   const runner = readFileSync(new URL('../scripts/run-unit-tests.mjs', import.meta.url), 'utf8');
   assert.match(runner, /GEV_REQUIRE_ALLOCATION_GATE/);
   assert.match(runner, /SKIPPED .*allocation microbenchmarks/);
+});
+
+test('every run gives each test a deadline and exits once its tests finish', () => {
+  assert.deepEqual(unitTestFlags(), [`--test-timeout=${UNIT_TEST_TIMEOUT_MS}`, '--test-force-exit']);
+  assert.deepEqual(unitTestFlags({ timeoutMs: 500 }), ['--test-timeout=500', '--test-force-exit']);
+  const runner = readFileSync(new URL('../scripts/run-unit-tests.mjs', import.meta.url), 'utf8');
+  assert.match(runner, /runTests\(\['--test', \.\.\.unitTestFlags\(\), \.\.\.plan\.parallel\]\)/);
+});
+
+test('a hung test fails at its deadline, and the timer it leaks does not hold the run', () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'gev-hung-test-'));
+  try {
+    const file = path.join(directory, 'hung.test.mjs');
+    writeFileSync(file, [
+      "import { test } from 'node:test';",
+      "test('never settles', () => new Promise(() => { setInterval(() => {}, 1000); }));",
+      "test('runs after it', () => {});",
+      '',
+    ].join('\n'));
+    // This file's own process carries NODE_TEST_CONTEXT, and a nested
+    // `node --test` that inherits it skips running files.
+    const env = { ...process.env };
+    delete env.NODE_TEST_CONTEXT;
+    const started = Date.now();
+    const result = spawnSync(process.execPath, ['--test', ...unitTestFlags({ timeoutMs: 500 }), file], {
+      encoding: 'utf8',
+      env,
+      timeout: 30_000,
+    });
+    const output = `${result.stdout}${result.stderr}`;
+    assert.equal(result.signal, null, 'the run ended on its own');
+    assert.equal(result.status, 1, output);
+    assert.match(output, /test timed out after 500ms/);
+    assert.ok(Date.now() - started < 15_000, 'it failed at the deadline, not at the guard');
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('the Windows job runs the DACL test, with the same deadline', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const job = workflow.slice(workflow.indexOf('\n  windows-onboarding:'));
+  const command = /run: (node --test [^\n]+)/.exec(job)?.[1];
+  assert.ok(command, 'the Windows job runs node --test');
+  const args = command.split(/\s+/);
+  for (const flag of unitTestFlags()) assert.ok(args.includes(flag), `${flag} is passed`);
+  assert.ok(args.includes('src/keySetupHardening.test.mjs'), 'the real DACL check only runs on Windows');
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  for (const file of args.filter((arg) => arg.endsWith('.test.mjs'))) {
+    assert.ok(existsSync(path.join(root, file)), `${file} exists`);
+  }
 });

@@ -21,6 +21,21 @@ export function assertNode24AllocationRuntime(version = process.versions.node) {
   return version;
 }
 
+/**
+ * Per-test deadline. The slowest test takes about 5 s, so this is generous
+ * even on a slow runner; a hung test fails here instead of holding the job.
+ */
+export const UNIT_TEST_TIMEOUT_MS = 60_000;
+
+/**
+ * Flags every unit-test run passes: the per-test deadline, and force-exit so
+ * that timers or sockets a timed-out test left behind can't keep its file's
+ * process alive.
+ */
+export function unitTestFlags({ timeoutMs = UNIT_TEST_TIMEOUT_MS } = {}) {
+  return [`--test-timeout=${timeoutMs}`, '--test-force-exit'];
+}
+
 /** Directories whose `*.test.mjs` files make up the unit suite. */
 export const UNIT_TEST_ROOTS = Object.freeze(['src', 'server']);
 
@@ -66,7 +81,7 @@ export function allocationTestArgs(file) {
   if (!ALLOCATION_TEST_FILES.includes(file)) {
     throw new Error(`Not an allocation microbenchmark: ${file}`);
   }
-  return ['--expose-gc', '--test', '--test-concurrency=1', file];
+  return ['--expose-gc', '--test', '--test-concurrency=1', ...unitTestFlags(), file];
 }
 
 function runTests(args) {
@@ -81,7 +96,7 @@ function runTests(args) {
 
 export function runUnitTests() {
   const plan = buildUnitTestPlan(discoverUnitTestFiles());
-  const parallelStatus = runTests(['--test', ...plan.parallel]);
+  const parallelStatus = runTests(['--test', ...unitTestFlags(), ...plan.parallel]);
   if (parallelStatus !== 0) return parallelStatus;
 
   // The GC-bracketed budgets are calibrated on Node 24 and are meaningless on

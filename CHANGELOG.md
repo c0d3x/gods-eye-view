@@ -15,6 +15,13 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 
 ### Development
 
+- Give every unit test a 60-second deadline, and stop a timed-out test's
+  leftover timers or sockets from keeping the run alive, so a hung test
+  fails within a minute instead of holding CI until the job's time limit.
+  The Windows job also runs the Provider Settings hardening tests, including
+  the one that applies a real DACL with Windows' own tools, which every other
+  job skips.
+
 - Sort imports in the adopted files with Biome's organize-imports assist,
   checked by `pnpm run lint` and applied by the pre-commit hook.
 
