@@ -26,12 +26,12 @@ export function createBoundedCache({
     throw new RangeError('ttlMs must be positive');
   }
   /** @type {Map<string, {value: V, expiresAt: number}>} */
-  const entries = new Map();
+  const items = new Map();
 
   const dropExpired = (at) => {
-    for (const [key, entry] of entries) {
-      if (entry.expiresAt > at) break;
-      entries.delete(key);
+    for (const [key, item] of items) {
+      if (item.expiresAt > at) break;
+      items.delete(key);
     }
   };
 
@@ -41,13 +41,13 @@ export function createBoundedCache({
      * @returns {V|undefined} The fresh value stored for `key`, if any.
      */
     get(key) {
-      const entry = entries.get(key);
-      if (!entry) return undefined;
-      if (entry.expiresAt <= now()) {
-        entries.delete(key);
+      const item = items.get(key);
+      if (!item) return undefined;
+      if (item.expiresAt <= now()) {
+        items.delete(key);
         return undefined;
       }
-      return entry.value;
+      return item.value;
     },
     /**
      * Store `value` as the newest entry, evicting the oldest past the cap.
@@ -57,24 +57,34 @@ export function createBoundedCache({
      */
     set(key, value) {
       const at = now();
-      entries.delete(key);
+      items.delete(key);
       dropExpired(at);
-      entries.set(key, { value, expiresAt: at + ttlMs });
-      while (entries.size > maxEntries) {
-        entries.delete(entries.keys().next().value);
+      items.set(key, { value, expiresAt: at + ttlMs });
+      while (items.size > maxEntries) {
+        items.delete(items.keys().next().value);
       }
       return value;
     },
     /** @param {string} key */
     delete(key) {
-      return entries.delete(key);
+      return items.delete(key);
     },
     clear() {
-      entries.clear();
+      items.clear();
+    },
+    /**
+     * Fresh entries, oldest first; for persisting the cache.
+     * @returns {Generator<[string, V]>}
+     */
+    *entries() {
+      const at = now();
+      for (const [key, item] of items) {
+        if (item.expiresAt > at) yield [key, item.value];
+      }
     },
     /** Entries held, including expired ones not yet dropped. */
     get size() {
-      return entries.size;
+      return items.size;
     },
   };
 }

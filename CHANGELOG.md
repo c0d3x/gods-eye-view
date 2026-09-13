@@ -212,6 +212,13 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   DNS-rebinding attacks while the server was reachable from the network. Both
   modes now answer only IP addresses, `localhost`, this machine's hostname
   and `<hostname>.local`, plus names listed in the new `GEV_ALLOWED_HOSTS`.
+- Bound the server's caches. The terrain-heights cache kept every point any
+  client asked for, and the adsbdb cache every aircraft and callsign. They
+  now keep at most 20,000 points and 5,000 of each, dropping the oldest. The
+  disk caches that gain a file per query are pruned by age and size at
+  startup and after writes: Overpass 90 days and 64 MB, military
+  installations 90 days and 32 MB, TomTom tiles one day and 64 MB. TomTom's
+  daily request budget file is never removed.
 
 ## [0.1.1] — 2026-09-01 — Installation and live-data fixes
 

@@ -132,3 +132,30 @@ test('the default clock reads Date.now() at call time', (t) => {
   t.mock.timers.tick(1);
   assert.equal(cache.get('a'), undefined);
 });
+
+test('entries lists the fresh entries, oldest first', () => {
+  const clock = clockAt(0);
+  const cache = createBoundedCache({
+    maxEntries: 3,
+    ttlMs: 100,
+    now: clock.now,
+  });
+  cache.set('a', 1);
+  clock.time = 50;
+  cache.set('b', 2);
+  cache.set('c', 3);
+  clock.time = 60;
+  cache.set('a', 10);
+  assert.deepEqual(
+    [...cache.entries()],
+    [
+      ['b', 2],
+      ['c', 3],
+      ['a', 10],
+    ],
+  );
+
+  clock.time = 150;
+  assert.deepEqual([...cache.entries()], [['a', 10]]);
+  assert.deepEqual(Object.fromEntries(cache.entries()), { a: 10 });
+});

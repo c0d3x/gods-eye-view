@@ -75,6 +75,7 @@ import {
 } from './server/lib/rateLimit.mjs';
 import { resolveAllowedHosts } from './server/lib/allowedHosts.mjs';
 import { createBoundedCache } from './server/lib/boundedCache.mjs';
+import { createCachePruner } from './server/lib/diskCache.mjs';
 import {
   createDebugLogWriter,
   DEBUG_LOG_MAX_RECORD_BYTES,
@@ -376,6 +377,7 @@ export async function readOverpassDisk(cacheKey, maxAgeMs) {
 function writeOverpassDisk(cacheKey, payload) {
   fsp.mkdir(OVERPASS_DISK_DIR, { recursive: true })
     .then(() => fsp.writeFile(overpassDiskPath(cacheKey), JSON.stringify(payload)))
+    .then(() => _diskCachePruners.overpass.afterWrite())
     .catch((err) => console.warn('[Overpass Proxy] disk cache write failed:', err?.message || err));
 }
 
@@ -1911,6 +1913,7 @@ function tomtomProxy() {
     try {
       await fsp.mkdir(CACHE_DIR, { recursive: true });
       await fsp.writeFile(tilePath(key), buf);
+      _diskCachePruners.tomtom.afterWrite();
     } catch (err) {
       console.warn(`[tomtom-proxy] tile cache write failed for ${key}:`, err?.message || err);
     }
@@ -2268,6 +2271,9 @@ function firmsProxy() {
   };
 }
 
+/** Terrain points kept in memory and on disk; any client can ask for new ones. */
+export const TERRAIN_CACHE_MAX_POINTS = 20_000;
+
 /**
  * Re:Earth terrain point-height proxy: batched lon/lat → ellipsoidal height
  * lookups, keyless. Upstream: https://terrain.reearth.land/heights.json
@@ -2278,15 +2284,15 @@ function firmsProxy() {
  * Only missing/stale points go upstream; the response is rebuilt in exact
  * request order. Oversized requests (>256 points) are chunked sequentially.
  */
-function terrainHeightsProxy() {
+export function terrainHeightsProxy({ cacheDir = path.join(process.cwd(), '.gev-cache') } = {}) {
   const TTL_MS = 30 * 24 * 3600_000;
-  const CACHE_DIR = path.join(process.cwd(), '.gev-cache');
+  const CACHE_DIR = cacheDir;
   const CACHE_PATH = path.join(CACHE_DIR, 'terrain-heights.json');
   const UPSTREAM_CHUNK = 256;
   const MAX_POINTS = 2000;
 
-  /** @type {Map<string, {at:number, result:object}>} keyed by canonical 5dp lon/lat. */
-  const mem = new Map();
+  /** Keyed by canonical 5dp lon/lat; the oldest points go once it is full. */
+  const mem = createBoundedCache({ maxEntries: TERRAIN_CACHE_MAX_POINTS, ttlMs: TTL_MS });
   /** @type {Map<string, Promise<Array<object>>>} single-flight per missing-point subset. */
   const inflight = new Map();
   let diskLoaded = false;
@@ -2420,6 +2426,9 @@ function terrainHeightsProxy() {
   };
 }
 
+/** Routes and aircraft each kept by the adsbdb proxy; clients choose the keys. */
+export const ADSBDB_CACHE_MAX_ENTRIES = 5_000;
+
 /**
  * adsbdb.com enrichment proxy: callsign → route (airline + origin/destination
  * airports) and hex → aircraft type/registration. Free community API — cached
@@ -2427,10 +2436,12 @@ function terrainHeightsProxy() {
  * persisted to disk so restarts don't re-hammer it. Adapted from skylight
  * (MIT) server/src/enrich/routes.ts.
  */
-function adsbdbProxy() {
+export function adsbdbProxy({ cachePath = path.join(process.cwd(), '.gev-cache', 'adsbdb.json') } = {}) {
   const TTL_MS = 24 * 3600_000;
-  const CACHE_PATH = path.join(process.cwd(), '.gev-cache', 'adsbdb.json');
-  let cache = { routes: {}, aircraft: {} };
+  const CACHE_PATH = cachePath;
+  // Each store is keyed by client input, so it is capped (oldest lookups go).
+  const makeStore = () => createBoundedCache({ maxEntries: ADSBDB_CACHE_MAX_ENTRIES, ttlMs: TTL_MS });
+  const cache = { routes: makeStore(), aircraft: makeStore() };
   let dirty = false;
   let loaded = false;
   const inflight = new Map();
@@ -2440,14 +2451,23 @@ function adsbdbProxy() {
     loaded = true;
     try {
       const parsed = JSON.parse(await fsp.readFile(CACHE_PATH, 'utf8'));
-      cache = { routes: parsed.routes ?? {}, aircraft: parsed.aircraft ?? {} };
+      for (const kind of ['routes', 'aircraft']) {
+        const saved = Object.entries(parsed?.[kind] ?? {})
+          .filter(([, entry]) => fresh(entry))
+          .sort(([, a], [, b]) => a.at - b.at);
+        for (const [key, entry] of saved) cache[kind].set(key, entry);
+      }
     } catch { /* first run */ }
     setInterval(async () => {
       if (!dirty) return;
       dirty = false;
       try {
         await fsp.mkdir(path.dirname(CACHE_PATH), { recursive: true });
-        await fsp.writeFile(CACHE_PATH, JSON.stringify(cache), 'utf8');
+        const saved = {
+          routes: Object.fromEntries(cache.routes.entries()),
+          aircraft: Object.fromEntries(cache.aircraft.entries()),
+        };
+        await fsp.writeFile(CACHE_PATH, JSON.stringify(saved), 'utf8');
       } catch { dirty = true; } // retry next tick
     }, 15_000).unref?.();
   }
@@ -2478,7 +2498,8 @@ function adsbdbProxy() {
 
   function lookup(kind, key) {
     const store = kind === 'route' ? cache.routes : cache.aircraft;
-    if (fresh(store[key])) return Promise.resolve(store[key].data);
+    const cached = store.get(key);
+    if (fresh(cached)) return Promise.resolve(cached.data);
     const ik = `${kind}:${key}`;
     if (!inflight.has(ik)) {
       inflight.set(ik, (async () => {
@@ -2489,18 +2510,20 @@ function adsbdbProxy() {
           const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
           if (res.ok) {
             const data = kind === 'route' ? parseRoute(await res.json()) : parseAircraft(await res.json());
-            store[key] = { at: Date.now(), data }; // data may be null — negative cache
+            store.set(key, { at: Date.now(), data }); // data may be null — negative cache
             dirty = true;
             return data;
           }
           if (res.status === 404) {
-            store[key] = { at: Date.now(), data: null }; // known-missing — cache the miss
+            store.set(key, { at: Date.now(), data: null }); // known-missing — cache the miss
             dirty = true;
           }
           // other statuses: leave uncached so we retry later
-          return fresh(store[key]) ? store[key].data : null;
+          const entry = store.get(key);
+          return fresh(entry) ? entry.data : null;
         } catch {
-          return fresh(store[key]) ? store[key].data : null; // network error → stale if any
+          const entry = store.get(key);
+          return fresh(entry) ? entry.data : null; // network error → last fresh value, if any
         } finally {
           inflight.delete(ik);
         }
@@ -6828,6 +6851,52 @@ export const MILITARY_INSTALLATION_ELEMENT_CAP = 700;
 const MILITARY_INSTALLATION_DISK_TTL_MS = 30 * 86_400_000;
 /** Disk-cache directory for mapped installation payloads. */
 const MILITARY_INSTALLATION_DISK_DIR = path.join(process.cwd(), '.gev-cache', 'military-installations');
+
+/**
+ * Limits for the .gev-cache/ directories that gain a file per query. The
+ * single-file caches there (TLEs, launches, FIRMS, terrain, adsbdb) are
+ * bounded by their in-memory caps. Overpass keeps 90 days because it serves
+ * stale data of any age when every mirror is down; TomTom's budget.json is
+ * its daily request budget, spend protection rather than cache.
+ */
+export const DISK_CACHE_LIMITS = Object.freeze({
+  overpass: Object.freeze({
+    directory: OVERPASS_DISK_DIR,
+    maxAgeMs: 90 * 86_400_000,
+    maxBytes: 64 * 1024 * 1024,
+  }),
+  militaryInstallations: Object.freeze({
+    directory: MILITARY_INSTALLATION_DISK_DIR,
+    maxAgeMs: 90 * 86_400_000,
+    maxBytes: 32 * 1024 * 1024,
+  }),
+  tomtom: Object.freeze({
+    directory: path.join(process.cwd(), '.gev-cache', 'tomtom'),
+    maxAgeMs: 86_400_000,
+    maxBytes: 64 * 1024 * 1024,
+    keep: Object.freeze(['budget.json']),
+  }),
+});
+const _diskCachePruners = Object.fromEntries(
+  Object.entries(DISK_CACHE_LIMITS).map(([name, limits]) => [name, createCachePruner(limits)]),
+);
+
+/**
+ * Vite plugin: prune the per-query disk caches when the server starts.
+ * Writes prune again, at most every ten minutes (see createCachePruner).
+ *
+ * @returns {import('vite').Plugin}
+ */
+export function diskCacheJanitor() {
+  const pruneAll = () => {
+    for (const pruner of Object.values(_diskCachePruners)) void pruner.runNow();
+  };
+  return {
+    name: 'gev-disk-cache-janitor',
+    configureServer: pruneAll,
+    configurePreviewServer: pruneAll,
+  };
+}
 /**
  * Cache-key grid step in degrees (~5.5 km).
  *
@@ -6989,6 +7058,7 @@ export async function writeMilitaryInstallationDisk(
     await fsp.mkdir(dir, { recursive: true });
     await fsp.writeFile(temp, JSON.stringify(entry));
     await fsp.rename(temp, target);
+    if (dir === MILITARY_INSTALLATION_DISK_DIR) _diskCachePruners.militaryInstallations.afterWrite();
     return true;
   } catch (err) {
     console.warn('[Installations Proxy] disk cache write failed:', err?.message || err);
@@ -7878,6 +7948,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [
       apiRequestGuard(),
+      diskCacheJanitor(),
       cesium(),
       openSkyProxy(),
       celestrakProxy(),
