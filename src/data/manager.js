@@ -166,6 +166,7 @@ export class DataLayerManager {
       enabled: false,
       initialized: false,
       intervalId: null,
+      refreshController: null,
       // Periodic data refreshes are manager-owned work, independent from the
       // authoritative enable/disable lifecycle above. Every registered layer
       // receives the same normalized presentation contract even when its own
@@ -432,7 +433,12 @@ export class DataLayerManager {
       ) return false;
     }
 
-    return this._runPeriodicUpdate(layerId, entry, { signal });
+    // Turning the layer off cancels this refresh too, whoever asked for it.
+    const cycleSignal = entry.refreshController?.signal;
+    const refreshSignal = signal && cycleSignal
+      ? AbortSignal.any([signal, cycleSignal])
+      : (signal || cycleSignal || null);
+    return this._runPeriodicUpdate(layerId, entry, { signal: refreshSignal });
   }
 
   /**
@@ -525,9 +531,13 @@ export class DataLayerManager {
     const refreshInterval = configuredRefreshInterval > 0
       ? configuredRefreshInterval
       : (updateInterval > 0 ? updateInterval : 0);
+    // One cancellation authority per enable cycle. _stopUpdateLoop aborts it,
+    // so a refresh still loading when the layer turns off applies nothing.
+    entry.refreshController = new AbortController();
+    const { signal } = entry.refreshController;
     if (refreshInterval > 0) {
       entry.intervalId = setInterval(() => {
-        void this._runPeriodicUpdate(layerId, entry);
+        void this._runPeriodicUpdate(layerId, entry, { signal });
       }, refreshInterval);
     } else if (updateInterval === 0) {
       entry.intervalId = setInterval(() => {
@@ -535,6 +545,16 @@ export class DataLayerManager {
         this._refreshTogglePanel();
       }, entry.module.statsRefreshInterval || 1000);
     }
+  }
+
+  /** Stop the refresh loop and cancel whatever refresh it has in flight. */
+  _stopUpdateLoop(entry) {
+    if (entry.intervalId) {
+      clearInterval(entry.intervalId);
+      entry.intervalId = null;
+    }
+    entry.refreshController?.abort();
+    entry.refreshController = null;
   }
 
   toggle(layerId, { origin = 'programmatic', notificationToken = null } = {}) {
@@ -720,10 +740,7 @@ export class DataLayerManager {
         entry.enabled = compensated || !cleanupConfirmed;
         entry.lifecycleUncertain = !compensated && !cleanupConfirmed;
         settleLifecycle();
-        if (!entry.enabled && entry.intervalId) {
-          clearInterval(entry.intervalId);
-          entry.intervalId = null;
-        }
+        if (!entry.enabled) this._stopUpdateLoop(entry);
         this._refreshTogglePanel();
         if (!compensated) {
           recordVisibilityFailure(
@@ -768,10 +785,7 @@ export class DataLayerManager {
         return false;
       }
       if (signal?.aborted) return finishCancelledDisable('disable');
-      if (entry.intervalId) {
-        clearInterval(entry.intervalId);
-        entry.intervalId = null;
-      }
+      this._stopUpdateLoop(entry);
       entry.enabled = false;
       entry.lifecycleUncertain = false;
       if (!settleLifecycle() || signal?.aborted) return finishCancelledDisable('settle');
@@ -779,10 +793,7 @@ export class DataLayerManager {
       // Enable
       let abortCleanup = null;
       const cancelEnable = () => {
-        if (entry.intervalId) {
-          clearInterval(entry.intervalId);
-          entry.intervalId = null;
-        }
+        this._stopUpdateLoop(entry);
         // Disable immediately so modules with their own AbortController (Radio)
         // cancel pending update work at the same turn boundary. A second
         // disable after the current lifecycle await settles closes the race
@@ -802,10 +813,7 @@ export class DataLayerManager {
         // aborting the caller's signal. Release that signal's listener now so
         // a later abort cannot revoke a successful retry.
         signal?.removeEventListener('abort', cancelEnable);
-        if (entry.intervalId) {
-          clearInterval(entry.intervalId);
-          entry.intervalId = null;
-        }
+        this._stopUpdateLoop(entry);
         await abortCleanup;
         let cleanupConfirmed = false;
         try { cleanupConfirmed = await entry.module.disable(this.viewer) !== false; } catch (error) {
@@ -832,10 +840,7 @@ export class DataLayerManager {
         return false;
       };
       const finishFailedEnable = async (phase, error) => {
-        if (entry.intervalId) {
-          clearInterval(entry.intervalId);
-          entry.intervalId = null;
-        }
+        this._stopUpdateLoop(entry);
         let cleanupConfirmed = false;
         try { cleanupConfirmed = await entry.module.disable(this.viewer) !== false; } catch (cleanupError) {
           console.warn(`[Data] ${layerId} failed-enable cleanup error:`, cleanupError);
@@ -923,10 +928,7 @@ export class DataLayerManager {
 
       // Always clear any stale interval before assigning a new one, so we never
       // orphan a running timer and end up double-polling.
-      if (entry.intervalId) {
-        clearInterval(entry.intervalId);
-        entry.intervalId = null;
-      }
+      this._stopUpdateLoop(entry);
 
       // Manager-owned periodic refresh work has one normalized loading/error
       // contract. Camera-driven layers may keep updateInterval=0 and opt into
@@ -1864,10 +1866,7 @@ export class DataLayerManager {
         this._refreshTogglePanel();
         return false;
       }
-      if (entry.intervalId) {
-        clearInterval(entry.intervalId);
-        entry.intervalId = null;
-      }
+      this._stopUpdateLoop(entry);
       entry.enabled = false;
     }
     if (typeof entry.module.destroy === 'function') {

@@ -246,12 +246,12 @@ export function createFirmsHeatmapLayer({
       removeLodWatcher();
     },
 
-    async update() {
+    async update(_viewer, { signal } = {}) {
       if (_destroyed || !_enabled || _loading) return;
       // Scheduled 10-minute poll (and the manager's immediate first update):
       // refetch live fires through the proxy and re-render. Viewport-driven
       // re-renders between polls are handled by the LOD watcher.
-      await loadHeatmap();
+      await loadHeatmap({ signal });
     },
 
     destroy(viewer) {
@@ -416,12 +416,12 @@ export function createFirmsHeatmapLayer({
    * beats a wiped map). A click-selected fire survives the swap when the
    * same detection (lat/lon/acqMs) is still present.
    */
-  async function loadHeatmap() {
+  async function loadHeatmap({ signal } = {}) {
     if (!_dataSource) return;
     _loading = true;
 
     try {
-      const response = await fetch(FIRMS_API_URL, { cache: 'no-store' });
+      const response = await fetch(FIRMS_API_URL, { cache: 'no-store', signal });
       if (!response.ok) {
         let payload = null;
         try {
@@ -437,6 +437,8 @@ export function createFirmsHeatmapLayer({
       }
 
       const payload = await response.json();
+      // Turned off while the feed was loading: keep what is on screen.
+      if (signal?.aborted) return;
       _keyRequired = false;
       _error = null;
       _stale = Boolean(payload?.stale);
@@ -464,6 +466,8 @@ export function createFirmsHeatmapLayer({
       renderCurrentLod(true);
       if (reselected) selectFire(reselected);
     } catch (error) {
+      // A refresh cancelled because the layer turned off is not a feed error.
+      if (signal?.aborted) return;
       console.warn(`[Data:${id}] FIRMS live load failed:`, error);
       _error = 'live feed unavailable';
     } finally {

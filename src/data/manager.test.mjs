@@ -203,6 +203,91 @@ test('layer rows show names and icons as text, never as markup', async () => {
   }
 });
 
+test('a timed refresh that settles after the layer is off adds nothing', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  const entities = [];
+  const signals = [];
+  let releaseRefresh;
+  const refreshGate = new Promise((resolve) => { releaseRefresh = resolve; });
+  let updates = 0;
+  const mgr = new DataLayerManager({});
+  mgr.register({
+    id: 'quakes',
+    name: 'quakes',
+    icon: '',
+    source: 'test',
+    updateInterval: 1000,
+    async init() {},
+    enable() {},
+    disable() {},
+    async update(_viewer, { signal } = {}) {
+      updates += 1;
+      signals.push(signal);
+      // The enable's own first update settles at once; later ones wait here.
+      if (updates > 1) await refreshGate;
+      // A well-behaved poller checks before it touches the scene.
+      if (signal?.aborted) return false;
+      entities.push(`batch-${updates}`);
+      return true;
+    },
+    getStats() { return { count: entities.length, lastUpdate: null }; },
+  });
+
+  try {
+    assert.equal(await mgr.setEnabled('quakes', true), true);
+    assert.deepEqual(entities, ['batch-1']);
+
+    t.mock.timers.tick(1000); // the timed refresh starts, and stalls
+    assert.equal(updates, 2);
+    const timedSignal = signals[1];
+    assert.ok(timedSignal instanceof AbortSignal, 'timed refreshes get a signal');
+
+    assert.equal(await mgr.setEnabled('quakes', false), true);
+    assert.equal(timedSignal.aborted, true, 'turning the layer off cancels the refresh');
+    releaseRefresh();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(entities, ['batch-1'], 'the late refresh added nothing');
+
+    // Turned back on, it refreshes on its interval again, with a fresh signal.
+    assert.equal(await mgr.setEnabled('quakes', true), true);
+    t.mock.timers.tick(1000);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(updates, 4);
+    assert.equal(signals[3].aborted, false);
+    assert.deepEqual(entities, ['batch-1', 'batch-3', 'batch-4']);
+  } finally {
+    await mgr.destroyAll();
+  }
+});
+
+test('rapid on/off toggling settles in one consistent state', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval'] });
+  const layer = makeSlowLayer('toggled', { updateInterval: 1000 });
+  const mgr = new DataLayerManager({});
+  mgr.register(layer.module);
+  const entry = mgr.layers.get('toggled');
+
+  try {
+    // Five toggles from off end on.
+    await Promise.all(Array.from({ length: 5 }, () => mgr.toggle('toggled', { origin: 'user' })));
+    assert.equal(mgr.isEnabled('toggled'), true);
+    assert.notEqual(entry.intervalId, null);
+    assert.equal(entry.refreshController?.signal.aborted, false);
+    const before = layer.calls.update;
+    t.mock.timers.tick(1000);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(layer.calls.update, before + 1, 'exactly one refresh loop runs');
+
+    // One more turns it off, with nothing left running.
+    await mgr.toggle('toggled', { origin: 'user' });
+    assert.equal(mgr.isEnabled('toggled'), false);
+    assert.equal(entry.intervalId, null);
+    assert.equal(entry.refreshController, null);
+  } finally {
+    await mgr.destroyAll();
+  }
+});
+
 test('clearSelectedLayers includes hidden coordinators and preserves newer dependency restoration', async () => {
   const mgr = new DataLayerManager({});
   const order = [];

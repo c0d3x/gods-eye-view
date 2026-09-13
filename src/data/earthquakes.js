@@ -191,9 +191,9 @@ export function createEarthquakesLayer({ overlayHost = DEFAULT_OVERLAY_HOST } = 
     overlayHost.setVisible(EARTHQUAKE_OVERLAY_SOURCE_ID, false);
   },
 
-  async update(viewer) {
+  async update(viewer, { signal } = {}) {
     try {
-      const response = await fetch(API_URL);
+      const response = await fetch(API_URL, { signal });
       if (!response.ok) {
         _lastError = `USGS HTTP ${response.status}`;
         console.warn(`[Data:Earthquakes] API returned ${response.status}`);
@@ -201,6 +201,8 @@ export function createEarthquakesLayer({ overlayHost = DEFAULT_OVERLAY_HOST } = 
       }
 
       const geojson = await response.json();
+      // Turned off while the feed was loading: leave the scene alone.
+      if (signal?.aborted) return false;
       const rows = normalizeEarthquakeSnapshot(geojson);
       if (!rows) {
         _lastError = 'Malformed USGS response';
@@ -274,6 +276,8 @@ export function createEarthquakesLayer({ overlayHost = DEFAULT_OVERLAY_HOST } = 
       return true;
 
     } catch (e) {
+      // A refresh cancelled because the layer turned off is not a feed error.
+      if (signal?.aborted) return false;
       console.warn('[Data:Earthquakes] Fetch error:', e);
       _lastError = 'USGS network error';
       return false;

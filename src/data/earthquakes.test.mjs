@@ -163,6 +163,50 @@ test('real earthquake lifecycle publishes host labels while runtime entities car
   }
 });
 
+test('a refresh cancelled while the feed loads leaves the scene alone', async () => {
+  const originalFetch = globalThis.fetch;
+  const dataSources = [];
+  const viewer = {
+    dataSources: {
+      add(dataSource) { dataSources.push(dataSource); return dataSource; },
+      remove() { return true; },
+    },
+  };
+  const controller = new AbortController();
+  let fetchSignal = null;
+  globalThis.fetch = async (_url, init) => {
+    fetchSignal = init?.signal;
+    return {
+      ok: true,
+      json: async () => {
+        // The layer is turned off while the body is still arriving.
+        controller.abort();
+        return {
+          features: [{
+            id: 'us-late-1',
+            geometry: { coordinates: [-150.41, 61.02, 41.7] },
+            properties: { mag: 5.2, place: 'Late', time: 1_753_600_000_000 },
+          }],
+        };
+      },
+    };
+  };
+  const layer = createEarthquakesLayer({
+    overlayHost: { setEntries() {}, setVisible() {}, clearSource() {} },
+  });
+  try {
+    layer.init(viewer);
+    layer.enable(viewer);
+    assert.equal(await layer.update(viewer, { signal: controller.signal }), false);
+    assert.equal(fetchSignal, controller.signal, 'the fetch carries the signal');
+    assert.equal(dataSources[0].entities.values.length, 0);
+    assert.equal(layer.getStats().error ?? null, null, 'a cancelled refresh is not a feed error');
+  } finally {
+    layer.destroy(viewer);
+    globalThis.fetch = originalFetch;
+  }
+});
+
 // ── Perf pin: the 2026-08-20 earthquakes frame-rate cliff ────────────────────
 // Every disc is a CLAMP_TO_GROUND ellipse. When its axes were a
 // `CallbackProperty`, Cesium re-tessellated all 58 ground primitives on EVERY

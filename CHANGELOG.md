@@ -73,6 +73,13 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   loops also reuse their scratch positions instead of allocating per
   satellite.
 
+- Turning a layer off now cancels its refresh. The manager's timed refreshes
+  had no cancellation signal, so an earthquake or fire refresh still loading
+  when its layer was turned off went on to draw its results. Each time a
+  layer is turned on it gets a signal that turning it off aborts; the
+  earthquake and fire layers pass it to their fetches and draw nothing once
+  it is aborted.
+
 - Separate optional Google server credentials for Places and Street View from
   the browser key, contributed by Tom-Neverwinter (#110). Provider Settings,
   Pinokio's app-specific credential handling and setup diagnostics recognize
