@@ -243,6 +243,18 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   `scripts/opensky-import-client.sh` passed the OpenSky client ID and secret
   to `security`. The launcher now exports the keys and starts the server
   itself, and the import script hands the values to `security -i` on stdin.
+- Cap every upstream response the proxies read. CelesTrak, TomTom tiles,
+  FIRMS, adsbdb, GBFS, the CCTV camera lists, CCTV and Street View frames and
+  terrain heights were read whole, however large, and an AISStream message
+  could be up to 100 MiB; it is now capped at 1 MiB. GBFS's deadline now
+  covers the whole response, not just its headers.
+- Answer an oversized Provider Settings save with 413. The server reset the
+  connection instead, so the browser never learned why the save failed.
+- Build the POI pills and the data-layer rows from DOM nodes. Both put a
+  name into `innerHTML`; the names are local today, but a name from a remote
+  source would have been parsed as markup.
+- Turn on private vulnerability reporting for this repository, and point
+  SECURITY.md at it instead of the upstream repository.
 
 ## [0.1.1] — 2026-09-01 — Installation and live-data fixes
 

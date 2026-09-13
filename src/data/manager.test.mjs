@@ -151,6 +151,58 @@ test('renders ordinary layer rows without recreating a panel-hidden coordinator'
   }
 });
 
+test('layer rows show names and icons as text, never as markup', async () => {
+  const originalDocument = globalThis.document;
+  const markupWrites = [];
+  const makeElement = () => ({
+    children: [],
+    className: '',
+    dataset: {},
+    textContent: '',
+    disabled: false,
+    attributes: {},
+    classList: { toggle() {} },
+    appendChild(child) { this.children.push(child); return child; },
+    addEventListener() {},
+    setAttribute(name, value) { this.attributes[name] = String(value); },
+    querySelector(selector) {
+      const className = selector.slice(1);
+      const visit = (node) => {
+        if (String(node.className).split(/\s+/).includes(className)) return node;
+        for (const child of node.children || []) {
+          const found = visit(child);
+          if (found) return found;
+        }
+        return null;
+      };
+      return visit(this);
+    },
+    set innerHTML(value) {
+      if (value === '') this.children = [];
+      else markupWrites.push(value);
+    },
+    get innerHTML() { return ''; },
+  });
+  globalThis.document = { createElement: makeElement };
+  const mgr = new DataLayerManager({});
+  const layer = makeSlowLayer('flights', { updateInterval: -1 });
+  layer.module.name = '<img src=x onerror=alert(1)>';
+  layer.module.icon = '<b>✈</b>';
+  mgr.register(layer.module);
+  const container = makeElement();
+
+  try {
+    mgr.buildTogglePanel(container);
+    assert.deepEqual(markupWrites, []);
+    assert.equal(container.querySelector('.data-name').textContent, '<img src=x onerror=alert(1)>');
+    assert.equal(container.querySelector('.data-icon').textContent, '<b>✈</b>');
+  } finally {
+    await mgr.destroyAll();
+    if (originalDocument === undefined) delete globalThis.document;
+    else globalThis.document = originalDocument;
+  }
+});
+
 test('clearSelectedLayers includes hidden coordinators and preserves newer dependency restoration', async () => {
   const mgr = new DataLayerManager({});
   const order = [];

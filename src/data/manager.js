@@ -2033,7 +2033,14 @@ export class DataLayerManager {
 
       const left = document.createElement('div');
       left.className = 'data-toggle-left';
-      left.innerHTML = `<span class="data-icon">${layer.icon}</span><span class="data-name">${layer.name}</span>`;
+      const iconSpan = document.createElement('span');
+      iconSpan.className = 'data-icon';
+      iconSpan.textContent = layer.icon;
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'data-name';
+      nameSpan.textContent = layer.name;
+      left.appendChild(iconSpan);
+      left.appendChild(nameSpan);
 
       const right = document.createElement('div');
       right.className = 'data-toggle-right';

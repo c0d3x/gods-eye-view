@@ -843,6 +843,42 @@ function parseJsonObject(text) {
 }
 
 /**
+ * Read a fetch() Response body as bytes with a hard cap, the way
+ * readResponseTextCapped reads text. Throws { code:'RESPONSE_TOO_LARGE' }.
+ */
+export async function readResponseBytesCapped(response, maxBytes) {
+  const tooLarge = () => {
+    const err = new Error('Upstream response too large');
+    err.code = 'RESPONSE_TOO_LARGE';
+    return err;
+  };
+  const declared = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    try { await response.body?.cancel(); } catch { /* no-op */ }
+    throw tooLarge();
+  }
+  const reader = response.body?.getReader?.();
+  if (!reader) {
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length > maxBytes) throw tooLarge();
+    return bytes;
+  }
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      try { await reader.cancel(); } catch { /* no-op */ }
+      throw tooLarge();
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks, total);
+}
+
+/**
  * Return the existing promise for a cache key, or create one and remove it
  * only when that exact promise settles.
  */
@@ -1591,7 +1627,7 @@ function celestrakProxy() {
       headers: { 'User-Agent': 'gods-eye-view-celestrak-proxy/1.0 (+https://github.com/bilawalsidhu/gods-eye-view)' },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const body = await res.text();
+    const body = await readResponseTextCapped(res, 16 * 1024 * 1024); // every active TLE is ~2 MB
     // An upstream error page parses to zero TLEs — treat as failure, keep cache.
     if (!/^1 /m.test(body)) throw new Error('no TLE lines in response');
     return { at: Date.now(), body };
@@ -1899,7 +1935,7 @@ function tomtomProxy() {
     recordUpstreamFetch(); // attempts count — upstream bills the request either way
     const res = await fetch(url, { signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const buf = Buffer.from(await res.arrayBuffer());
+    const buf = await readResponseBytesCapped(res, 4 * 1024 * 1024); // a vector tile is tens of KB
     if (buf.length === 0) throw new Error('empty tile body');
     return buf;
   }
@@ -2083,7 +2119,8 @@ function firmsProxy() {
     const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(key)}/${source}/world/2`;
     const res = await fetch(url, { signal: AbortSignal.timeout(60_000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const records = parseFirmsCsv(await res.text());
+    // Two days of one satellite, worldwide, runs to tens of MB.
+    const records = parseFirmsCsv(await readResponseTextCapped(res, 128 * 1024 * 1024));
     if (records === null) throw new Error('non-CSV upstream response');
     return records;
   }
@@ -2143,7 +2180,7 @@ function firmsProxy() {
           const url = `https://firms.modaps.eosdis.nasa.gov/mapserver/mapkey_status/?MAP_KEY=${encodeURIComponent(key)}`;
           const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const body = await res.json();
+          const body = await readResponseJsonCapped(res, 64 * 1024);
           const used = Number(body?.current_transactions);
           const limit = Number(body?.transaction_limit);
           return Number.isFinite(used) && Number.isFinite(limit) ? { used, limit } : null;
@@ -2324,7 +2361,9 @@ export function terrainHeightsProxy({ cacheDir = path.join(process.cwd(), '.gev-
     const results = [];
     for (let i = 0; i < points.length; i += UPSTREAM_CHUNK) {
       const chunk = points.slice(i, i + UPSTREAM_CHUNK);
-      const chunkResults = await fetchTerrainChunkWithRetry(chunk);
+      const chunkResults = await fetchTerrainChunkWithRetry(chunk, {
+        readJson: (res) => readResponseJsonCapped(res, 4 * 1024 * 1024),
+      });
       // Keep later chunks aligned even if a malformed upstream response omits
       // trailing positions. The resolver will reject each null individually.
       for (let j = 0; j < chunk.length; j += 1) results.push(chunkResults[j] ?? null);
@@ -2474,7 +2513,8 @@ export function adsbdbProxy({ cachePath = path.join(process.cwd(), '.gev-cache',
             : `https://api.adsbdb.com/v0/aircraft/${encodeURIComponent(key)}`;
           const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
           if (res.ok) {
-            const data = kind === 'route' ? parseRoute(await res.json()) : parseAircraft(await res.json());
+            const payload = JSON.parse(await readResponseTextCapped(res, 256 * 1024));
+            const data = kind === 'route' ? parseRoute(payload) : parseAircraft(payload);
             store.set(key, { at: Date.now(), data }); // data may be null — negative cache
             dirty = true;
             return data;
@@ -3446,32 +3486,19 @@ function gbfsProxy() {
             return;
           }
 
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), GBFS_PROXY_TIMEOUT_MS);
-          let upstream;
-          try {
-            upstream = await fetch(upstreamUrl.toString(), {
-              method: 'GET',
-              headers: {
-                Accept: 'application/json',
-                'User-Agent': 'gods-eye-view-gbfs-proxy/1.0',
-              },
-              signal: controller.signal,
-            });
-          } finally {
-            clearTimeout(timeoutId);
-          }
+          // The deadline covers the body too, so a feed can't trickle it out.
+          const upstream = await fetchWithTimeout(upstreamUrl.toString(), {
+            method: 'GET',
+            headers: {
+              Accept: 'application/json',
+              'User-Agent': 'gods-eye-view-gbfs-proxy/1.0',
+            },
+          }, { timeoutMs: GBFS_PROXY_TIMEOUT_MS });
 
           // Limit response size to prevent memory exhaustion from malicious upstream
           const GBFS_MAX_BODY_BYTES = 5 * 1024 * 1024; // 5 MB
-          const contentLength = Number(upstream.headers.get('content-length'));
-          if (Number.isFinite(contentLength) && contentLength > GBFS_MAX_BODY_BYTES) {
-            res.writeHead(502, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-            res.end(JSON.stringify({ error: 'GBFS upstream response too large' }));
-            return;
-          }
-          const body = await upstream.text();
-          if (Buffer.byteLength(body, 'utf8') > GBFS_MAX_BODY_BYTES) {
+          const { tooLarge, text: body } = await readCappedResponseText(upstream, GBFS_MAX_BODY_BYTES);
+          if (tooLarge) {
             res.writeHead(502, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
             res.end(JSON.stringify({ error: 'GBFS upstream response too large' }));
             return;
@@ -3491,7 +3518,7 @@ function gbfsProxy() {
           });
           res.end(body);
         } catch (error) {
-          if (error?.name === 'AbortError') {
+          if (upstreamErrorStatus(error) === 504) {
             res.writeHead(504, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
             res.end(JSON.stringify({ error: 'GBFS upstream timeout' }));
             return;
@@ -3601,10 +3628,14 @@ const CCTV_SOURCE_CACHE_MS = 15 * 60 * 1000;
  * pending forever — a hung fetch aborts, the loader returns [], and
  * serve-stale/other packs take over. */
 const CCTV_SOURCE_FETCH_TIMEOUT_MS = 15 * 1000;
+/** Largest camera list read from one open-data feed. */
+const CCTV_SOURCE_LIST_MAX_BYTES = 32 * 1024 * 1024;
 /** Individual CCTV image fetches must settle before the active 10-second
  * client refresh cadence. A bounded miss can fall through to Street View or
  * the synthetic frame instead of leaving the browser preview pending. */
 export const CCTV_FRAME_FETCH_TIMEOUT_MS = 8 * 1000;
+/** Largest single camera or Street View frame read from an upstream. */
+const CCTV_FRAME_MAX_BYTES = 16 * 1024 * 1024;
 
 /**
  * Sent with every CCTV frame and media response. nosniff stops a browser
@@ -3999,7 +4030,7 @@ async function loadAustinSourcesFromOpenData() {
       console.warn('[CCTV] Austin source download failed:', resp.status);
       return [];
     }
-    const payload = await resp.json();
+    const payload = await readResponseJsonCapped(resp, CCTV_SOURCE_LIST_MAX_BYTES);
     const columns = Array.isArray(payload?.meta?.view?.columns) ? payload.meta.view.columns : [];
     const rows = Array.isArray(payload?.data) ? payload.data : [];
     if (!columns.length || !rows.length) return [];
@@ -4087,7 +4118,7 @@ async function loadCaltransSourcesFromOpenData() {
     districts.map(async (district) => {
       const resp = await fetch(CALTRANS_CCTV_URL(district), { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS) });
       if (!resp.ok) throw new Error(`D${district} HTTP ${resp.status}`);
-      const payload = await resp.json();
+      const payload = await readResponseJsonCapped(resp, CCTV_SOURCE_LIST_MAX_BYTES);
       const rows = Array.isArray(payload?.data) ? payload.data : [];
       return { district, rows };
     })
@@ -4185,7 +4216,7 @@ async function loadTflSourcesFromOpenData() {
       console.warn('[CCTV] TfL JamCam download failed:', resp.status);
       return [];
     }
-    const places = await resp.json();
+    const places = await readResponseJsonCapped(resp, CCTV_SOURCE_LIST_MAX_BYTES);
     if (!Array.isArray(places)) return [];
 
     const cameras = [];
@@ -4530,7 +4561,7 @@ async function proxyMediaResponse(res, upstream, { sourceHeader = 'upstream' } =
 
   const stream = toReadable(upstream.body);
   if (!stream) {
-    const buf = Buffer.from(await upstream.arrayBuffer());
+    const buf = await readResponseBytesCapped(upstream, MEDIA_DECLARED_CAP_BYTES);
     res.end(buf);
     return;
   }
@@ -4586,7 +4617,7 @@ export async function fetchCctvImageFromUpstream(url, {
     }
     return {
       ok: true,
-      body: Buffer.from(await upstream.arrayBuffer()),
+      body: await readResponseBytesCapped(upstream, CCTV_FRAME_MAX_BYTES),
       contentType,
     };
   } catch {
@@ -4706,7 +4737,7 @@ export function cctvProxy() {
 
       return streetViewFrames.set(cacheKey, {
         ok: true,
-        body: Buffer.from(await svResp.arrayBuffer()),
+        body: await readResponseBytesCapped(svResp, CCTV_FRAME_MAX_BYTES),
         contentType: svType,
       });
     } catch {
@@ -6610,7 +6641,8 @@ function aisAdapter() {
     createSocket: (url) => {
       const WebSocketCtor = aisWebSocketImpl();
       if (!WebSocketCtor) throw new Error('ws transport unavailable');
-      return new WebSocketCtor(url);
+      // AISStream messages are a few KB; ws would otherwise accept 100 MiB.
+      return new WebSocketCtor(url, { maxPayload: 1024 * 1024 });
     },
     resolveUrl: () => aisWatchdogPolicy().url,
     buildSubscription: aisStreamSubscription,
@@ -7778,7 +7810,9 @@ function normalizeAisTimestamp(value) {
  * keys exist. Prod builds never register this middleware (apply: 'serve'), so
  * the panel's status fetch fails and the client removes the whole surface.
  */
-function keySetupEndpoint() {
+export function keySetupEndpoint() {
+  // A Provider Settings request carries a few keys; anything larger is refused.
+  const KEY_SETUP_MAX_BODY_BYTES = 8 * 1024;
   const respond = (res, statusCode, payload) => {
     res.statusCode = statusCode;
     res.setHeader('Content-Type', 'application/json');
@@ -7948,20 +7982,17 @@ function keySetupEndpoint() {
         if (req.method !== 'POST') return respond(res, 405, { error: 'Method not allowed' });
         const admission = admit(req);
         if (!admission.ok) return respond(res, admission.status, { error: admission.error });
-        let body = '';
-        let overflowed = false;
-        req.on('data', (chunk) => {
-          body += chunk;
-          if (body.length > 8192) {
-            overflowed = true;
-            req.destroy();
+        // Past the cap, readBodyWithin stops buffering and drains the rest, so
+        // the 413 reaches the client before the connection closes. Destroying
+        // the request instead reset the connection before any reply.
+        readBodyWithin(req, KEY_SETUP_MAX_BODY_BYTES).then((read) => {
+          if (!read.ok) {
+            res.setHeader('Connection', 'close');
+            return respond(res, 413, { error: 'Request too large' });
           }
-        });
-        req.on('end', () => {
-          if (overflowed) return respond(res, 413, { error: 'Request too large' });
           let parsed;
           try {
-            parsed = JSON.parse(body || '{}');
+            parsed = JSON.parse(read.text || '{}');
           } catch {
             return respond(res, 400, { error: 'Invalid JSON' });
           }
@@ -8013,6 +8044,10 @@ function keySetupEndpoint() {
               console.warn('[KeySetup] Dev-server restart failed:', error?.message || error);
             });
           }, 250);
+        }).catch((error) => {
+          // The client went away mid-body, or the save failed unexpectedly.
+          console.warn('[KeySetup] Request failed:', error?.message || error);
+          if (!res.headersSent) respond(res, 500, { error: 'Provider Settings request failed' });
         });
       });
     },

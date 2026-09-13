@@ -9668,7 +9668,13 @@ export class StyleManager {
       const pill = document.createElement('button');
       pill.className = 'poi-pill';
       pill.dataset.poiIndex = idx;
-      pill.innerHTML = `<span class="poi-pill-key">${QWERTY_KEYS[idx] || idx + 1}</span><span class="poi-pill-name">${poi.name}</span>`;
+      const keySpan = document.createElement('span');
+      keySpan.className = 'poi-pill-key';
+      keySpan.textContent = QWERTY_KEYS[idx] || String(idx + 1);
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'poi-pill-name';
+      nameSpan.textContent = poi.name;
+      pill.append(keySpan, nameSpan);
       pill.addEventListener('click', () => this._onPoiClick(cityId, idx));
       this._poiRow.appendChild(pill);
     });
