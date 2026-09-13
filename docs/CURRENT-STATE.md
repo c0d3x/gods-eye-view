@@ -1765,9 +1765,10 @@ Historical planning documents may not match runtime behavior.
 
 ## Current Baseline
 
-- Repository metadata and public URLs use the `bilawalsidhu/gods-eye-view`
-  project identity. Runtime behavior is defined by this document and the current
-  source tree rather than historical branch notes.
+- Repository metadata and public URLs use the `c0d3x/gods-eye-view` project
+  identity, a fork of `bilawalsidhu/gods-eye-view`. Runtime behavior is defined
+  by this document and the current source tree rather than historical branch
+  notes.
 
 ## Runtime Stack
 

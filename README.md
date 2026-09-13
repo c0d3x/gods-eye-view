@@ -8,6 +8,8 @@ Photorealistic 3D globe. Live aircraft, ships, satellites, earthquakes, traffic,
 
 *No place left behind.*
 
+**This repository is a fork of [bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view).**
+
 ![Orbital HUD, a tracked live globe, FLIR terrain — then OPEN SOURCED](docs/media/hero-open-source-reveal.gif)
 
 <a href="https://www.youtube.com/@bilawalsidhu">
@@ -97,6 +99,9 @@ app's **POWER UP** panel; [Keys & Costs](#-api-keys) explains the options.
 2. Open [God's Eye View in Pinokio](https://pinokio.co/apps/github-com-bilawalsidhu-gods-eye-view).
 3. Click **Install**, then **Start**.
 
+Pinokio's listing installs the upstream project, not this fork. To run this
+fork, use Path 2.
+
 Available on **Windows, macOS, and Linux**. The Pinokio maintainer reports
 cross-platform testing of the fixed installer. The launcher installs the
 locked dependencies, finds a free local port, and opens the app.
@@ -112,7 +117,7 @@ Use **Node.js 24.x (24.14.0 or later) or 26.x** with **pnpm 11** (for example
 pins). The setup doctor warns about Node 25, which is end-of-life.
 
 ```bash
-git clone https://github.com/bilawalsidhu/gods-eye-view.git
+git clone https://github.com/c0d3x/gods-eye-view.git
 cd gods-eye-view
 pnpm install --frozen-lockfile
 pnpm run doctor

@@ -913,6 +913,8 @@ const RADIO_DIRECTORY_LIMIT = 750;
 const RADIO_CATALOG_MIN_SUCCESSFUL_QUERIES = 5;
 const RADIO_CATALOG_HEALTHY_MIN_STATIONS = Math.ceil(RADIO_DIRECTORY_LIMIT / 2);
 const RADIO_USER_AGENT = 'GodsEyeView/1.0 (Radio Browser directory client)';
+/** The project page upstream APIs ask clients to name as a contact point. */
+export const PROJECT_URL = 'https://github.com/c0d3x/gods-eye-view';
 const RADIO_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const RADIO_FALLBACK_MIRRORS = Object.freeze([
   'https://de1.api.radio-browser.info',
@@ -1632,7 +1634,7 @@ function celestrakProxy() {
       signal: AbortSignal.timeout(20000),
       // CelesTrak 403s bulk groups (e.g. `active`) unless the request carries a
       // descriptive User-Agent with a contact point.
-      headers: { 'User-Agent': 'gods-eye-view-celestrak-proxy/1.0 (+https://github.com/bilawalsidhu/gods-eye-view)' },
+      headers: { 'User-Agent': `gods-eye-view-celestrak-proxy/1.0 (+${PROJECT_URL})` },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const body = await readResponseTextCapped(res, 16 * 1024 * 1024); // every active TLE is ~2 MB
@@ -7464,8 +7466,8 @@ function fetchRegionalPlace(point) {
     });
     const payload = await fetchRegionalJson(`https://nominatim.openstreetmap.org/reverse?${params}`, {
       headers: {
-        'User-Agent': 'GodsEyeView/0.1 (+https://github.com/bilawalsidhu/gods-eye-view)',
-        Referer: 'https://github.com/bilawalsidhu/gods-eye-view',
+        'User-Agent': `GodsEyeView/0.1 (+${PROJECT_URL})`,
+        Referer: PROJECT_URL,
       },
     });
     return normalizeRegionalPlace(payload);

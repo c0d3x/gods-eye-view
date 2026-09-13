@@ -22,6 +22,12 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Changed
 
+- Repository metadata, the clone commands, CODEOWNERS and the contact point
+  the server gives CelesTrak and Nominatim now name this fork,
+  `c0d3x/gods-eye-view`. The README notes that it is a
+  fork of `bilawalsidhu/gods-eye-view`, and that the Pinokio listing still
+  installs the upstream project.
+
 - Installing the dependencies no longer downloads Chrome, which only the QA
   scripts, `pnpm run test:track` and `tools/cesium-render.mjs` use. Run
   `pnpm run qa:setup` to download Puppeteer's Chrome for Testing, or set

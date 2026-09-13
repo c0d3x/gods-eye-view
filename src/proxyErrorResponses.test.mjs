@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createBoundedCache } from '../server/lib/boundedCache.mjs';
-import { ADSBDB_CACHE_MAX_ENTRIES, TERRAIN_CACHE_MAX_POINTS } from '../vite.config.js';
+import { ADSBDB_CACHE_MAX_ENTRIES, PROJECT_URL, TERRAIN_CACHE_MAX_POINTS } from '../vite.config.js';
 
 const source = readFileSync(new URL('../vite.config.js', import.meta.url), 'utf8');
 const detail = 'fixture-secret-token /internal/example <html>';
@@ -35,6 +35,7 @@ function fixture(name, overrides = {}, preview = false) {
     createBoundedCache,
     TERRAIN_CACHE_MAX_POINTS,
     ADSBDB_CACHE_MAX_ENTRIES,
+    PROJECT_URL,
     ...overrides,
   };
   const helpers = ['readResponseTextCapped', 'coalesceProxyRequest', 'launchLibraryRequestHeaders'].map(extract).join('\n');

@@ -11,7 +11,7 @@ read `.node-version` (fnm, mise, nodenv, asdf) take Node 24.14.0 from it; nvm
 reads only `.nvmrc`, so use the commands below.
 
 ```bash
-git clone https://github.com/bilawalsidhu/gods-eye-view.git
+git clone https://github.com/c0d3x/gods-eye-view.git
 cd gods-eye-view
 nvm install 24.14.0
 nvm use 24.14.0
