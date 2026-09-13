@@ -39,3 +39,20 @@ export const diskCachePruners = Object.fromEntries(
     createCachePruner(limits),
   ]),
 );
+
+/**
+ * Vite plugin: prune the per-query disk caches when the server starts.
+ * Writes prune again, at most every ten minutes (see createCachePruner).
+ *
+ * @returns {import('vite').Plugin}
+ */
+export function diskCacheJanitor() {
+  const pruneAll = () => {
+    for (const pruner of Object.values(diskCachePruners)) void pruner.runNow();
+  };
+  return {
+    name: 'gev-disk-cache-janitor',
+    configureServer: pruneAll,
+    configurePreviewServer: pruneAll,
+  };
+}

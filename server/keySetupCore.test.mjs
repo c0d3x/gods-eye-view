@@ -31,7 +31,7 @@ test('the boot provenance snapshot survives in-process Vite config re-evaluation
   // snapshot would classify the panel's own keys as external (read-only) until
   // a full process relaunch, so the first evaluation's snapshot must win.
   const source = readFileSync(
-    new URL('../vite.config.js', import.meta.url),
+    new URL('./keySetupEndpoint.mjs', import.meta.url),
     'utf8',
   );
   assert.match(

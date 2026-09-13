@@ -227,3 +227,25 @@ export function createApiRequestGuard({
     res.end(JSON.stringify({ error: verdict.error }));
   };
 }
+
+/**
+ * Vite plugin: refuse cross-site requests before any `/api` route runs.
+ *
+ * `enforce: 'pre'` runs this plugin's server hooks before every other
+ * plugin's, so its middleware precedes all the proxy routes; Vite's own CORS
+ * and host checks still run first. `vite preview` gets the same guard, since
+ * it serves several of the same routes.
+ *
+ * @returns {import('vite').Plugin}
+ */
+export function apiRequestGuard() {
+  const install = (server) => {
+    server.middlewares.use('/api', createApiRequestGuard());
+  };
+  return {
+    name: 'gev-api-request-guard',
+    enforce: 'pre',
+    configureServer: install,
+    configurePreviewServer: install,
+  };
+}
