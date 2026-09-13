@@ -68,6 +68,7 @@ import {
   validateKeySetupUpdates,
 } from './src/keySetupCore.mjs';
 import { hardenCredentialFile } from './src/keySetupHardening.mjs';
+import { createApiRequestGuard } from './server/lib/requestGuard.mjs';
 import {
   fetchTerrainChunkWithRetry,
   parseTerrainPoints,
@@ -7745,6 +7746,28 @@ function keySetupEndpoint() {
 }
 
 /**
+ * Vite plugin: refuse cross-site requests before any `/api` route runs.
+ *
+ * `enforce: 'pre'` runs this plugin's server hooks before every other
+ * plugin's, so its middleware precedes all the proxy routes; Vite's own CORS
+ * and host checks still run first. `vite preview` gets the same guard, since
+ * it serves several of the same routes. See server/lib/requestGuard.mjs.
+ *
+ * @returns {import('vite').Plugin}
+ */
+export function apiRequestGuard() {
+  const install = (server) => {
+    server.middlewares.use('/api', createApiRequestGuard());
+  };
+  return {
+    name: 'gev-api-request-guard',
+    enforce: 'pre',
+    configureServer: install,
+    configurePreviewServer: install,
+  };
+}
+
+/**
  * Main Vite configuration factory.
  *
  * Loads .env files via Vite's loadEnv, registers Cesium + local proxy
@@ -7762,6 +7785,7 @@ export default defineConfig(({ mode }) => {
   const localAllowedHosts = ['localhost', '127.0.0.1', '.local'];
   return {
     plugins: [
+      apiRequestGuard(),
       cesium(),
       openSkyProxy(),
       celestrakProxy(),

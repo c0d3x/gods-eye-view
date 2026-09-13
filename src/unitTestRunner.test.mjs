@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import {
   ALLOCATION_TEST_FILES,
   allocationTestArgs,
   assertNode24AllocationRuntime,
   buildUnitTestPlan,
+  discoverUnitTestFiles,
   isCalibratedAllocationRuntime,
 } from '../scripts/run-unit-tests.mjs';
 
@@ -35,6 +37,14 @@ test('unit runner serializes only GC-bracketed allocation microbenchmarks', () =
     () => allocationTestArgs('src/data/radio.test.mjs'),
     /Not an allocation microbenchmark/,
   );
+});
+
+test('unit tests are discovered under both src and server', () => {
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const files = discoverUnitTestFiles(root);
+  assert.ok(files.includes('src/unitTestRunner.test.mjs'));
+  assert.ok(files.includes('server/lib/requestGuard.test.mjs'));
+  assert.deepEqual(files, [...files].sort());
 });
 
 test('allocation runtime calibration is explicit and pinned to Node 24', () => {

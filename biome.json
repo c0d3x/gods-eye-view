@@ -29,7 +29,10 @@
       "src/editions/local/scene.js",
       "src/editions/local/startupChrome.js",
       "src/editions/local/startupChrome.test.mjs",
-      "src/editions/local/tools.js"
+      "src/editions/local/tools.js",
+      "server/lib/requestGuard.mjs",
+      "server/lib/requestGuard.test.mjs",
+      "src/apiRequestGuard.test.mjs"
     ]
   },
   "formatter": {

@@ -21,9 +21,11 @@ export function assertNode24AllocationRuntime(version = process.versions.node) {
   return version;
 }
 
+/** Directories whose `*.test.mjs` files make up the unit suite. */
+export const UNIT_TEST_ROOTS = Object.freeze(['src', 'server']);
+
 /** Discover repository unit tests in stable path order. */
 export function discoverUnitTestFiles(root = process.cwd()) {
-  const sourceRoot = path.join(root, 'src');
   const files = [];
   const visit = (directory) => {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
@@ -34,7 +36,14 @@ export function discoverUnitTestFiles(root = process.cwd()) {
       }
     }
   };
-  visit(sourceRoot);
+  const present = new Set(
+    readdirSync(root, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name),
+  );
+  for (const name of UNIT_TEST_ROOTS) {
+    if (present.has(name)) visit(path.join(root, name));
+  }
   return files.sort();
 }
 

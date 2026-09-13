@@ -176,6 +176,15 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   to Puppeteer 25.10.0 and Sharp 0.35.4. Cesium remains on 1.138.0.
   Browser QA awaits the new asynchronous executable-path lookup.
 
+### Security
+
+- Refuse cross-site requests to the dev server's `/api` routes. While the
+  server ran, a page from another website open in the same browser could call
+  them. That could spend the configured Google and OpenAI quota and write to
+  the voice debug log. Browser requests must now come from the app's own
+  origin, and request bodies must be JSON; the Overpass proxy keeps its
+  form-encoded queries. Scripts and other non-browser clients are unaffected.
+
 ## [0.1.1] — 2026-09-01 — Installation and live-data fixes
 
 ### Changed
