@@ -15,6 +15,12 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 
 ### Development
 
+- Scan the code and the supply chain. CodeQL analyzes the JavaScript and the
+  GitHub workflows on every push to main and weekly, OpenSSF Scorecard checks
+  the repository's practices weekly, and both report under Security → Code
+  scanning. Dependency review checks every push to main and every pull
+  request for new dependencies with known vulnerabilities.
+
 - Pin every GitHub Action in CI to a full commit SHA, with its version in a
   comment, instead of a tag such as `@v7` that can be moved to other code.
   Dependabot's weekly updates move the SHA and the comment together, and a
@@ -25,6 +31,8 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   summary, by area, with the largest source files no test loads and the
   least-covered ones; lcov.info is kept as an artifact for 30 days.
   `pnpm run test:coverage` does the same locally. There is no threshold yet.
+  Coverage makes the Node 24 job about a minute slower, so it is now CI's
+  longest, at a little over two minutes.
 
 - Run the allocation microbenchmarks in their own CI job, in parallel with
   the test jobs, instead of after the Node 24 job's tests, so push CI

@@ -53,3 +53,11 @@ test('Dependabot updates the pinned actions', () => {
   );
   assert.match(config, /- package-ecosystem: github-actions\n\s+directory: \//);
 });
+
+test('every workflow declares its token permissions', () => {
+  const files = readdirSync(WORKFLOWS).filter((name) => /\.ya?ml$/.test(name));
+  for (const name of files) {
+    const text = readFileSync(new URL(name, WORKFLOWS), 'utf8');
+    assert.match(text, /^permissions:/m, `${name} sets top-level permissions`);
+  }
+});
