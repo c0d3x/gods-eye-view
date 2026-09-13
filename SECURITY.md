@@ -13,7 +13,7 @@ Include repro steps and impact. We'll acknowledge, investigate, and credit you (
 
 ## How secrets are handled
 
-The golden rule: **secret-bearing API keys stay on the server side.** The dev/preview server (Vite middleware in `vite.config.js`) brokers every request that needs a private credential, so the browser never receives one.
+The golden rule: **secret-bearing API keys stay on the server side.** The dev/preview server (Vite middleware that `vite.config.js` installs from `server/`) brokers every request that needs a private credential, so the browser never receives one.
 
 | Key | Where it lives | How the browser uses it |
 |-----|----------------|--------------------------|
@@ -58,7 +58,7 @@ browser-key fallback for existing single-key setups.
 
 ## Server-side proxy hardening
 
-The data proxies, in `vite.config.js` and the modules under `server/`, are written so the browser cannot turn the server into an open relay:
+The data proxies, the modules under `server/`, are written so the browser cannot turn the server into an open relay:
 
 - **No arbitrary-URL fetching.** The CCTV proxy fetches only server-registered camera URLs — clients cannot pass an upstream URL to fetch (SSRF mitigation). The Street View fallback does take the frame's position from the request, so it counts against the per-client Google throttle below, and its frames are cached by position. It follows at most three redirects itself (`server/lib/cameraFetch.mjs`). A hop may stay on the origin of a camera from your own `CCTV_SOURCES_FILE` or `CCTV_SOURCES_JSON`, which can be a camera on your network. Any other hop, and every hop of a camera from the Austin, Caltrans or TfL feeds, must resolve only to public addresses, and the connection is pinned to them. Only images (not SVG), video and HLS playlists are relayed, with `X-Content-Type-Options: nosniff` and a sandboxing Content-Security-Policy. Other proxies target fixed upstream hosts.
 - **Radio is not an audio relay.** `/api/radio/stations` contacts only allowlisted Radio Browser HTTPS hosts and paths, rejects redirects, rejects any hostname with a loopback/private/link-local/metadata/non-public A or AAAA result, and pins each TLS connection to a validated address. It returns normalized public HTTPS stream URLs; `/api/radio/click/:uuid` applies the same destination policy and accepts only station IDs from the current bounded catalog. The browser then connects directly to the broadcaster after an explicit playback action, so the broadcaster sees the listener's IP address. GEV never proxies, caches, records, or redistributes audio.

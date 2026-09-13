@@ -76,7 +76,10 @@ test('status lists every provider key and whether it is set, never its value', (
   // A credential status must never be cached or framed.
   assert.equal(res.headers['cache-control'], 'no-store');
   assert.equal(res.headers['x-frame-options'], 'DENY');
-  assert.equal(res.headers['content-security-policy'], "frame-ancestors 'none'");
+  assert.equal(
+    res.headers['content-security-policy'],
+    "frame-ancestors 'none'",
+  );
 });
 
 test('status answers only a GET from this machine, by a local name, unproxied and same-origin', (t) => {

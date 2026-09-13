@@ -34,11 +34,15 @@ export function adsbLolProxy() {
   return {
     name: 'adsblol-proxy',
     configureServer(server) {
-      server.middlewares.use('/api/adsblol/mil', async (req, res) => {
+      server.middlewares.use('/api/adsblol/mil', async (_req, res) => {
         try {
           const now = Date.now();
           if (_cache && now - _cacheAt < CACHE_MS) {
-            res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-ADS-B-Cache': 'HIT' });
+            res.writeHead(200, {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-store',
+              'X-ADS-B-Cache': 'HIT',
+            });
             res.end(_cache);
             return;
           }
@@ -47,26 +51,46 @@ export function adsbLolProxy() {
           const upstream = await fetchWithTimeout(
             'https://api.adsb.lol/v2/mil',
             { headers: { 'User-Agent': 'gods-eye-view-adsblol-proxy/1.0' } },
-            { timeoutMs: ADSBLOL_TIMEOUT_MS }
+            { timeoutMs: ADSBLOL_TIMEOUT_MS },
           );
-          const body = await readResponseTextCapped(upstream, ADSBLOL_MAX_BYTES);
+          const body = await readResponseTextCapped(
+            upstream,
+            ADSBLOL_MAX_BYTES,
+          );
           if (upstream.ok) {
             _cache = body;
             _cacheAt = now;
           } else {
-            console.warn(`[adsb.lol Proxy] ${describeUpstreamFailure(upstream.status, body)}`);
+            console.warn(
+              `[adsb.lol Proxy] ${describeUpstreamFailure(upstream.status, body)}`,
+            );
           }
-          res.writeHead(upstream.status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-ADS-B-Cache': 'MISS' });
+          res.writeHead(upstream.status, {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store',
+            'X-ADS-B-Cache': 'MISS',
+          });
           // Never relay adsb.lol's own error page or text.
-          res.end(upstream.ok ? body : JSON.stringify({ error: upstreamErrorMessage('adsb.lol', upstream.status) }));
+          res.end(
+            upstream.ok
+              ? body
+              : JSON.stringify({
+                  error: upstreamErrorMessage('adsb.lol', upstream.status),
+                }),
+          );
         } catch (e) {
           console.error('[adsb.lol Proxy]', e.message);
           if (_cache) {
-            res.writeHead(200, { 'Content-Type': 'application/json', 'X-ADS-B-Cache': 'STALE' });
+            res.writeHead(200, {
+              'Content-Type': 'application/json',
+              'X-ADS-B-Cache': 'STALE',
+            });
             res.end(_cache);
             return;
           }
-          res.writeHead(upstreamErrorStatus(e), { 'Content-Type': 'application/json' });
+          res.writeHead(upstreamErrorStatus(e), {
+            'Content-Type': 'application/json',
+          });
           res.end(JSON.stringify({ error: 'ADS-B proxy error' }));
         }
       });

@@ -136,7 +136,20 @@
       "server/proxies/opensky.mjs",
       "server/proxies/opensky.test.mjs",
       "server/realtime/openai.mjs",
-      "server/proxies/googlePlaces.mjs"
+      "server/proxies/googlePlaces.mjs",
+      "server/realtime/tools.mjs",
+      "server/proxies/celestrak.mjs",
+      "server/proxies/rocketLaunches.mjs",
+      "server/proxies/firms.mjs",
+      "server/proxies/terrainHeights.mjs",
+      "server/proxies/adsbdb.mjs",
+      "server/proxies/adsbLol.mjs",
+      "server/proxies/adsbLol.test.mjs",
+      "server/proxies/trackBackfill.mjs",
+      "server/proxies/trackBackfill.test.mjs",
+      "server/keySetupEndpoint.mjs",
+      "server/keySetupEndpoint.test.mjs",
+      "vite.config.js"
     ]
   },
   "formatter": {

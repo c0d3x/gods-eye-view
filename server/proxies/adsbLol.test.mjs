@@ -32,9 +32,9 @@ function request(handler) {
         });
       },
     };
-    Promise.resolve(handler({ method: 'GET', url: '/', headers: {} }, res)).catch(
-      reject,
-    );
+    Promise.resolve(
+      handler({ method: 'GET', url: '/', headers: {} }, res),
+    ).catch(reject);
   });
 }
 
@@ -71,8 +71,7 @@ test('a failed feed answers with its status in our words, and is not cached', as
   const fetchMock = t.mock.method(
     globalThis,
     'fetch',
-    async () =>
-      new Response('<html>adsb.lol exploded</html>', { status: 503 }),
+    async () => new Response('<html>adsb.lol exploded</html>', { status: 503 }),
   );
   const handler = mount();
   const failed = await request(handler);

@@ -1,8 +1,9 @@
 /**
  * Vite configuration for God's Eye View — a cinematic geospatial app.
  *
- * Installs the dev-server proxy middlewares that bypass CORS and add
- * caching/auth for upstream APIs. They live in server/proxies/:
+ * This file holds configuration and plugin wiring only. The dev-server
+ * routes that bypass CORS and add caching/auth for upstream APIs are plugins
+ * under server/. The proxies live in server/proxies/:
  *   - celestrak.mjs — satellite TLE orbital elements
  *   - rocketLaunches.mjs — recent Launch Library 2 mission metadata
  *   - firms.mjs — live active-fire detections (VIIRS ×3, trailing 24 h)
@@ -35,29 +36,32 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import cesium from './scripts/cesium-vite-plugin.mjs';
+import { aisLiveProxy } from './server/ais/relay.mjs';
+import { keySetupEndpoint } from './server/keySetupEndpoint.mjs';
 import { resolveAllowedHosts } from './server/lib/allowedHosts.mjs';
 import { isDebugLogEnabled } from './server/lib/debugLog.mjs';
-import { radioBrowserProxy } from './server/proxies/radio.mjs';
-import { militaryInstallationsProxy } from './server/proxies/militaryInstallations.mjs';
-import { overpassProxy } from './server/proxies/overpass.mjs';
-import { regionalBriefProxy, weatherEffectsProxy } from './server/proxies/regional.mjs';
-import { cctvProxy } from './server/proxies/cctv.mjs';
-import { gbfsProxy } from './server/proxies/gbfs.mjs';
-import { tomtomProxy } from './server/proxies/tomtom.mjs';
-import { openSkyProxy } from './server/proxies/opensky.mjs';
-import { googlePlacesContextProxy } from './server/proxies/googlePlaces.mjs';
-import { aisLiveProxy } from './server/ais/relay.mjs';
-import { openAiRealtimeProxy } from './server/realtime/openai.mjs';
-import { adsbdbProxy } from './server/proxies/adsbdb.mjs';
-import { adsbLolProxy } from './server/proxies/adsbLol.mjs';
-import { celestrakProxy } from './server/proxies/celestrak.mjs';
-import { firmsProxy } from './server/proxies/firms.mjs';
-import { rocketLaunchesProxy } from './server/proxies/rocketLaunches.mjs';
-import { terrainHeightsProxy } from './server/proxies/terrainHeights.mjs';
-import { trackBackfillProxies } from './server/proxies/trackBackfill.mjs';
-import { keySetupEndpoint } from './server/keySetupEndpoint.mjs';
 import { diskCacheJanitor } from './server/lib/diskCacheLimits.mjs';
 import { apiRequestGuard } from './server/lib/requestGuard.mjs';
+import { adsbdbProxy } from './server/proxies/adsbdb.mjs';
+import { adsbLolProxy } from './server/proxies/adsbLol.mjs';
+import { cctvProxy } from './server/proxies/cctv.mjs';
+import { celestrakProxy } from './server/proxies/celestrak.mjs';
+import { firmsProxy } from './server/proxies/firms.mjs';
+import { gbfsProxy } from './server/proxies/gbfs.mjs';
+import { googlePlacesContextProxy } from './server/proxies/googlePlaces.mjs';
+import { militaryInstallationsProxy } from './server/proxies/militaryInstallations.mjs';
+import { openSkyProxy } from './server/proxies/opensky.mjs';
+import { overpassProxy } from './server/proxies/overpass.mjs';
+import { radioBrowserProxy } from './server/proxies/radio.mjs';
+import {
+  regionalBriefProxy,
+  weatherEffectsProxy,
+} from './server/proxies/regional.mjs';
+import { rocketLaunchesProxy } from './server/proxies/rocketLaunches.mjs';
+import { terrainHeightsProxy } from './server/proxies/terrainHeights.mjs';
+import { tomtomProxy } from './server/proxies/tomtom.mjs';
+import { trackBackfillProxies } from './server/proxies/trackBackfill.mjs';
+import { openAiRealtimeProxy } from './server/realtime/openai.mjs';
 
 /** Resolve __dirname for ESM context. */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -147,10 +151,14 @@ export default defineConfig(({ mode }) => {
     },
     // Expose selected API keys to the browser via import.meta.env.*
     define: {
-      'import.meta.env.GOOGLE_MAPS_API_KEY': JSON.stringify(env.GOOGLE_MAPS_API_KEY),
+      'import.meta.env.GOOGLE_MAPS_API_KEY': JSON.stringify(
+        env.GOOGLE_MAPS_API_KEY,
+      ),
       'import.meta.env.CESIUM_ION_TOKEN': JSON.stringify(env.CESIUM_ION_TOKEN),
       // Whether the browser posts voice debug records (see openAiRealtimeProxy).
-      'import.meta.env.GEV_REALTIME_DEBUG_LOG': JSON.stringify(isDebugLogEnabled(env.GEV_REALTIME_DEBUG_LOG)),
+      'import.meta.env.GEV_REALTIME_DEBUG_LOG': JSON.stringify(
+        isDebugLogEnabled(env.GEV_REALTIME_DEBUG_LOG),
+      ),
     },
     build: {
       // The Cesium engine bundle is inherently large; raise the warning ceiling

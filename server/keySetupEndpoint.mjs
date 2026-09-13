@@ -40,9 +40,16 @@ const LAUNCHER_AT_BOOT = process.env.GEV_LAUNCHER;
  * Recomputing the snapshot there would classify the panel's own keys as
  * external (read-only) until the whole process is relaunched.
  */
-const PROVIDER_ENV_AT_BOOT = globalThis.__GEV_PROVIDER_ENV_AT_BOOT ??= Object.freeze(Object.fromEntries(
-  [...knownKeySetupEnvVars()].map((name) => [name, String(process.env[name] ?? '').trim()]),
-));
+// biome-ignore lint/suspicious/noAssignInExpressions: memoized on globalThis, so an in-process restart binds the first evaluation's snapshot
+const PROVIDER_ENV_AT_BOOT = (globalThis.__GEV_PROVIDER_ENV_AT_BOOT ??=
+  Object.freeze(
+    Object.fromEntries(
+      [...knownKeySetupEnvVars()].map((name) => [
+        name,
+        String(process.env[name] ?? '').trim(),
+      ]),
+    ),
+  ));
 
 /**
  * `dev-fresh.sh` resolves dotenv and Keychain values before it starts Vite, so
@@ -98,8 +105,13 @@ export function keySetupEndpoint() {
   // `GEV_LAUNCHER=pinokio` line in someone's .env would silently redirect a
   // plain `npm run dev` to write the Pinokio store it never loaded.
   const pinokioManaged = () => LAUNCHER_AT_BOOT === 'pinokio';
-  const storeName = () => (pinokioManaged() ? 'pinokio-environment' : 'env-file');
-  const storePath = () => path.join(REPO_ROOT, ...(pinokioManaged() ? ['pinokio', 'ENVIRONMENT'] : ['.env']));
+  const storeName = () =>
+    pinokioManaged() ? 'pinokio-environment' : 'env-file';
+  const storePath = () =>
+    path.join(
+      REPO_ROOT,
+      ...(pinokioManaged() ? ['pinokio', 'ENVIRONMENT'] : ['.env']),
+    );
   // Read the store, distinguishing "no store yet" from "cannot read this
   // store". Only ENOENT means empty. Every other failure — a permission error,
   // an I/O fault, an undecodable file — must ABORT the save: upserting into a
@@ -116,7 +128,9 @@ export function keySetupEndpoint() {
       return fs.readFileSync(storePath(), 'utf8');
     } catch (error) {
       if (error?.code === 'ENOENT') return ''; // The first saved key births the file.
-      const unreadable = new Error('the existing configuration could not be read, so nothing was changed');
+      const unreadable = new Error(
+        'the existing configuration could not be read, so nothing was changed',
+      );
       unreadable.code = 'GEV_STORE_UNREADABLE';
       throw unreadable;
     }
@@ -133,16 +147,17 @@ export function keySetupEndpoint() {
   };
   // The gate itself is pure and unit-tested (admitKeySetupRequest in
   // server/keySetupCore.mjs) — this just feeds it the request.
-  const admit = (req) => admitKeySetupRequest({
-    method: req.method,
-    remoteAddress: req.socket?.remoteAddress,
-    hostHeader: req.headers?.host,
-    protocol: req.socket?.encrypted ? 'https:' : 'http:',
-    origin: req.headers?.origin,
-    contentType: req.headers?.['content-type'],
-    proxyHeaders: req.headers || {},
-    env: process.env,
-  });
+  const admit = (req) =>
+    admitKeySetupRequest({
+      method: req.method,
+      remoteAddress: req.socket?.remoteAddress,
+      hostHeader: req.headers?.host,
+      protocol: req.socket?.encrypted ? 'https:' : 'http:',
+      origin: req.headers?.origin,
+      contentType: req.headers?.['content-type'],
+      proxyHeaders: req.headers || {},
+      env: process.env,
+    });
   // Is this env var supplied by a workflow OTHER than this panel's store? Boot
   // provenance closes the equal-value ambiguity: an exported X remains
   // external even when the editable store independently contains X.
@@ -166,7 +181,9 @@ export function keySetupEndpoint() {
       // offered); 'external' = supplied by env/Keychain/another workflow
       // (read-only — the panel must never rewrite or delete it).
       key.managed = key.set
-        ? (key.envVars.some((name) => isExternallyManaged(name, inStore)) ? 'external' : 'file')
+        ? key.envVars.some((name) => isExternallyManaged(name, inStore))
+          ? 'external'
+          : 'file'
         : null;
     }
     return { ...status, store: storeName() };
@@ -180,7 +197,9 @@ export function keySetupEndpoint() {
     // Never write THROUGH a symlink into a credential path.
     try {
       if (fs.lstatSync(filepath).isSymbolicLink()) {
-        throw new Error('refusing to write a credential store that is a symlink');
+        throw new Error(
+          'refusing to write a credential store that is a symlink',
+        );
       }
     } catch (error) {
       if (error.code !== 'ENOENT') throw error; // absent is fine — first save.
@@ -203,8 +222,12 @@ export function keySetupEndpoint() {
       // secret never on disk unprotected — no rollback path to get wrong.
       const hardening = hardenCredentialFileReport(tmp);
       if (!hardening.ok) {
-        console.warn(`[KeySetup] Could not restrict ${path.basename(tmp)} (${hardening.step}): ${hardening.detail}`);
-        const error = new Error('could not restrict the credential file to your account; nothing was saved');
+        console.warn(
+          `[KeySetup] Could not restrict ${path.basename(tmp)} (${hardening.step}): ${hardening.detail}`,
+        );
+        const error = new Error(
+          'could not restrict the credential file to your account; nothing was saved',
+        );
         error.code = 'GEV_HARDEN_FAILED';
         throw error;
       }
@@ -236,85 +259,103 @@ export function keySetupEndpoint() {
     // only install via configureServer (never configurePreviewServer), so they
     // are absent from preview today — but pinning apply here makes that a
     // guarantee rather than an accident of which hook a future edit uses.
-    apply: (_config, { command, isPreview }) => command === 'serve' && !isPreview,
+    apply: (_config, { command, isPreview }) =>
+      command === 'serve' && !isPreview,
     configureServer(server) {
       server.middlewares.use('/api/setup/status', (req, res) => {
-        if (req.method !== 'GET') return respond(res, 405, { error: 'Method not allowed' });
+        if (req.method !== 'GET')
+          return respond(res, 405, { error: 'Method not allowed' });
         const admission = admit(req);
-        if (!admission.ok) return respond(res, admission.status, { error: admission.error });
+        if (!admission.ok)
+          return respond(res, admission.status, { error: admission.error });
         respond(res, 200, providerStatus());
       });
       server.middlewares.use('/api/setup/keys', (req, res) => {
-        if (req.method !== 'POST') return respond(res, 405, { error: 'Method not allowed' });
+        if (req.method !== 'POST')
+          return respond(res, 405, { error: 'Method not allowed' });
         const admission = admit(req);
-        if (!admission.ok) return respond(res, admission.status, { error: admission.error });
+        if (!admission.ok)
+          return respond(res, admission.status, { error: admission.error });
         // Past the cap, readBodyWithin stops buffering and drains the rest, so
         // the 413 reaches the client before the connection closes. Destroying
         // the request instead reset the connection before any reply.
-        readBodyWithin(req, KEY_SETUP_MAX_BODY_BYTES).then((read) => {
-          if (!read.ok) {
-            res.setHeader('Connection', 'close');
-            return respond(res, 413, { error: 'Request too large' });
-          }
-          let parsed;
-          try {
-            parsed = JSON.parse(read.text || '{}');
-          } catch {
-            return respond(res, 400, { error: 'Invalid JSON' });
-          }
-          const verdict = validateKeySetupUpdates(parsed);
-          if (!verdict.ok) return respond(res, 400, { error: verdict.error });
-          // Neither a replace NOR a removal may touch an externally-supplied
-          // credential (shell env, Keychain, another workflow). This backs the
-          // UI's read-only "configured externally" state with a real contract —
-          // and it must guard replace too, not just remove: a clickjacked or
-          // scripted same-origin POST could otherwise overwrite the live value.
-          const inStore = storeValues();
-          for (const name of Object.keys(verdict.updates)) {
-            if (isExternallyManaged(name, inStore)) {
-              return respond(res, 409, {
-                error: `${name} is configured outside Provider Settings and can only be changed where it was set`,
+        readBodyWithin(req, KEY_SETUP_MAX_BODY_BYTES)
+          .then((read) => {
+            if (!read.ok) {
+              res.setHeader('Connection', 'close');
+              return respond(res, 413, { error: 'Request too large' });
+            }
+            let parsed;
+            try {
+              parsed = JSON.parse(read.text || '{}');
+            } catch {
+              return respond(res, 400, { error: 'Invalid JSON' });
+            }
+            const verdict = validateKeySetupUpdates(parsed);
+            if (!verdict.ok) return respond(res, 400, { error: verdict.error });
+            // Neither a replace NOR a removal may touch an externally-supplied
+            // credential (shell env, Keychain, another workflow). This backs the
+            // UI's read-only "configured externally" state with a real contract —
+            // and it must guard replace too, not just remove: a clickjacked or
+            // scripted same-origin POST could otherwise overwrite the live value.
+            const inStore = storeValues();
+            for (const name of Object.keys(verdict.updates)) {
+              if (isExternallyManaged(name, inStore)) {
+                return respond(res, 409, {
+                  error: `${name} is configured outside Provider Settings and can only be changed where it was set`,
+                });
+              }
+            }
+            try {
+              persistStore(upsertDotenvValues(readStore(), verdict.updates));
+            } catch (error) {
+              // The hardening failure carries its own honest, path-free message —
+              // "saved world-readable" must never be reported as a generic write
+              // error. Everything else returns a fixed message (a raw filesystem
+              // error can carry an absolute path; that stays in the server log).
+              if (
+                error?.code === 'GEV_HARDEN_FAILED' ||
+                error?.code === 'GEV_STORE_UNREADABLE'
+              ) {
+                return respond(res, 500, {
+                  error: `The key was not saved: ${error.message}`,
+                });
+              }
+              return respond(res, 500, {
+                error: `Could not write the ${storeName()} store`,
               });
             }
-          }
-          try {
-            persistStore(upsertDotenvValues(readStore(), verdict.updates));
-          } catch (error) {
-            // The hardening failure carries its own honest, path-free message —
-            // "saved world-readable" must never be reported as a generic write
-            // error. Everything else returns a fixed message (a raw filesystem
-            // error can carry an absolute path; that stays in the server log).
-            if (error?.code === 'GEV_HARDEN_FAILED' || error?.code === 'GEV_STORE_UNREADABLE') {
-              return respond(res, 500, { error: `The key was not saved: ${error.message}` });
+            // Live for the server-side proxies immediately; the restart below is
+            // what re-injects the client-exposed defines (Google, Cesium ion).
+            // Removal sets '' rather than deleting: an empty value stays falsy
+            // through loadEnv after restart, matching the Pinokio launcher's own
+            // blank-field semantics.
+            for (const [name, value] of Object.entries(verdict.updates)) {
+              process.env[name] = value === null ? '' : value;
             }
-            return respond(res, 500, { error: `Could not write the ${storeName()} store` });
-          }
-          // Live for the server-side proxies immediately; the restart below is
-          // what re-injects the client-exposed defines (Google, Cesium ion).
-          // Removal sets '' rather than deleting: an empty value stays falsy
-          // through loadEnv after restart, matching the Pinokio launcher's own
-          // blank-field semantics.
-          for (const [name, value] of Object.entries(verdict.updates)) {
-            process.env[name] = value === null ? '' : value;
-          }
-          respond(res, 200, {
-            ok: true,
-            saved: Object.keys(verdict.updates),
-            status: providerStatus(),
-            restarting: true,
-          });
-          // One deliberate restart, after the response has flushed. Vite's own
-          // .env watcher may fire too; a second queued restart is harmless.
-          setTimeout(() => {
-            server.restart().catch((error) => {
-              console.warn('[KeySetup] Dev-server restart failed:', error?.message || error);
+            respond(res, 200, {
+              ok: true,
+              saved: Object.keys(verdict.updates),
+              status: providerStatus(),
+              restarting: true,
             });
-          }, 250);
-        }).catch((error) => {
-          // The client went away mid-body, or the save failed unexpectedly.
-          console.warn('[KeySetup] Request failed:', error?.message || error);
-          if (!res.headersSent) respond(res, 500, { error: 'Provider Settings request failed' });
-        });
+            // One deliberate restart, after the response has flushed. Vite's own
+            // .env watcher may fire too; a second queued restart is harmless.
+            setTimeout(() => {
+              server.restart().catch((error) => {
+                console.warn(
+                  '[KeySetup] Dev-server restart failed:',
+                  error?.message || error,
+                );
+              });
+            }, 250);
+          })
+          .catch((error) => {
+            // The client went away mid-body, or the save failed unexpectedly.
+            console.warn('[KeySetup] Request failed:', error?.message || error);
+            if (!res.headersSent)
+              respond(res, 500, { error: 'Provider Settings request failed' });
+          });
       });
     },
   };

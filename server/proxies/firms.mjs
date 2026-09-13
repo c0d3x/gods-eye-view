@@ -7,7 +7,10 @@ import { promises as fsp } from 'node:fs';
 import path from 'node:path';
 import { filterTrailing24h, parseFirmsCsv } from '../../src/data/firmsCsv.js';
 import { writeJson } from '../lib/jsonResponse.mjs';
-import { readResponseJsonCapped, readResponseTextCapped } from '../lib/upstreamBody.mjs';
+import {
+  readResponseJsonCapped,
+  readResponseTextCapped,
+} from '../lib/upstreamBody.mjs';
 
 /**
  * NASA FIRMS live active-fire proxy with a memory + disk cache.
@@ -55,10 +58,16 @@ export function firmsProxy() {
     diskChecked = true;
     try {
       const parsed = JSON.parse(await fsp.readFile(CACHE_PATH, 'utf8'));
-      if (Number.isFinite(parsed?.at) && Array.isArray(parsed?.sources) && Array.isArray(parsed?.fires)) {
+      if (
+        Number.isFinite(parsed?.at) &&
+        Array.isArray(parsed?.sources) &&
+        Array.isArray(parsed?.fires)
+      ) {
         mem = parsed;
       }
-    } catch { /* no disk cache yet */ }
+    } catch {
+      /* no disk cache yet */
+    }
   }
 
   async function writeDisk(entry) {
@@ -80,7 +89,9 @@ export function firmsProxy() {
     const res = await fetch(url, { signal: AbortSignal.timeout(60_000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     // Two days of one satellite, worldwide, runs to tens of MB.
-    const records = parseFirmsCsv(await readResponseTextCapped(res, 128 * 1024 * 1024));
+    const records = parseFirmsCsv(
+      await readResponseTextCapped(res, 128 * 1024 * 1024),
+    );
     if (records === null) throw new Error('non-CSV upstream response');
     return records;
   }
@@ -104,7 +115,10 @@ export function firmsProxy() {
         for (const record of records) fires.push(record);
         sources.push({ source, count: records.length, ok: true });
       } catch (err) {
-        console.warn(`[firms-proxy] ${source} fetch failed:`, err?.message || err);
+        console.warn(
+          `[firms-proxy] ${source} fetch failed:`,
+          err?.message || err,
+        );
         sources.push({ source, count: 0, ok: false });
       }
     }
@@ -143,9 +157,14 @@ export function firmsProxy() {
           const body = await readResponseJsonCapped(res, 64 * 1024);
           const used = Number(body?.current_transactions);
           const limit = Number(body?.transaction_limit);
-          return Number.isFinite(used) && Number.isFinite(limit) ? { used, limit } : null;
+          return Number.isFinite(used) && Number.isFinite(limit)
+            ? { used, limit }
+            : null;
         } catch (err) {
-          console.warn('[firms-proxy] mapkey status failed:', err?.message || err);
+          console.warn(
+            '[firms-proxy] mapkey status failed:',
+            err?.message || err,
+          );
           return null;
         }
       })()
@@ -153,7 +172,9 @@ export function firmsProxy() {
           statusCache = { at: Date.now(), transactions };
           return transactions;
         })
-        .finally(() => { statusInflight = null; });
+        .finally(() => {
+          statusInflight = null;
+        });
     }
     return statusInflight;
   }
@@ -162,7 +183,8 @@ export function firmsProxy() {
     name: 'firms-proxy',
     configureServer(server) {
       server.middlewares.use('/api/firms', async (req, res) => {
-        const sendJson = (status, obj) => writeJson(res, status, obj, { 'Cache-Control': 'no-store' });
+        const sendJson = (status, obj) =>
+          writeJson(res, status, obj, { 'Cache-Control': 'no-store' });
         try {
           const subPath = String(req.url || '').split('?')[0];
           const key = mapKey();
@@ -170,7 +192,14 @@ export function firmsProxy() {
 
           if (subPath === '/status') {
             if (!key) {
-              sendJson(200, { hasKey: false, lastFetch: null, count: null, stale: false, ttlMs: TTL_MS, transactions: null });
+              sendJson(200, {
+                hasKey: false,
+                lastFetch: null,
+                count: null,
+                stale: false,
+                ttlMs: TTL_MS,
+                transactions: null,
+              });
               return;
             }
             const transactions = await getTransactions(key);
@@ -206,10 +235,14 @@ export function firmsProxy() {
                 return fresh;
               })
               .catch((err) => {
-                console.warn(`[firms-proxy] refresh failed (${err?.message || err}) — serving cache if any`);
+                console.warn(
+                  `[firms-proxy] refresh failed (${err?.message || err}) — serving cache if any`,
+                );
                 return null;
               })
-              .finally(() => { inflight = null; });
+              .finally(() => {
+                inflight = null;
+              });
           }
           const pending = inflight;
           const fresh = await pending;
@@ -218,7 +251,9 @@ export function firmsProxy() {
           } else if (entry) {
             sendJson(200, buildPayload(entry, true)); // upstream down — stale beats empty
           } else {
-            sendJson(502, { error: 'firms fetch failed and no cache available' });
+            sendJson(502, {
+              error: 'firms fetch failed and no cache available',
+            });
           }
         } catch (err) {
           console.warn('[firms-proxy] error:', err?.message || err);

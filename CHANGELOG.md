@@ -27,17 +27,21 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Changed
 
-- `vite.config.js` no longer defines the radio, Overpass, route, CCTV,
-  military-installation, regional brief, weather effects, GBFS, OpenSky,
-  TomTom, OpenAI and Google Places proxies. Each is a module under
-  `server/proxies/`, and the helpers they share with the routes that remain
-  (capped upstream reads, request coalescing, the disk cache limits and the
-  rest) live in `server/lib/`. Routes and responses are unchanged. The
-  installations, route, regional brief, weather effects, GBFS, OpenSky and
-  TomTom routes, which had no tests, now have them. The AIS relay behind
-  `/api/ais-live` moved to `server/ais/`, next to its socket adapter and
-  watchdog, with tests for reconnect and backoff, the watchdog tick and
-  shutdown.
+- `vite.config.js` now holds only configuration and plugin wiring; it was
+  7,800 lines. Every route plugin is a module under `server/proxies/`: radio,
+  Overpass and routes, CCTV, military installations, regional briefs and
+  weather effects, GBFS, OpenSky, TomTom, Google Places, CelesTrak, rocket
+  launches, FIRMS, terrain heights, adsbdb, the adsb.lol military feed and
+  the track backfill. The AIS relay behind `/api/ais-live` lives in
+  `server/ais/` with its socket adapter and watchdog, the voice agent's
+  routes and tool schema in `server/realtime/`, and Provider Settings in
+  `server/keySetupEndpoint.mjs`. The helpers they share (capped upstream
+  reads, request coalescing, the disk cache limits and the rest) live in
+  `server/lib/`. Routes and responses are unchanged, and every `/api` route
+  now has at least one test, including those that had none: the
+  installations, route, regional brief, weather effects, GBFS, OpenSky,
+  TomTom, adsb.lol, track backfill and Provider Settings status routes, and
+  the AIS relay's reconnect and backoff, watchdog tick and shutdown.
 
 - Server code no longer lives in the browser tree. The Provider Settings
   core, its credential-file hardening, the terrain-heights resolver, the

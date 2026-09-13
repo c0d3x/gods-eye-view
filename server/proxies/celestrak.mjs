@@ -37,8 +37,11 @@ export function celestrakProxy() {
   async function readDisk(group) {
     try {
       const parsed = JSON.parse(await fsp.readFile(diskPath(group), 'utf8'));
-      if (typeof parsed?.body === 'string' && Number.isFinite(parsed?.at)) return parsed;
-    } catch { /* no disk cache yet */ }
+      if (typeof parsed?.body === 'string' && Number.isFinite(parsed?.at))
+        return parsed;
+    } catch {
+      /* no disk cache yet */
+    }
     return null;
   }
 
@@ -46,7 +49,7 @@ export function celestrakProxy() {
     try {
       await fsp.mkdir(CACHE_DIR, { recursive: true });
       await fsp.writeFile(diskPath(group), JSON.stringify(entry), 'utf8');
-    } catch (err) {
+    } catch (_err) {
       console.warn('[celestrak-proxy] cache write failed');
     }
   }
@@ -59,7 +62,9 @@ export function celestrakProxy() {
       signal: AbortSignal.timeout(20000),
       // CelesTrak 403s bulk groups (e.g. `active`) unless the request carries a
       // descriptive User-Agent with a contact point.
-      headers: { 'User-Agent': `gods-eye-view-celestrak-proxy/1.0 (+${PROJECT_URL})` },
+      headers: {
+        'User-Agent': `gods-eye-view-celestrak-proxy/1.0 (+${PROJECT_URL})`,
+      },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const body = await readResponseTextCapped(res, 16 * 1024 * 1024); // every active TLE is ~2 MB
@@ -72,7 +77,9 @@ export function celestrakProxy() {
     name: 'celestrak-proxy',
     configureServer(server) {
       server.middlewares.use('/api/celestrak', async (req, res) => {
-        const group = String(req.url || '').replace(/^\//, '').split('?')[0];
+        const group = String(req.url || '')
+          .replace(/^\//, '')
+          .split('?')[0];
         if (!/^[a-z0-9-]+$/i.test(group)) {
           res.writeHead(400, { 'Content-Type': 'text/plain' });
           res.end('invalid group');
@@ -83,7 +90,10 @@ export function celestrakProxy() {
           // went out routing into the catch's send): writeHead after headersSent
           // throws "Cannot set headers after they are sent".
           if (res.headersSent) return;
-          res.writeHead(status, { 'Content-Type': 'text/plain', 'x-tle-cache': cacheStatus });
+          res.writeHead(status, {
+            'Content-Type': 'text/plain',
+            'x-tle-cache': cacheStatus,
+          });
           res.end(body);
         };
         try {
@@ -99,17 +109,22 @@ export function celestrakProxy() {
           }
           // Stale or missing → refresh, single-flight per group.
           if (!inflight.has(group)) {
-            inflight.set(group, fetchUpstream(group)
-              .then(async (fresh) => {
-                mem.set(group, fresh);
-                await writeDisk(group, fresh);
-                return fresh;
-              })
-              .catch((err) => {
-                console.warn('[celestrak-proxy] refresh failed — serving cache if any');
-                return null;
-              })
-              .finally(() => inflight.delete(group)));
+            inflight.set(
+              group,
+              fetchUpstream(group)
+                .then(async (fresh) => {
+                  mem.set(group, fresh);
+                  await writeDisk(group, fresh);
+                  return fresh;
+                })
+                .catch((_err) => {
+                  console.warn(
+                    '[celestrak-proxy] refresh failed — serving cache if any',
+                  );
+                  return null;
+                })
+                .finally(() => inflight.delete(group)),
+            );
           }
           const fresh = await inflight.get(group);
           if (fresh) {
@@ -119,7 +134,7 @@ export function celestrakProxy() {
           } else {
             send(502, 'celestrak fetch failed and no cache available', 'NONE');
           }
-        } catch (err) {
+        } catch (_err) {
           console.error('[celestrak-proxy] request failed');
           send(500, 'celestrak proxy error', 'ERROR');
         }

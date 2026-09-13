@@ -42,8 +42,14 @@ export function trackBackfillProxies() {
       res.end(cached.body);
       return;
     }
-    const upstream = await fetch(upstreamUrl, { headers, signal: AbortSignal.timeout(12000) });
-    const { tooLarge, text } = await readResponseTextWithin(upstream, RESPONSE_CAP_BYTES);
+    const upstream = await fetch(upstreamUrl, {
+      headers,
+      signal: AbortSignal.timeout(12000),
+    });
+    const { tooLarge, text } = await readResponseTextWithin(
+      upstream,
+      RESPONSE_CAP_BYTES,
+    );
     let body;
     if (tooLarge) {
       body = JSON.stringify({ error: 'Upstream track response too large' });
@@ -64,11 +70,15 @@ export function trackBackfillProxies() {
     middlewares.use('/api/opensky-track', async (req, res) => {
       try {
         const incoming = new URL(req.url || '', 'http://localhost');
-        const icao24 = String(incoming.searchParams.get('icao24') || '').trim().toLowerCase();
+        const icao24 = String(incoming.searchParams.get('icao24') || '')
+          .trim()
+          .toLowerCase();
         if (!/^[0-9a-f]{6}$/.test(icao24)) {
           res.statusCode = 400;
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ error: 'icao24 must be a 6-char hex string' }));
+          res.end(
+            JSON.stringify({ error: 'icao24 must be a 6-char hex string' }),
+          );
           return;
         }
         const token = await getOpenSkyToken();
@@ -76,9 +86,9 @@ export function trackBackfillProxies() {
           res,
           `osky:${icao24}`,
           `https://opensky-network.org/api/tracks/all?icao24=${icao24}&time=0`,
-          token ? { Authorization: `Bearer ${token}` } : {}
+          token ? { Authorization: `Bearer ${token}` } : {},
         );
-      } catch (error) {
+      } catch (_error) {
         res.statusCode = 502;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ error: 'OpenSky track fetch failed' }));
@@ -88,19 +98,23 @@ export function trackBackfillProxies() {
     middlewares.use('/api/adsblol/trace', async (req, res) => {
       try {
         const incoming = new URL(req.url || '', 'http://localhost');
-        const hex = String(incoming.searchParams.get('hex') || '').trim().toLowerCase();
+        const hex = String(incoming.searchParams.get('hex') || '')
+          .trim()
+          .toLowerCase();
         if (!/^[0-9a-f~]{6,7}$/.test(hex)) {
           res.statusCode = 400;
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ error: 'hex must be a 6-7 char hex string' }));
+          res.end(
+            JSON.stringify({ error: 'hex must be a 6-7 char hex string' }),
+          );
           return;
         }
         await proxyJson(
           res,
           `lol:${hex}`,
-          `https://adsb.lol/data/traces/${hex.slice(-2)}/trace_full_${hex}.json`
+          `https://adsb.lol/data/traces/${hex.slice(-2)}/trace_full_${hex}.json`,
         );
-      } catch (error) {
+      } catch (_error) {
         res.statusCode = 502;
         res.setHeader('Content-Type', 'application/json');
         res.end(JSON.stringify({ error: 'adsb.lol trace fetch failed' }));

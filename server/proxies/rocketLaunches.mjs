@@ -24,7 +24,11 @@ export function rocketLaunchesProxy() {
   const ttlMs = LL2_CACHE_TTL_MS;
   const maxResponseBytes = 12 * 1024 * 1024;
   const maxDiskCacheBytes = 24 * 1024 * 1024;
-  const cachePath = path.join(process.cwd(), '.gev-cache', 'launch-library-2-v2.3.json');
+  const cachePath = path.join(
+    process.cwd(),
+    '.gev-cache',
+    'launch-library-2-v2.3.json',
+  );
   let cache = null;
   let diskLoaded = false;
   const inFlight = new Map();
@@ -34,20 +38,23 @@ export function rocketLaunchesProxy() {
     diskLoaded = true;
     try {
       const stat = await fsp.stat(cachePath);
-      if (stat.size > maxDiskCacheBytes) throw new Error('cache file too large');
+      if (stat.size > maxDiskCacheBytes)
+        throw new Error('cache file too large');
       const parsed = JSON.parse(await fsp.readFile(cachePath, 'utf8'));
       if (Number.isFinite(parsed?.at) && typeof parsed?.body === 'string') {
         const body = JSON.parse(parsed.body);
         if (Array.isArray(body?.results)) cache = parsed;
       }
-    } catch { /* first run or invalid cache */ }
+    } catch {
+      /* first run or invalid cache */
+    }
   }
 
   async function saveDiskCache(entry) {
     try {
       await fsp.mkdir(path.dirname(cachePath), { recursive: true });
       await fsp.writeFile(cachePath, JSON.stringify(entry), 'utf8');
-    } catch (error) {
+    } catch (_error) {
       console.warn('[launch-library-proxy] cache write failed');
     }
   }
@@ -80,7 +87,8 @@ export function rocketLaunchesProxy() {
       throw error;
     }
     const parsed = JSON.parse(body);
-    if (!Array.isArray(parsed?.results)) throw new Error('malformed upstream response');
+    if (!Array.isArray(parsed?.results))
+      throw new Error('malformed upstream response');
     const fresh = { at: Date.now(), body };
     cache = fresh;
     void saveDiskCache(fresh);
@@ -100,14 +108,23 @@ export function rocketLaunchesProxy() {
         return;
       }
       const stale = cache;
-      const request = coalesceProxyRequest(inFlight, 'recent-launches', refreshUpstream);
+      const request = coalesceProxyRequest(
+        inFlight,
+        'recent-launches',
+        refreshUpstream,
+      );
       try {
         const fresh = await request.promise;
         send(res, 200, fresh.body, request.shared ? 'INFLIGHT' : 'MISS');
       } catch (error) {
         // Log only a bounded status, never upstream bodies, URLs, or credentials.
-        const status = Number.isInteger(error?.upstreamStatus) ? error.upstreamStatus : 502;
-        if (!request.shared) console.warn(`[launch-library-proxy] refresh failed (HTTP ${status})${stale ? ' — serving stale cache' : ''}`);
+        const status = Number.isInteger(error?.upstreamStatus)
+          ? error.upstreamStatus
+          : 502;
+        if (!request.shared)
+          console.warn(
+            `[launch-library-proxy] refresh failed (HTTP ${status})${stale ? ' — serving stale cache' : ''}`,
+          );
         if (stale) {
           send(res, 200, stale.body, 'STALE-ERROR');
           return;

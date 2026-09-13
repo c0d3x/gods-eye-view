@@ -66,7 +66,7 @@ The highest-leverage places to jump in:
 
 - **No framework.** Vanilla JS + [CesiumJS](https://cesium.com/platform/cesiumjs/) + [Vite](https://vitejs.dev/).
 - **UI lives in `src/ui.js`** (panels, HUD, styles, the control facade). **Layer logic lives in `src/data/<layer>.js`.** Keep them separate.
-- **Secrets stay server-side.** Anything needing a private key goes through a Vite proxy in `vite.config.js`. The browser only ever sees the Google Maps key (which you restrict) and ephemeral tokens.
+- **Secrets stay server-side.** Anything needing a private key goes through a server-side proxy under `server/`. The browser only ever sees the Google Maps key (which you restrict) and ephemeral tokens.
 - `docs/CURRENT-STATE.md` indexes the authoritative runtime reference, one page per subsystem under `docs/current-state/` — read it first.
 
 ## Coding style

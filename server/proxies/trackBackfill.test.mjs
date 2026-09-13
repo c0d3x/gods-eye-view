@@ -66,7 +66,12 @@ const noUpstream = async () => {
 test('an OpenSky track needs a 6-character hex icao24', async (t) => {
   const fetchMock = t.mock.method(globalThis, 'fetch', noUpstream);
   const { openSky } = mount();
-  for (const url of ['/', '/?icao24=abc', '/?icao24=zzzzzz', '/?icao24=abc1234']) {
+  for (const url of [
+    '/',
+    '/?icao24=abc',
+    '/?icao24=zzzzzz',
+    '/?icao24=abc1234',
+  ]) {
     const answer = await request(openSky, url);
     assert.equal(answer.status, 400, url);
     assert.deepEqual(
@@ -204,5 +209,8 @@ test('with an OpenSky client configured, the track request carries its token', a
   const trackCall = fetchMock.mock.calls.find((call) =>
     String(call.arguments[0]).includes('/api/tracks/all'),
   );
-  assert.equal(trackCall.arguments[1].headers.Authorization, 'Bearer tok-track');
+  assert.equal(
+    trackCall.arguments[1].headers.Authorization,
+    'Bearer tok-track',
+  );
 });

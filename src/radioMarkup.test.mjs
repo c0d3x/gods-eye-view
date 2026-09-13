@@ -2,24 +2,19 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { GEV_REALTIME_TOOLS } from '../server/realtime/tools.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const ui = readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
 const radio = readFileSync(new URL('./data/radio.js', import.meta.url), 'utf8');
 const rocketLaunches = readFileSync(new URL('./data/rocketLaunches.js', import.meta.url), 'utf8');
 const realtime = readFileSync(new URL('./voice/gevRealtime.js', import.meta.url), 'utf8');
-const voice = readFileSync(new URL('../server/realtime/tools.mjs', import.meta.url), 'utf8');
 const instructions = readFileSync(new URL('../server/realtime/openai.mjs', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 
-/** Parse the Realtime tool array out of its module as real data. */
+/** The Realtime tool schema, as the voice session sends it. */
 function realtimeTools() {
-  const start = voice.indexOf('const GEV_REALTIME_TOOLS = [');
-  const end = voice.indexOf('\n];', start);
-  assert.ok(start >= 0 && end > start, 'Realtime tool schema block is missing');
-  const literal = voice.slice(start + 'const GEV_REALTIME_TOOLS = '.length, end + 2);
-  // The block is pure data; evaluating it beats regexing nested schemas.
-  return new Function(`return ${literal};`)();
+  return GEV_REALTIME_TOOLS;
 }
 
 test('Realtime schema exposes the authoritative 28-tool inventory', () => {
@@ -274,10 +269,18 @@ test('panel collapse is presentation-only and Radio exposes explicit voice playb
   const start = ui.lastIndexOf('\n  setPanelCollapsed(panelId');
   const method = ui.slice(start, ui.indexOf('toggleCleanView(forceEnabled)', start));
   assert.doesNotMatch(method, /stopRadio|stopPlayback|setEnabled\('radio'/);
-  assert.match(voice, /'radio-panel'/);
-  assert.match(voice, /'radio'/);
-  assert.match(voice, /name:\s*'control_radio'/);
-  assert.match(voice, /enum:\s*\['enable', 'disable', 'play', 'resume', 'pause', 'stop', 'next', 'previous', 'volume', 'select', 'status'\]/);
+  const schemaText = JSON.stringify(realtimeTools());
+  assert.match(schemaText, /"radio-panel"/);
+  assert.match(schemaText, /"radio"/);
+  const controlRadio = realtimeTools().find((tool) => tool.name === 'control_radio');
+  assert.ok(controlRadio, 'control_radio must still be a voice tool');
+  const playbackActions = ['enable', 'disable', 'play', 'resume', 'pause', 'stop', 'next', 'previous', 'volume', 'select', 'status'];
+  assert.ok(
+    Object.values(controlRadio.parameters.properties).some(
+      (property) => JSON.stringify(property.enum) === JSON.stringify(playbackActions),
+    ),
+    'control_radio must offer exactly the explicit playback actions',
+  );
   const enableStart = ui.lastIndexOf('\n  _initRadioPanel()');
   const enableMethod = ui.slice(enableStart, ui.indexOf('\n  _renderRadioState(state)', enableStart));
   assert.doesNotMatch(enableMethod, /playSelectedRadio|togglePlayback\(\).*radio-enable/i);

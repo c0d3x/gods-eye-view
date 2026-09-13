@@ -36,7 +36,7 @@ test('the boot provenance snapshot survives in-process Vite config re-evaluation
   );
   assert.match(
     source,
-    /const PROVIDER_ENV_AT_BOOT = globalThis\.__GEV_PROVIDER_ENV_AT_BOOT \?\?= Object\.freeze\(/,
+    /const PROVIDER_ENV_AT_BOOT = \(?globalThis\.__GEV_PROVIDER_ENV_AT_BOOT \?\?=\s*Object\.freeze\(/,
   );
 });
 

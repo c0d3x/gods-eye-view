@@ -17,6 +17,7 @@ import {
   normalizeStackId,
 } from './gevActions.js';
 import { MAP_STACKS } from '../mapStackController.js';
+import { GEV_REALTIME_TOOLS } from '../../server/realtime/tools.mjs';
 import { readFileSync } from 'node:fs';
 
 test('every live basemap is reachable by its own id — no enum value without a voice alias', () => {
@@ -35,10 +36,9 @@ test('every live basemap is reachable by its own id — no enum value without a 
   assert.equal(normalizeStackId('Esri'), 'esri-imagery');
   assert.equal(normalizeStackId('esri imagery'), 'esri-imagery');
   // And the voice tool's enum must equal the set of live ids — no drift either way.
-  const toolSchema = readFileSync(new URL('../../server/realtime/tools.mjs', import.meta.url), 'utf8');
-  const enumMatch = toolSchema.match(/enum: \[('photoreal'[^\]]*)\],\s*\n\s*description: 'photoreal = Google 3D/);
-  assert.ok(enumMatch, 'set_map_stack enum literal must still be findable');
-  const enumIds = enumMatch[1].split(',').map((s) => s.trim().replace(/^'|'$/g, ''));
+  const mapStackTool = GEV_REALTIME_TOOLS.find((tool) => tool.name === 'set_map_stack');
+  assert.ok(mapStackTool, 'set_map_stack must still be a voice tool');
+  const enumIds = mapStackTool.parameters.properties.stack.enum;
   assert.deepEqual(
     [...enumIds].sort(),
     MAP_STACKS.map((s) => s.id).sort(),

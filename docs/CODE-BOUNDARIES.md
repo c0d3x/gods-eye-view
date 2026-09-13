@@ -62,8 +62,9 @@ become smaller modules with explicit lifecycle owners as their callers migrate.
 ## Server boundary
 
 The dev server's code lives outside the browser tree: its modules under
-`server/`, the route plugins `vite.config.js` installs under
-`server/proxies/`, and the helpers they share under `server/lib/`. Those
+`server/`, the route plugins `vite.config.js` installs from
+`server/proxies/`, `server/ais/` and `server/realtime/`, and the helpers they
+share under `server/lib/`. Those
 helpers are the request guard, JSON responses, request bodies, capped
 upstream reads, rate limits, fetch timeouts, caches and their disk limits,
 camera fetching and the Google server key, each defined once. Server code

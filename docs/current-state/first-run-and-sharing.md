@@ -72,8 +72,8 @@ the session. The full table is a comment block in the module and is pinned by
 shipped tools (`set_layer_visibility`'s enum already carries
 `local-datacenters`, `local-dams`, `telegeography-submarine-cables`,
 `local-firms`, `earthquakes`; `zoom_to_globe` supplies the camera), so
-`GEV_REALTIME_TOOLS` is **byte-identical to `main`** and pinned by sha256 in
-the unit suite. One instruction paragraph in `server/realtime/openai.mjs`
+`GEV_REALTIME_TOOLS` is **unchanged**: the unit suite pins the sha256 of the
+schema the voice session sends. One instruction paragraph in `server/realtime/openai.mjs`
 teaches the phrase mapping; deleting it is the complete rollback.
 
 **ESC arbitration — three rules, do not collapse them into one.** (1) The

@@ -16,6 +16,7 @@ import {
   setFirstRunSuppressed,
   shouldShowFirstRun,
 } from './firstRunExperience.js';
+import { GEV_REALTIME_TOOLS } from '../server/realtime/tools.mjs';
 
 function memoryStorage(key, value = null) {
   const values = new Map(value == null ? [] : [[key, value]]);
@@ -754,24 +755,24 @@ test('the DISPLAY rail starts collapsed on a first run, and a stored choice wins
   );
 });
 
-// ── Voice: instruction-only, tool schema byte-unchanged ─────────────────────
+// ── Voice: instruction-only, tool schema unchanged ──────────────────────────
 
-test('the voice TOOL SCHEMA is byte-identical to main — the mission mapping is instructions only', () => {
-  const src = fs.readFileSync(new URL('../server/realtime/tools.mjs', import.meta.url), 'utf8');
-  const start = src.indexOf('const GEV_REALTIME_TOOLS = [');
-  assert.ok(start > 0, 'GEV_REALTIME_TOOLS must still be a single literal array');
-  const end = src.indexOf('\n];\n', start);
-  const block = src.slice(start, end + 4);
-
-  // Re-pinned 2026-08-28: the Provider Settings / Esri release DELIBERATELY
-  // extends set_map_stack's enum with 'esri-imagery' (a real new basemap —
-  // exactly the kind of schema change this pin exists to make loud). The
-  // guarded claim is unchanged: first-run missions ride existing tools, and
-  // any NEW drift from this recorded schema still fails here.
-  assert.equal(block.length, 31189, 'tool schema byte length drifted from the pinned release schema');
+test('the voice TOOL SCHEMA is unchanged — the mission mapping is instructions only', () => {
+  // The pin hashes the schema as the Realtime session sends it (JSON), so
+  // reformatting server/realtime/tools.mjs cannot move it and any real edit
+  // still fails here. Re-pinned 2026-09-13 from the source-byte pin
+  // (73aaabdb…, 31189 bytes) on the very same schema. That pin had been
+  // re-pinned 2026-08-28, when the Provider Settings / Esri release
+  // DELIBERATELY extended set_map_stack's enum with 'esri-imagery' (a real
+  // new basemap — exactly the kind of schema change this pin exists to make
+  // loud). The guarded claim is unchanged: first-run missions ride existing
+  // tools, and any NEW drift from this recorded schema still fails here.
+  const schema = JSON.stringify(GEV_REALTIME_TOOLS);
+  assert.equal(GEV_REALTIME_TOOLS.length, 28, 'tool count drifted from the pinned release schema');
+  assert.equal(schema.length, 26121, 'tool schema length drifted from the pinned release schema');
   assert.equal(
-    crypto.createHash('sha256').update(block).digest('hex'),
-    '73aaabdb169a5478893d28688f327a21edd32ed3ec16fc6287bd944ed77beecf',
+    crypto.createHash('sha256').update(schema).digest('hex'),
+    '11680affb4a7aebf142642c8185b28f2ee7d523407054c5b0c3962d933b045eb',
     'the first-run missions must ride EXISTING tools: no schema edit, no cache bust',
   );
 
@@ -798,11 +799,11 @@ test('the voice TOOL SCHEMA is byte-identical to main — the mission mapping is
 });
 
 test('every layer a mission drives is already in the shipped set_layer_visibility enum', () => {
-  const src = fs.readFileSync(new URL('../server/realtime/tools.mjs', import.meta.url), 'utf8');
-  const tool = src.slice(src.indexOf("name: 'set_layer_visibility'"), src.indexOf("name: 'show_data_layers_menu'"));
+  const tool = GEV_REALTIME_TOOLS.find((entry) => entry.name === 'set_layer_visibility');
+  const allowed = tool.parameters.properties.layerId.enum;
   const missionLayerIds = Object.values(FIRST_RUN_MISSIONS).flatMap((mission) => mission.layerIds || []);
   assert.ok(missionLayerIds.length > 0);
   for (const layerId of missionLayerIds) {
-    assert.ok(tool.includes(`'${layerId}'`), `${layerId} must already be an allowed enum value`);
+    assert.ok(allowed.includes(layerId), `${layerId} must already be an allowed enum value`);
   }
 });
