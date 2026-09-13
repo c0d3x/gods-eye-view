@@ -39,7 +39,15 @@
       "server/lib/boundedCache.mjs",
       "server/lib/boundedCache.test.mjs",
       "src/cctvStreetViewCache.test.mjs",
-      "src/viteServerConfig.test.mjs"
+      "src/viteServerConfig.test.mjs",
+      "src/voice/debugRedaction.js",
+      "src/voice/debugRedaction.test.mjs",
+      "server/lib/requestBody.mjs",
+      "server/lib/requestBody.test.mjs",
+      "server/lib/debugLog.mjs",
+      "server/lib/debugLog.test.mjs",
+      "src/realtimeDebugLog.test.mjs",
+      "src/voice/gevRealtimeDebugLog.test.mjs"
     ]
   },
   "formatter": {

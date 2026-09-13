@@ -74,6 +74,12 @@ import {
   resolveRateLimit,
 } from './server/lib/rateLimit.mjs';
 import { createBoundedCache } from './server/lib/boundedCache.mjs';
+import {
+  createDebugLogWriter,
+  DEBUG_LOG_MAX_RECORD_BYTES,
+  isDebugLogEnabled,
+} from './server/lib/debugLog.mjs';
+import { readBodyWithin } from './server/lib/requestBody.mjs';
 import { createApiRequestGuard } from './server/lib/requestGuard.mjs';
 import {
   fetchTerrainChunkWithRetry,
@@ -1411,9 +1417,8 @@ const OPENAI_REALTIME_REASONING_DEFAULT = 'low';
 const OPENAI_REALTIME_CONTEXT_TOKENS_DEFAULT = 3000;
 const OPENAI_REALTIME_CONTEXT_RETENTION_DEFAULT = 0.5;
 const OPENAI_HUD_SUMMARY_MODEL_DEFAULT = 'gpt-5-nano';
+/** Where the opt-in voice debug log is written (GEV_REALTIME_DEBUG_LOG). */
 const REALTIME_DEBUG_LOG_DIR = path.join(__dirname, '.gev-logs');
-const REALTIME_DEBUG_LOG_FILE = path.join(REALTIME_DEBUG_LOG_DIR, 'realtime-conversations.jsonl');
-const REALTIME_DEBUG_LOG_MAX_BYTES = 8 * 1024 * 1024;
 
 /**
  * @type {ReturnType<typeof createAisStreamAdapter>|null}
@@ -5132,9 +5137,14 @@ function trackBackfillProxies() {
  * Vite plugin: OpenAI Realtime ephemeral client secret.
  *
  * Keeps OPENAI_API_KEY server-side while the browser connects to the
- * Realtime API over WebRTC with a short-lived secret.
+ * Realtime API over WebRTC with a short-lived secret. Also hosts the opt-in
+ * voice debug log (GEV_REALTIME_DEBUG_LOG).
+ *
+ * @param {object} [options]
+ * @param {string} [options.debugLogDirectory] Where the debug log is written.
  */
-export function openAiRealtimeProxy() {
+export function openAiRealtimeProxy({ debugLogDirectory = REALTIME_DEBUG_LOG_DIR } = {}) {
+  const debugLog = createDebugLogWriter({ directory: debugLogDirectory });
   function install(middlewares) {
     middlewares.use('/api/openai/hud-summary', async (req, res) => {
       if (req.method !== 'POST') {
@@ -5199,28 +5209,47 @@ export function openAiRealtimeProxy() {
     });
 
     middlewares.use('/api/realtime/debug-log', async (req, res) => {
-      if (req.method !== 'POST') {
-        res.statusCode = 405;
+      const reply = (statusCode, error) => {
+        res.statusCode = statusCode;
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: 'Method not allowed' }));
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(JSON.stringify({ error }));
+      };
+      // Off unless GEV_REALTIME_DEBUG_LOG turns it on; until then the route
+      // answers as if it didn't exist.
+      if (!isDebugLogEnabled(process.env.GEV_REALTIME_DEBUG_LOG)) {
+        reply(404, 'Not found');
+        return;
+      }
+      if (req.method !== 'POST') {
+        reply(405, 'Method not allowed');
         return;
       }
 
+      let record;
       try {
-        const body = await readRequestBody(req, REALTIME_DEBUG_LOG_MAX_BYTES);
-        const record = JSON.parse(body || '{}');
-        fs.mkdirSync(REALTIME_DEBUG_LOG_DIR, { recursive: true });
-        fs.appendFileSync(REALTIME_DEBUG_LOG_FILE, `${JSON.stringify({
-          loggedAt: new Date().toISOString(),
-          ...record,
-        })}\n`);
-        res.statusCode = 204;
-        res.end();
-      } catch (error) {
-        res.statusCode = 400;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: error?.message || 'Failed to write Realtime debug log' }));
+        const body = await readBodyWithin(req, DEBUG_LOG_MAX_RECORD_BYTES);
+        if (!body.ok) {
+          reply(413, 'Debug log record too large');
+          return;
+        }
+        record = JSON.parse(body.text || '{}');
+      } catch {
+        // Unreadable or not JSON; no parser detail goes back to the client.
       }
+      if (!record || typeof record !== 'object' || Array.isArray(record)) {
+        reply(400, 'Invalid debug log record');
+        return;
+      }
+      try {
+        debugLog.append(record);
+      } catch (error) {
+        console.warn('[Realtime] Debug log write failed:', error?.code || 'unknown error');
+        reply(500, 'Could not write the debug log');
+        return;
+      }
+      res.statusCode = 204;
+      res.end();
     });
 
     middlewares.use('/api/realtime/token', async (req, res) => {
@@ -7915,6 +7944,8 @@ export default defineConfig(({ mode }) => {
     define: {
       'import.meta.env.GOOGLE_MAPS_API_KEY': JSON.stringify(env.GOOGLE_MAPS_API_KEY),
       'import.meta.env.CESIUM_ION_TOKEN': JSON.stringify(env.CESIUM_ION_TOKEN),
+      // Whether the browser posts voice debug records (see openAiRealtimeProxy).
+      'import.meta.env.GEV_REALTIME_DEBUG_LOG': JSON.stringify(isDebugLogEnabled(env.GEV_REALTIME_DEBUG_LOG)),
     },
     build: {
       // The Cesium engine bundle is inherently large; raise the warning ceiling

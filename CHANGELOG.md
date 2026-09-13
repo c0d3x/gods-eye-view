@@ -199,6 +199,14 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   session's short-lived OpenAI token, and any file the server serves. The dev
   server also stops serving `.gev-logs/` (voice debug transcripts),
   `.gev-cache/` and `.claude/`, which were readable over HTTP.
+- Make the voice debug log opt-in. Every voice session used to be recorded
+  to `.gev-logs/realtime-conversations.jsonl`, trusting the browser to redact,
+  with 8 MiB records, no size limit, a world-readable file and parser errors
+  echoed back. It is now off unless `GEV_REALTIME_DEBUG_LOG=1`, and the
+  browser posts nothing while it's off. When on, the server redacts every
+  record, caps records at 256 KiB, rotates the file at 20 MB keeping one
+  previous file, makes it readable only by your user, and returns generic
+  errors.
 
 ## [0.1.1] — 2026-09-01 — Installation and live-data fixes
 

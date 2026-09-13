@@ -1,3 +1,4 @@
+import { sanitizeDebugValue } from './debugRedaction.js';
 import { createGevActionRunner, readLayerLifecycleSummary } from './gevActions.js';
 import {
   DEFAULT_VOICE_TIER,
@@ -34,6 +35,10 @@ const VIEWPORT_MAX_ENCODED_BYTES = 200 * 1024; // ~200 KB encoded ceiling
 const ERROR_LOG_LIMIT = 30;
 const ERROR_STORAGE_KEY = 'gev-realtime-errors';
 const DEBUG_LOG_URL = '/api/realtime/debug-log';
+// vite.config.js defines this from GEV_REALTIME_DEBUG_LOG. The log is off by
+// default and outside Vite (tests), and a 404 from the server turns it off.
+let debugLogEnabled = typeof import.meta.env === 'object'
+  && import.meta.env.GEV_REALTIME_DEBUG_LOG === true;
 // Voice cost control (repo-wide `godsEyeView.<feature>.<field>` convention;
 // the neighbouring ERROR_STORAGE_KEY predates it).
 const VOICE_TIER_STORAGE_KEY = 'godsEyeView.voiceCost.tier';
@@ -1783,6 +1788,7 @@ export class GevRealtimeController {
       connection: this.connectionDiagnostics(),
       recentErrors: this.errors.slice(),
       debugLog: {
+        enabled: debugLogEnabled,
         endpoint: DEBUG_LOG_URL,
         file: '.gev-logs/realtime-conversations.jsonl',
         sessionId: this.sessionId,
@@ -2067,6 +2073,7 @@ export class GevRealtimeController {
   }
 
   debugLog(event, payload = {}) {
+    if (!debugLogEnabled) return;
     postDebugLog({
       timestamp: new Date().toISOString(),
       sessionId: this.sessionId,
@@ -2199,47 +2206,13 @@ function postDebugLog(record) {
       headers: { 'Content-Type': 'application/json' },
       body,
       keepalive: body.length < 60000,
-    }).catch(() => {});
+    }).then((response) => {
+      // The server answers 404 while the log is off: stop posting.
+      if (response.status === 404) debugLogEnabled = false;
+    }, () => {});
   } catch {
     // Debug logging must never affect voice control.
   }
-}
-
-function sanitizeDebugValue(value, depth = 0) {
-  if (depth > 10) return '[MaxDepth]';
-  if (value == null || typeof value === 'number' || typeof value === 'boolean') return value;
-  if (typeof value === 'string') return sanitizeDebugString(value);
-  if (Array.isArray(value)) return value.map((item) => sanitizeDebugValue(item, depth + 1));
-  if (typeof value !== 'object') return String(value);
-
-  const output = {};
-  for (const [key, item] of Object.entries(value)) {
-    if (isSecretLikeKey(key)) {
-      output[key] = '[Redacted]';
-      continue;
-    }
-    output[key] = sanitizeDebugValue(item, depth + 1);
-  }
-  return output;
-}
-
-function sanitizeDebugString(value) {
-  if (value.startsWith('data:image/')) {
-    return `[Redacted image data URL, ${value.length} chars]`;
-  }
-  const redacted = value
-    .replace(/sk-(?:proj-)?[A-Za-z0-9_-]{20,}/g, '[Redacted OpenAI API key]')
-    .replace(/Bearer\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer [Redacted]')
-    .replace(/"client_secret"\s*:\s*"[^"]+"/gi, '"client_secret":"[Redacted]"')
-    .replace(/"value"\s*:\s*"ek_[^"]+"/gi, '"value":"[Redacted ephemeral key]"');
-  const maxLength = 50000;
-  return redacted.length > maxLength
-    ? `${redacted.slice(0, maxLength)}...[Truncated ${redacted.length - maxLength} chars]`
-    : redacted;
-}
-
-function isSecretLikeKey(key) {
-  return /(?:api[_-]?key|authorization|bearer|client[_-]?secret|token|secret|password)/i.test(key);
 }
 
 async function captureViewportImage() {

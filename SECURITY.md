@@ -65,7 +65,7 @@ The data proxies in `vite.config.js` are written so the browser cannot turn the 
 - **Response-size caps and timeouts** on proxied responses.
 - **Sanitized errors** — internal error details are not echoed back to clients.
 - **Coalesced OAuth refresh** and cached successful responses only (OpenSky).
-- **Redacted debug logging.** The voice debug log (`.gev-logs/`, gitignored) strips API keys, bearer tokens, client secrets, and image data URLs before writing.
+- **Voice debug logging is off by default.** Set `GEV_REALTIME_DEBUG_LOG=1` to record voice sessions to `.gev-logs/realtime-conversations.jsonl` (gitignored, never served). The server redacts every record before writing it — API keys, bearer tokens, client secrets, Authorization values and image data URLs — so records that don't come from the app are covered too. Records are capped at 256 KiB, the file rotates at 20 MB keeping one previous file, and only your user can read the directory and file (0700/0600). While the log is off, `/api/realtime/debug-log` answers 404.
 
 ## Network exposure — the operator threat model
 
