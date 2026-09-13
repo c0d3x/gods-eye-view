@@ -109,6 +109,8 @@
       "server/ais/watchdog.mjs",
       "server/ais/watchdog.test.mjs",
       "server/ais/watchdogTransport.test.mjs",
+      "server/ais/relay.mjs",
+      "server/ais/relay.test.mjs",
       "server/lib/upstreamBody.mjs",
       "server/lib/upstreamBody.test.mjs",
       "server/lib/coalesce.mjs",

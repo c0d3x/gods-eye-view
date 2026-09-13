@@ -250,7 +250,10 @@ test('data resets the backoff ladder', () => {
   assert.equal(ctx.relay.status().reconnectAttempt, 2);
 
   ctx.clock.t += 15_000;
-  const socket = goLive(ctx, positionReport(257000000, 60.5, 10.25, ctx.clock.t));
+  const socket = goLive(
+    ctx,
+    positionReport(257000000, 60.5, 10.25, ctx.clock.t),
+  );
   assert.equal(ctx.relay.status().reconnectAttempt, 0);
   socket.emit('close');
   assert.equal(ctx.relay.status().nextAttemptAt, ctx.clock.t + 5_000);
@@ -259,7 +262,11 @@ test('data resets the backoff ladder', () => {
 test('a refused key waits an hour, and a new key reconnects at once', () => {
   const ctx = setup();
   ctx.relay.ensure();
-  ctx.sockets[0].emit('unexpected-response', {}, { statusCode: 401, headers: {} });
+  ctx.sockets[0].emit(
+    'unexpected-response',
+    {},
+    { statusCode: 401, headers: {} },
+  );
   const refused = ctx.relay.status();
   assert.equal(refused.status, 'auth-failed');
   assert.equal(refused.error, 'AISStream rejected the API key (HTTP 401)');
@@ -364,10 +371,7 @@ test("the tick starts once, is unref'd, and a failed pass is logged rather than 
   unreadable = true;
   assert.doesNotThrow(() => tick.fn());
   unreadable = false;
-  assert.match(
-    ctx.warnings.join('\n'),
-    /watchdog tick failed env unreadable/,
-  );
+  assert.match(ctx.warnings.join('\n'), /watchdog tick failed env unreadable/);
 });
 
 test('dispose stops the tick and hangs up, and the next pass re-reads the settings', () => {

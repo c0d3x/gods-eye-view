@@ -46,6 +46,8 @@ Part of the [runtime reference](../CURRENT-STATE.md): live AIS and its health, v
   machine (`server/ais/watchdog.mjs`) returning actions; the socket lifecycle
   is `server/ais/streamAdapter.mjs`, tested directly with mock sockets; the
   transport assumption is pinned in `server/ais/watchdogTransport.test.mjs`.
+  The relay that drives them and serves `/api/ais-live` is
+  `server/ais/relay.mjs`, tested with a fake transport, clock and timer.
 - **Honest live AIS health:** the vessel layer treats socket connection,
   first message receipt, raw payload rows, and accepted vessel positions as
   separate stages. Each enabled session owns one 30-second first-connect

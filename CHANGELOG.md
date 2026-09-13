@@ -34,7 +34,10 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
   (capped upstream reads, request coalescing, the disk cache limits and the
   rest) live in `server/lib/`. Routes and responses are unchanged. The
   installations, route, regional brief, weather effects, GBFS, OpenSky and
-  TomTom routes, which had no tests, now have them.
+  TomTom routes, which had no tests, now have them. The AIS relay behind
+  `/api/ais-live` moved to `server/ais/`, next to its socket adapter and
+  watchdog, with tests for reconnect and backoff, the watchdog tick and
+  shutdown.
 
 - Server code no longer lives in the browser tree. The Provider Settings
   core, its credential-file hardening, the terrain-heights resolver, the

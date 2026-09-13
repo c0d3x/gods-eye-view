@@ -5,14 +5,22 @@
  */
 
 import { createRequire } from 'node:module';
-import { createAisStreamAdapter, isRecognizedAisEnvelope } from './streamAdapter.mjs';
+import {
+  createAisStreamAdapter,
+  isRecognizedAisEnvelope,
+} from './streamAdapter.mjs';
 import { parseSilenceTimeoutEnv } from './watchdog.mjs';
 
 // ---------------------------------------------------------------------------
 // AISStream subscription, cache and watchdog settings
 // ---------------------------------------------------------------------------
 const AISSTREAM_URL = 'wss://stream.aisstream.io/v0/stream';
-const AISSTREAM_DEFAULT_BBOXES = [[[-90, -180], [90, 180]]];
+const AISSTREAM_DEFAULT_BBOXES = [
+  [
+    [-90, -180],
+    [90, 180],
+  ],
+];
 const AISSTREAM_DEFAULT_MESSAGE_TYPES = [
   'PositionReport',
   'StandardClassBPositionReport',
@@ -130,7 +138,10 @@ export function createAisRelay({
       _aisWebSocketImpl = loadWebSocket();
     } catch (error) {
       _aisWebSocketImpl = null;
-      warn('[AISStream] `ws` is unavailable; the live vessel feed is off.', error?.message || '');
+      warn(
+        '[AISStream] `ws` is unavailable; the live vessel feed is off.',
+        error?.message || '',
+      );
     }
     return _aisWebSocketImpl;
   }
@@ -157,9 +168,15 @@ export function createAisRelay({
       env.AISSTREAM_SILENCE_TIMEOUT_MS,
       (message) => warn(message),
     );
-    const reportMs = override.kind === 'timeout' ? override.value : AISSTREAM_SILENCE_REPORT_MS;
+    const reportMs =
+      override.kind === 'timeout'
+        ? override.value
+        : AISSTREAM_SILENCE_REPORT_MS;
     _aisWatchdogPolicy = {
-      silenceWatch: override.kind === 'off' ? false : (override.kind === 'timeout' || !customSubscription),
+      silenceWatch:
+        override.kind === 'off'
+          ? false
+          : override.kind === 'timeout' || !customSubscription,
       reportMs,
       recycleMs: Math.round(reportMs * AISSTREAM_RECYCLE_RATIO),
       // Overridable so the watchdog can be exercised end-to-end against a local
@@ -305,8 +322,17 @@ export function createAisRelay({
   function aisStreamSubscription() {
     return {
       APIKey: env.AISSTREAM_API_KEY,
-      BoundingBoxes: parseJsonEnv(env, 'AISSTREAM_BOUNDING_BOXES', AISSTREAM_DEFAULT_BBOXES, warn),
-      FilterMessageTypes: parseCsvOrJsonEnv(env, 'AISSTREAM_MESSAGE_TYPES', AISSTREAM_DEFAULT_MESSAGE_TYPES),
+      BoundingBoxes: parseJsonEnv(
+        env,
+        'AISSTREAM_BOUNDING_BOXES',
+        AISSTREAM_DEFAULT_BBOXES,
+        warn,
+      ),
+      FilterMessageTypes: parseCsvOrJsonEnv(
+        env,
+        'AISSTREAM_MESSAGE_TYPES',
+        AISSTREAM_DEFAULT_MESSAGE_TYPES,
+      ),
     };
   }
 
@@ -330,10 +356,15 @@ export function createAisRelay({
     const messageType = envelope?.MessageType;
     const message = envelope?.Message?.[messageType] || {};
     const metadata = envelope?.MetaData || envelope?.Metadata || {};
-    const mmsi = stringValue(metadata.MMSI ?? message.UserID ?? message.UserId ?? message.Mmsi);
+    const mmsi = stringValue(
+      metadata.MMSI ?? message.UserID ?? message.UserId ?? message.Mmsi,
+    );
     if (!mmsi) return false;
 
-    if (messageType === 'ShipStaticData' || messageType === 'StaticDataReport') {
+    if (
+      messageType === 'ShipStaticData' ||
+      messageType === 'StaticDataReport'
+    ) {
       const staticData = {
         name: vesselNameFromAis(metadata, message, _aisStreamStatic.get(mmsi)),
         type: vesselTypeFromAis(message, _aisStreamStatic.get(mmsi)),
@@ -344,8 +375,12 @@ export function createAisRelay({
       mergeAisStaticIntoLiveVessel(mmsi, staticData);
     }
 
-    const lat = numberValue(metadata.latitude ?? metadata.Latitude ?? message.Latitude);
-    const lon = numberValue(metadata.longitude ?? metadata.Longitude ?? message.Longitude);
+    const lat = numberValue(
+      metadata.latitude ?? metadata.Latitude ?? message.Latitude,
+    );
+    const lon = numberValue(
+      metadata.longitude ?? metadata.Longitude ?? message.Longitude,
+    );
     // A positionless but well-formed record (static data) is still the feed
     // delivering AIS traffic, so it counts as liveness.
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) return true;
@@ -362,14 +397,23 @@ export function createAisRelay({
       speed: numberValue(message.Sog ?? message.SOG),
       course: numberValue(message.Cog ?? message.COG),
       heading: normalizedHeading(message.TrueHeading ?? message.Heading),
-      last_position_UTC: normalizeAisTimestamp(metadata.time_utc ?? metadata.TimeUtc),
+      last_position_UTC: normalizeAisTimestamp(
+        metadata.time_utc ?? metadata.TimeUtc,
+      ),
       // Use the AIS message's own report time, not server ingest wall-clock —
       // trail spacing and dead reckoning depend on true fix epochs.
-      last_position_epoch: aisEpochSeconds(metadata.time_utc ?? metadata.TimeUtc),
+      last_position_epoch: aisEpochSeconds(
+        metadata.time_utc ?? metadata.TimeUtc,
+      ),
       _updatedAt: now(),
     });
 
-    appendAisTrackSample(mmsi, lat, lon, aisEpochSeconds(metadata.time_utc ?? metadata.TimeUtc));
+    appendAisTrackSample(
+      mmsi,
+      lat,
+      lon,
+      aisEpochSeconds(metadata.time_utc ?? metadata.TimeUtc),
+    );
 
     pruneAisStreamCache();
     return true;
@@ -391,7 +435,11 @@ export function createAisRelay({
         return;
       }
       if (epochSec - pending.epochSec < AIS_TRACK_MIN_GAP_SEC) return;
-      if (approxMetersBetween(pending.lat, pending.lon, lat, lon) < AIS_TRACK_MIN_MOVE_M) return;
+      if (
+        approxMetersBetween(pending.lat, pending.lon, lat, lon) <
+        AIS_TRACK_MIN_MOVE_M
+      )
+        return;
       track = {
         lats: new Float32Array(AIS_TRACK_SAMPLES),
         lons: new Float32Array(AIS_TRACK_SAMPLES),
@@ -409,7 +457,11 @@ export function createAisRelay({
     const lastIdx = (track.head - 1 + AIS_TRACK_SAMPLES) % AIS_TRACK_SAMPLES;
     const lastEpoch = track.times[lastIdx];
     if (epochSec - lastEpoch < AIS_TRACK_MIN_GAP_SEC) return;
-    if (approxMetersBetween(track.lats[lastIdx], track.lons[lastIdx], lat, lon) < AIS_TRACK_MIN_MOVE_M) return;
+    if (
+      approxMetersBetween(track.lats[lastIdx], track.lons[lastIdx], lat, lon) <
+      AIS_TRACK_MIN_MOVE_M
+    )
+      return;
     writeAisTrackSample(track, lat, lon, epochSec);
   }
 
@@ -419,12 +471,17 @@ export function createAisRelay({
    */
   function readAisTrack(mmsi) {
     const track = _aisStreamTracks.get(mmsi);
-    if (!track || !track.len) return [];
+    if (!track?.len) return [];
     const samples = [];
-    const start = (track.head - track.len + AIS_TRACK_SAMPLES) % AIS_TRACK_SAMPLES;
+    const start =
+      (track.head - track.len + AIS_TRACK_SAMPLES) % AIS_TRACK_SAMPLES;
     for (let i = 0; i < track.len; i++) {
       const idx = (start + i) % AIS_TRACK_SAMPLES;
-      samples.push({ lat: track.lats[idx], lon: track.lons[idx], t: track.times[idx] });
+      samples.push({
+        lat: track.lats[idx],
+        lon: track.lons[idx],
+        t: track.times[idx],
+      });
     }
     return samples;
   }
@@ -432,9 +489,11 @@ export function createAisRelay({
   function mergeAisStaticIntoLiveVessel(mmsi, staticData) {
     const existing = _aisStreamVessels.get(mmsi);
     if (!existing) return;
-    if (staticData.name && (!existing.name || existing.name === `MMSI ${mmsi}`)) existing.name = staticData.name;
+    if (staticData.name && (!existing.name || existing.name === `MMSI ${mmsi}`))
+      existing.name = staticData.name;
     if (staticData.type && !existing.type) existing.type = staticData.type;
-    if (staticData.destination && !existing.destination) existing.destination = staticData.destination;
+    if (staticData.destination && !existing.destination)
+      existing.destination = staticData.destination;
     if (staticData.imo && !existing.imo) existing.imo = staticData.imo;
   }
 
@@ -460,11 +519,17 @@ export function createAisRelay({
     // Pending single-fix entries for vessels never seen again must not leak
     const pendingCutoffSec = Math.floor(cutoff / 1000);
     for (const [mmsi, pending] of _aisStreamTrackPending) {
-      if (pending.epochSec < pendingCutoffSec) _aisStreamTrackPending.delete(mmsi);
+      if (pending.epochSec < pendingCutoffSec)
+        _aisStreamTrackPending.delete(mmsi);
     }
     if (_aisStreamVessels.size <= AISSTREAM_CACHE_MAX) return;
-    const ordered = [..._aisStreamVessels.entries()].sort((a, b) => a[1]._updatedAt - b[1]._updatedAt);
-    for (const [mmsi] of ordered.slice(0, _aisStreamVessels.size - AISSTREAM_CACHE_MAX)) {
+    const ordered = [..._aisStreamVessels.entries()].sort(
+      (a, b) => a[1]._updatedAt - b[1]._updatedAt,
+    );
+    for (const [mmsi] of ordered.slice(
+      0,
+      _aisStreamVessels.size - AISSTREAM_CACHE_MAX,
+    )) {
       _aisStreamVessels.delete(mmsi);
       _aisStreamTracks.delete(mmsi);
       _aisStreamTrackPending.delete(mmsi);
@@ -511,25 +576,40 @@ export function aisLiveProxy({ relay = sharedRelay } = {}) {
         // Track sub-route MUST be handled before the rows snapshot — this
         // mount prefix-matches every subpath, so without this branch
         // /api/ais-live/track would be silently answered with vessel rows.
-        if (incoming.pathname === '/track' || incoming.pathname.startsWith('/track/')) {
+        if (
+          incoming.pathname === '/track' ||
+          incoming.pathname.startsWith('/track/')
+        ) {
           const mmsi = String(incoming.searchParams.get('mmsi') || '').trim();
           res.statusCode = /^\d{5,10}$/.test(mmsi) ? 200 : 400;
           res.setHeader('Content-Type', 'application/json; charset=utf-8');
           res.setHeader('Cache-Control', 'no-store');
           if (res.statusCode !== 200) {
-            res.end(JSON.stringify({ error: 'mmsi query param required', samples: [] }));
+            res.end(
+              JSON.stringify({
+                error: 'mmsi query param required',
+                samples: [],
+              }),
+            );
             return;
           }
-          res.end(JSON.stringify({
-            mmsi,
-            samples: relay.track(mmsi),
-            source: 'AISStream (accumulated since server start)',
-            retainedSec: Math.floor(AISSTREAM_STALE_MS / 1000),
-          }));
+          res.end(
+            JSON.stringify({
+              mmsi,
+              samples: relay.track(mmsi),
+              source: 'AISStream (accumulated since server start)',
+              retainedSec: Math.floor(AISSTREAM_STALE_MS / 1000),
+            }),
+          );
           return;
         }
 
-        const maxRows = clampInt(incoming.searchParams.get('maxRows'), 1, AISSTREAM_CACHE_MAX, AISSTREAM_CACHE_MAX);
+        const maxRows = clampInt(
+          incoming.searchParams.get('maxRows'),
+          1,
+          AISSTREAM_CACHE_MAX,
+          AISSTREAM_CACHE_MAX,
+        );
         const rows = relay.rows(maxRows);
 
         const feed = relay.status();
@@ -537,22 +617,24 @@ export function aisLiveProxy({ relay = sharedRelay } = {}) {
         res.statusCode = relay.hasKey() ? 200 : 503;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
-        res.end(JSON.stringify({
-          rows,
-          source: 'AISStream',
-          status: feed.status,
-          error: feed.error,
-          refreshing: feed.status !== 'live',
-          newestPositionAt: newestAisPositionAt(rows),
-          lastMessageAt: feed.lastMessageAt,
-          // Honest-failure metadata: how long the feed has been quiet, which
-          // recovery attempt we are on, and when the next one lands.
-          silentForMs: feed.silentForMs,
-          reconnectAttempt: feed.reconnectAttempt,
-          nextAttemptAt: feed.nextAttemptAt,
-          staleAfterMs: feed.staleAfterMs,
-          watchdog: feed.watchdog,
-        }));
+        res.end(
+          JSON.stringify({
+            rows,
+            source: 'AISStream',
+            status: feed.status,
+            error: feed.error,
+            refreshing: feed.status !== 'live',
+            newestPositionAt: newestAisPositionAt(rows),
+            lastMessageAt: feed.lastMessageAt,
+            // Honest-failure metadata: how long the feed has been quiet, which
+            // recovery attempt we are on, and when the next one lands.
+            silentForMs: feed.silentForMs,
+            reconnectAttempt: feed.reconnectAttempt,
+            nextAttemptAt: feed.nextAttemptAt,
+            staleAfterMs: feed.staleAfterMs,
+            watchdog: feed.watchdog,
+          }),
+        );
       } catch (error) {
         console.warn('[AIS Live]', error?.message || error);
         res.statusCode = 502;
@@ -598,7 +680,9 @@ export function aisKeyFingerprint() {
  */
 function aisEpochSeconds(value) {
   const ms = Date.parse(normalizeAisTimestamp(value));
-  return Number.isFinite(ms) ? Math.floor(ms / 1000) : Math.floor(Date.now() / 1000);
+  return Number.isFinite(ms)
+    ? Math.floor(ms / 1000)
+    : Math.floor(Date.now() / 1000);
 }
 
 function writeAisTrackSample(track, lat, lon, epochSec) {
@@ -612,26 +696,27 @@ function writeAisTrackSample(track, lat, lon, epochSec) {
 /** Equirectangular distance approximation — plenty for 25m thinning. */
 function approxMetersBetween(lat1, lon1, lat2, lon2) {
   const dLat = (lat2 - lat1) * 111320;
-  const dLon = (lon2 - lon1) * 111320 * Math.cos(((lat1 + lat2) / 2) * (Math.PI / 180));
+  const dLon =
+    (lon2 - lon1) * 111320 * Math.cos(((lat1 + lat2) / 2) * (Math.PI / 180));
   return Math.hypot(dLat, dLon);
 }
 
 function vesselNameFromAis(metadata, message, staticData = {}) {
   return stringValue(
-    metadata.ShipName
-      ?? message.Name
-      ?? message.ShipName
-      ?? message.ReportA?.Name
-      ?? staticData.name
+    metadata.ShipName ??
+      message.Name ??
+      message.ShipName ??
+      message.ReportA?.Name ??
+      staticData.name,
   );
 }
 
 function vesselTypeFromAis(message, staticData = {}) {
   return stringValue(
-    message.Type
-      ?? message.ShipType
-      ?? message.ReportB?.ShipType
-      ?? staticData.type
+    message.Type ??
+      message.ShipType ??
+      message.ReportB?.ShipType ??
+      staticData.type,
   );
 }
 
@@ -657,7 +742,10 @@ function parseCsvOrJsonEnv(env, key, fallback) {
     const parsed = JSON.parse(value);
     return Array.isArray(parsed) ? parsed : fallback;
   } catch {
-    return value.split(',').map((entry) => entry.trim()).filter(Boolean);
+    return value
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean);
   }
 }
 
@@ -688,5 +776,7 @@ function normalizeAisTimestamp(value) {
   if (!text) return new Date().toISOString();
   const normalized = text.replace(' +0000 UTC', 'Z').replace(' UTC', 'Z');
   const date = new Date(normalized);
-  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+  return Number.isNaN(date.getTime())
+    ? new Date().toISOString()
+    : date.toISOString();
 }

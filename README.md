@@ -370,10 +370,10 @@ src/                        # The browser app
 ├── scenes/                 # Cinematic scene director
 └── styles/                 # Visual styles as GLSL post-process shaders
 server/                     # Dev-server modules: key setup, terrain heights, AIS relay
-├── ais/                    # AISStream socket adapter and its watchdog
+├── ais/                    # AISStream relay, its socket adapter and watchdog
 ├── proxies/                # Route plugins: OpenSky, TomTom, OpenAI, Places, CCTV and more
 └── lib/                    # Shared helpers: request guard, JSON, rate limits, caches
-vite.config.js              # Dev server: API proxies, AIS relay, voice tool schemas
+vite.config.js              # Dev server wiring, remaining proxies, voice tool schemas
 scripts/                    # Launchers, setup doctor, test runner, QA harnesses
 pinokio/                    # One-click Pinokio launcher
 config/                     # CCTV source packs
