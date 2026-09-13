@@ -472,12 +472,15 @@ function parseTLE(text) {
 /**
  * Propagate satellite position at a given JS Date.
  * Returns geodetic position plus inertial speed from the same SGP4 propagation
- * epoch, or null on error.
+ * epoch, or null on error. The position is written into `result`: a new object
+ * unless the caller passes scratch to reuse.
  */
-function propagatePosition(satrec, date) {
+function propagatePosition(satrec, date, result = {}) {
   try {
     const posVel = propagate(satrec, date);
-    if (!posVel.position || typeof posVel.position === 'boolean') return null;
+    // satellite.js 7 returns null when SGP4 fails: a decayed or malformed
+    // element set. Reading .position off that threw a TypeError here.
+    if (!posVel?.position || typeof posVel.position === 'boolean') return null;
 
     const gmst = gstime(date);
     const geo = eciToGeodetic(posVel.position, gmst);
@@ -488,15 +491,37 @@ function propagatePosition(satrec, date) {
       ? Math.hypot(velocity.x, velocity.y, velocity.z) * 1000
       : null;
 
-    return {
-      longitude: degreesLong(geo.longitude),
-      latitude: degreesLat(geo.latitude),
-      altitude: geo.height * 1000, // km → meters
-      speedMps: Number.isFinite(speedMps) ? speedMps : null,
-    };
+    result.longitude = degreesLong(geo.longitude);
+    result.latitude = degreesLat(geo.latitude);
+    result.altitude = geo.height * 1000; // km → meters
+    result.speedMps = Number.isFinite(speedMps) ? speedMps : null;
+    return result;
   } catch {
     return null;
   }
+}
+
+/**
+ * Per-tick scratch for the fleet loops, which also reuse _scratchCartesian, so
+ * they allocate nothing per satellite.
+ */
+const _scratchGeodetic = { longitude: 0, latitude: 0, altitude: 0, speedMps: null };
+
+/**
+ * Propagate one catalog row for a fleet tick. SGP4 fails for good on a decayed
+ * or malformed element set, so a row that fails is marked and skipped from then
+ * on, instead of failing again on every tick; the next TLE refresh builds a
+ * fresh row. getStats() counts the marked rows.
+ * @param {{satrec: object, failed?: boolean}} sat
+ * @param {Date} date
+ * @param {object} result Written with the position.
+ * @returns {object|null} `result`, or null once the row has failed.
+ */
+function propagateCatalogRecord(sat, date, result) {
+  if (sat.failed) return null;
+  const pos = propagatePosition(sat.satrec, date, result);
+  if (!pos) sat.failed = true;
+  return pos;
 }
 
 function orbitalPeriodSeconds(satrec) {
@@ -523,7 +548,7 @@ function computeOrbitPath(satrec, referenceDate) {
     const t = new Date(baseTime + i * stepSec * 1000);
     try {
       const posVel = propagate(satrec, t);
-      if (!posVel.position || typeof posVel.position === 'boolean') continue;
+      if (!posVel?.position || typeof posVel.position === 'boolean') continue;
       const geo = eciToGeodetic(posVel.position, fixedGmst);
       positions.push(Cesium.Cartesian3.fromDegrees(
         degreesLong(geo.longitude),
@@ -1028,19 +1053,20 @@ function _trackSatellite(noradId, { origin = 'programmatic' } = {}) {
  * (~840 sats ≈ 1.6 ms/pass — fine at the 1s/200ms cadence.) Dense extras are
  * excluded: they refresh on the round-robin budget in _propagateDenseChunk.
  */
-function _propagateAll() {
-  const now = new Date();
+function _propagateAll(now = new Date()) {
   let updated = 0;
 
   for (const [noradId, sat] of _catalog) {
     if (sat.group === 'dense') continue;
-    const pos = propagatePosition(sat.satrec, now);
+    const pos = propagateCatalogRecord(sat, now, _scratchGeodetic);
     if (!pos) continue;
 
-    const cartesian = Cesium.Cartesian3.fromDegrees(pos.longitude, pos.latitude, pos.altitude);
     const point = _points.get(noradId);
     if (point) {
-      point.position = cartesian;
+      // The point primitive copies the position, so one scratch serves the loop.
+      point.position = Cesium.Cartesian3.fromDegrees(
+        pos.longitude, pos.latitude, pos.altitude, undefined, _scratchCartesian,
+      );
       updated++;
     }
   }
@@ -1067,9 +1093,11 @@ function _propagateDenseChunk() {
     const sat = _catalog.get(noradId);
     const point = _points.get(noradId);
     if (!sat || !point) continue;
-    const pos = propagatePosition(sat.satrec, now);
+    const pos = propagateCatalogRecord(sat, now, _scratchGeodetic);
     if (pos) {
-      point.position = Cesium.Cartesian3.fromDegrees(pos.longitude, pos.latitude, pos.altitude);
+      point.position = Cesium.Cartesian3.fromDegrees(
+        pos.longitude, pos.latitude, pos.altitude, undefined, _scratchCartesian,
+      );
     }
   }
 }
@@ -1379,6 +1407,26 @@ export function _clearDenseCatalogStateForTest() {
 /** Catalog group tag recorded for a satellite, for ingestion-path assertions. */
 export function _catalogGroupForTest(noradId) {
   return _catalog.get(Number(noradId))?.group;
+}
+
+/**
+ * Seed catalog rows with stand-in points for the core fleet loop. Returns the
+ * live row and point maps, so a test can inspect what the loop did to them.
+ * @param {Array<{noradId:number, name:string, satrec:object, group?:string, point?:object}>} rows
+ */
+export function _seedCatalogForTest(rows) {
+  _catalog = new Map();
+  _points = new Map();
+  for (const row of rows) {
+    _catalog.set(row.noradId, { name: row.name, satrec: row.satrec, group: row.group || 'stations' });
+    _points.set(row.noradId, row.point || {});
+  }
+  return { records: _catalog, points: _points };
+}
+
+/** Run the core fleet propagation pass at `now`, as the pre-render tick does. */
+export function _propagateAllForTest(now) {
+  return _propagateAll(now);
 }
 
 /** Seed ISS/tracking state while retaining the production track and host paths. */
@@ -2175,8 +2223,13 @@ const satellitesLayer = {
   },
 
   getStats() {
+    // Rows whose element sets SGP4 can no longer propagate (decayed or
+    // malformed); they are skipped until the next TLE refresh.
+    let failed = 0;
+    for (const sat of _catalog.values()) if (sat.failed) failed += 1;
     return {
       count: _count,
+      failed,
       lastUpdate: _lastUpdate,
       stale: false,
       status: _lastError === 'CelesTrak unreachable'

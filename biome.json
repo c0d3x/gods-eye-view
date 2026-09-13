@@ -65,7 +65,8 @@
       "src/openskyImportClient.test.mjs",
       "src/responseCaps.test.mjs",
       "src/poiPillMarkup.test.mjs",
-      "src/keySetupBodyLimit.test.mjs"
+      "src/keySetupBodyLimit.test.mjs",
+      "src/data/satellitesPropagation.test.mjs"
     ]
   },
   "formatter": {

@@ -65,6 +65,14 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   once the page is idle, five seconds at most, and show uncorrected heights
   until it arrives, as they already did while it loaded.
 
+- Stop re-propagating satellites whose element sets have decayed. SGP4
+  fails for good on a decayed or malformed TLE, and satellite.js then
+  returns no position, but the layer read one anyway: every such satellite
+  threw, and was caught, on every tick. A satellite that fails is now skipped
+  until the next TLE refresh, and the layer's stats count them. The fleet
+  loops also reuse their scratch positions instead of allocating per
+  satellite.
+
 - Separate optional Google server credentials for Places and Street View from
   the browser key, contributed by Tom-Neverwinter (#110). Provider Settings,
   Pinokio's app-specific credential handling and setup diagnostics recognize
