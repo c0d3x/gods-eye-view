@@ -370,7 +370,7 @@ src/                        # The browser app
 ├── scenes/                 # Cinematic scene director
 └── styles/                 # Visual styles as GLSL post-process shaders
 server/                     # Dev-server modules: key setup, terrain heights, AIS relay
-├── proxies/                # Route plugins: radio, Overpass, CCTV, installations, regional
+├── proxies/                # Route plugins: OpenSky, TomTom, OpenAI, Places, CCTV and more
 └── lib/                    # Shared helpers: request guard, JSON, rate limits, caches
 vite.config.js              # Dev server: API proxies, AIS relay, voice tool schemas
 scripts/                    # Launchers, setup doctor, test runner, QA harnesses

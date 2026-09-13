@@ -12,8 +12,16 @@ import {
   upstreamErrorStatus,
 } from '../lib/fetchWithTimeout.mjs';
 import { googleServerApiKey } from '../lib/googleServerKey.mjs';
-import { createCostRateLimiter, DEFAULT_GOOGLE_REQUESTS_PER_MINUTE, rateLimitKey } from '../lib/rateLimit.mjs';
-import { parseJsonObject, PROVIDER_JSON_MAX_BYTES, readResponseTextCapped } from '../lib/upstreamBody.mjs';
+import {
+  createCostRateLimiter,
+  DEFAULT_GOOGLE_REQUESTS_PER_MINUTE,
+  rateLimitKey,
+} from '../lib/rateLimit.mjs';
+import {
+  PROVIDER_JSON_MAX_BYTES,
+  parseJsonObject,
+  readResponseTextCapped,
+} from '../lib/upstreamBody.mjs';
 
 // The cost limiter (server/lib/rateLimit.mjs) for the Places routes, from
 // GEV_RATELIMIT_GOOGLE_PER_MIN. Built on first request, not at module load:
@@ -24,7 +32,10 @@ let _googleRateLimiter; // undefined = not built yet; null = disabled; fn = acti
 /** Google Places endpoints (nearby-places + text-search), one shared budget. */
 function googleRateLimiter() {
   if (_googleRateLimiter === undefined) {
-    _googleRateLimiter = createCostRateLimiter('GEV_RATELIMIT_GOOGLE_PER_MIN', DEFAULT_GOOGLE_REQUESTS_PER_MINUTE);
+    _googleRateLimiter = createCostRateLimiter(
+      'GEV_RATELIMIT_GOOGLE_PER_MIN',
+      DEFAULT_GOOGLE_REQUESTS_PER_MINUTE,
+    );
   }
   return _googleRateLimiter;
 }
@@ -90,89 +101,138 @@ export function googlePlacesContextProxy() {
       const requestUrl = new URL(req.url || '', 'http://localhost');
       const latitude = Number(requestUrl.searchParams.get('lat'));
       const longitude = Number(requestUrl.searchParams.get('lon'));
-      const radiusM = Math.max(25, Math.min(5000, Number(requestUrl.searchParams.get('radiusM')) || 250));
+      const radiusM = Math.max(
+        25,
+        Math.min(5000, Number(requestUrl.searchParams.get('radiusM')) || 250),
+      );
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
         res.statusCode = 400;
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: 'Valid lat and lon are required', places: [] }));
+        res.end(
+          JSON.stringify({
+            error: 'Valid lat and lon are required',
+            places: [],
+          }),
+        );
         return;
       }
 
       try {
-        const response = await fetchWithTimeout('https://places.googleapis.com/v1/places:searchNearby', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Goog-Api-Key': apiKey,
-            'X-Goog-FieldMask': [
-              'places.id',
-              'places.displayName',
-              'places.formattedAddress',
-              'places.shortFormattedAddress',
-              'places.location',
-              'places.primaryType',
-              'places.primaryTypeDisplayName',
-              'places.types',
-            ].join(','),
-          },
-          body: JSON.stringify({
-            maxResultCount: 20,
-            rankPreference: 'DISTANCE',
-            locationRestriction: {
-              circle: {
-                center: { latitude, longitude },
-                radius: radiusM,
-              },
+        const response = await fetchWithTimeout(
+          'https://places.googleapis.com/v1/places:searchNearby',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-FieldMask': [
+                'places.id',
+                'places.displayName',
+                'places.formattedAddress',
+                'places.shortFormattedAddress',
+                'places.location',
+                'places.primaryType',
+                'places.primaryTypeDisplayName',
+                'places.types',
+              ].join(','),
             },
-          }),
-        }, { timeoutMs: GOOGLE_PLACES_TIMEOUT_MS, response: res });
-        const text = await readResponseTextCapped(response, PROVIDER_JSON_MAX_BYTES);
+            body: JSON.stringify({
+              maxResultCount: 20,
+              rankPreference: 'DISTANCE',
+              locationRestriction: {
+                circle: {
+                  center: { latitude, longitude },
+                  radius: radiusM,
+                },
+              },
+            }),
+          },
+          { timeoutMs: GOOGLE_PLACES_TIMEOUT_MS, response: res },
+        );
+        const text = await readResponseTextCapped(
+          response,
+          PROVIDER_JSON_MAX_BYTES,
+        );
         if (!response.ok) {
-          console.warn(`[Places] nearby search: ${describeUpstreamFailure(response.status, text)}`);
+          console.warn(
+            `[Places] nearby search: ${describeUpstreamFailure(response.status, text)}`,
+          );
         }
         const data = parseJsonObject(text);
         const seenPlaces = new Set();
-        const places = Array.isArray(data.places) ? data.places
-          .map((place) => {
-            const placeLatitude = place.location?.latitude ?? null;
-            const placeLongitude = place.location?.longitude ?? null;
-            const types = Array.isArray(place.types) ? place.types.slice(0, 8) : [];
-            return {
-              id: place.id || null,
-              name: place.displayName?.text || null,
-              address: place.shortFormattedAddress || place.formattedAddress || null,
-              latitude: placeLatitude,
-              longitude: placeLongitude,
-              distanceM: approximateDistanceM(latitude, longitude, placeLatitude, placeLongitude),
-              primaryType: place.primaryTypeDisplayName?.text || place.primaryType || null,
-              types,
-              contextPriority: placeContextPriority(types),
-            };
-          })
-          .filter((place) => {
-            const key = `${place.name}:${place.address || ''}`.toLowerCase();
-            if (!place.name || seenPlaces.has(key)) return false;
-            seenPlaces.add(key);
-            return true;
-          })
-          .sort((a, b) => b.contextPriority - a.contextPriority || a.distanceM - b.distanceM)
-          .map(({ contextPriority, ...place }) => place)
-          .slice(0, 20) : [];
+        const places = Array.isArray(data.places)
+          ? data.places
+              .map((place) => {
+                const placeLatitude = place.location?.latitude ?? null;
+                const placeLongitude = place.location?.longitude ?? null;
+                const types = Array.isArray(place.types)
+                  ? place.types.slice(0, 8)
+                  : [];
+                return {
+                  id: place.id || null,
+                  name: place.displayName?.text || null,
+                  address:
+                    place.shortFormattedAddress ||
+                    place.formattedAddress ||
+                    null,
+                  latitude: placeLatitude,
+                  longitude: placeLongitude,
+                  distanceM: approximateDistanceM(
+                    latitude,
+                    longitude,
+                    placeLatitude,
+                    placeLongitude,
+                  ),
+                  primaryType:
+                    place.primaryTypeDisplayName?.text ||
+                    place.primaryType ||
+                    null,
+                  types,
+                  contextPriority: placeContextPriority(types),
+                };
+              })
+              .filter((place) => {
+                const key =
+                  `${place.name}:${place.address || ''}`.toLowerCase();
+                if (!place.name || seenPlaces.has(key)) return false;
+                seenPlaces.add(key);
+                return true;
+              })
+              .sort(
+                (a, b) =>
+                  b.contextPriority - a.contextPriority ||
+                  a.distanceM - b.distanceM,
+              )
+              .map(({ contextPriority, ...place }) => place)
+              .slice(0, 20)
+          : [];
 
         res.statusCode = response.ok ? 200 : response.status;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.setHeader('Cache-Control', response.ok ? 'private, max-age=300' : 'no-store');
-        res.end(JSON.stringify({
-          places,
-          error: response.ok ? null : upstreamErrorMessage('Google Places', response.status),
-        }));
+        res.setHeader(
+          'Cache-Control',
+          response.ok ? 'private, max-age=300' : 'no-store',
+        );
+        res.end(
+          JSON.stringify({
+            places,
+            error: response.ok
+              ? null
+              : upstreamErrorMessage('Google Places', response.status),
+          }),
+        );
       } catch (error) {
         if (error instanceof ClientGoneError) return;
         console.warn('[Places] request failed:', error?.message || error);
         res.statusCode = upstreamErrorStatus(error);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
-        res.end(JSON.stringify({ error: upstreamErrorMessage('Google Places', error), places: [] }));
+        res.end(
+          JSON.stringify({
+            error: upstreamErrorMessage('Google Places', error),
+            places: [],
+          }),
+        );
       }
     });
 
@@ -217,90 +277,138 @@ export function googlePlacesContextProxy() {
       const textQuery = String(requestUrl.searchParams.get('q') || '').trim();
       const latitude = Number(requestUrl.searchParams.get('lat'));
       const longitude = Number(requestUrl.searchParams.get('lon'));
-      const radiusM = Math.max(50, Math.min(50000, Number(requestUrl.searchParams.get('radiusM')) || 4000));
-      if (!textQuery || !Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      const radiusM = Math.max(
+        50,
+        Math.min(50000, Number(requestUrl.searchParams.get('radiusM')) || 4000),
+      );
+      if (
+        !textQuery ||
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude)
+      ) {
         res.statusCode = 400;
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: 'q, lat and lon are required', places: [] }));
+        res.end(
+          JSON.stringify({ error: 'q, lat and lon are required', places: [] }),
+        );
         return;
       }
 
       try {
-        const response = await fetchWithTimeout('https://places.googleapis.com/v1/places:searchText', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Goog-Api-Key': apiKey,
-            'X-Goog-FieldMask': [
-              'places.id',
-              'places.displayName',
-              'places.formattedAddress',
-              'places.location',
-              'places.viewport',
-              'places.primaryType',
-              'places.types',
-            ].join(','),
-          },
-          body: JSON.stringify({
-            textQuery,
-            locationBias: {
-              circle: {
-                center: { latitude, longitude },
-                radius: radiusM,
-              },
+        const response = await fetchWithTimeout(
+          'https://places.googleapis.com/v1/places:searchText',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Goog-Api-Key': apiKey,
+              'X-Goog-FieldMask': [
+                'places.id',
+                'places.displayName',
+                'places.formattedAddress',
+                'places.location',
+                'places.viewport',
+                'places.primaryType',
+                'places.types',
+              ].join(','),
             },
-            maxResultCount: 5,
-          }),
-        }, { timeoutMs: GOOGLE_PLACES_TIMEOUT_MS, response: res });
-        const text = await readResponseTextCapped(response, PROVIDER_JSON_MAX_BYTES);
+            body: JSON.stringify({
+              textQuery,
+              locationBias: {
+                circle: {
+                  center: { latitude, longitude },
+                  radius: radiusM,
+                },
+              },
+              maxResultCount: 5,
+            }),
+          },
+          { timeoutMs: GOOGLE_PLACES_TIMEOUT_MS, response: res },
+        );
+        const text = await readResponseTextCapped(
+          response,
+          PROVIDER_JSON_MAX_BYTES,
+        );
         if (!response.ok) {
-          console.warn(`[Places] text search: ${describeUpstreamFailure(response.status, text)}`);
+          console.warn(
+            `[Places] text search: ${describeUpstreamFailure(response.status, text)}`,
+          );
         }
         const data = parseJsonObject(text);
-        const places = Array.isArray(data.places) ? data.places
-          .map((place) => {
-            const placeLatitude = place.location?.latitude ?? null;
-            const placeLongitude = place.location?.longitude ?? null;
-            const types = Array.isArray(place.types) ? place.types.slice(0, 8) : [];
-            // Places returns a lat/lng bounding box (low/high corners) framing the
-            // place — no polygon, but enough to SIZE a fallback grounds disc to the
-            // real feature instead of a blind constant. Normalize to plain numbers.
-            const vp = place.viewport;
-            const viewport = (
-              Number.isFinite(vp?.low?.latitude) && Number.isFinite(vp?.low?.longitude)
-              && Number.isFinite(vp?.high?.latitude) && Number.isFinite(vp?.high?.longitude)
-            ) ? {
-              low: { latitude: vp.low.latitude, longitude: vp.low.longitude },
-              high: { latitude: vp.high.latitude, longitude: vp.high.longitude },
-            } : null;
-            return {
-              id: place.id || null,
-              name: place.displayName?.text || null,
-              address: place.formattedAddress || null,
-              latitude: placeLatitude,
-              longitude: placeLongitude,
-              distanceM: approximateDistanceM(latitude, longitude, placeLatitude, placeLongitude),
-              primaryType: place.primaryType || null,
-              types,
-              viewport,
-            };
-          })
-          .filter((place) => place.name) : [];
+        const places = Array.isArray(data.places)
+          ? data.places
+              .map((place) => {
+                const placeLatitude = place.location?.latitude ?? null;
+                const placeLongitude = place.location?.longitude ?? null;
+                const types = Array.isArray(place.types)
+                  ? place.types.slice(0, 8)
+                  : [];
+                // Places returns a lat/lng bounding box (low/high corners) framing the
+                // place — no polygon, but enough to SIZE a fallback grounds disc to the
+                // real feature instead of a blind constant. Normalize to plain numbers.
+                const vp = place.viewport;
+                const viewport =
+                  Number.isFinite(vp?.low?.latitude) &&
+                  Number.isFinite(vp?.low?.longitude) &&
+                  Number.isFinite(vp?.high?.latitude) &&
+                  Number.isFinite(vp?.high?.longitude)
+                    ? {
+                        low: {
+                          latitude: vp.low.latitude,
+                          longitude: vp.low.longitude,
+                        },
+                        high: {
+                          latitude: vp.high.latitude,
+                          longitude: vp.high.longitude,
+                        },
+                      }
+                    : null;
+                return {
+                  id: place.id || null,
+                  name: place.displayName?.text || null,
+                  address: place.formattedAddress || null,
+                  latitude: placeLatitude,
+                  longitude: placeLongitude,
+                  distanceM: approximateDistanceM(
+                    latitude,
+                    longitude,
+                    placeLatitude,
+                    placeLongitude,
+                  ),
+                  primaryType: place.primaryType || null,
+                  types,
+                  viewport,
+                };
+              })
+              .filter((place) => place.name)
+          : [];
 
         res.statusCode = response.ok ? 200 : response.status;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.setHeader('Cache-Control', response.ok ? 'private, max-age=300' : 'no-store');
-        res.end(JSON.stringify({
-          places,
-          error: response.ok ? null : upstreamErrorMessage('Google Places', response.status),
-        }));
+        res.setHeader(
+          'Cache-Control',
+          response.ok ? 'private, max-age=300' : 'no-store',
+        );
+        res.end(
+          JSON.stringify({
+            places,
+            error: response.ok
+              ? null
+              : upstreamErrorMessage('Google Places', response.status),
+          }),
+        );
       } catch (error) {
         if (error instanceof ClientGoneError) return;
         console.warn('[Places] request failed:', error?.message || error);
         res.statusCode = upstreamErrorStatus(error);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
-        res.end(JSON.stringify({ error: upstreamErrorMessage('Google Places', error), places: [] }));
+        res.end(
+          JSON.stringify({
+            error: upstreamErrorMessage('Google Places', error),
+            places: [],
+          }),
+        );
       }
     });
   }
@@ -327,11 +435,11 @@ function placeContextPriority(types) {
 }
 
 function approximateDistanceM(latA, lonA, latB, lonB) {
-  if (![latA, lonA, latB, lonB].every(Number.isFinite)) return Number.MAX_SAFE_INTEGER;
+  if (![latA, lonA, latB, lonB].every(Number.isFinite))
+    return Number.MAX_SAFE_INTEGER;
   const latitudeScale = 111320;
   const longitudeScale = latitudeScale * Math.cos((latA * Math.PI) / 180);
-  return Math.round(Math.hypot(
-    (latB - latA) * latitudeScale,
-    (lonB - lonA) * longitudeScale
-  ));
+  return Math.round(
+    Math.hypot((latB - latA) * latitudeScale, (lonB - lonA) * longitudeScale),
+  );
 }

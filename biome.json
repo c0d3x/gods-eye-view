@@ -126,7 +126,15 @@
       "server/proxies/militaryInstallations.test.mjs",
       "server/proxies/regional.mjs",
       "server/proxies/regional.test.mjs",
-      "server/proxies/cctv.mjs"
+      "server/proxies/cctv.mjs",
+      "server/proxies/gbfs.mjs",
+      "server/proxies/gbfs.test.mjs",
+      "server/proxies/tomtom.mjs",
+      "server/proxies/tomtom.test.mjs",
+      "server/proxies/opensky.mjs",
+      "server/proxies/opensky.test.mjs",
+      "server/proxies/openai.mjs",
+      "server/proxies/googlePlaces.mjs"
     ]
   },
   "formatter": {

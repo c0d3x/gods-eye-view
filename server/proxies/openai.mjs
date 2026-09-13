@@ -6,8 +6,16 @@
 
 import { fileURLToPath } from 'node:url';
 import { keylessHudSummaryResponse } from '../../src/hudSummaryResponse.js';
-import { isKnownVoiceTier, resolveVoiceModel, VOICE_MODELS } from '../../src/voice/voiceCost.js';
-import { createDebugLogWriter, DEBUG_LOG_MAX_RECORD_BYTES, isDebugLogEnabled } from '../lib/debugLog.mjs';
+import {
+  isKnownVoiceTier,
+  resolveVoiceModel,
+  VOICE_MODELS,
+} from '../../src/voice/voiceCost.js';
+import {
+  createDebugLogWriter,
+  DEBUG_LOG_MAX_RECORD_BYTES,
+  isDebugLogEnabled,
+} from '../lib/debugLog.mjs';
 import {
   ClientGoneError,
   describeUpstreamFailure,
@@ -15,9 +23,17 @@ import {
   upstreamErrorMessage,
   upstreamErrorStatus,
 } from '../lib/fetchWithTimeout.mjs';
-import { createCostRateLimiter, DEFAULT_OPENAI_REQUESTS_PER_MINUTE, enforceRateLimit } from '../lib/rateLimit.mjs';
+import {
+  createCostRateLimiter,
+  DEFAULT_OPENAI_REQUESTS_PER_MINUTE,
+  enforceRateLimit,
+} from '../lib/rateLimit.mjs';
 import { readBodyWithin } from '../lib/requestBody.mjs';
-import { parseJsonObject, PROVIDER_JSON_MAX_BYTES, readResponseTextCapped } from '../lib/upstreamBody.mjs';
+import {
+  PROVIDER_JSON_MAX_BYTES,
+  parseJsonObject,
+  readResponseTextCapped,
+} from '../lib/upstreamBody.mjs';
 
 // The cost limiter (server/lib/rateLimit.mjs) for the routes that spend OpenAI
 // quota, from GEV_RATELIMIT_OPENAI_PER_MIN.
@@ -31,7 +47,10 @@ let _openAiRateLimiter; // undefined = not built yet; null = disabled; fn = acti
 /** OpenAI cost endpoints (realtime/token + hud-summary). */
 function openAiRateLimiter() {
   if (_openAiRateLimiter === undefined) {
-    _openAiRateLimiter = createCostRateLimiter('GEV_RATELIMIT_OPENAI_PER_MIN', DEFAULT_OPENAI_REQUESTS_PER_MINUTE);
+    _openAiRateLimiter = createCostRateLimiter(
+      'GEV_RATELIMIT_OPENAI_PER_MIN',
+      DEFAULT_OPENAI_REQUESTS_PER_MINUTE,
+    );
   }
   return _openAiRateLimiter;
 }
@@ -112,45 +131,70 @@ export function createOpenAiRealtimeProxy({
       }
 
       try {
-        const response = await fetchWithTimeout('https://api.openai.com/v1/responses', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
+        const response = await fetchWithTimeout(
+          'https://api.openai.com/v1/responses',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model:
+                process.env.OPENAI_HUD_SUMMARY_MODEL ||
+                OPENAI_HUD_SUMMARY_MODEL_DEFAULT,
+              instructions: [
+                "Write one concise intelligence-HUD summary for God's Eye View.",
+                'Use only the supplied place, street, nearby-place, and enabled-layer text labels.',
+                'Prefer the clearest named place and include a relevant enabled layer only when useful.',
+                'Do not infer from coordinates or invent a place.',
+                'Output exactly five words with no title, punctuation, markdown, or introductory phrase.',
+              ].join(' '),
+              input: JSON.stringify(context),
+              reasoning: { effort: 'minimal' },
+              max_output_tokens: 100,
+            }),
           },
-          body: JSON.stringify({
-            model: process.env.OPENAI_HUD_SUMMARY_MODEL || OPENAI_HUD_SUMMARY_MODEL_DEFAULT,
-            instructions: [
-              "Write one concise intelligence-HUD summary for God's Eye View.",
-              'Use only the supplied place, street, nearby-place, and enabled-layer text labels.',
-              'Prefer the clearest named place and include a relevant enabled layer only when useful.',
-              'Do not infer from coordinates or invent a place.',
-              'Output exactly five words with no title, punctuation, markdown, or introductory phrase.',
-            ].join(' '),
-            input: JSON.stringify(context),
-            reasoning: { effort: 'minimal' },
-            max_output_tokens: 100,
-          }),
-        }, { timeoutMs: OPENAI_TIMEOUT_MS, response: res });
-        const text = await readResponseTextCapped(response, PROVIDER_JSON_MAX_BYTES);
+          { timeoutMs: OPENAI_TIMEOUT_MS, response: res },
+        );
+        const text = await readResponseTextCapped(
+          response,
+          PROVIDER_JSON_MAX_BYTES,
+        );
         if (!response.ok) {
-          console.warn(`[HUD Summary] OpenAI ${describeUpstreamFailure(response.status, text)}`);
+          console.warn(
+            `[HUD Summary] OpenAI ${describeUpstreamFailure(response.status, text)}`,
+          );
         }
-        const summary = toFiveWordHudSummary(extractOpenAiResponseText(parseJsonObject(text)));
+        const summary = toFiveWordHudSummary(
+          extractOpenAiResponseText(parseJsonObject(text)),
+        );
         res.statusCode = response.ok && summary ? 200 : response.status || 502;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
-        res.end(JSON.stringify({
-          summary: summary || null,
-          error: response.ok ? null : upstreamErrorMessage('OpenAI', response.status),
-        }));
+        res.end(
+          JSON.stringify({
+            summary: summary || null,
+            error: response.ok
+              ? null
+              : upstreamErrorMessage('OpenAI', response.status),
+          }),
+        );
       } catch (error) {
         if (error instanceof ClientGoneError) return;
-        console.warn('[HUD Summary] OpenAI request failed:', error?.message || error);
+        console.warn(
+          '[HUD Summary] OpenAI request failed:',
+          error?.message || error,
+        );
         res.statusCode = upstreamErrorStatus(error);
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Cache-Control', 'no-store');
-        res.end(JSON.stringify({ summary: null, error: upstreamErrorMessage('OpenAI', error) }));
+        res.end(
+          JSON.stringify({
+            summary: null,
+            error: upstreamErrorMessage('OpenAI', error),
+          }),
+        );
       }
     });
 
@@ -190,7 +234,10 @@ export function createOpenAiRealtimeProxy({
       try {
         debugLog.append(record);
       } catch (error) {
-        console.warn('[Realtime] Debug log write failed:', error?.code || 'unknown error');
+        console.warn(
+          '[Realtime] Debug log write failed:',
+          error?.code || 'unknown error',
+        );
         reply(500, 'Could not write the debug log');
         return;
       }
@@ -225,7 +272,9 @@ export function createOpenAiRealtimeProxy({
       // a wrong upstream model id is then a config fix, not a code change.
       const requestedTier = (() => {
         try {
-          return new URL(req.url || '', 'http://localhost').searchParams.get('tier');
+          return new URL(req.url || '', 'http://localhost').searchParams.get(
+            'tier',
+          );
         } catch {
           return null;
         }
@@ -233,17 +282,31 @@ export function createOpenAiRealtimeProxy({
       const tier = resolveVoiceModel(requestedTier).tier;
       const model =
         tier === 'mini'
-          ? process.env.OPENAI_REALTIME_MODEL_MINI || OPENAI_REALTIME_MODEL_MINI_DEFAULT
+          ? process.env.OPENAI_REALTIME_MODEL_MINI ||
+            OPENAI_REALTIME_MODEL_MINI_DEFAULT
           : process.env.OPENAI_REALTIME_MODEL || OPENAI_REALTIME_MODEL_DEFAULT;
-      const voice = process.env.OPENAI_REALTIME_VOICE || OPENAI_REALTIME_VOICE_DEFAULT;
-      const effort = process.env.OPENAI_REALTIME_REASONING_EFFORT || OPENAI_REALTIME_REASONING_DEFAULT;
-      const contextTokenLimit = Math.round(Math.max(
-        1000,
-        Math.min(12000, Number(process.env.OPENAI_REALTIME_CONTEXT_TOKENS) || OPENAI_REALTIME_CONTEXT_TOKENS_DEFAULT)
-      ));
+      const voice =
+        process.env.OPENAI_REALTIME_VOICE || OPENAI_REALTIME_VOICE_DEFAULT;
+      const effort =
+        process.env.OPENAI_REALTIME_REASONING_EFFORT ||
+        OPENAI_REALTIME_REASONING_DEFAULT;
+      const contextTokenLimit = Math.round(
+        Math.max(
+          1000,
+          Math.min(
+            12000,
+            Number(process.env.OPENAI_REALTIME_CONTEXT_TOKENS) ||
+              OPENAI_REALTIME_CONTEXT_TOKENS_DEFAULT,
+          ),
+        ),
+      );
       const contextRetentionRatio = Math.max(
         0.1,
-        Math.min(1, Number(process.env.OPENAI_REALTIME_CONTEXT_RETENTION) || OPENAI_REALTIME_CONTEXT_RETENTION_DEFAULT)
+        Math.min(
+          1,
+          Number(process.env.OPENAI_REALTIME_CONTEXT_RETENTION) ||
+            OPENAI_REALTIME_CONTEXT_RETENTION_DEFAULT,
+        ),
       );
       const sessionConfig = {
         session: {
@@ -339,16 +402,23 @@ export function createOpenAiRealtimeProxy({
       };
 
       try {
-        const response = await fetchWithTimeout('https://api.openai.com/v1/realtime/client_secrets', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            'OpenAI-Safety-Identifier': 'gev-local-dev',
+        const response = await fetchWithTimeout(
+          'https://api.openai.com/v1/realtime/client_secrets',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+              'OpenAI-Safety-Identifier': 'gev-local-dev',
+            },
+            body: JSON.stringify(sessionConfig),
           },
-          body: JSON.stringify(sessionConfig),
-        }, { timeoutMs: OPENAI_TIMEOUT_MS, response: res });
-        const body = await readResponseTextCapped(response, PROVIDER_JSON_MAX_BYTES);
+          { timeoutMs: OPENAI_TIMEOUT_MS, response: res },
+        );
+        const body = await readResponseTextCapped(
+          response,
+          PROVIDER_JSON_MAX_BYTES,
+        );
         res.statusCode = response.status;
         // Which tier/model this secret was actually minted for. A minted
         // secret's body is passed through untouched (the client parses it
@@ -361,19 +431,33 @@ export function createOpenAiRealtimeProxy({
         }
         if (!response.ok) {
           // OpenAI's own error text stays in the server log.
-          console.warn(`[Realtime] OpenAI ${describeUpstreamFailure(response.status, body)}`);
+          console.warn(
+            `[Realtime] OpenAI ${describeUpstreamFailure(response.status, body)}`,
+          );
           res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ error: upstreamErrorMessage('OpenAI', response.status) }));
+          res.end(
+            JSON.stringify({
+              error: upstreamErrorMessage('OpenAI', response.status),
+            }),
+          );
           return;
         }
-        res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
+        res.setHeader(
+          'Content-Type',
+          response.headers.get('content-type') || 'application/json',
+        );
         res.end(body);
       } catch (error) {
         if (error instanceof ClientGoneError) return;
-        console.warn('[Realtime] token request failed:', error?.message || error);
+        console.warn(
+          '[Realtime] token request failed:',
+          error?.message || error,
+        );
         res.statusCode = upstreamErrorStatus(error);
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: upstreamErrorMessage('OpenAI', error) }));
+        res.end(
+          JSON.stringify({ error: upstreamErrorMessage('OpenAI', error) }),
+        );
       }
     });
   }
@@ -395,7 +479,7 @@ function extractOpenAiResponseText(data) {
   }
   if (!Array.isArray(data?.output)) return '';
   return data.output
-    .flatMap((item) => Array.isArray(item?.content) ? item.content : [])
+    .flatMap((item) => (Array.isArray(item?.content) ? item.content : []))
     .map((part) => part?.text || part?.output_text || '')
     .join(' ')
     .trim();

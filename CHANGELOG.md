@@ -28,12 +28,13 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 ### Changed
 
 - `vite.config.js` no longer defines the radio, Overpass, route, CCTV,
-  military-installation, regional brief and weather effects proxies. Each
-  is a module under `server/proxies/`, and the helpers they share with the
-  routes that remain (capped upstream reads, request coalescing, the disk
-  cache limits and the rest) live in `server/lib/`. Routes and responses
-  are unchanged; the installations, route, regional brief and weather
-  effects routes, which had no tests, now have them.
+  military-installation, regional brief, weather effects, GBFS, OpenSky,
+  TomTom, OpenAI and Google Places proxies. Each is a module under
+  `server/proxies/`, and the helpers they share with the routes that remain
+  (capped upstream reads, request coalescing, the disk cache limits and the
+  rest) live in `server/lib/`. Routes and responses are unchanged. The
+  installations, route, regional brief, weather effects, GBFS, OpenSky and
+  TomTom routes, which had no tests, now have them.
 
 - Server code no longer lives in the browser tree. The Provider Settings
   core, its credential-file hardening, the terrain-heights resolver, the

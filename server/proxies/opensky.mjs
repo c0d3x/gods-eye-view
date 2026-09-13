@@ -14,7 +14,11 @@ import {
   upstreamErrorStatus,
 } from '../lib/fetchWithTimeout.mjs';
 import { requiredFiniteQueryNumber } from '../lib/queryParams.mjs';
-import { PROVIDER_JSON_MAX_BYTES, readResponseJsonCapped, readResponseTextCapped } from '../lib/upstreamBody.mjs';
+import {
+  PROVIDER_JSON_MAX_BYTES,
+  readResponseJsonCapped,
+  readResponseTextCapped,
+} from '../lib/upstreamBody.mjs';
 
 // ---------------------------------------------------------------------------
 // OpenSky OAuth2 token + response cache state
@@ -134,7 +138,7 @@ export async function getOpenSkyToken() {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: `grant_type=client_credentials&client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}`,
         },
-        { timeoutMs: OPENSKY_TOKEN_TIMEOUT_MS }
+        { timeoutMs: OPENSKY_TOKEN_TIMEOUT_MS },
       );
 
       let data = null;
@@ -148,7 +152,8 @@ export async function getOpenSkyToken() {
       const expiresIn = Number(data?.expires_in);
       if (!res.ok || !accessToken) {
         if (!_openskyAuthWarned) {
-          const detail = data?.error_description || data?.error || `HTTP ${res.status}`;
+          const detail =
+            data?.error_description || data?.error || `HTTP ${res.status}`;
           console.warn('[OpenSky] OAuth client_credentials failed:', detail);
           _openskyAuthWarned = true;
         }
@@ -159,13 +164,21 @@ export async function getOpenSkyToken() {
 
       _openskyToken = accessToken;
       // Default to 1800 s (30 min) if expires_in is missing or non-finite
-      _openskyTokenExpiry = Date.now() + (Number.isFinite(expiresIn) ? expiresIn : 1800) * 1000;
-      console.log('[OpenSky] OAuth token refreshed, expires in', Number.isFinite(expiresIn) ? expiresIn : 1800, 's');
+      _openskyTokenExpiry =
+        Date.now() + (Number.isFinite(expiresIn) ? expiresIn : 1800) * 1000;
+      console.log(
+        '[OpenSky] OAuth token refreshed, expires in',
+        Number.isFinite(expiresIn) ? expiresIn : 1800,
+        's',
+      );
       _openskyAuthWarned = false;
       return _openskyToken;
     } catch (err) {
       if (!_openskyAuthWarned) {
-        console.warn('[OpenSky] OAuth token request failed:', err?.message || String(err));
+        console.warn(
+          '[OpenSky] OAuth token request failed:',
+          err?.message || String(err),
+        );
         _openskyAuthWarned = true;
       }
       _openskyToken = null;
@@ -187,7 +200,9 @@ export async function getOpenSkyToken() {
  * @returns {string} One of the valid mode strings, or the default ('oauth').
  */
 export function normalizeOpenSkyAuthMode(value) {
-  const raw = String(value || '').trim().toLowerCase();
+  const raw = String(value || '')
+    .trim()
+    .toLowerCase();
   if (!raw) return OPENSKY_AUTH_MODE_DEFAULT;
   if (OPENSKY_AUTH_MODE_SET.has(raw)) return raw;
   if (!_openskyAuthModeWarned.has(raw)) {
@@ -195,7 +210,7 @@ export function normalizeOpenSkyAuthMode(value) {
     console.warn(
       OPENSKY_RETIRED_AUTH_MODES.has(raw)
         ? `[OpenSky] OPENSKY_AUTH_MODE="${raw}" relied on Basic auth, which OpenSky no longer accepts; using "${OPENSKY_AUTH_MODE_DEFAULT}"`
-        : `[OpenSky] Invalid OPENSKY_AUTH_MODE="${raw}", defaulting to "${OPENSKY_AUTH_MODE_DEFAULT}"`
+        : `[OpenSky] Invalid OPENSKY_AUTH_MODE="${raw}", defaulting to "${OPENSKY_AUTH_MODE_DEFAULT}"`,
     );
   }
   return OPENSKY_AUTH_MODE_DEFAULT;
@@ -214,7 +229,14 @@ export function normalizeOpenSkyAuthMode(value) {
  * @param {string} opts.reason - Human-readable reason string for diagnostics.
  * @returns {Record<string,string>} Header object.
  */
-function buildOpenSkyHeaders({ cacheStatus, requestedMode, usedMode, reason, staleSeconds, retryAfterSeconds }) {
+function buildOpenSkyHeaders({
+  cacheStatus,
+  requestedMode,
+  usedMode,
+  reason,
+  staleSeconds,
+  retryAfterSeconds,
+}) {
   const headers = {
     'Content-Type': 'application/json',
     'Cache-Control': 'no-store',
@@ -226,8 +248,12 @@ function buildOpenSkyHeaders({ cacheStatus, requestedMode, usedMode, reason, sta
   };
   // Credit-governor extras (field-test fix 2026-07-06): the client can show a
   // STALE cue / countdown without parsing the body.
-  if (Number.isFinite(staleSeconds)) headers['X-OpenSky-Stale-Seconds'] = String(Math.round(staleSeconds));
-  if (Number.isFinite(retryAfterSeconds)) headers['X-OpenSky-Retry-After-Seconds'] = String(Math.round(retryAfterSeconds));
+  if (Number.isFinite(staleSeconds))
+    headers['X-OpenSky-Stale-Seconds'] = String(Math.round(staleSeconds));
+  if (Number.isFinite(retryAfterSeconds))
+    headers['X-OpenSky-Retry-After-Seconds'] = String(
+      Math.round(retryAfterSeconds),
+    );
   return headers;
 }
 
@@ -235,8 +261,10 @@ export function adsbLolFallbackAnchor(req) {
   const incoming = new URL(req?.url || '', 'http://localhost');
   const latitude = requiredFiniteQueryNumber(incoming.searchParams, 'lat');
   const longitude = requiredFiniteQueryNumber(incoming.searchParams, 'lon');
-  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) return null;
-  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) return null;
+  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)
+    return null;
+  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180)
+    return null;
   return { latitude, longitude };
 }
 
@@ -252,38 +280,45 @@ async function fetchAdsbLolPointFallback(req) {
     return { ...cached, cacheStatus: 'HIT' };
   }
 
-  const request = coalesceProxyRequest(_adsbLolPointInFlight, cacheKey, async () => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
-    try {
-      const upstream = await fetch(
-        `https://api.adsb.lol/v2/lat/${roundedLat}/lon/${roundedLon}/dist/${ADSBLOL_POINT_RADIUS_NM}`,
-        {
-          headers: {
-            Accept: 'application/json',
-            'User-Agent': 'gods-eye-view-adsblol-regional-fallback/1.0',
+  const request = coalesceProxyRequest(
+    _adsbLolPointInFlight,
+    cacheKey,
+    async () => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      try {
+        const upstream = await fetch(
+          `https://api.adsb.lol/v2/lat/${roundedLat}/lon/${roundedLon}/dist/${ADSBLOL_POINT_RADIUS_NM}`,
+          {
+            headers: {
+              Accept: 'application/json',
+              'User-Agent': 'gods-eye-view-adsblol-regional-fallback/1.0',
+            },
+            signal: controller.signal,
           },
-          signal: controller.signal,
-        },
-      );
-      if (!upstream.ok) throw new Error(`upstream HTTP ${upstream.status}`);
-      const payload = await readResponseJsonCapped(upstream, ADSBLOL_POINT_MAX_RESPONSE_BYTES);
-      const normalized = normalizeAdsbLolPointResponse(payload);
-      const record = {
-        body: JSON.stringify(normalized),
-        cachedAt: Date.now(),
-        count: normalized.states.length,
-      };
-      _adsbLolPointCache.delete(cacheKey);
-      _adsbLolPointCache.set(cacheKey, record);
-      while (_adsbLolPointCache.size > ADSBLOL_POINT_CACHE_MAX) {
-        _adsbLolPointCache.delete(_adsbLolPointCache.keys().next().value);
+        );
+        if (!upstream.ok) throw new Error(`upstream HTTP ${upstream.status}`);
+        const payload = await readResponseJsonCapped(
+          upstream,
+          ADSBLOL_POINT_MAX_RESPONSE_BYTES,
+        );
+        const normalized = normalizeAdsbLolPointResponse(payload);
+        const record = {
+          body: JSON.stringify(normalized),
+          cachedAt: Date.now(),
+          count: normalized.states.length,
+        };
+        _adsbLolPointCache.delete(cacheKey);
+        _adsbLolPointCache.set(cacheKey, record);
+        while (_adsbLolPointCache.size > ADSBLOL_POINT_CACHE_MAX) {
+          _adsbLolPointCache.delete(_adsbLolPointCache.keys().next().value);
+        }
+        return record;
+      } finally {
+        clearTimeout(timeoutId);
       }
-      return record;
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  });
+    },
+  );
   try {
     const record = await request.promise;
     return { ...record, cacheStatus: request.shared ? 'INFLIGHT' : 'MISS' };
@@ -323,8 +358,10 @@ function openSkySourceEpochMs(body) {
 }
 
 function openSkySourceIsStale(sourceEpochMs, now = Date.now()) {
-  return Number.isFinite(sourceEpochMs)
-    && now - sourceEpochMs > OPENSKY_SOURCE_STALE_MS;
+  return (
+    Number.isFinite(sourceEpochMs) &&
+    now - sourceEpochMs > OPENSKY_SOURCE_STALE_MS
+  );
 }
 
 /**
@@ -357,21 +394,26 @@ export function openSkyProxy() {
     configureServer(server) {
       server.middlewares.use('/api/opensky', async (req, res) => {
         try {
-          const requestedMode = normalizeOpenSkyAuthMode(process.env.OPENSKY_AUTH_MODE);
+          const requestedMode = normalizeOpenSkyAuthMode(
+            process.env.OPENSKY_AUTH_MODE,
+          );
           const now = Date.now();
           const inCooldown = now < _openskyCooldownUntil;
           // Fresh-enough cache (adaptive TTL) OR any cache during a 429
           // cooldown: serve it without touching upstream. Stale-during-cooldown
           // is deliberate (credit governor): last-good planes beat a dead layer.
-          if (_openskyCacheBody && (now - _openskyCacheTime < _openskyTtlMs || inCooldown)) {
+          if (
+            _openskyCacheBody &&
+            (now - _openskyCacheTime < _openskyTtlMs || inCooldown)
+          ) {
             if (
-              openSkySourceIsStale(_openskyCacheSourceEpochMs, now)
-              && await serveAdsbLolPointFallback(
+              openSkySourceIsStale(_openskyCacheSourceEpochMs, now) &&
+              (await serveAdsbLolPointFallback(
                 req,
                 res,
                 requestedMode,
                 'opensky_snapshot_stale_regional_fallback',
-              )
+              ))
             ) {
               return;
             }
@@ -387,10 +429,16 @@ export function openSkyProxy() {
                 cacheStatus: isStale ? 'STALE' : 'HIT',
                 requestedMode: cachedMeta.requestedMode || requestedMode,
                 usedMode: cachedMeta.usedMode || 'unknown',
-                reason: isStale ? 'rate_limited_serving_stale' : (cachedMeta.reason || 'cached'),
-                staleSeconds: isStale ? (now - _openskyCacheTime) / 1000 : undefined,
-                retryAfterSeconds: inCooldown ? (_openskyCooldownUntil - now) / 1000 : undefined,
-              })
+                reason: isStale
+                  ? 'rate_limited_serving_stale'
+                  : cachedMeta.reason || 'cached',
+                staleSeconds: isStale
+                  ? (now - _openskyCacheTime) / 1000
+                  : undefined,
+                retryAfterSeconds: inCooldown
+                  ? (_openskyCooldownUntil - now) / 1000
+                  : undefined,
+              }),
             );
             res.end(_openskyCacheBody);
             return;
@@ -399,19 +447,34 @@ export function openSkyProxy() {
           // synthesize the 429 locally — hammering upstream mid-cooldown can't
           // succeed and just burns goodwill.
           if (inCooldown) {
-            if (await serveAdsbLolPointFallback(req, res, requestedMode, 'opensky_cooldown_regional_fallback')) return;
-            res.writeHead(429, buildOpenSkyHeaders({
-              cacheStatus: 'COOLDOWN',
-              requestedMode,
-              usedMode: 'none',
-              reason: 'rate_limited',
-              retryAfterSeconds: (_openskyCooldownUntil - now) / 1000,
-            }));
-            res.end(JSON.stringify({ error: 'OpenSky rate limited; proxy cooling down.' }));
+            if (
+              await serveAdsbLolPointFallback(
+                req,
+                res,
+                requestedMode,
+                'opensky_cooldown_regional_fallback',
+              )
+            )
+              return;
+            res.writeHead(
+              429,
+              buildOpenSkyHeaders({
+                cacheStatus: 'COOLDOWN',
+                requestedMode,
+                usedMode: 'none',
+                reason: 'rate_limited',
+                retryAfterSeconds: (_openskyCooldownUntil - now) / 1000,
+              }),
+            );
+            res.end(
+              JSON.stringify({
+                error: 'OpenSky rate limited; proxy cooling down.',
+              }),
+            );
             return;
           }
 
-          const headers = { 'Accept': 'application/json' };
+          const headers = { Accept: 'application/json' };
           let usedMode = 'anon';
           let reason = 'forced_anonymous';
 
@@ -431,20 +494,23 @@ export function openSkyProxy() {
           const upstream = await fetchWithTimeout(
             'https://opensky-network.org/api/states/all?extended=1',
             { headers },
-            { timeoutMs: OPENSKY_STATES_TIMEOUT_MS }
+            { timeoutMs: OPENSKY_STATES_TIMEOUT_MS },
           );
 
-          let body = await readResponseTextCapped(upstream, OPENSKY_STATES_MAX_BYTES);
+          let body = await readResponseTextCapped(
+            upstream,
+            OPENSKY_STATES_MAX_BYTES,
+          );
           const sourceEpochMs = upstream.ok ? openSkySourceEpochMs(body) : null;
           if (
-            upstream.ok
-            && openSkySourceIsStale(sourceEpochMs, now)
-            && await serveAdsbLolPointFallback(
+            upstream.ok &&
+            openSkySourceIsStale(sourceEpochMs, now) &&
+            (await serveAdsbLolPointFallback(
               req,
               res,
               requestedMode,
               'opensky_snapshot_stale_regional_fallback',
-            )
+            ))
           ) {
             // Keep the last global snapshot available as a fail-soft cache,
             // but do not label or render it as a fresh live result.
@@ -459,23 +525,32 @@ export function openSkyProxy() {
             reason = 'rate_limited';
             // Credit governor: honor OpenSky's retry-after (bounded 30 s … 30 min;
             // 2 min when the header is absent) — no upstream attempts until then.
-            const retryAfterSec = numericHeader(upstream.headers, 'x-rate-limit-retry-after-seconds');
+            const retryAfterSec = numericHeader(
+              upstream.headers,
+              'x-rate-limit-retry-after-seconds',
+            );
             const cooldownMs = Math.min(
-              Math.max(Number.isFinite(retryAfterSec) ? retryAfterSec * 1000 : 120_000, 30_000),
-              30 * 60_000
+              Math.max(
+                Number.isFinite(retryAfterSec) ? retryAfterSec * 1000 : 120_000,
+                30_000,
+              ),
+              30 * 60_000,
             );
             _openskyCooldownUntil = now + cooldownMs;
             // Serve the last-good body instead of the 429 when we have one —
             // the layer keeps rendering (STALE-cued) instead of dying.
             if (_openskyCacheBody && _openskyCacheStatus === 200) {
-              res.writeHead(200, buildOpenSkyHeaders({
-                cacheStatus: 'STALE',
-                requestedMode,
-                usedMode,
-                reason: 'rate_limited_serving_stale',
-                staleSeconds: (now - _openskyCacheTime) / 1000,
-                retryAfterSeconds: cooldownMs / 1000,
-              }));
+              res.writeHead(
+                200,
+                buildOpenSkyHeaders({
+                  cacheStatus: 'STALE',
+                  requestedMode,
+                  usedMode,
+                  reason: 'rate_limited_serving_stale',
+                  staleSeconds: (now - _openskyCacheTime) / 1000,
+                  retryAfterSeconds: cooldownMs / 1000,
+                }),
+              );
               res.end(_openskyCacheBody);
               return;
             }
@@ -494,12 +569,14 @@ export function openSkyProxy() {
           if (upstream.status === 401 || upstream.status === 403) {
             if (requestedMode === 'oauth' && usedMode !== 'oauth') {
               body = JSON.stringify({
-                error: 'OpenSky auth invalid. OAuth mode requires valid OPENSKY_CLIENT_ID and OPENSKY_CLIENT_SECRET.',
+                error:
+                  'OpenSky auth invalid. OAuth mode requires valid OPENSKY_CLIENT_ID and OPENSKY_CLIENT_SECRET.',
               });
               reason = 'oauth_invalid_or_missing';
             } else if (usedMode === 'oauth') {
               body = JSON.stringify({
-                error: 'OpenSky auth invalid. OAuth client credentials were rejected.',
+                error:
+                  'OpenSky auth invalid. OAuth client credentials were rejected.',
               });
               reason = 'oauth_invalid_credentials';
             } else {
@@ -510,14 +587,22 @@ export function openSkyProxy() {
             }
           } else if (!upstream.ok) {
             // Never relay OpenSky's own error page or text.
-            console.warn(`[OpenSky Proxy] ${describeUpstreamFailure(upstream.status, body)}`);
-            body = JSON.stringify({ error: upstreamErrorMessage('OpenSky', upstream.status) });
+            console.warn(
+              `[OpenSky Proxy] ${describeUpstreamFailure(upstream.status, body)}`,
+            );
+            body = JSON.stringify({
+              error: upstreamErrorMessage('OpenSky', upstream.status),
+            });
           }
 
           // Refine the reason string to reflect the actual outcome
           if (upstream.ok && reason === 'forced_anonymous') {
             reason = 'anonymous_ok';
-          } else if (upstream.ok && usedMode === 'oauth' && reason === 'oauth_token') {
+          } else if (
+            upstream.ok &&
+            usedMode === 'oauth' &&
+            reason === 'oauth_token'
+          ) {
             reason = 'oauth_ok';
           }
 
@@ -536,7 +621,10 @@ export function openSkyProxy() {
             // Credit governor: adapt the cache TTL to the remaining daily
             // budget so a continuously-open app stretches its polls instead of
             // exhausting the quota mid-day. Success also clears any cooldown.
-            const remaining = numericHeader(upstream.headers, 'x-rate-limit-remaining');
+            const remaining = numericHeader(
+              upstream.headers,
+              'x-rate-limit-remaining',
+            );
             _openskyTtlMs = openskyAdaptiveTtlMs(remaining);
             _openskyCooldownUntil = 0;
           }
@@ -548,14 +636,16 @@ export function openSkyProxy() {
               requestedMode,
               usedMode,
               reason,
-            })
+            }),
           );
           res.end(body);
         } catch (e) {
           console.error('[OpenSky Proxy]', e.message);
           if (_openskyCacheBody) {
             const cachedMeta = _openskyCacheMeta || {
-              requestedMode: normalizeOpenSkyAuthMode(process.env.OPENSKY_AUTH_MODE),
+              requestedMode: normalizeOpenSkyAuthMode(
+                process.env.OPENSKY_AUTH_MODE,
+              ),
               usedMode: 'unknown',
               reason: 'cached_stale',
             };
@@ -563,16 +653,27 @@ export function openSkyProxy() {
               _openskyCacheStatus || 200,
               buildOpenSkyHeaders({
                 cacheStatus: 'STALE',
-                requestedMode: cachedMeta.requestedMode || OPENSKY_AUTH_MODE_DEFAULT,
+                requestedMode:
+                  cachedMeta.requestedMode || OPENSKY_AUTH_MODE_DEFAULT,
                 usedMode: cachedMeta.usedMode || 'unknown',
                 reason: cachedMeta.reason || 'cached_stale',
-              })
+              }),
             );
             res.end(_openskyCacheBody);
             return;
           }
-          const requestedMode = normalizeOpenSkyAuthMode(process.env.OPENSKY_AUTH_MODE);
-          if (await serveAdsbLolPointFallback(req, res, requestedMode, 'opensky_proxy_error_regional_fallback')) return;
+          const requestedMode = normalizeOpenSkyAuthMode(
+            process.env.OPENSKY_AUTH_MODE,
+          );
+          if (
+            await serveAdsbLolPointFallback(
+              req,
+              res,
+              requestedMode,
+              'opensky_proxy_error_regional_fallback',
+            )
+          )
+            return;
           const status = upstreamErrorStatus(e);
           res.writeHead(
             status,
@@ -581,9 +682,16 @@ export function openSkyProxy() {
               requestedMode,
               usedMode: 'error',
               reason: status === 504 ? 'upstream_timeout' : 'proxy_error',
-            })
+            }),
           );
-          res.end(JSON.stringify({ error: status === 504 ? 'OpenSky did not answer in time' : 'OpenSky proxy error' }));
+          res.end(
+            JSON.stringify({
+              error:
+                status === 504
+                  ? 'OpenSky did not answer in time'
+                  : 'OpenSky proxy error',
+            }),
+          );
         }
       });
     },

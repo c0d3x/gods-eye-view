@@ -356,7 +356,8 @@ test('the cooldown follows retry-after within 30 s and 30 minutes, and is 2 minu
     [null, '120'],
   ];
   for (const [retryAfter, cooldown] of cases) {
-    const name = retryAfter === null ? 'no retry-after' : `retry-after ${retryAfter}`;
+    const name =
+      retryAfter === null ? 'no retry-after' : `retry-after ${retryAfter}`;
     await t.test(name, async (st) => {
       const { handler, clock } = await setup(st, ANON);
       let limited = false;

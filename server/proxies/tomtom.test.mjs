@@ -108,7 +108,11 @@ test('unknown paths, and tiles outside zoom 8-16 or the grid, are refused', asyn
     assert.equal(answer.status, 404, url);
     assert.deepEqual(json(answer), { error: 'not_found' }, url);
   }
-  for (const url of ['/flow/7/1/1.pbf', '/flow/17/1/1.pbf', '/flow/10/1024/0.pbf']) {
+  for (const url of [
+    '/flow/7/1/1.pbf',
+    '/flow/17/1/1.pbf',
+    '/flow/10/1024/0.pbf',
+  ]) {
     const answer = await request(handler, url);
     assert.equal(answer.status, 400, url);
     assert.deepEqual(json(answer), { error: 'invalid_tile' }, url);
