@@ -8,11 +8,14 @@ import { writeJson } from '../server/lib/jsonResponse.mjs';
 import { readResponseTextCapped } from '../server/lib/upstreamBody.mjs';
 import { ADSBDB_CACHE_MAX_ENTRIES, PROJECT_URL, TERRAIN_CACHE_MAX_POINTS } from '../vite.config.js';
 
-const source = readFileSync(new URL('../vite.config.js', import.meta.url), 'utf8');
+// The production plugins, read from their modules.
+const source = ['celestrak', 'rocketLaunches', 'terrainHeights', 'adsbdb']
+  .map((name) => readFileSync(new URL(`../server/proxies/${name}.mjs`, import.meta.url), 'utf8'))
+  .join('\n');
 const detail = 'fixture-secret-token /internal/example <html>';
 
 // Execute the production middleware with isolated upstreams and cache storage.
-// Top-level function closing braces start in column zero in this module.
+// Top-level function closing braces start in column zero in these modules.
 function extract(name) {
   const start = source.search(new RegExp(`(?:export )?(?:async )?function ${name}\\(`));
   assert.ok(start >= 0, `${name} must exist`);
