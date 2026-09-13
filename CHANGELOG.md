@@ -8,6 +8,14 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ## [Unreleased]
 
+### Changed
+
+- `.env.example` lists every variable the server reads. The AISStream URL,
+  the Caltrans and TfL camera packs and the TfL app key were missing, and two
+  CCTV flags that nothing reads are gone. TESTING.md documents the test and
+  QA variables, and a test fails when the code reads a variable documented in
+  neither.
+
 ### Removed
 
 - Drop OpenSky's Basic-auth modes. OpenSky's API accepts only OAuth2 client

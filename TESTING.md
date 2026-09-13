@@ -231,3 +231,32 @@ Software runs validate their assertions but do not establish real-GPU visual
 correctness. Floor-hold retains both mesh and DEM checks: an unavailable mesh
 oracle fails the run even when the DEM check passes. Record the backend with
 any screenshots and run GPU visual checks separately when needed.
+
+## Test and QA environment variables
+
+The app never reads these; they tune the test runner and the browser
+harnesses. `src/tooling/envDocs.test.mjs` checks that every environment
+variable the code reads is documented here or in `.env.example`.
+
+- `GEV_QA_URL`: the app URL that `pnpm run test:track` and the QA harnesses
+  drive. Default `http://localhost:4173`; a harness's `--url` overrides it.
+- `PUPPETEER_EXECUTABLE_PATH`: the Chrome the harnesses launch. By default
+  they use Puppeteer's pinned Chrome for Testing, then a system Chrome.
+- `PUPPETEER_SKIP_DOWNLOAD`: set to `1` to skip downloading Chrome for Testing
+  when installing. The Pinokio installer and CI's unit-test jobs set it.
+- `QA_SHOTS_DIR`: where `qa-infra-lod` and `qa-map-source-tray` write their
+  screenshots, instead of `qa-shots/`.
+- `QA_LABEL`: the label `qa-view-target-prewarm` puts on its evidence files,
+  so a before and after pair can sit side by side. Default `after`.
+- `QA_MAP_SOURCE_TRAY_KEYLESS`: set to `1` to make `qa-map-source-tray` expect
+  the keyless map sources on a server that has keys, like its `--keyless`
+  flag.
+- `GEV_TEST_VERBOSE`: set to print the page's console messages during
+  `pnpm run test:track`.
+- `GEV_REQUIRE_ALLOCATION_GATE`: set to `1` to fail, rather than skip, the
+  allocation microbenchmarks on a Node version other than the calibrated
+  Node 24. CI's allocation job sets it.
+- `GEV_ALLOC_*` (`GEV_ALLOC_ENTRIES`, `GEV_ALLOC_PROFILE`, `GEV_ALLOC_WARMUP`,
+  `GEV_ALLOC_CHUNK`, `GEV_ALLOC_CHUNKS`, `GEV_ALLOC_STABILIZATION_CHUNKS`,
+  `GEV_ALLOC_SOLVE_MS`): set by the world-overlay allocation probe for its
+  measurement worker. Don't set them by hand.
