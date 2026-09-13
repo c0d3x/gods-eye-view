@@ -38,7 +38,8 @@
       "src/costRateLimits.test.mjs",
       "server/lib/boundedCache.mjs",
       "server/lib/boundedCache.test.mjs",
-      "src/cctvStreetViewCache.test.mjs"
+      "src/cctvStreetViewCache.test.mjs",
+      "src/viteServerConfig.test.mjs"
     ]
   },
   "formatter": {

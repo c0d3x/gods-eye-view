@@ -194,6 +194,11 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   turns one off. An unreadable value now keeps the default instead of
   removing the limit. The CCTV Street View fallback, which had no limit, gets
   its own Google budget and shows the synthetic frame once it's spent.
+- Turn off Vite's default CORS for the dev and preview servers. It let a page
+  on any other localhost port read API responses, including the voice
+  session's short-lived OpenAI token, and any file the server serves. The dev
+  server also stops serving `.gev-logs/` (voice debug transcripts),
+  `.gev-cache/` and `.claude/`, which were readable over HTTP.
 
 ## [0.1.1] — 2026-09-01 — Installation and live-data fixes
 

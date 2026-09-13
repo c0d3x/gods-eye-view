@@ -7877,9 +7877,23 @@ export default defineConfig(({ mode }) => {
       allowedHosts: (env.HOST === '0.0.0.0' || env.HOST === '::')
         ? true
         : localAllowedHosts,
+      // No CORS. Vite's default lets any localhost origin read what this
+      // server returns: API results, the Realtime token, served files. The
+      // app itself only ever calls its own origin.
+      cors: false,
       fs: {
-        // Pinokio keeps optional credentials in this ignored local file.
-        deny: ['.env', '.env.*', '*.{crt,pem}', '**/.git/**', '**/ENVIRONMENT'],
+        // Pinokio keeps optional credentials in this ignored local file. The
+        // app's own logs and caches, and local Claude settings, stay private.
+        deny: [
+          '.env',
+          '.env.*',
+          '*.{crt,pem}',
+          '**/.git/**',
+          '**/ENVIRONMENT',
+          '**/.gev-logs/**',
+          '**/.gev-cache/**',
+          '**/.claude/**',
+        ],
       },
       // Framing protection belongs on the APP DOCUMENT, not on API responses:
       // a browser evaluates frame-ancestors against the framed page's own
@@ -7892,6 +7906,10 @@ export default defineConfig(({ mode }) => {
         'X-Frame-Options': 'DENY',
         'Content-Security-Policy': "frame-ancestors 'none'",
       },
+    },
+    preview: {
+      // Preview would inherit server.cors; set it explicitly all the same.
+      cors: false,
     },
     // Expose selected API keys to the browser via import.meta.env.*
     define: {
