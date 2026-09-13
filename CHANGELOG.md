@@ -92,6 +92,11 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
   `--test-force-exit`, which ends a file's process as soon as Node decides its
   tests are done.
 
+- The OpenSky proxy read a missing rate-limit header as zero. A 429 without a
+  retry-after header cooled down for 30 seconds instead of 2 minutes, and a
+  snapshot without `X-Rate-Limit-Remaining` stayed cached for 5 minutes
+  instead of 9 seconds.
+
 ## [0.2.0] - 2026-09-13
 
 Security hardening, fixes, Vite 8, Cesium 1.145 and new CI checks.

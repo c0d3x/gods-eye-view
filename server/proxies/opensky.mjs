@@ -328,6 +328,15 @@ function openSkySourceIsStale(sourceEpochMs, now = Date.now()) {
 }
 
 /**
+ * A numeric response header, or NaN when it is absent or blank. Number(null)
+ * is 0, which would read a missing header as zero credits or a zero wait.
+ */
+function numericHeader(headers, name) {
+  const value = headers.get(name);
+  return value === null || value.trim() === '' ? Number.NaN : Number(value);
+}
+
+/**
  * Vite plugin: OpenSky Network proxy with OAuth and response caching.
  *
  * OPENSKY_AUTH_MODE picks the auth mode. OpenSky accepts only OAuth2 client
@@ -450,7 +459,7 @@ export function openSkyProxy() {
             reason = 'rate_limited';
             // Credit governor: honor OpenSky's retry-after (bounded 30 s … 30 min;
             // 2 min when the header is absent) — no upstream attempts until then.
-            const retryAfterSec = Number(upstream.headers.get('x-rate-limit-retry-after-seconds'));
+            const retryAfterSec = numericHeader(upstream.headers, 'x-rate-limit-retry-after-seconds');
             const cooldownMs = Math.min(
               Math.max(Number.isFinite(retryAfterSec) ? retryAfterSec * 1000 : 120_000, 30_000),
               30 * 60_000
@@ -527,7 +536,7 @@ export function openSkyProxy() {
             // Credit governor: adapt the cache TTL to the remaining daily
             // budget so a continuously-open app stretches its polls instead of
             // exhausting the quota mid-day. Success also clears any cooldown.
-            const remaining = Number(upstream.headers.get('x-rate-limit-remaining'));
+            const remaining = numericHeader(upstream.headers, 'x-rate-limit-remaining');
             _openskyTtlMs = openskyAdaptiveTtlMs(remaining);
             _openskyCooldownUntil = 0;
           }

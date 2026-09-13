@@ -92,18 +92,30 @@ function mockUpstream(t, answers) {
   return calls;
 }
 
-/** A current OpenSky snapshot, with `remaining` daily credits left. */
+/**
+ * A current OpenSky snapshot, with `remaining` daily credits left; null
+ * leaves that header out.
+ */
 function snapshot(clock, remaining = 3000) {
   return new Response(
     JSON.stringify({ time: Math.floor(clock.now / 1000), states: [] }),
-    { headers: { 'x-rate-limit-remaining': String(remaining) } },
+    {
+      headers:
+        remaining === null
+          ? {}
+          : { 'x-rate-limit-remaining': String(remaining) },
+    },
   );
 }
 
+/** OpenSky's 429, asking for `retryAfterSeconds`; null leaves that out. */
 function rateLimited(retryAfterSeconds) {
   return new Response('<html>Too many requests</html>', {
     status: 429,
-    headers: { 'x-rate-limit-retry-after-seconds': retryAfterSeconds },
+    headers:
+      retryAfterSeconds === null
+        ? {}
+        : { 'x-rate-limit-retry-after-seconds': retryAfterSeconds },
   });
 }
 
@@ -290,6 +302,17 @@ test('a snapshot is served from cache for as long as its credits allow', async (
   assert.equal(calls.states.length, 2);
 });
 
+test('a snapshot without a credits header keeps the base 9 s cache', async (t) => {
+  const { handler, clock } = await setup(t, ANON);
+  const calls = mockUpstream(t, { states: () => snapshot(clock, null) });
+  await request(handler);
+  clock.now += 8_000;
+  assert.equal((await request(handler)).headers['X-OpenSky-Cache'], 'HIT');
+  clock.now += 2_000;
+  assert.equal((await request(handler)).headers['X-OpenSky-Cache'], 'MISS');
+  assert.equal(calls.states.length, 2);
+});
+
 test('a 429 starts a cooldown that serves the last good snapshot as STALE', async (t) => {
   const { handler, clock } = await setup(t, ANON);
   let limited = false;
@@ -324,15 +347,17 @@ test('a 429 starts a cooldown that serves the last good snapshot as STALE', asyn
   assert.equal(calls.states.length, 3);
 });
 
-test('the cooldown follows retry-after within 30 s and 30 minutes', async (t) => {
+test('the cooldown follows retry-after within 30 s and 30 minutes, and is 2 minutes without it', async (t) => {
   const cases = [
     ['5', '30'],
     ['600', '600'],
     ['7200', '1800'],
     ['soon', '120'],
+    [null, '120'],
   ];
   for (const [retryAfter, cooldown] of cases) {
-    await t.test(`retry-after ${retryAfter}`, async (st) => {
+    const name = retryAfter === null ? 'no retry-after' : `retry-after ${retryAfter}`;
+    await t.test(name, async (st) => {
       const { handler, clock } = await setup(st, ANON);
       let limited = false;
       mockUpstream(st, {
