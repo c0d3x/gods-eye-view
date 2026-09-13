@@ -83,7 +83,8 @@
       "src/tooling/changelog.test.mjs",
       "src/tooling/releaseWorkflow.test.mjs",
       "src/openskyAuthMode.test.mjs",
-      "src/tooling/envDocs.test.mjs"
+      "src/tooling/envDocs.test.mjs",
+      "scripts/lib/unfinishedTestsReporter.mjs"
     ]
   },
   "formatter": {

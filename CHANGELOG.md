@@ -23,6 +23,15 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
   work. Both now mean `oauth`, with a warning, and the proxy and the launcher
   no longer read `OPENSKY_USERNAME` or `OPENSKY_PASSWORD`.
 
+### Fixed
+
+- The unit-test runner fails a run in which a test file stopped early. Node
+  counts such a file as passing, with only the tests it reached; one run
+  silently skipped 30 of the AIS layer's 73 tests. The runner now lists any
+  queued test that never finished and fails the run, and no longer passes
+  `--test-force-exit`, which ends a file's process as soon as Node decides its
+  tests are done.
+
 ## [0.2.0] - 2026-09-13
 
 Security hardening, fixes, Vite 8, Cesium 1.145 and new CI checks.

@@ -147,10 +147,10 @@ jobs:
         run: pnpm run check:boundaries
 
       # keySetupHardening includes the check that applies a real DACL with
-      # Windows' own tools; every other job skips it. The flags match
-      # scripts/run-unit-tests.mjs: a per-test deadline, and force-exit.
+      # Windows' own tools; every other job skips it. The deadline matches
+      # scripts/run-unit-tests.mjs.
       - name: Run focused onboarding tests
-        run: node --test --test-timeout=60000 --test-force-exit src/setupDoctor.test.mjs src/pinokioEnvironment.test.mjs src/pinokioPreflight.test.mjs src/pinokioLauncherContract.test.mjs src/mapStartup.test.mjs src/hudSummaryResponse.test.mjs src/keySetupHardening.test.mjs
+        run: node --test --test-timeout=60000 src/setupDoctor.test.mjs src/pinokioEnvironment.test.mjs src/pinokioPreflight.test.mjs src/pinokioLauncherContract.test.mjs src/mapStartup.test.mjs src/hudSummaryResponse.test.mjs src/keySetupHardening.test.mjs
 
       - name: Build production bundle
         run: pnpm run build

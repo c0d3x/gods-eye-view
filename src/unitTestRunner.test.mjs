@@ -11,13 +11,22 @@ import {
   allocationTestArgs,
   assertNode24AllocationRuntime,
   buildUnitTestPlan,
-  coverageFlags,
   discoverUnitTestFiles,
   isCalibratedAllocationRuntime,
   parallelTestArgs,
   parseUnitTestArgs,
+  reporterFlags,
+  runCheckedTests,
   unitTestFlags,
 } from '../scripts/run-unit-tests.mjs';
+import unfinishedTestsReporter from '../scripts/lib/unfinishedTestsReporter.mjs';
+
+/** A nested `node --test` that inherits NODE_TEST_CONTEXT skips running files. */
+function nestedTestEnv() {
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  return env;
+}
 
 test('unit runner serializes only GC-bracketed allocation microbenchmarks', () => {
   const ordinary = [
@@ -37,8 +46,8 @@ test('unit runner serializes only GC-bracketed allocation microbenchmarks', () =
   assert.deepEqual(plan.serializedAllocations, ALLOCATION_TEST_FILES);
   assert.equal(plan.parallel.some((file) => ALLOCATION_TEST_FILES.includes(file)), false);
   for (const file of ALLOCATION_TEST_FILES) {
-    assert.deepEqual(allocationTestArgs(file), [
-      '--expose-gc', '--test', '--test-concurrency=1', ...unitTestFlags(), file,
+    assert.deepEqual(allocationTestArgs(file, { summaryFile: 's.json' }), [
+      '--expose-gc', '--test', '--test-concurrency=1', ...unitTestFlags(), ...reporterFlags('s.json'), file,
     ]);
   }
   assert.throws(
@@ -84,32 +93,80 @@ test('npm test stays green on every supported engine, not only the calibrated on
   assert.match(runner, /SKIPPED .*allocation microbenchmarks/);
 });
 
-test('every run gives each test a deadline and exits once its tests finish', () => {
-  assert.deepEqual(unitTestFlags(), [`--test-timeout=${UNIT_TEST_TIMEOUT_MS}`, '--test-force-exit']);
-  assert.deepEqual(unitTestFlags({ timeoutMs: 500 }), ['--test-timeout=500', '--test-force-exit']);
-  assert.deepEqual(parallelTestArgs(['a.test.mjs']), ['--test', ...unitTestFlags(), 'a.test.mjs']);
+test('every run gives each test a deadline, and never forces an early exit', () => {
+  assert.deepEqual(unitTestFlags(), [`--test-timeout=${UNIT_TEST_TIMEOUT_MS}`]);
+  assert.deepEqual(unitTestFlags({ timeoutMs: 500 }), ['--test-timeout=500']);
+  assert.deepEqual(
+    parallelTestArgs(['a.test.mjs'], { summaryFile: 's.json' }),
+    ['--test', ...unitTestFlags(), ...reporterFlags('s.json'), 'a.test.mjs'],
+  );
+  // --test-force-exit can end a file's process before all of its queued
+  // tests have run, and Node then counts the file as passing.
   const runner = readFileSync(new URL('../scripts/run-unit-tests.mjs', import.meta.url), 'utf8');
-  assert.match(runner, /runTests\(parallelTestArgs\(plan\.parallel, \{ coverage \}\)\)/);
+  assert.doesNotMatch(runner, /'--test-force-exit'/);
+  assert.match(
+    runner,
+    /runCheckedTests\(\(summaryFile\) => parallelTestArgs\(plan\.parallel, \{ coverage, summaryFile \}\)\)/,
+  );
 });
 
-test('a hung test fails at its deadline, and the timer it leaks does not hold the run', () => {
+test('the unfinished-tests reporter lists queued tests that never passed or failed', async () => {
+  const file = '/repo/src/a.test.mjs';
+  const events = [
+    { type: 'test:enqueue', data: { file, name: 'src/a.test.mjs', nesting: 0 } },
+    { type: 'test:enqueue', data: { file, name: 'one', nesting: 0 } },
+    { type: 'test:enqueue', data: { file, name: 'twin', nesting: 0 } },
+    { type: 'test:enqueue', data: { file, name: 'twin', nesting: 0 } },
+    { type: 'test:pass', data: { file, name: 'one', nesting: 0 } },
+    { type: 'test:fail', data: { file, name: 'twin', nesting: 0 } },
+    { type: 'test:complete', data: { file, name: 'src/a.test.mjs', nesting: 0 } },
+  ];
+  async function* source() {
+    yield* events;
+  }
+  let output = '';
+  for await (const chunk of unfinishedTestsReporter(source())) output += chunk;
+  assert.deepEqual(JSON.parse(output), { unfinished: [{ file, name: 'twin' }] });
+});
+
+test('a test file whose process stops early fails the run instead of dropping tests', () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'gev-early-exit-'));
+  try {
+    const file = path.join(directory, 'early-exit.test.mjs');
+    writeFileSync(file, [
+      "import { test } from 'node:test';",
+      "test('one', () => {});",
+      "test('two', () => {});",
+      "test('three stops the process', () => { setImmediate(() => process.exit(0)); });",
+      "test('four', async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });",
+      "test('five', () => {});",
+      '',
+    ].join('\n'));
+    const { status, unfinished } = runCheckedTests(
+      (summaryFile) => ['--test', ...unitTestFlags(), ...reporterFlags(summaryFile), file],
+      { stdio: 'pipe', env: nestedTestEnv(), log: () => {} },
+    );
+    assert.equal(status, 1);
+    assert.deepEqual(unfinished.map(({ name }) => name).sort(), ['five', 'four']);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test('a hung test fails at its deadline', () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'gev-hung-test-'));
   try {
     const file = path.join(directory, 'hung.test.mjs');
     writeFileSync(file, [
       "import { test } from 'node:test';",
-      "test('never settles', () => new Promise(() => { setInterval(() => {}, 1000); }));",
+      "test('never settles in time', () => new Promise((resolve) => setTimeout(resolve, 3_000)));",
       "test('runs after it', () => {});",
       '',
     ].join('\n'));
-    // This file's own process carries NODE_TEST_CONTEXT, and a nested
-    // `node --test` that inherits it skips running files.
-    const env = { ...process.env };
-    delete env.NODE_TEST_CONTEXT;
     const started = Date.now();
     const result = spawnSync(process.execPath, ['--test', ...unitTestFlags({ timeoutMs: 500 }), file], {
       encoding: 'utf8',
-      env,
+      env: nestedTestEnv(),
       timeout: 30_000,
     });
     const output = `${result.stdout}${result.stderr}`;
@@ -129,6 +186,7 @@ test('the Windows job runs the DACL test, with the same deadline', () => {
   assert.ok(command, 'the Windows job runs node --test');
   const args = command.split(/\s+/);
   for (const flag of unitTestFlags()) assert.ok(args.includes(flag), `${flag} is passed`);
+  assert.equal(args.includes('--test-force-exit'), false, 'force-exit can drop tests');
   assert.ok(args.includes('src/keySetupHardening.test.mjs'), 'the real DACL check only runs on Windows');
   const root = fileURLToPath(new URL('..', import.meta.url));
   for (const file of args.filter((arg) => arg.endsWith('.test.mjs'))) {
@@ -179,11 +237,14 @@ test('CI runs the allocation microbenchmarks in their own job, on the calibrated
 
 test('coverage measures the parallel tests into an lcov report, and CI publishes it', () => {
   assert.deepEqual(
-    parallelTestArgs(['a.test.mjs'], { coverage: true }),
-    ['--test', ...unitTestFlags(), ...coverageFlags(), 'a.test.mjs'],
+    parallelTestArgs(['a.test.mjs'], { coverage: true, summaryFile: 's.json' }),
+    [
+      '--test', ...unitTestFlags(), '--experimental-test-coverage',
+      ...reporterFlags('s.json', { coverage: true }), 'a.test.mjs',
+    ],
   );
-  assert.ok(coverageFlags().includes('--experimental-test-coverage'));
-  assert.ok(coverageFlags().includes('--test-reporter-destination=coverage/lcov.info'));
+  assert.ok(reporterFlags('s.json', { coverage: true }).includes('--test-reporter-destination=coverage/lcov.info'));
+  assert.equal(reporterFlags('s.json').includes('--test-reporter=lcov'), false);
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.match(pkg.scripts['test:coverage'], /--skip-allocations --coverage && node scripts\/coverage-summary\.mjs$/);
   const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');

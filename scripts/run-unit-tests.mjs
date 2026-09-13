@@ -1,5 +1,6 @@
-import { mkdirSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -28,12 +29,13 @@ export function assertNode24AllocationRuntime(version = process.versions.node) {
 export const UNIT_TEST_TIMEOUT_MS = 60_000;
 
 /**
- * Flags every unit-test run passes: the per-test deadline, and force-exit so
- * that timers or sockets a timed-out test left behind can't keep its file's
- * process alive.
+ * Flags every unit-test run passes: the per-test deadline. Not
+ * --test-force-exit, which ends a test file's process as soon as Node
+ * decides its tests are done; a file cut short reports only the tests it
+ * reached, and passes.
  */
 export function unitTestFlags({ timeoutMs = UNIT_TEST_TIMEOUT_MS } = {}) {
-  return [`--test-timeout=${timeoutMs}`, '--test-force-exit'];
+  return [`--test-timeout=${timeoutMs}`];
 }
 
 /** Directories whose `*.test.mjs` files make up the unit suite. */
@@ -77,21 +79,48 @@ export function buildUnitTestPlan(files) {
 }
 
 /** Build the isolated Node invocation for one GC-bracketed allocation probe. */
-export function allocationTestArgs(file) {
+export function allocationTestArgs(file, { summaryFile } = {}) {
   if (!ALLOCATION_TEST_FILES.includes(file)) {
     throw new Error(`Not an allocation microbenchmark: ${file}`);
   }
-  return ['--expose-gc', '--test', '--test-concurrency=1', ...unitTestFlags(), file];
+  return [
+    '--expose-gc', '--test', '--test-concurrency=1', ...unitTestFlags(),
+    ...reporterFlags(summaryFile), file,
+  ];
 }
 
-function runTests(args) {
-  const result = spawnSync(process.execPath, args, {
-    cwd: process.cwd(),
-    stdio: 'inherit',
-    env: process.env,
-  });
-  if (result.error) throw result.error;
-  return result.status ?? 1;
+/** The reporter that lists queued tests that never finished. */
+export const UNFINISHED_TESTS_REPORTER = new URL('./lib/unfinishedTestsReporter.mjs', import.meta.url).href;
+
+/**
+ * Runs node with the arguments `buildArgs(summaryFile)` returns, then fails
+ * the run if any test was queued but never finished: Node counts a test file
+ * whose process stopped early as passing, with only the tests it reached.
+ * @returns {{ status: number, unfinished: { file: string, name: string }[] }}
+ */
+export function runCheckedTests(buildArgs, { stdio = 'inherit', env = process.env, log = console.error } = {}) {
+  const directory = mkdtempSync(path.join(tmpdir(), 'gev-unit-'));
+  const summaryFile = path.join(directory, 'unfinished.json');
+  try {
+    const result = spawnSync(process.execPath, buildArgs(summaryFile), {
+      cwd: process.cwd(),
+      stdio,
+      env,
+    });
+    if (result.error) throw result.error;
+    const status = result.status ?? 1;
+    // No report means the run itself broke off; its status says how.
+    if (!existsSync(summaryFile)) return { status: status || 1, unfinished: [] };
+    const { unfinished } = JSON.parse(readFileSync(summaryFile, 'utf8'));
+    if (unfinished.length === 0) return { status, unfinished };
+    log(`[unit] ${unfinished.length} queued tests never finished; their file's process stopped early:`);
+    for (const { file, name } of unfinished.slice(0, 20)) {
+      log(`  ${path.relative(process.cwd(), file || '')} :: ${name}`);
+    }
+    return { status: 1, unfinished };
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 }
 
 /** Command-line modes. CI runs the two halves of the suite as separate jobs. */
@@ -104,22 +133,31 @@ export const UNIT_TEST_MODES = Object.freeze({
 export const COVERAGE_DIRECTORY = 'coverage';
 
 /**
- * Flags that measure the parallel tests' coverage: spec results on stdout,
- * and an lcov report for tools and the CI summary.
+ * Reporters for one run: spec results on stdout, an lcov report when
+ * measuring coverage, and the list of queued tests that never finished,
+ * written to `summaryFile`.
  */
-export function coverageFlags(directory = COVERAGE_DIRECTORY) {
+export function reporterFlags(summaryFile, { coverage = false } = {}) {
   return [
-    '--experimental-test-coverage',
     '--test-reporter=spec',
     '--test-reporter-destination=stdout',
-    '--test-reporter=lcov',
-    `--test-reporter-destination=${directory}/lcov.info`,
+    ...(coverage
+      ? ['--test-reporter=lcov', `--test-reporter-destination=${COVERAGE_DIRECTORY}/lcov.info`]
+      : []),
+    `--test-reporter=${UNFINISHED_TESTS_REPORTER}`,
+    `--test-reporter-destination=${summaryFile}`,
   ];
 }
 
 /** The Node invocation for the parallel tests. */
-export function parallelTestArgs(files, { coverage = false } = {}) {
-  return ['--test', ...unitTestFlags(), ...(coverage ? coverageFlags() : []), ...files];
+export function parallelTestArgs(files, { coverage = false, summaryFile } = {}) {
+  return [
+    '--test',
+    ...unitTestFlags(),
+    ...(coverage ? ['--experimental-test-coverage'] : []),
+    ...reporterFlags(summaryFile, { coverage }),
+    ...files,
+  ];
 }
 
 /**
@@ -149,8 +187,8 @@ export function runUnitTests({ parallel = true, allocations = true, coverage = f
   const plan = buildUnitTestPlan(discoverUnitTestFiles());
   if (parallel) {
     if (coverage) mkdirSync(COVERAGE_DIRECTORY, { recursive: true });
-    const parallelStatus = runTests(parallelTestArgs(plan.parallel, { coverage }));
-    if (parallelStatus !== 0 || !allocations) return parallelStatus;
+    const { status } = runCheckedTests((summaryFile) => parallelTestArgs(plan.parallel, { coverage, summaryFile }));
+    if (status !== 0 || !allocations) return status;
   }
 
   // The GC-bracketed budgets are calibrated on Node 24 and are meaningless on
@@ -170,7 +208,7 @@ export function runUnitTests({ parallel = true, allocations = true, coverage = f
     return 0;
   }
   for (const file of plan.serializedAllocations) {
-    const status = runTests(allocationTestArgs(file));
+    const { status } = runCheckedTests((summaryFile) => allocationTestArgs(file, { summaryFile }));
     if (status !== 0) return status;
   }
   return 0;
