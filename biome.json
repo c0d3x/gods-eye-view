@@ -53,7 +53,10 @@
       "src/viteAllowedHosts.test.mjs",
       "server/lib/diskCache.mjs",
       "server/lib/diskCache.test.mjs",
-      "src/cacheBounds.test.mjs"
+      "src/cacheBounds.test.mjs",
+      "server/lib/fetchWithTimeout.mjs",
+      "server/lib/fetchWithTimeout.test.mjs",
+      "src/upstreamTimeouts.test.mjs"
     ]
   },
   "formatter": {

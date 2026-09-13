@@ -219,6 +219,14 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   startup and after writes: Overpass 90 days and 64 MB, military
   installations 90 days and 32 MB, TomTom tiles one day and 64 MB. TomTom's
   daily request budget file is never removed.
+- Put a deadline on every upstream call. Nine had none: the OpenSky token and
+  states, CCTV media, adsb.lol, two OpenAI calls and two Google Places
+  searches, so a stalled provider could hold a request open indefinitely. They
+  now answer 504 when the deadline passes, and a call made for one browser
+  request stops when that browser disconnects. The routes also stopped
+  relaying OpenAI's, Google's and the data feeds' own error text, and
+  exception messages, to the browser: they answer in their own words and log
+  the details on the server.
 
 ## [0.1.1] — 2026-09-01 — Installation and live-data fixes
 

@@ -84,6 +84,13 @@ import {
 import { readBodyWithin } from './server/lib/requestBody.mjs';
 import { createApiRequestGuard } from './server/lib/requestGuard.mjs';
 import {
+  ClientGoneError,
+  describeUpstreamFailure,
+  fetchWithTimeout,
+  upstreamErrorMessage,
+  upstreamErrorStatus,
+} from './server/lib/fetchWithTimeout.mjs';
+import {
   fetchTerrainChunkWithRetry,
   parseTerrainPoints,
   resolveTerrainHeightRequest,
@@ -814,6 +821,16 @@ export async function readResponseJsonCapped(response, maxBytes) {
   return JSON.parse(await readResponseTextCapped(response, maxBytes));
 }
 
+/** Parse text as a JSON object; anything else reads as an empty object. */
+function parseJsonObject(text) {
+  try {
+    const value = JSON.parse(text);
+    return value && typeof value === 'object' ? value : {};
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Return the existing promise for a cache key, or create one and remove it
  * only when that exact promise settles.
@@ -1446,6 +1463,19 @@ const _aisStreamTracks = new Map();
 /** @type {Map<string,{lat:number,lon:number,epochSec:number}>} mmsi -> first fix awaiting second (lazy buffer allocation) */
 const _aisStreamTrackPending = new Map();
 
+// Deadlines for the upstream calls made through fetchWithTimeout
+// (server/lib/fetchWithTimeout.mjs), and caps on the responses they read.
+// CCTV media streams, so its deadline covers only the response headers.
+const OPENSKY_TOKEN_TIMEOUT_MS = 15_000;
+const OPENSKY_STATES_TIMEOUT_MS = 30_000;
+const CCTV_MEDIA_HEADERS_TIMEOUT_MS = 8_000;
+const ADSBLOL_TIMEOUT_MS = 12_000;
+export const OPENAI_TIMEOUT_MS = 20_000;
+export const GOOGLE_PLACES_TIMEOUT_MS = 10_000;
+const OPENSKY_STATES_MAX_BYTES = 32 * 1024 * 1024;
+const ADSBLOL_MAX_BYTES = 16 * 1024 * 1024;
+const PROVIDER_JSON_MAX_BYTES = 2 * 1024 * 1024;
+
 /**
  * Obtain a valid OpenSky OAuth2 bearer token, refreshing if needed.
  *
@@ -1471,18 +1501,19 @@ async function getOpenSkyToken() {
   // Wrap the async token fetch in a shared promise stored in _openskyTokenPromise
   _openskyTokenPromise = (async () => {
     try {
-      const res = await fetch(
+      const res = await fetchWithTimeout(
         'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
           body: `grant_type=client_credentials&client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}`,
-        }
+        },
+        { timeoutMs: OPENSKY_TOKEN_TIMEOUT_MS }
       );
 
       let data = null;
       try {
-        data = await res.json();
+        data = await readResponseJsonCapped(res, PROVIDER_JSON_MAX_BYTES);
       } catch {
         data = null;
       }
@@ -3173,7 +3204,13 @@ function openSkyProxy() {
             }
           }
 
-          let upstream = await fetch('https://opensky-network.org/api/states/all?extended=1', { headers });
+          // Not tied to this client's connection: a finished call still
+          // refreshes the shared cache, and OpenSky charges for it either way.
+          let upstream = await fetchWithTimeout(
+            'https://opensky-network.org/api/states/all?extended=1',
+            { headers },
+            { timeoutMs: OPENSKY_STATES_TIMEOUT_MS }
+          );
           // Auto-mode fallback: if OAuth was rejected, retry with Basic credentials
           if (
             (upstream.status === 401 || upstream.status === 403) &&
@@ -3185,12 +3222,17 @@ function openSkyProxy() {
               Accept: 'application/json',
               Authorization: `Basic ${Buffer.from(`${basicUser}:${basicPass}`).toString('base64')}`,
             };
-            upstream = await fetch('https://opensky-network.org/api/states/all?extended=1', { headers: retryHeaders });
+            try { await upstream.body?.cancel(); } catch { /* no-op */ }
+            upstream = await fetchWithTimeout(
+              'https://opensky-network.org/api/states/all?extended=1',
+              { headers: retryHeaders },
+              { timeoutMs: OPENSKY_STATES_TIMEOUT_MS }
+            );
             usedMode = 'basic';
             reason = 'oauth_rejected_fallback_basic';
           }
 
-          let body = await upstream.text();
+          let body = await readResponseTextCapped(upstream, OPENSKY_STATES_MAX_BYTES);
           const sourceEpochMs = upstream.ok ? openSkySourceEpochMs(body) : null;
           if (
             upstream.ok
@@ -3279,6 +3321,10 @@ function openSkyProxy() {
               });
               reason = 'auth_required';
             }
+          } else if (!upstream.ok) {
+            // Never relay OpenSky's own error page or text.
+            console.warn(`[OpenSky Proxy] ${describeUpstreamFailure(upstream.status, body)}`);
+            body = JSON.stringify({ error: upstreamErrorMessage('OpenSky', upstream.status) });
           }
 
           // Refine the reason string to reflect the actual outcome
@@ -3342,16 +3388,17 @@ function openSkyProxy() {
           }
           const requestedMode = normalizeOpenSkyAuthMode(process.env.OPENSKY_AUTH_MODE);
           if (await serveAdsbLolPointFallback(req, res, requestedMode, 'opensky_proxy_error_regional_fallback')) return;
+          const status = upstreamErrorStatus(e);
           res.writeHead(
-            502,
+            status,
             buildOpenSkyHeaders({
               cacheStatus: 'MISS',
               requestedMode,
               usedMode: 'error',
-              reason: 'proxy_error',
+              reason: status === 504 ? 'upstream_timeout' : 'proxy_error',
             })
           );
-          res.end(JSON.stringify({ error: 'OpenSky proxy error' }));
+          res.end(JSON.stringify({ error: status === 504 ? 'OpenSky did not answer in time' : 'OpenSky proxy error' }));
         }
       });
     },
@@ -3493,6 +3540,12 @@ function gbfsProxy() {
           if (Buffer.byteLength(body, 'utf8') > GBFS_MAX_BODY_BYTES) {
             res.writeHead(502, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
             res.end(JSON.stringify({ error: 'GBFS upstream response too large' }));
+            return;
+          }
+          if (!upstream.ok) {
+            // Never relay the feed's own error page or text.
+            res.writeHead(upstream.status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+            res.end(JSON.stringify({ error: upstreamErrorMessage('GBFS feed', upstream.status) }));
             return;
           }
           const contentType = upstream.headers.get('content-type') || 'application/json';
@@ -4763,9 +4816,14 @@ export function cctvProxy() {
               const upstreamHeaders = { 'User-Agent': 'gods-eye-view-cctv-proxy/1.0' };
               const requestRange = req.headers?.range;
               if (requestRange) upstreamHeaders.Range = requestRange;
-              const upstream = await fetch(mediaUrl, {
-                headers: upstreamHeaders,
-              });
+              // A live stream runs as long as the viewer watches, so the
+              // deadline covers only the headers; the call ends when the
+              // viewer disconnects.
+              const upstream = await fetchWithTimeout(
+                mediaUrl,
+                { headers: upstreamHeaders },
+                { timeoutMs: CCTV_MEDIA_HEADERS_TIMEOUT_MS, response: res, headersOnly: true }
+              );
               const contentType = upstream.headers.get('content-type') || '';
               if (!upstream.ok) {
                 setHealth(cameraId, {
@@ -4774,6 +4832,7 @@ export function cctvProxy() {
                   label: source?.provider || 'Configured source',
                   message: `Upstream HTTP ${upstream.status}`,
                 });
+                try { await upstream.body?.cancel(); } catch { /* no-op */ }
                 res.writeHead(upstream.status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
                 res.end(JSON.stringify({ error: `Upstream returned ${upstream.status}` }));
                 return;
@@ -4800,13 +4859,20 @@ export function cctvProxy() {
               });
               return;
             } catch (error) {
+              if (error instanceof ClientGoneError) return;
+              console.warn('[CCTV Proxy] media fetch failed:', error?.message || error);
+              const status = upstreamErrorStatus(error);
               setHealth(cameraId, {
                 status: 'degraded',
                 sourceKind: 'upstream',
                 label: source?.provider || 'Configured source',
-                message: error?.message || 'Media fetch failed',
+                message: status === 504 ? 'Upstream did not answer in time' : 'Media fetch failed',
               });
-              res.writeHead(502, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+              if (res.headersSent) {
+                res.end();
+                return;
+              }
+              res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
               res.end(JSON.stringify({ error: 'Media proxy failed' }));
               return;
             }
@@ -4929,16 +4995,23 @@ function adsbLolProxy() {
             res.end(_cache);
             return;
           }
-          const upstream = await fetch('https://api.adsb.lol/v2/mil', {
-            headers: { 'User-Agent': 'gods-eye-view-adsblol-proxy/1.0' },
-          });
-          const body = await upstream.text();
+          // Not tied to this client's connection: a finished call still
+          // refreshes the shared cache.
+          const upstream = await fetchWithTimeout(
+            'https://api.adsb.lol/v2/mil',
+            { headers: { 'User-Agent': 'gods-eye-view-adsblol-proxy/1.0' } },
+            { timeoutMs: ADSBLOL_TIMEOUT_MS }
+          );
+          const body = await readResponseTextCapped(upstream, ADSBLOL_MAX_BYTES);
           if (upstream.ok) {
             _cache = body;
             _cacheAt = now;
+          } else {
+            console.warn(`[adsb.lol Proxy] ${describeUpstreamFailure(upstream.status, body)}`);
           }
           res.writeHead(upstream.status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-ADS-B-Cache': 'MISS' });
-          res.end(body);
+          // Never relay adsb.lol's own error page or text.
+          res.end(upstream.ok ? body : JSON.stringify({ error: upstreamErrorMessage('adsb.lol', upstream.status) }));
         } catch (e) {
           console.error('[adsb.lol Proxy]', e.message);
           if (_cache) {
@@ -4946,7 +5019,7 @@ function adsbLolProxy() {
             res.end(_cache);
             return;
           }
-          res.writeHead(502, { 'Content-Type': 'application/json' });
+          res.writeHead(upstreamErrorStatus(e), { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'ADS-B proxy error' }));
         }
       });
@@ -5014,10 +5087,11 @@ function aisLiveProxy() {
           watchdog: feed.watchdog,
         }));
       } catch (error) {
+        console.warn('[AIS Live]', error?.message || error);
         res.statusCode = 502;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
-        res.end(JSON.stringify({ error: error?.message || 'AIS live stream error', rows: [] }));
+        res.end(JSON.stringify({ error: 'AIS live stream error', rows: [] }));
       }
     });
   }
@@ -5193,10 +5267,18 @@ export function openAiRealtimeProxy({ debugLogDirectory = REALTIME_DEBUG_LOG_DIR
       // paid-endpoint quota slot.
       if (!enforceRateLimit(openAiRateLimiter(), req, res)) return;
 
+      let context;
       try {
-        const body = await readRequestBody(req, 64 * 1024);
-        const context = JSON.parse(body || '{}');
-        const response = await fetch('https://api.openai.com/v1/responses', {
+        context = JSON.parse((await readRequestBody(req, 64 * 1024)) || '{}');
+      } catch {
+        res.statusCode = 400;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Invalid HUD summary request' }));
+        return;
+      }
+
+      try {
+        const response = await fetchWithTimeout('https://api.openai.com/v1/responses', {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${apiKey}`,
@@ -5215,20 +5297,26 @@ export function openAiRealtimeProxy({ debugLogDirectory = REALTIME_DEBUG_LOG_DIR
             reasoning: { effort: 'minimal' },
             max_output_tokens: 100,
           }),
-        });
-        const data = await response.json().catch(() => ({}));
-        const summary = toFiveWordHudSummary(extractOpenAiResponseText(data));
+        }, { timeoutMs: OPENAI_TIMEOUT_MS, response: res });
+        const text = await readResponseTextCapped(response, PROVIDER_JSON_MAX_BYTES);
+        if (!response.ok) {
+          console.warn(`[HUD Summary] OpenAI ${describeUpstreamFailure(response.status, text)}`);
+        }
+        const summary = toFiveWordHudSummary(extractOpenAiResponseText(parseJsonObject(text)));
         res.statusCode = response.ok && summary ? 200 : response.status || 502;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
         res.end(JSON.stringify({
           summary: summary || null,
-          error: response.ok ? null : data.error?.message || 'OpenAI HUD summary request failed',
+          error: response.ok ? null : upstreamErrorMessage('OpenAI', response.status),
         }));
       } catch (error) {
-        res.statusCode = 502;
+        if (error instanceof ClientGoneError) return;
+        console.warn('[HUD Summary] OpenAI request failed:', error?.message || error);
+        res.statusCode = upstreamErrorStatus(error);
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: error?.message || 'OpenAI HUD summary request failed' }));
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(JSON.stringify({ summary: null, error: upstreamErrorMessage('OpenAI', error) }));
       }
     });
 
@@ -5417,7 +5505,7 @@ export function openAiRealtimeProxy({ debugLogDirectory = REALTIME_DEBUG_LOG_DIR
       };
 
       try {
-        const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
+        const response = await fetchWithTimeout('https://api.openai.com/v1/realtime/client_secrets', {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${apiKey}`,
@@ -5425,24 +5513,33 @@ export function openAiRealtimeProxy({ debugLogDirectory = REALTIME_DEBUG_LOG_DIR
             'OpenAI-Safety-Identifier': 'gev-local-dev',
           },
           body: JSON.stringify(sessionConfig),
-        });
-        const body = await response.text();
+        }, { timeoutMs: OPENAI_TIMEOUT_MS, response: res });
+        const body = await readResponseTextCapped(response, PROVIDER_JSON_MAX_BYTES);
         res.statusCode = response.status;
-        res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
-        // Which tier/model this secret was actually minted for. The upstream
-        // body is passed through untouched (the client parses it verbatim), so
-        // these headers are the authoritative echo — including the case where a
-        // bogus ?tier= was silently downgraded to standard.
+        // Which tier/model this secret was actually minted for. A minted
+        // secret's body is passed through untouched (the client parses it
+        // verbatim), so these headers are the authoritative echo — including
+        // the case where a bogus ?tier= was silently downgraded to standard.
         res.setHeader('X-GEV-Voice-Tier', tier);
         res.setHeader('X-GEV-Voice-Model', model);
         if (requestedTier && !isKnownVoiceTier(requestedTier)) {
           res.setHeader('X-GEV-Voice-Tier-Fallback', '1');
         }
+        if (!response.ok) {
+          // OpenAI's own error text stays in the server log.
+          console.warn(`[Realtime] OpenAI ${describeUpstreamFailure(response.status, body)}`);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: upstreamErrorMessage('OpenAI', response.status) }));
+          return;
+        }
+        res.setHeader('Content-Type', response.headers.get('content-type') || 'application/json');
         res.end(body);
       } catch (error) {
-        res.statusCode = 502;
+        if (error instanceof ClientGoneError) return;
+        console.warn('[Realtime] token request failed:', error?.message || error);
+        res.statusCode = upstreamErrorStatus(error);
         res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: error?.message || 'Failed to create Realtime token' }));
+        res.end(JSON.stringify({ error: upstreamErrorMessage('OpenAI', error) }));
       }
     });
   }
@@ -5577,7 +5674,7 @@ export function googlePlacesContextProxy() {
       }
 
       try {
-        const response = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+        const response = await fetchWithTimeout('https://places.googleapis.com/v1/places:searchNearby', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -5603,8 +5700,12 @@ export function googlePlacesContextProxy() {
               },
             },
           }),
-        });
-        const data = await response.json().catch(() => ({}));
+        }, { timeoutMs: GOOGLE_PLACES_TIMEOUT_MS, response: res });
+        const text = await readResponseTextCapped(response, PROVIDER_JSON_MAX_BYTES);
+        if (!response.ok) {
+          console.warn(`[Places] nearby search: ${describeUpstreamFailure(response.status, text)}`);
+        }
+        const data = parseJsonObject(text);
         const seenPlaces = new Set();
         const places = Array.isArray(data.places) ? data.places
           .map((place) => {
@@ -5635,15 +5736,18 @@ export function googlePlacesContextProxy() {
 
         res.statusCode = response.ok ? 200 : response.status;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.setHeader('Cache-Control', 'private, max-age=300');
+        res.setHeader('Cache-Control', response.ok ? 'private, max-age=300' : 'no-store');
         res.end(JSON.stringify({
           places,
-          error: response.ok ? null : data.error?.message || 'Google Places request failed',
+          error: response.ok ? null : upstreamErrorMessage('Google Places', response.status),
         }));
       } catch (error) {
-        res.statusCode = 502;
+        if (error instanceof ClientGoneError) return;
+        console.warn('[Places] request failed:', error?.message || error);
+        res.statusCode = upstreamErrorStatus(error);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.end(JSON.stringify({ error: error?.message || 'Google Places request failed', places: [] }));
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(JSON.stringify({ error: upstreamErrorMessage('Google Places', error), places: [] }));
       }
     });
 
@@ -5697,7 +5801,7 @@ export function googlePlacesContextProxy() {
       }
 
       try {
-        const response = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        const response = await fetchWithTimeout('https://places.googleapis.com/v1/places:searchText', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -5722,8 +5826,12 @@ export function googlePlacesContextProxy() {
             },
             maxResultCount: 5,
           }),
-        });
-        const data = await response.json().catch(() => ({}));
+        }, { timeoutMs: GOOGLE_PLACES_TIMEOUT_MS, response: res });
+        const text = await readResponseTextCapped(response, PROVIDER_JSON_MAX_BYTES);
+        if (!response.ok) {
+          console.warn(`[Places] text search: ${describeUpstreamFailure(response.status, text)}`);
+        }
+        const data = parseJsonObject(text);
         const places = Array.isArray(data.places) ? data.places
           .map((place) => {
             const placeLatitude = place.location?.latitude ?? null;
@@ -5756,15 +5864,18 @@ export function googlePlacesContextProxy() {
 
         res.statusCode = response.ok ? 200 : response.status;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.setHeader('Cache-Control', 'private, max-age=300');
+        res.setHeader('Cache-Control', response.ok ? 'private, max-age=300' : 'no-store');
         res.end(JSON.stringify({
           places,
-          error: response.ok ? null : data.error?.message || 'Google Places request failed',
+          error: response.ok ? null : upstreamErrorMessage('Google Places', response.status),
         }));
       } catch (error) {
-        res.statusCode = 502;
+        if (error instanceof ClientGoneError) return;
+        console.warn('[Places] request failed:', error?.message || error);
+        res.statusCode = upstreamErrorStatus(error);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.end(JSON.stringify({ error: error?.message || 'Google Places request failed', places: [] }));
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(JSON.stringify({ error: upstreamErrorMessage('Google Places', error), places: [] }));
       }
     });
   }
