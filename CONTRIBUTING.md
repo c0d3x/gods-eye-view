@@ -33,9 +33,24 @@ the Keychain; on any platform you can pass them as env vars or use a `.env`.
 People who only want to run the app can instead install the repository directly
 through Pinokio; the terminal path above remains the contributor path.
 
-Open `http://localhost:4173`. Before sending a PR run `pnpm run build`, `pnpm test`, and `pnpm run test:track` (dev server must be up) — **all three must stay green.**
+Open `http://localhost:4173`.
 
-`pnpm run test:track` and the QA harnesses in `scripts/qa-*.mjs` drive the dev server in headless Chrome: run `pnpm run qa:setup` once to download it, or set `PUPPETEER_EXECUTABLE_PATH` to a Chrome you have. They look for the server at `GEV_QA_URL` (default `http://localhost:4173`), and a harness's `--url` overrides that for one run. The QA workflow runs the track regression and a set of harnesses against a keyless server every night; start it by hand from the Actions tab to name other harnesses.
+## Running tests
+
+Before sending a PR run `pnpm run build`, `pnpm test`, and `pnpm run test:track` (dev server must be up) — **all three must stay green.** CI also runs `pnpm run lint`, `pnpm run format:check` and `pnpm run check:boundaries`.
+
+- `pnpm test` runs the unit suite, every `*.test.mjs` file, and then the allocation budgets. `pnpm run test:coverage` runs the suite without the budgets and writes a coverage report to `coverage/`.
+- To run one file, call Node's test runner on it: `node --test src/setupDoctor.test.mjs`. Add `--test-name-pattern="lockfile"` to run only the tests whose names match.
+
+### QA harnesses
+
+`pnpm run test:track` and the QA harnesses in `scripts/qa-*.mjs` drive the dev server in headless Chrome.
+
+1. Run `pnpm run qa:setup` once. It downloads Puppeteer's Chrome for Testing, or, when `PUPPETEER_EXECUTABLE_PATH` names a Chrome you have, checks that file and downloads nothing.
+2. Start the dev server with `pnpm run dev`.
+3. Run `pnpm run test:track`, or a single harness such as `node scripts/qa-application.mjs`.
+
+The harnesses look for the server at `GEV_QA_URL` (default `http://localhost:4173`), and a harness's `--url` overrides that for one run. [TESTING.md](TESTING.md) lists the variables that tune them. The QA workflow runs the track regression and a set of harnesses against a keyless server every night; start it by hand from the Actions tab to name other harnesses.
 
 ## Good first contributions
 

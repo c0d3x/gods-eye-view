@@ -353,8 +353,10 @@ How the globe handles live data:
 - **No framework.** Vanilla JavaScript, **CesiumJS**, and **Vite** — plus **Google Photorealistic 3D Tiles** for the planet and the **OpenAI Realtime API** for voice. Fast to read, fast to hack on.
 
 ```
-src/
-├── main.js                 # Bootstrap: Google 3D tiles, layer registration
+src/                        # The browser app
+├── main.js                 # Entry point: starts the local edition
+├── app/                    # Application lifecycle and the Cesium viewer
+├── editions/local/         # The local edition: scene, controls, data and tools
 ├── ui.js                   # Runtime UI — panels, HUD, styles, control facade
 ├── hud.js                  # Intelligence HUD + AI scene summary
 ├── keySetup.js             # POWER UP panel — in-app provider keys (dev server only)
@@ -363,7 +365,16 @@ src/
 ├── data/                   # One module per layer + orchestration + context store
 │   ├── iconOrientation.js  # Screen-projected headings + horizon cull
 │   └── local_data/         # Bundled datasets (per-folder provenance)
-└── scenes/                 # Cinematic scene director
+├── overlays/               # Screen-space labels and cards anchored to the world
+├── annotations/            # Voice map annotations: footprints, callouts, rings
+├── scenes/                 # Cinematic scene director
+└── styles/                 # Visual styles as GLSL post-process shaders
+server/lib/                 # Dev-server helpers: request guard, rate limits, caches
+vite.config.js              # Dev server: API proxies, AIS relay, voice tool schemas
+scripts/                    # Launchers, setup doctor, test runner, QA harnesses
+pinokio/                    # One-click Pinokio launcher
+config/                     # CCTV source packs
+tools/                      # Imagery command-line tools
 ```
 
 See [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md) for the authoritative runtime reference.

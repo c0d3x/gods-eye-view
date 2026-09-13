@@ -1,0 +1,42 @@
+name: Bug report
+description: Something in the app, the dev server or the tooling does not work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report security problems privately instead, as [SECURITY.md](https://github.com/c0d3x/gods-eye-view/blob/main/SECURITY.md) describes. Never paste API keys, tokens or the contents of a `.env` file here.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run pnpm run dev
+        2. Open http://localhost:4173
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Setup doctor output
+      description: The output of `pnpm run doctor`. It says where each key was found, never the key itself.
+      render: text
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and operating system
+      placeholder: Chrome 152 on macOS 26
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console or server output
+      description: Errors from the browser console or from the dev server's terminal.
+      render: text

@@ -90,7 +90,8 @@
       "src/tooling/credentials.test.mjs",
       "scripts/qa-setup.mjs",
       "src/tooling/qaSetup.test.mjs",
-      "src/tooling/forkIdentity.test.mjs"
+      "src/tooling/forkIdentity.test.mjs",
+      "src/tooling/repoDocs.test.mjs"
     ]
   },
   "formatter": {

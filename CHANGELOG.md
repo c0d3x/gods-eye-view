@@ -10,6 +10,11 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Added
 
+- Bug report and task templates on the New issue page, with a link to
+  private vulnerability reporting. CONTRIBUTING explains how to run one test
+  file and how to set up the QA harnesses, the README's project tree matches
+  the repository again, and KNOWN-ISSUES lists only open issues.
+
 - The setup doctor (`pnpm run doctor`) checks more of what breaks a setup, and
   says how to fix each problem: the pnpm version against `packageManager`,
   whether `node_modules` matches `pnpm-lock.yaml` and the lockfile matches
