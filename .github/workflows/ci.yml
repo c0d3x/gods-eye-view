@@ -24,8 +24,6 @@ jobs:
       fail-fast: false
       matrix:
         node: [24.14.0, 26.x]
-    env:
-      PUPPETEER_SKIP_DOWNLOAD: '1'
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -88,7 +86,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      PUPPETEER_SKIP_DOWNLOAD: '1'
       # The budgets are calibrated on Node 24; any other runtime fails here.
       GEV_REQUIRE_ALLOCATION_GATE: '1'
     steps:
@@ -117,7 +114,6 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 20
     env:
-      PUPPETEER_SKIP_DOWNLOAD: '1'
       GEV_REQUIRE_ALLOCATION_GATE: '0'
     steps:
       - name: Check out source

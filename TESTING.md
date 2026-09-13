@@ -5,6 +5,7 @@
 > tracking work. The AUTOMATED gates live elsewhere: `pnpm test` (unit),
 > `pnpm run test:track` (tracking invariants), and the headless harnesses under
 > `scripts/qa-*.mjs` — together these are the full automated test surface.
+> The last two drive Chrome, which `pnpm run qa:setup` downloads once.
 
 This guide covers the work hardened over **4 adversarial-review batches** on
 `feat/annotate-hybrid`. Record a voice note + screenshots as you go; each scenario
@@ -241,9 +242,13 @@ variable the code reads is documented here or in `.env.example`.
 - `GEV_QA_URL`: the app URL that `pnpm run test:track` and the QA harnesses
   drive. Default `http://localhost:4173`; a harness's `--url` overrides it.
 - `PUPPETEER_EXECUTABLE_PATH`: the Chrome the harnesses launch. By default
-  they use Puppeteer's pinned Chrome for Testing, then a system Chrome.
-- `PUPPETEER_SKIP_DOWNLOAD`: set to `1` to skip downloading Chrome for Testing
-  when installing. The Pinokio installer and CI's unit-test jobs set it.
+  they use Puppeteer's pinned Chrome for Testing, which `pnpm run qa:setup`
+  downloads, then a system Chrome. With it set, `pnpm run qa:setup` checks
+  that the file exists and downloads nothing.
+- `PUPPETEER_SKIP_DOWNLOAD`: stops Puppeteer's install script from
+  downloading Chrome for Testing. pnpm 11 does not run that script at all
+  (`pnpm-workspace.yaml`); the Pinokio installer sets it for older pnpm
+  releases, which run every install script.
 - `QA_SHOTS_DIR`: where `qa-infra-lod` and `qa-map-source-tray` write their
   screenshots, instead of `qa-shots/`.
 - `QA_LABEL`: the label `qa-view-target-prewarm` puts on its evidence files,

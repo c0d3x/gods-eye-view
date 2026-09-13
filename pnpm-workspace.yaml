@@ -7,5 +7,6 @@ allowBuilds:
   fsevents: false
   # Installs the Git hooks in lefthook.yml (skipped when CI is set).
   lefthook: true
-  # Downloads Chrome for the QA harnesses unless PUPPETEER_SKIP_DOWNLOAD=1.
-  puppeteer: true
+  # Would download Chrome on every install, though only the QA harnesses use
+  # it. `pnpm run qa:setup` downloads it for them.
+  puppeteer: false

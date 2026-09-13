@@ -35,7 +35,7 @@ through Pinokio; the terminal path above remains the contributor path.
 
 Open `http://localhost:4173`. Before sending a PR run `pnpm run build`, `pnpm test`, and `pnpm run test:track` (dev server must be up) — **all three must stay green.**
 
-`pnpm run test:track` and the QA harnesses in `scripts/qa-*.mjs` drive the dev server in headless Chrome. They look for it at `GEV_QA_URL` (default `http://localhost:4173`), and a harness's `--url` overrides that for one run. The QA workflow runs the track regression and a set of harnesses against a keyless server every night; start it by hand from the Actions tab to name other harnesses.
+`pnpm run test:track` and the QA harnesses in `scripts/qa-*.mjs` drive the dev server in headless Chrome: run `pnpm run qa:setup` once to download it, or set `PUPPETEER_EXECUTABLE_PATH` to a Chrome you have. They look for the server at `GEV_QA_URL` (default `http://localhost:4173`), and a harness's `--url` overrides that for one run. The QA workflow runs the track regression and a set of harnesses against a keyless server every night; start it by hand from the Actions tab to name other harnesses.
 
 ## Good first contributions
 

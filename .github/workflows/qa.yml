@@ -44,9 +44,13 @@ jobs:
           node-version: 24.14.0
           cache: pnpm
 
-      # Installing also downloads Puppeteer's pinned Chrome for Testing.
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
+
+      # Installing leaves Chrome out; this downloads Puppeteer's pinned Chrome
+      # for Testing.
+      - name: Download Chrome for the harnesses
+        run: pnpm run qa:setup
 
       - name: Start the dev server without keys
         run: |

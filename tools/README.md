@@ -7,7 +7,8 @@ Output files go to `output/` by default (gitignored).
 ## Prerequisites
 
 - Node.js (via `mise`)
-- `sharp` and `puppeteer` (devDependencies — `pnpm install`)
+- `sharp` and `puppeteer` (devDependencies — `pnpm install`), and the Chrome
+  Puppeteer drives (`pnpm run qa:setup`)
 - Google Maps API key in `.env` as `GOOGLE_MAPS_API_KEY`
 - APIs enabled on your Google Cloud project: **Map Tiles API**, **Street View Static API**
 

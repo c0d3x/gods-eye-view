@@ -13,6 +13,9 @@ const READY_FILE = path.join(ROOT, 'pinokio', '.installed');
 export function runChecked(command, args, { shell = false } = {}) {
   const result = spawnSync(command, args, {
     cwd: ROOT,
+    // pnpm 11 never runs Puppeteer's install script (pnpm-workspace.yaml).
+    // Older pnpm releases run every install script, so this keeps that one
+    // from downloading Chrome there too.
     env: { ...process.env, PUPPETEER_SKIP_DOWNLOAD: '1' },
     shell,
     stdio: 'inherit',

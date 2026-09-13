@@ -22,6 +22,13 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Changed
 
+- Installing the dependencies no longer downloads Chrome, which only the QA
+  scripts, `pnpm run test:track` and `tools/cesium-render.mjs` use. Run
+  `pnpm run qa:setup` to download Puppeteer's Chrome for Testing, or set
+  `PUPPETEER_EXECUTABLE_PATH` to a Chrome you have. `vite` and `ws` move from
+  devDependencies to dependencies, since the app runs on the Vite dev server,
+  so `pnpm install --prod` is enough to run it.
+
 - `.env.example` lists every variable the server reads. The AISStream URL,
   the Caltrans and TfL camera packs and the TfL app key were missing, and two
   CCTV flags that nothing reads are gone. TESTING.md documents the test and

@@ -87,7 +87,9 @@
       "scripts/lib/unfinishedTestsReporter.mjs",
       "scripts/lib/credentials.mjs",
       "scripts/read-keychain-value.mjs",
-      "src/tooling/credentials.test.mjs"
+      "src/tooling/credentials.test.mjs",
+      "scripts/qa-setup.mjs",
+      "src/tooling/qaSetup.test.mjs"
     ]
   },
   "formatter": {
