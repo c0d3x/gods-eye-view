@@ -1,10 +1,13 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { hardenCredentialFile, hardenCredentialFileReport } from './keySetupHardening.mjs';
+import test from 'node:test';
+import {
+  hardenCredentialFile,
+  hardenCredentialFileReport,
+} from './keySetupHardening.mjs';
 
 const FILE = path.join(os.tmpdir(), 'provider-settings-test');
 const USER_SID = 'S-1-5-21-1111111111-2222222222-3333333333-1001';
@@ -40,8 +43,13 @@ function fileSystemWithMode(mode = 0o600) {
   const calls = [];
   return {
     calls,
-    chmodSync(filepath, nextMode) { calls.push(['chmod', filepath, nextMode]); },
-    statSync(filepath) { calls.push(['stat', filepath]); return { mode }; },
+    chmodSync(filepath, nextMode) {
+      calls.push(['chmod', filepath, nextMode]);
+    },
+    statSync(filepath) {
+      calls.push(['stat', filepath]);
+      return { mode };
+    },
   };
 }
 
@@ -53,24 +61,39 @@ test('macOS ACL removal failure stops before chmod and fails closed', () => {
     spawn: () => ({ status: 1, signal: null }),
   });
   assert.equal(result, false);
-  assert.deepEqual(fileSystem.calls, [], 'mode bits must not disguise an ACL-removal failure');
+  assert.deepEqual(
+    fileSystem.calls,
+    [],
+    'mode bits must not disguise an ACL-removal failure',
+  );
 });
 
 test('POSIX hardening verifies the resulting 0600 mode', () => {
   const goodFs = fileSystemWithMode(0o100600);
-  assert.equal(hardenCredentialFile(FILE, {
-    platform: 'darwin',
-    fileSystem: goodFs,
-    spawn: () => ({ status: 0, signal: null }),
-  }), true);
-  assert.deepEqual(goodFs.calls, [['chmod', FILE, 0o600], ['stat', FILE]]);
+  assert.equal(
+    hardenCredentialFile(FILE, {
+      platform: 'darwin',
+      fileSystem: goodFs,
+      spawn: () => ({ status: 0, signal: null }),
+    }),
+    true,
+  );
+  assert.deepEqual(goodFs.calls, [
+    ['chmod', FILE, 0o600],
+    ['stat', FILE],
+  ]);
 
   const broadFs = fileSystemWithMode(0o100640);
-  assert.equal(hardenCredentialFile(FILE, {
-    platform: 'linux',
-    fileSystem: broadFs,
-    spawn: () => { throw new Error('Linux must not spawn chmod'); },
-  }), false);
+  assert.equal(
+    hardenCredentialFile(FILE, {
+      platform: 'linux',
+      fileSystem: broadFs,
+      spawn: () => {
+        throw new Error('Linux must not spawn chmod');
+      },
+    }),
+    false,
+  );
 });
 
 test('Windows hardening refuses an unstructured or broad owner SID before icacls', () => {
@@ -81,7 +104,11 @@ test('Windows hardening refuses an unstructured or broad owner SID before icacls
     fileSystem: windowsFileSystem(),
     spawn(command) {
       commands.push(command);
-      return { status: 0, signal: null, stdout: '"S-1-5-21-1-2-3-1001","S-1-5-32-545"' };
+      return {
+        status: 0,
+        signal: null,
+        stdout: '"S-1-5-21-1-2-3-1001","S-1-5-32-545"',
+      };
     },
   });
   assert.equal(result, false);
@@ -98,17 +125,24 @@ test('Windows hardening applies and then verifies the exact restricted DACL', ()
     spawn(command, args, options) {
       calls.push({ command, args, options });
       if (command.endsWith('\\whoami.exe')) {
-        return { status: 0, signal: null, stdout: `"WORKSTATION\\alice","${USER_SID}"\r\n` };
+        return {
+          status: 0,
+          signal: null,
+          stdout: `"WORKSTATION\\alice","${USER_SID}"\r\n`,
+        };
       }
       return { status: 0, signal: null };
     },
   });
   assert.equal(result, true);
-  assert.deepEqual(calls.map(({ command }) => command), [
-    `${WINDOWS_ROOT}\\System32\\whoami.exe`,
-    `${WINDOWS_ROOT}\\System32\\icacls.exe`,
-    `${WINDOWS_ROOT}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`,
-  ]);
+  assert.deepEqual(
+    calls.map(({ command }) => command),
+    [
+      `${WINDOWS_ROOT}\\System32\\whoami.exe`,
+      `${WINDOWS_ROOT}\\System32\\icacls.exe`,
+      `${WINDOWS_ROOT}\\System32\\WindowsPowerShell\\v1.0\\powershell.exe`,
+    ],
+  );
   assert.deepEqual(calls[1].args, [
     filepath,
     '/inheritance:r',
@@ -140,13 +174,22 @@ test('Windows hardening bypasses PATH-shadowed native ACL tools', () => {
     spawn(command) {
       commands.push(command);
       if (command.endsWith('\\whoami.exe')) {
-        return { status: 0, signal: null, stdout: `"WORKSTATION\\alice","${USER_SID}"` };
+        return {
+          status: 0,
+          signal: null,
+          stdout: `"WORKSTATION\\alice","${USER_SID}"`,
+        };
       }
       return { status: 0, signal: null };
     },
   });
   assert.equal(result, true);
-  assert.equal(commands.some((command) => !command.startsWith(`${WINDOWS_ROOT}\\System32\\`)), false);
+  assert.equal(
+    commands.some(
+      (command) => !command.startsWith(`${WINDOWS_ROOT}\\System32\\`),
+    ),
+    false,
+  );
 });
 
 test('Windows hardening rejects redirected or ambiguous system roots before spawning', () => {
@@ -166,7 +209,10 @@ test('Windows hardening rejects redirected or ambiguous system roots before spaw
       platform: 'win32',
       environment,
       fileSystem: windowsFileSystem(),
-      spawn() { spawned = true; return { status: 0, signal: null }; },
+      spawn() {
+        spawned = true;
+        return { status: 0, signal: null };
+      },
     });
     assert.equal(result, false, JSON.stringify(environment));
     assert.equal(spawned, false, JSON.stringify(environment));
@@ -183,13 +229,20 @@ test('Windows hardening accepts a canonical Windows root on a non-default drive'
     spawn(command) {
       commands.push(command);
       if (command.endsWith('\\whoami.exe')) {
-        return { status: 0, signal: null, stdout: `"WORKSTATION\\alice","${USER_SID}"` };
+        return {
+          status: 0,
+          signal: null,
+          stdout: `"WORKSTATION\\alice","${USER_SID}"`,
+        };
       }
       return { status: 0, signal: null };
     },
   });
   assert.equal(result, true);
-  assert.equal(commands.every((command) => command.startsWith('D:\\Windows\\System32\\')), true);
+  assert.equal(
+    commands.every((command) => command.startsWith('D:\\Windows\\System32\\')),
+    true,
+  );
 });
 
 test('32-bit Windows hardening uses the native Sysnative bridge', () => {
@@ -202,32 +255,49 @@ test('32-bit Windows hardening uses the native Sysnative bridge', () => {
     spawn(command) {
       commands.push(command);
       if (command.endsWith('\\whoami.exe')) {
-        return { status: 0, signal: null, stdout: `"WORKSTATION\\alice","${USER_SID}"` };
+        return {
+          status: 0,
+          signal: null,
+          stdout: `"WORKSTATION\\alice","${USER_SID}"`,
+        };
       }
       return { status: 0, signal: null };
     },
   });
   assert.equal(result, true);
-  assert.equal(commands.every((command) => command.includes('\\Sysnative\\')), true);
+  assert.equal(
+    commands.every((command) => command.includes('\\Sysnative\\')),
+    true,
+  );
 });
 
 test('Windows hardening rejects missing, redirected, or non-file native tools', () => {
   const whoami = `${WINDOWS_ROOT}\\System32\\whoami.exe`;
   const cases = [
     windowsFileSystem({ missing: [whoami] }),
-    windowsFileSystem({ realpaths: { [WINDOWS_ROOT]: 'C:\\RedirectedWindows' } }),
+    windowsFileSystem({
+      realpaths: { [WINDOWS_ROOT]: 'C:\\RedirectedWindows' },
+    }),
     windowsFileSystem({ realpaths: { [whoami]: 'C:\\attacker\\whoami.exe' } }),
-    windowsFileSystem({ realpaths: { [whoami]: 'C:\\Windows\\Temp\\evil-whoami.exe' } }),
+    windowsFileSystem({
+      realpaths: { [whoami]: 'C:\\Windows\\Temp\\evil-whoami.exe' },
+    }),
     windowsFileSystem({ symlinks: [whoami] }),
   ];
   for (const fileSystem of cases) {
     let spawned = false;
-    assert.equal(hardenCredentialFile('C:\\GEV\\ENVIRONMENT.tmp', {
-      platform: 'win32',
-      environment: { SYSTEMROOT: WINDOWS_ROOT },
-      fileSystem,
-      spawn() { spawned = true; return { status: 0, signal: null }; },
-    }), false);
+    assert.equal(
+      hardenCredentialFile('C:\\GEV\\ENVIRONMENT.tmp', {
+        platform: 'win32',
+        environment: { SYSTEMROOT: WINDOWS_ROOT },
+        fileSystem,
+        spawn() {
+          spawned = true;
+          return { status: 0, signal: null };
+        },
+      }),
+      false,
+    );
     assert.equal(spawned, false);
   }
 });
@@ -242,26 +312,46 @@ test('Windows hardening fails closed when ACL application or verification fails'
       spawn(command) {
         calls.push(command);
         if (command.endsWith('\\whoami.exe')) {
-          return { status: 0, signal: null, stdout: `"WORKSTATION\\alice","${USER_SID}"` };
+          return {
+            status: 0,
+            signal: null,
+            stdout: `"WORKSTATION\\alice","${USER_SID}"`,
+          };
         }
-        return { status: command.endsWith(`\\${failingCommand}`) ? 1 : 0, signal: null };
+        return {
+          status: command.endsWith(`\\${failingCommand}`) ? 1 : 0,
+          signal: null,
+        };
       },
     });
-    assert.equal(result, false, `${failingCommand} failure must refuse the write`);
+    assert.equal(
+      result,
+      false,
+      `${failingCommand} failure must refuse the write`,
+    );
     assert.equal(calls.at(-1).endsWith(`\\${failingCommand}`), true);
   }
 });
 
 test('Windows hardening converts subprocess exceptions into a fail-closed result', () => {
-  assert.equal(hardenCredentialFile('C:\\GEV\\ENVIRONMENT.tmp', {
-    platform: 'win32',
-    environment: { SYSTEMROOT: WINDOWS_ROOT },
-    fileSystem: windowsFileSystem(),
-    spawn() { throw new Error('subprocess unavailable'); },
-  }), false);
+  assert.equal(
+    hardenCredentialFile('C:\\GEV\\ENVIRONMENT.tmp', {
+      platform: 'win32',
+      environment: { SYSTEMROOT: WINDOWS_ROOT },
+      fileSystem: windowsFileSystem(),
+      spawn() {
+        throw new Error('subprocess unavailable');
+      },
+    }),
+    false,
+  );
 });
 
-const WHOAMI_OK = { status: 0, signal: null, stdout: `"WORKSTATION\\alice","${USER_SID}"\r\n` };
+const WHOAMI_OK = {
+  status: 0,
+  signal: null,
+  stdout: `"WORKSTATION\\alice","${USER_SID}"\r\n`,
+};
 
 function windowsReport(spawn, environment = { SYSTEMROOT: WINDOWS_ROOT }) {
   return hardenCredentialFileReport('C:\\GEV\\ENVIRONMENT.tmp', {
@@ -273,35 +363,72 @@ function windowsReport(spawn, environment = { SYSTEMROOT: WINDOWS_ROOT }) {
 }
 
 test('a refused hardening names the step that failed and why', () => {
-  assert.equal(windowsReport(() => { throw new Error('must not spawn'); }, {}).step, 'native tools');
+  assert.equal(
+    windowsReport(() => {
+      throw new Error('must not spawn');
+    }, {}).step,
+    'native tools',
+  );
 
   assert.deepEqual(
-    windowsReport(() => ({ status: 1, signal: null, stdout: '', stderr: 'ERROR: Access denied.\r\n' })),
+    windowsReport(() => ({
+      status: 1,
+      signal: null,
+      stdout: '',
+      stderr: 'ERROR: Access denied.\r\n',
+    })),
     { ok: false, step: 'whoami', detail: 'exit 1 (ERROR: Access denied.)' },
   );
   assert.deepEqual(
-    windowsReport(() => ({ status: 0, signal: null, stdout: '"S-1-5-21-1-2-3-1001","S-1-5-32-545"' })),
+    windowsReport(() => ({
+      status: 0,
+      signal: null,
+      stdout: '"S-1-5-21-1-2-3-1001","S-1-5-32-545"',
+    })),
     { ok: false, step: 'whoami', detail: 'its output named no user SID' },
   );
   assert.deepEqual(
-    windowsReport((command) => (command.endsWith('\\whoami.exe') ? WHOAMI_OK : {
-      status: 5,
-      signal: null,
-      stdout: '',
-      stderr: 'C:\\GEV\\ENVIRONMENT.tmp: Access is denied.\r\nSuccessfully processed 0 files',
-    })),
-    { ok: false, step: 'icacls', detail: 'exit 5 (C:\\GEV\\ENVIRONMENT.tmp: Access is denied.)' },
+    windowsReport((command) =>
+      command.endsWith('\\whoami.exe')
+        ? WHOAMI_OK
+        : {
+            status: 5,
+            signal: null,
+            stdout: '',
+            stderr:
+              'C:\\GEV\\ENVIRONMENT.tmp: Access is denied.\r\nSuccessfully processed 0 files',
+          },
+    ),
+    {
+      ok: false,
+      step: 'icacls',
+      detail: 'exit 5 (C:\\GEV\\ENVIRONMENT.tmp: Access is denied.)',
+    },
   );
   assert.deepEqual(
-    windowsReport((command) => (command.endsWith('\\powershell.exe')
-      ? { status: 7, signal: null, stdout: '', stderr: '' }
-      : WHOAMI_OK)),
-    { ok: false, step: 'verify', detail: 'exit 7: there are not exactly three rules' },
+    windowsReport((command) =>
+      command.endsWith('\\powershell.exe')
+        ? { status: 7, signal: null, stdout: '', stderr: '' }
+        : WHOAMI_OK,
+    ),
+    {
+      ok: false,
+      step: 'verify',
+      detail: 'exit 7: there are not exactly three rules',
+    },
   );
   assert.equal(
-    windowsReport((command) => (command.endsWith('\\powershell.exe')
-      ? { status: 1, signal: null, stdout: '', stderr: 'Exception calling "GetAccessControl": "denied"\r\nAt line:1 char:1' }
-      : WHOAMI_OK)).detail,
+    windowsReport((command) =>
+      command.endsWith('\\powershell.exe')
+        ? {
+            status: 1,
+            signal: null,
+            stdout: '',
+            stderr:
+              'Exception calling "GetAccessControl": "denied"\r\nAt line:1 char:1',
+          }
+        : WHOAMI_OK,
+    ).detail,
     'exit 1: PowerShell reported an error (Exception calling "GetAccessControl": "denied")',
   );
   assert.deepEqual(
@@ -312,27 +439,44 @@ test('a refused hardening names the step that failed and why', () => {
     { ok: false, step: 'icacls', detail: 'subprocess unavailable' },
   );
   assert.deepEqual(
-    hardenCredentialFileReport(FILE, { platform: 'linux', fileSystem: fileSystemWithMode(0o100640) }),
+    hardenCredentialFileReport(FILE, {
+      platform: 'linux',
+      fileSystem: fileSystemWithMode(0o100640),
+    }),
     { ok: false, step: 'chmod', detail: 'the mode is 640, not 600' },
   );
 });
 
 test('the DACL check reads the ACL through .NET, without a PowerShell 7 module path', () => {
   const calls = [];
-  const report = windowsReport((command, args, options) => {
-    calls.push({ command, args, options });
-    return command.endsWith('\\whoami.exe') ? WHOAMI_OK : { status: 0, signal: null };
-  }, {
-    SYSTEMROOT: WINDOWS_ROOT,
-    PATH: 'C:\\Windows\\System32',
-    PSModulePath: 'C:\\Program Files\\PowerShell\\7\\Modules;C:\\Windows\\system32\\WindowsPowerShell\\v1.0\\Modules',
-  });
+  const report = windowsReport(
+    (command, args, options) => {
+      calls.push({ command, args, options });
+      return command.endsWith('\\whoami.exe')
+        ? WHOAMI_OK
+        : { status: 0, signal: null };
+    },
+    {
+      SYSTEMROOT: WINDOWS_ROOT,
+      PATH: 'C:\\Windows\\System32',
+      PSModulePath:
+        'C:\\Program Files\\PowerShell\\7\\Modules;C:\\Windows\\system32\\WindowsPowerShell\\v1.0\\Modules',
+    },
+  );
   assert.deepEqual(report, { ok: true });
   const verify = calls.at(-1);
   assert.match(verify.command, /\\powershell\.exe$/);
   assert.doesNotMatch(verify.args.at(-1), /Get-Acl/);
-  assert.match(verify.args.at(-1), /\[System\.IO\.File\]::GetAccessControl\(\$env:GEV_ACL_FILE\)/);
-  assert.equal(Object.keys(verify.options.env).some((name) => name.toLowerCase() === 'psmodulepath'), false);
+  assert.match(
+    verify.args.at(-1),
+    /\[System\.IO\.File\]::GetAccessControl\(\$env:GEV_ACL_FILE\)/,
+  );
+  assert.equal(
+    Object.keys(verify.options.env).some(
+      (name) => name.toLowerCase() === 'psmodulepath',
+    ),
+    false,
+  );
   assert.equal(verify.options.env.PATH, 'C:\\Windows\\System32');
 });
 
@@ -346,10 +490,16 @@ test('Windows production hardener applies its exact DACL with native tools', {
     const report = hardenCredentialFileReport(filepath);
     if (!report.ok) {
       // Show the DACL the failed step left behind, next to the reason.
-      const listing = spawnSync(path.join(process.env.SystemRoot, 'System32', 'icacls.exe'), [filepath], {
-        encoding: 'utf8',
-      });
-      assert.fail(`${report.step}: ${report.detail}\n${listing.stdout || listing.error?.message || ''}`);
+      const listing = spawnSync(
+        path.join(process.env.SystemRoot, 'System32', 'icacls.exe'),
+        [filepath],
+        {
+          encoding: 'utf8',
+        },
+      );
+      assert.fail(
+        `${report.step}: ${report.detail}\n${listing.stdout || listing.error?.message || ''}`,
+      );
     }
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });

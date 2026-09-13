@@ -97,7 +97,18 @@
       "server/lib/jsonResponse.mjs",
       "server/lib/jsonResponse.test.mjs",
       "server/lib/googleServerKey.mjs",
-      "server/lib/googleServerKey.test.mjs"
+      "server/lib/googleServerKey.test.mjs",
+      "server/keySetupCore.mjs",
+      "server/keySetupCore.test.mjs",
+      "server/keySetupHardening.mjs",
+      "server/keySetupHardening.test.mjs",
+      "server/terrainHeightsProxy.mjs",
+      "server/terrainHeightsProxy.test.mjs",
+      "server/aisStreamAdapter.mjs",
+      "server/aisStreamAdapter.test.mjs",
+      "server/aisWatchdog.mjs",
+      "server/aisWatchdog.test.mjs",
+      "server/aisWatchdogTransport.test.mjs"
     ]
   },
   "formatter": {
