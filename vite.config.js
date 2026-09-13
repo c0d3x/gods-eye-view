@@ -4420,7 +4420,7 @@ function buildSyntheticCctvSvg({ cameraId, label, city, status }) {
   const hue = seed % 360;
   const hue2 = (hue + 46) % 360;
   const now = new Date();
-  const ts = now.toISOString().replace('T', ' ').replace('Z', 'Z').slice(0, 20);
+  const ts = now.toISOString().replace('T', ' ').replace(/\.\d+Z$/, 'Z');
   const safeLabel = escapeXml(label);
   const safeCity = escapeXml(city || 'GLOBAL GRID');
   const safeId = escapeXml(cameraId);
@@ -6665,14 +6665,24 @@ function aisWatchdogBudgets() {
   };
 }
 
+/** The AIS key last seen, and a count of the distinct keys seen so far. */
+let _aisKeySeen = null;
+let _aisKeyGeneration = 0;
+
 /**
- * Fingerprint the credential so a key change can clear the terminal
- * auth-failed state. Only a truncated digest is kept — never the key.
+ * Names the current credential so a key change can clear the terminal
+ * auth-failed state: a counter that moves whenever the key does. Nothing
+ * derived from the key itself leaves this module.
+ * @returns {string|null} `key-<n>`, or null while no key is set.
  */
-function aisKeyFingerprint() {
+export function aisKeyFingerprint() {
   const key = process.env.AISSTREAM_API_KEY;
   if (!key) return null;
-  return createHash('sha256').update(String(key)).digest('hex').slice(0, 12);
+  if (key !== _aisKeySeen) {
+    _aisKeySeen = key;
+    _aisKeyGeneration += 1;
+  }
+  return `key-${_aisKeyGeneration}`;
 }
 
 /**
@@ -7447,11 +7457,17 @@ async function fetchRegionalText(url, {
   }
 }
 
-function decodeRssText(value) {
+/**
+ * Plain text from an RSS field: unwraps CDATA, decodes entities and drops
+ * tags. `&amp;` is decoded last, so text that was escaped twice is decoded
+ * only once.
+ */
+export function decodeRssText(value) {
   return String(value || '')
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
     .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
     .replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 

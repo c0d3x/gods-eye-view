@@ -35,9 +35,13 @@ http.createServer((req, res) => {
         writeFileSync(file, Buffer.from(m[2], 'base64'));
         res.writeHead(200); res.end(file);
         console.log(`saved ${file} (${Math.round(m[2].length / 1024)} KB b64)`);
-      } catch (e) { res.writeHead(500); res.end(String(e)); }
+      } catch (error) {
+        console.error('could not save the screenshot:', error);
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('could not save the screenshot');
+      }
     });
     return;
   }
   res.writeHead(404); res.end('nope');
-}).listen(PORT, () => console.log(`shot-sink on http://localhost:${PORT} → ${OUT}`));
+}).listen(PORT, '127.0.0.1', () => console.log(`shot-sink on http://127.0.0.1:${PORT} → ${OUT}`));

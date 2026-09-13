@@ -155,6 +155,15 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   refused. The check now reads the ACL through .NET without that path, and
   a refused save logs which step failed.
 
+- Fix what CodeQL's first scan found. The synthetic CCTV frame's clock
+  ended in a stray period instead of a Z, and regional news titles decoded
+  `&amp;` before the other entities, so a title escaped twice was decoded
+  twice. The AIS stream notices a key change without keeping a hash of the
+  key, the voice debug log's session IDs come from
+  `crypto.getRandomValues()`, the local screenshot sink answers errors with
+  plain text on 127.0.0.1 only, and a CCTV QA harness passes camera IDs to
+  the page as arguments instead of splicing them into code.
+
 - Separate optional Google server credentials for Places and Street View from
   the browser key, contributed by Tom-Neverwinter (#110). Provider Settings,
   Pinokio's app-specific credential handling and setup diagnostics recognize

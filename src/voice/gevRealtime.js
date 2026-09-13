@@ -2180,7 +2180,11 @@ function responseInstructionForToolResult(result) {
 }
 
 function createDebugSessionId() {
-  const randomPart = Math.random().toString(36).slice(2, 10);
+  // getRandomValues, not randomUUID: the app also runs over plain HTTP on a
+  // LAN, where randomUUID is unavailable.
+  const bytes = new Uint8Array(6);
+  globalThis.crypto.getRandomValues(bytes);
+  const randomPart = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
   return `gev-${Date.now().toString(36)}-${randomPart}`;
 }
 
