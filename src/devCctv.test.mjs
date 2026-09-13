@@ -29,6 +29,10 @@ async function launch(overrides = {}, dotenv = '') {
     for (const command of ['security', 'pkill', 'lsof']) {
       await fs.writeFile(path.join(root, 'bin', command), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
     }
+    // Record every call to `env`, then run the real one: a launcher that
+    // passed keys to it as KEY=value arguments would show them to `ps`.
+    const envCalls = path.join(root, 'env-calls.log');
+    await fs.writeFile(path.join(root, 'bin', 'env'), `#!/bin/sh\nprintf '%s\\n' "$*" >> '${envCalls}'\nexec /usr/bin/env "$@"\n`, { mode: 0o755 });
     await fs.writeFile(path.join(root, 'bin', 'pnpm'), `#!/usr/bin/env node
 const fs = require('node:fs');
 fs.writeFileSync(process.env.CCTV_TEST_CAPTURE, JSON.stringify({ args: process.argv.slice(2), env: process.env, cwd: process.cwd() }));
@@ -39,7 +43,8 @@ fs.writeFileSync(process.env.CCTV_TEST_CAPTURE, JSON.stringify({ args: process.a
       env: { PATH: `${path.join(root, 'bin')}${path.delimiter}${process.env.PATH}`, CCTV_TEST_CAPTURE: capture, ...overrides },
       timeout: 30_000,
     });
-    return { ...JSON.parse(await fs.readFile(capture, 'utf8')), output: result.stdout + result.stderr, root };
+    const envArgs = await fs.readFile(envCalls, 'utf8').catch(() => '');
+    return { ...JSON.parse(await fs.readFile(capture, 'utf8')), output: result.stdout + result.stderr, root, envArgs };
   } finally {
     await fs.rm(root, { recursive: true, force: true });
   }
@@ -78,4 +83,12 @@ bashTest('CCTV preset shares dotenv precedence and names-only credential provena
   assert.equal(result.env.OPENAI_API_KEY, 'fixture-file-voice');
   assert.equal(result.env.GEV_KEY_SETUP_EXTERNAL_KEYS, 'GOOGLE_MAPS_API_KEY');
   assert.doesNotMatch(result.output, /fixture-shell-maps|fixture-file-maps|fixture-file-voice/);
+});
+
+bashTest('the launcher hands keys to the dev server without putting them in an argument list', async () => {
+  const result = await launch({ OPENAI_API_KEY: 'fixture-argv-probe-voice', TOMTOM_API_KEY: 'fixture-argv-probe-traffic' });
+  assert.equal(result.env.OPENAI_API_KEY, 'fixture-argv-probe-voice');
+  assert.equal(result.env.TOMTOM_API_KEY, 'fixture-argv-probe-traffic');
+  assert.doesNotMatch(result.envArgs, /fixture-argv-probe/);
+  assert.doesNotMatch(JSON.stringify(result.args), /fixture-argv-probe/);
 });

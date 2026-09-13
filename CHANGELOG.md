@@ -237,6 +237,12 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   resolve to public addresses, and the connection is pinned to them. Cameras
   in your own `CCTV_SOURCES_FILE` or `CCTV_SOURCES_JSON` can still be on your
   network.
+- Keep API keys out of process argument lists, where `ps` and process
+  monitors can read them. `scripts/dev-fresh.sh` passed every configured key
+  to `env` as a `KEY=value` argument until the dev server started, and
+  `scripts/opensky-import-client.sh` passed the OpenSky client ID and secret
+  to `security`. The launcher now exports the keys and starts the server
+  itself, and the import script hands the values to `security -i` on stdin.
 
 ## [0.1.1] — 2026-09-01 — Installation and live-data fixes
 

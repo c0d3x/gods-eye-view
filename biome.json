@@ -61,7 +61,8 @@
       "server/lib/publicAddress.test.mjs",
       "server/lib/cameraFetch.mjs",
       "server/lib/cameraFetch.test.mjs",
-      "src/cctvMediaProxy.test.mjs"
+      "src/cctvMediaProxy.test.mjs",
+      "src/openskyImportClient.test.mjs"
     ]
   },
   "formatter": {

@@ -342,19 +342,21 @@ fi
 # nothing is left UNSET instead of being exported empty: Vite backfills its
 # own .env values only for variables it finds undefined, so an empty export
 # would shadow a key the user did configure in .env.
-DEV_ENV=()
-DEV_UNSET=()
+#
+# `export` and `unset` are shell builtins, so no value appears in a process's
+# argument list, where `ps` would show it. (Passing KEY=value pairs to `env`
+# put every key there until the server started.)
 put_env() {
-  DEV_ENV+=("$1=$2")
+  export "$1=$2"
 }
 put_env_if_set() {
   if [[ -n "$2" ]]; then
-    DEV_ENV+=("$1=$2")
+    export "$1=$2"
   else
     # Leaving it out is not enough: the child inherits this shell's
     # environment, so an empty export made in the PARENT would pass straight
     # through and shadow .env just the same. Remove it from the child outright.
-    DEV_UNSET+=(-u "$1")
+    unset "$1"
   fi
 }
 
@@ -382,4 +384,4 @@ put_env_if_set LL2_API_TOKEN "${LL2_API_TOKEN}"
 put_env GEV_LAUNCHER "dev-fresh"
 put_env GEV_KEY_SETUP_EXTERNAL_KEYS "${KEY_SETUP_EXTERNAL_KEYS_CSV}"
 
-env ${DEV_UNSET[@]+"${DEV_UNSET[@]}"} "${DEV_ENV[@]}" "${DEV_COMMAND[@]}" --host "${HOST}" --port "${PORT}" --force
+exec "${DEV_COMMAND[@]}" --host "${HOST}" --port "${PORT}" --force
