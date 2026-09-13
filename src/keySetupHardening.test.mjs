@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { hardenCredentialFile } from './keySetupHardening.mjs';
+import { hardenCredentialFile, hardenCredentialFileReport } from './keySetupHardening.mjs';
 
 const FILE = path.join(os.tmpdir(), 'provider-settings-test');
 const USER_SID = 'S-1-5-21-1111111111-2222222222-3333333333-1001';
@@ -260,6 +261,81 @@ test('Windows hardening converts subprocess exceptions into a fail-closed result
   }), false);
 });
 
+const WHOAMI_OK = { status: 0, signal: null, stdout: `"WORKSTATION\\alice","${USER_SID}"\r\n` };
+
+function windowsReport(spawn, environment = { SYSTEMROOT: WINDOWS_ROOT }) {
+  return hardenCredentialFileReport('C:\\GEV\\ENVIRONMENT.tmp', {
+    platform: 'win32',
+    environment,
+    fileSystem: windowsFileSystem(),
+    spawn,
+  });
+}
+
+test('a refused hardening names the step that failed and why', () => {
+  assert.equal(windowsReport(() => { throw new Error('must not spawn'); }, {}).step, 'native tools');
+
+  assert.deepEqual(
+    windowsReport(() => ({ status: 1, signal: null, stdout: '', stderr: 'ERROR: Access denied.\r\n' })),
+    { ok: false, step: 'whoami', detail: 'exit 1 (ERROR: Access denied.)' },
+  );
+  assert.deepEqual(
+    windowsReport(() => ({ status: 0, signal: null, stdout: '"S-1-5-21-1-2-3-1001","S-1-5-32-545"' })),
+    { ok: false, step: 'whoami', detail: 'its output named no user SID' },
+  );
+  assert.deepEqual(
+    windowsReport((command) => (command.endsWith('\\whoami.exe') ? WHOAMI_OK : {
+      status: 5,
+      signal: null,
+      stdout: '',
+      stderr: 'C:\\GEV\\ENVIRONMENT.tmp: Access is denied.\r\nSuccessfully processed 0 files',
+    })),
+    { ok: false, step: 'icacls', detail: 'exit 5 (C:\\GEV\\ENVIRONMENT.tmp: Access is denied.)' },
+  );
+  assert.deepEqual(
+    windowsReport((command) => (command.endsWith('\\powershell.exe')
+      ? { status: 7, signal: null, stdout: '', stderr: '' }
+      : WHOAMI_OK)),
+    { ok: false, step: 'verify', detail: 'exit 7: there are not exactly three rules' },
+  );
+  assert.equal(
+    windowsReport((command) => (command.endsWith('\\powershell.exe')
+      ? { status: 1, signal: null, stdout: '', stderr: 'Exception calling "GetAccessControl": "denied"\r\nAt line:1 char:1' }
+      : WHOAMI_OK)).detail,
+    'exit 1: PowerShell reported an error (Exception calling "GetAccessControl": "denied")',
+  );
+  assert.deepEqual(
+    windowsReport((command) => {
+      if (command.endsWith('\\whoami.exe')) return WHOAMI_OK;
+      throw new Error('subprocess unavailable');
+    }),
+    { ok: false, step: 'icacls', detail: 'subprocess unavailable' },
+  );
+  assert.deepEqual(
+    hardenCredentialFileReport(FILE, { platform: 'linux', fileSystem: fileSystemWithMode(0o100640) }),
+    { ok: false, step: 'chmod', detail: 'the mode is 640, not 600' },
+  );
+});
+
+test('the DACL check reads the ACL through .NET, without a PowerShell 7 module path', () => {
+  const calls = [];
+  const report = windowsReport((command, args, options) => {
+    calls.push({ command, args, options });
+    return command.endsWith('\\whoami.exe') ? WHOAMI_OK : { status: 0, signal: null };
+  }, {
+    SYSTEMROOT: WINDOWS_ROOT,
+    PATH: 'C:\\Windows\\System32',
+    PSModulePath: 'C:\\Program Files\\PowerShell\\7\\Modules;C:\\Windows\\system32\\WindowsPowerShell\\v1.0\\Modules',
+  });
+  assert.deepEqual(report, { ok: true });
+  const verify = calls.at(-1);
+  assert.match(verify.command, /\\powershell\.exe$/);
+  assert.doesNotMatch(verify.args.at(-1), /Get-Acl/);
+  assert.match(verify.args.at(-1), /\[System\.IO\.File\]::GetAccessControl\(\$env:GEV_ACL_FILE\)/);
+  assert.equal(Object.keys(verify.options.env).some((name) => name.toLowerCase() === 'psmodulepath'), false);
+  assert.equal(verify.options.env.PATH, 'C:\\Windows\\System32');
+});
+
 test('Windows production hardener applies its exact DACL with native tools', {
   skip: process.platform !== 'win32',
 }, () => {
@@ -267,7 +343,14 @@ test('Windows production hardener applies its exact DACL with native tools', {
   const filepath = path.join(directory, 'ENVIRONMENT.tmp');
   try {
     fs.writeFileSync(filepath, '');
-    assert.equal(hardenCredentialFile(filepath), true);
+    const report = hardenCredentialFileReport(filepath);
+    if (!report.ok) {
+      // Show the DACL the failed step left behind, next to the reason.
+      const listing = spawnSync(path.join(process.env.SystemRoot, 'System32', 'icacls.exe'), [filepath], {
+        encoding: 'utf8',
+      });
+      assert.fail(`${report.step}: ${report.detail}\n${listing.stdout || listing.error?.message || ''}`);
+    }
   } finally {
     fs.rmSync(directory, { recursive: true, force: true });
   }

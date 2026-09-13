@@ -66,7 +66,7 @@ import {
   upsertDotenvValues,
   validateKeySetupUpdates,
 } from './src/keySetupCore.mjs';
-import { hardenCredentialFile } from './src/keySetupHardening.mjs';
+import { hardenCredentialFileReport } from './src/keySetupHardening.mjs';
 import {
   DEFAULT_GOOGLE_REQUESTS_PER_MINUTE,
   DEFAULT_OPENAI_REQUESTS_PER_MINUTE,
@@ -7937,7 +7937,9 @@ export function keySetupEndpoint() {
       // hardening the final file. Ordering this before the write means a
       // hardening failure aborts with the previous store fully intact and the
       // secret never on disk unprotected — no rollback path to get wrong.
-      if (!hardenCredentialFile(tmp)) {
+      const hardening = hardenCredentialFileReport(tmp);
+      if (!hardening.ok) {
+        console.warn(`[KeySetup] Could not restrict ${path.basename(tmp)} (${hardening.step}): ${hardening.detail}`);
         const error = new Error('could not restrict the credential file to your account; nothing was saved');
         error.code = 'GEV_HARDEN_FAILED';
         throw error;

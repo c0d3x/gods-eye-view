@@ -6,10 +6,15 @@ import {
   parseWindowsUserSid,
 } from './keySetupCore.mjs';
 
-/** PowerShell verification for the exact owner-only Windows credential DACL. */
+/**
+ * PowerShell verification for the exact owner-only Windows credential DACL.
+ * It reads the ACL through .NET, not Get-Acl: Get-Acl autoloads its module
+ * from PSModulePath, and a PSModulePath inherited from PowerShell 7 makes
+ * Windows PowerShell 5.1 load PowerShell 7's copy of that module, which fails.
+ */
 const WINDOWS_ACL_VERIFY_SCRIPT = [
   "$ErrorActionPreference = 'Stop'",
-  '$acl = Get-Acl -LiteralPath $env:GEV_ACL_FILE',
+  '$acl = [System.IO.File]::GetAccessControl($env:GEV_ACL_FILE)',
   'if (-not $acl.AreAccessRulesProtected) { exit 2 }',
   "$allowed = @($env:GEV_ACL_USER_SID, 'S-1-5-18', 'S-1-5-32-544')",
   '$seen = @{}',
@@ -27,6 +32,40 @@ const WINDOWS_ACL_VERIFY_SCRIPT = [
   '}',
   'if ($seen.Count -ne 3) { exit 9 }',
 ].join('; ');
+
+/** What each exit status of the verification script means. */
+const WINDOWS_ACL_VERIFY_FAILURES = Object.freeze({
+  1: 'PowerShell reported an error',
+  2: 'inheritance is still enabled',
+  3: 'an inherited rule remains',
+  4: 'a rule is not an allow rule',
+  5: 'a rule names an unexpected principal',
+  6: 'a rule grants less than full control',
+  7: 'there are not exactly three rules',
+  8: 'a principal appears twice',
+  9: 'a principal is missing',
+});
+
+/** A refused hardening, naming the step and why. */
+function failure(step, detail) {
+  return { ok: false, step, detail };
+}
+
+/**
+ * One line on a failed subprocess: its spawn error, signal or exit status,
+ * what that status means when known, and the first line it printed.
+ */
+function describeCommandFailure(result, meanings = {}) {
+  if (!result) return 'no result';
+  if (result.error) return result.error.message;
+  if (result.signal) return `killed by ${result.signal}`;
+  const meaning = meanings[result.status] ? `: ${meanings[result.status]}` : '';
+  const output = `${result.stderr || ''}\n${result.stdout || ''}`
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find(Boolean);
+  return `exit ${result.status}${meaning}${output ? ` (${output.slice(0, 200)})` : ''}`;
+}
 
 /**
  * Resolve the native Windows ACL tools without consulting PATH.
@@ -90,10 +129,12 @@ function resolveWindowsNativeTools(environment, fileSystem, architecture) {
 }
 
 /**
- * Restrict a credential file before any secret is written to it.
- * Dependencies are injectable so every fail-closed branch is unit-testable.
+ * Restrict a credential file before any secret is written to it, and say
+ * which step failed when that isn't possible. Dependencies are injectable so
+ * every fail-closed branch is unit-testable.
+ * @returns {{ ok: true } | { ok: false, step: string, detail: string }}
  */
-export function hardenCredentialFile(filepath, {
+export function hardenCredentialFileReport(filepath, {
   platform = process.platform,
   architecture = process.arch,
   spawn = spawnSync,
@@ -101,21 +142,31 @@ export function hardenCredentialFile(filepath, {
   environment = process.env,
 } = {}) {
   if (platform !== 'win32') {
+    let step = 'chmod';
     try {
       if (platform === 'darwin') {
+        step = 'chmod -N';
         const aclRemoval = spawn('chmod', ['-N', filepath], { stdio: 'ignore' });
-        if (!commandCompletedSuccessfully(aclRemoval)) return false;
+        if (!commandCompletedSuccessfully(aclRemoval)) {
+          return failure(step, describeCommandFailure(aclRemoval));
+        }
+        step = 'chmod';
       }
       fileSystem.chmodSync(filepath, 0o600);
-      return (fileSystem.statSync(filepath).mode & 0o777) === 0o600;
-    } catch {
-      return false;
+      const mode = fileSystem.statSync(filepath).mode & 0o777;
+      if (mode !== 0o600) return failure(step, `the mode is ${mode.toString(8)}, not 600`);
+      return { ok: true };
+    } catch (error) {
+      return failure(step, error.message);
     }
   }
 
   const tools = resolveWindowsNativeTools(environment, fileSystem, architecture);
-  if (!tools) return false;
+  if (!tools) {
+    return failure('native tools', 'whoami, icacls or powershell is not at its standard path under SystemRoot');
+  }
 
+  let step = 'whoami';
   try {
     // Grant by the CURRENT PROCESS TOKEN'S SID, never a bare username. Parsing
     // the second CSV field structurally prevents an SID-looking account name or
@@ -124,11 +175,11 @@ export function hardenCredentialFile(filepath, {
       encoding: 'utf8',
       windowsHide: true,
     });
-    const sid = commandCompletedSuccessfully(whoami)
-      ? parseWindowsUserSid(whoami.stdout)
-      : null;
-    if (!sid) return false;
+    if (!commandCompletedSuccessfully(whoami)) return failure(step, describeCommandFailure(whoami));
+    const sid = parseWindowsUserSid(whoami.stdout);
+    if (!sid) return failure(step, 'its output named no user SID');
 
+    step = 'icacls';
     const applied = spawn(tools.icacls, [
       filepath,
       '/inheritance:r',
@@ -136,28 +187,40 @@ export function hardenCredentialFile(filepath, {
       `*${sid}:F`,
       '*S-1-5-18:F',
       '*S-1-5-32-544:F',
-    ], { stdio: 'ignore', windowsHide: true });
-    if (!commandCompletedSuccessfully(applied)) return false;
+    ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    if (!commandCompletedSuccessfully(applied)) return failure(step, describeCommandFailure(applied));
 
     // Command success is not proof of the resulting DACL. Query it back and
     // accept only three explicit FullControl allow principals, with inheritance
     // disabled. Any unexpected rule, right, command error, or missing principal
     // fails closed before the secret reaches disk.
+    step = 'verify';
+    const verifyEnvironment = { ...environment, GEV_ACL_FILE: filepath, GEV_ACL_USER_SID: sid };
+    // Windows PowerShell 5.1 must build its own module path: one inherited
+    // from a PowerShell 7 parent points it at incompatible modules.
+    for (const name of Object.keys(verifyEnvironment)) {
+      if (name.toLowerCase() === 'psmodulepath') delete verifyEnvironment[name];
+    }
     const verified = spawn(tools.powershell, [
       '-NoProfile',
       '-NonInteractive',
       '-Command', WINDOWS_ACL_VERIFY_SCRIPT,
     ], {
-      env: {
-        ...environment,
-        GEV_ACL_FILE: filepath,
-        GEV_ACL_USER_SID: sid,
-      },
-      stdio: 'ignore',
+      encoding: 'utf8',
+      env: verifyEnvironment,
+      stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
     });
-    return commandCompletedSuccessfully(verified);
-  } catch {
-    return false;
+    if (!commandCompletedSuccessfully(verified)) {
+      return failure(step, describeCommandFailure(verified, WINDOWS_ACL_VERIFY_FAILURES));
+    }
+    return { ok: true };
+  } catch (error) {
+    return failure(step, error.message);
   }
+}
+
+/** Restrict a credential file before any secret is written to it. */
+export function hardenCredentialFile(filepath, options) {
+  return hardenCredentialFileReport(filepath, options).ok;
 }

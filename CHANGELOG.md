@@ -128,6 +128,14 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   Provider Settings rows. Focusable controls now keep a 6-pixel scroll
   margin. An audit of every control found that each one gets a visible ring.
 
+- Saving keys in Provider Settings on Windows no longer fails when the dev
+  server runs under PowerShell 7. Before writing a key, the server checks
+  that the credential file is restricted to your account. That check used
+  Windows PowerShell's Get-Acl, which loaded PowerShell 7's copy of its
+  module from the inherited module path and failed, so the save was
+  refused. The check now reads the ACL through .NET without that path, and
+  a refused save logs which step failed.
+
 - Separate optional Google server credentials for Places and Street View from
   the browser key, contributed by Tom-Neverwinter (#110). Provider Settings,
   Pinokio's app-specific credential handling and setup diagnostics recognize
