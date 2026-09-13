@@ -5,15 +5,15 @@
  * caching/auth for upstream APIs. These are still defined here:
  *   1. OpenSky  — aircraft state vectors (OAuth / anon)
  *   2. CelesTrak — satellite TLE orbital elements
- *   3. GBFS     — bike-share station feeds
- *   4. adsb.lol — military aircraft tracking
- *   5. AIS live — AISStream websocket-backed live vessel positions
- *   6. Terrain heights — Re:Earth keyless point-height lookups (ellipsoidal ground)
- *   7. TomTom   — live traffic-flow vector tiles (budget-governed, keyless-degradable)
- *   8. NASA FIRMS — live active-fire detections (VIIRS ×3, trailing 24 h)
- *   9. Rocket launches — recent Launch Library 2 mission metadata
+ *   3. adsb.lol — military aircraft tracking
+ *   4. AIS live — AISStream websocket-backed live vessel positions
+ *   5. Terrain heights — Re:Earth keyless point-height lookups (ellipsoidal ground)
+ *   6. NASA FIRMS — live active-fire detections (VIIRS ×3, trailing 24 h)
+ *   7. Rocket launches — recent Launch Library 2 mission metadata
  *
  * These live in server/proxies/ and are installed from here:
+ *   - gbfs.mjs — bike-share station feeds from allowlisted hosts
+ *   - tomtom.mjs — live traffic-flow vector tiles (budget-governed, keyless-degradable)
  *   - overpass.mjs — OpenStreetMap road geometry queries and walking/driving routes
  *   - cctv.mjs — traffic-camera frames, media streams, and fallback SVG
  *   - militaryInstallations.mjs — bounded, cached OpenStreetMap features
@@ -31,12 +31,6 @@ import fs from 'node:fs';
 import { promises as fsp } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
-import {
-  isValidTileCoord as isValidTomTomTile,
-  utcDayKey as tomtomUtcDayKey,
-  normalizeBudget as normalizeTomTomBudget,
-  isOverBudget as isTomTomOverBudget,
-} from './src/data/tomtomTiles.js';
 import { filterTrailing24h, parseFirmsCsv } from './src/data/firmsCsv.js';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -106,6 +100,8 @@ import { militaryInstallationsProxy } from './server/proxies/militaryInstallatio
 import { overpassProxy } from './server/proxies/overpass.mjs';
 import { regionalBriefProxy, weatherEffectsProxy } from './server/proxies/regional.mjs';
 import { cctvProxy } from './server/proxies/cctv.mjs';
+import { gbfsProxy } from './server/proxies/gbfs.mjs';
+import { tomtomProxy } from './server/proxies/tomtom.mjs';
 export {
   CCTV_FRAME_FETCH_TIMEOUT_MS,
   CCTV_STREET_VIEW_CACHE_MAX_ENTRIES,
@@ -300,23 +296,6 @@ function googleRateLimiter() {
   }
   return _googleRateLimiter;
 }
-
-// ---------------------------------------------------------------------------
-// GBFS (General Bikeshare Feed Specification) proxy constants
-// ---------------------------------------------------------------------------
-/** Upstream fetch timeout for GBFS requests (ms). */
-const GBFS_PROXY_TIMEOUT_MS = 12000;
-/** Allowlisted GBFS hostnames; wildcard *.publicbikesystem.net also accepted. */
-const GBFS_ALLOWED_HOSTS = new Set([
-  'gbfs.lyft.com',
-  'gbfs.bluebikes.com',
-  'gbfs.bcycle.com',
-  'gbfs.biketownpdx.com',
-  'gbfs.cogobikeshare.com',
-  'austin.publicbikesystem.net',
-  'hon.publicbikesystem.net',
-  'chat.publicbikesystem.net',
-]);
 
 // ---------------------------------------------------------------------------
 // AISStream live vessel cache state
@@ -773,230 +752,6 @@ function rocketLaunchesProxy() {
     },
     configurePreviewServer(server) {
       install(server.middlewares);
-    },
-  };
-}
-
-/**
- * TomTom traffic-flow vector-tile proxy with a daily budget governor.
- *
- * Upstream: https://api.tomtom.com/traffic/map/4/tile/flow/relative/{z}/{x}/{y}.pbf
- * (style `relative`; the response is an UNCOMPRESSED Mapbox Vector Tile, layer
- * "Traffic flow"). The key comes from TOMTOM_API_KEY server-side only — the
- * browser fetches same-origin `/api/tomtom/flow/{z}/{x}/{y}.pbf`.
- *
- * Cache: memory + disk (.gev-cache/tomtom/), TTL 120 s (traffic is fresh
- * data), single-flight per tile, serve-stale-on-failure — the celestrakProxy
- * pattern. Cache hits never count against the budget.
- *
- * Budget governor (mirrors the OpenSky credit-governor philosophy — last-good
- * data beats a dead layer): a persistent counter (.gev-cache/tomtom/budget.json,
- * keyed by UTC date, reset on day change) counts upstream fetch attempts
- * against a soft cap (TOMTOM_DAILY_TILE_BUDGET, default 40,000 of the free
- * tier's ~50k/day). Over the cap the proxy serves stale tiles when available,
- * else 429 {error:'budget'}.
- *
- * GET /api/tomtom/status → {hasKey, dailyCount, budget, date}. Keyless mode:
- * status reports hasKey:false and the tile endpoint 503s {error:'no_key'}
- * without touching upstream — the traffic layer then stays in simulation mode.
- *
- * @returns {import('vite').Plugin}
- */
-function tomtomProxy() {
-  const TILE_TTL_MS = 120_000;
-  const CACHE_DIR = path.join(process.cwd(), '.gev-cache', 'tomtom');
-  const BUDGET_PATH = path.join(CACHE_DIR, 'budget.json');
-  const DEFAULT_DAILY_BUDGET = 40000;
-  const MEM_MAX_ENTRIES = 256;
-  const UPSTREAM_TIMEOUT_MS = 15000;
-
-  /** @type {Map<string, {at:number, buf:Buffer}>} tile key `z/x/y` -> cached tile (kept past TTL for serve-stale). */
-  const mem = new Map();
-  /** @type {Map<string, Promise<{at:number, buf:Buffer}|null>>} single-flight per tile. */
-  const inflight = new Map();
-
-  /** @type {{date:string, count:number}|null} lazily-loaded persistent counter. */
-  let budget = null;
-  let budgetLoaded = false;
-
-  function dailyBudgetLimit() {
-    const raw = Number.parseInt(process.env.TOMTOM_DAILY_TILE_BUDGET || '', 10);
-    return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_DAILY_BUDGET;
-  }
-
-  async function loadBudgetOnce() {
-    if (budgetLoaded) return;
-    budgetLoaded = true;
-    try {
-      const parsed = JSON.parse(await fsp.readFile(BUDGET_PATH, 'utf8'));
-      if (parsed && typeof parsed.date === 'string' && Number.isFinite(parsed.count)) {
-        budget = parsed;
-      }
-    } catch { /* no budget file yet */ }
-  }
-
-  async function persistBudget() {
-    try {
-      await fsp.mkdir(CACHE_DIR, { recursive: true });
-      await fsp.writeFile(BUDGET_PATH, JSON.stringify(budget), 'utf8');
-    } catch (err) {
-      console.warn('[tomtom-proxy] budget write failed:', err?.message || err);
-    }
-  }
-
-  /** Roll the counter to today (UTC) and return it. */
-  function currentBudget() {
-    budget = normalizeTomTomBudget(budget, tomtomUtcDayKey());
-    return budget;
-  }
-
-  /** Count one upstream fetch attempt against today's budget (async persist). */
-  function recordUpstreamFetch() {
-    currentBudget().count += 1;
-    void persistBudget();
-  }
-
-  const tilePath = (key) => path.join(CACHE_DIR, `flow-${key.replaceAll('/', '-')}.pbf`);
-
-  /** Disk-cache read; tile age comes from the file's mtime. */
-  async function readDiskTile(key) {
-    try {
-      const [stat, buf] = await Promise.all([
-        fsp.stat(tilePath(key)),
-        fsp.readFile(tilePath(key)),
-      ]);
-      return { at: stat.mtimeMs, buf };
-    } catch { return null; }
-  }
-
-  async function writeDiskTile(key, buf) {
-    try {
-      await fsp.mkdir(CACHE_DIR, { recursive: true });
-      await fsp.writeFile(tilePath(key), buf);
-      diskCachePruners.tomtom.afterWrite();
-    } catch (err) {
-      console.warn(`[tomtom-proxy] tile cache write failed for ${key}:`, err?.message || err);
-    }
-  }
-
-  /** LRU-ish memory insert (Map preserves insertion order; evict the oldest). */
-  function memSet(key, entry) {
-    if (!mem.has(key) && mem.size >= MEM_MAX_ENTRIES) {
-      const oldest = mem.keys().next().value;
-      mem.delete(oldest);
-    }
-    mem.set(key, entry);
-  }
-
-  async function fetchUpstream(z, x, y) {
-    const url = 'https://api.tomtom.com/traffic/map/4/tile/flow/relative/'
-      + `${z}/${x}/${y}.pbf?key=${encodeURIComponent(process.env.TOMTOM_API_KEY)}`;
-    recordUpstreamFetch(); // attempts count — upstream bills the request either way
-    const res = await fetch(url, { signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const buf = await readResponseBytesCapped(res, 4 * 1024 * 1024); // a vector tile is tens of KB
-    if (buf.length === 0) throw new Error('empty tile body');
-    return buf;
-  }
-
-  return {
-    name: 'tomtom-proxy',
-    configureServer(server) {
-      server.middlewares.use('/api/tomtom', async (req, res) => {
-        // Sanitized responses only (proxy/security baseline): no upstream
-        // error details, and never echo the key or the upstream URL.
-        const sendJson = (status, obj, extraHeaders = {}) =>
-          writeJson(res, status, obj, { 'Cache-Control': 'no-store', ...extraHeaders });
-        const sendTile = (buf, cacheStatus) => {
-          if (res.headersSent) return;
-          res.writeHead(200, {
-            'Content-Type': 'application/x-protobuf',
-            'Cache-Control': 'no-store',
-            'x-tomtom-cache': cacheStatus,
-          });
-          res.end(buf);
-        };
-
-        try {
-          await loadBudgetOnce();
-          const urlPath = String(req.url || '').split('?')[0];
-
-          if (urlPath === '/status') {
-            const hasKey = Boolean(process.env.TOMTOM_API_KEY);
-            const b = currentBudget();
-            sendJson(200, { hasKey, dailyCount: b.count, budget: dailyBudgetLimit(), date: b.date });
-            return;
-          }
-
-          const m = urlPath.match(/^\/flow\/(\d+)\/(\d+)\/(\d+)\.pbf$/);
-          if (!m) {
-            sendJson(404, { error: 'not_found' });
-            return;
-          }
-          const z = Number(m[1]);
-          const x = Number(m[2]);
-          const y = Number(m[3]);
-          if (!isValidTomTomTile(z, x, y)) {
-            sendJson(400, { error: 'invalid_tile' });
-            return;
-          }
-          if (!process.env.TOMTOM_API_KEY) {
-            sendJson(503, { error: 'no_key' });
-            return;
-          }
-
-          const key = `${z}/${x}/${y}`;
-          const now = Date.now();
-
-          let entry = mem.get(key);
-          if (!entry) {
-            entry = await readDiskTile(key);
-            if (entry) memSet(key, entry);
-          }
-          // Fresh cache hit — never counts against the budget.
-          if (entry && now - entry.at < TILE_TTL_MS) {
-            sendTile(entry.buf, 'HIT');
-            return;
-          }
-
-          // Budget governor: over the soft cap, last-good data beats a dead layer.
-          if (isTomTomOverBudget(currentBudget(), dailyBudgetLimit())) {
-            if (entry) {
-              sendTile(entry.buf, 'STALE-BUDGET');
-            } else {
-              sendJson(429, { error: 'budget' });
-            }
-            return;
-          }
-
-          // Stale or missing → refresh, single-flight per tile.
-          if (!inflight.has(key)) {
-            inflight.set(key, fetchUpstream(z, x, y)
-              .then(async (buf) => {
-                const fresh = { at: Date.now(), buf };
-                memSet(key, fresh);
-                await writeDiskTile(key, buf);
-                return fresh;
-              })
-              .catch((err) => {
-                console.warn(`[tomtom-proxy] ${key} fetch failed (${err?.message || err}) — serving stale if any`);
-                return null;
-              })
-              .finally(() => inflight.delete(key)));
-          }
-          const fresh = await inflight.get(key);
-          if (fresh) {
-            sendTile(fresh.buf, 'MISS');
-          } else if (entry) {
-            sendTile(entry.buf, 'STALE-ERROR'); // upstream down — stale beats empty
-          } else {
-            sendJson(502, { error: 'upstream' });
-          }
-        } catch (err) {
-          console.warn('[tomtom-proxy] error:', err?.message || err);
-          sendJson(500, { error: 'proxy' });
-        }
-      });
     },
   };
 }
@@ -1858,159 +1613,6 @@ function openSkyProxy() {
             })
           );
           res.end(JSON.stringify({ error: status === 504 ? 'OpenSky did not answer in time' : 'OpenSky proxy error' }));
-        }
-      });
-    },
-  };
-}
-
-/**
- * Check whether a hostname is in the GBFS allowlist.
- *
- * Also accepts any subdomain of publicbikesystem.net.
- *
- * @param {string} hostname
- * @returns {boolean}
- */
-function isAllowedGbfsHost(hostname) {
-  const host = String(hostname || '').trim().toLowerCase();
-  if (!host) return false;
-  if (GBFS_ALLOWED_HOSTS.has(host)) return true;
-  return host.endsWith('.publicbikesystem.net');
-}
-
-/**
- * Only allow station_information.json and station_status.json endpoints.
- *
- * @param {string} pathname
- * @returns {boolean}
- */
-function isAllowedGbfsPath(pathname) {
-  return /\/station_(information|status)\.json$/i.test(String(pathname || ''));
-}
-
-/**
- * Return an appropriate Cache-Control header for a GBFS endpoint.
- *
- * station_information is semi-static (5 min cache); station_status is
- * real-time (no-store).
- *
- * @param {string} pathname
- * @returns {string} Cache-Control header value.
- */
-function gbfsCacheControl(pathname) {
-  if (/\/station_information\.json$/i.test(String(pathname || ''))) {
-    return 'public, max-age=300';
-  }
-  return 'no-store';
-}
-
-/**
- * Vite plugin: GBFS bike-share proxy with host allowlisting and size limits.
- *
- * Accepts GET /api/gbfs/<encoded-upstream-URL> and proxies the request
- * to the upstream GBFS provider. Validates hostname against an allowlist,
- * restricts to station_information/station_status paths, enforces HTTPS,
- * and caps response body at 5 MB.
- *
- * @returns {import('vite').Plugin}
- */
-function gbfsProxy() {
-  return {
-    name: 'gbfs-proxy',
-    configureServer(server) {
-      server.middlewares.use('/api/gbfs', async (req, res) => {
-        try {
-          if (req.method !== 'GET') {
-            res.writeHead(405, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-            res.end(JSON.stringify({ error: 'Method Not Allowed' }));
-            return;
-          }
-
-          const url = new URL(req.url || '/', 'http://localhost');
-          const encodedTarget = url.pathname.replace(/^\/+/, '');
-          if (!encodedTarget) {
-            res.writeHead(400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-            res.end(JSON.stringify({ error: 'Missing GBFS upstream target' }));
-            return;
-          }
-
-          let decodedTarget = '';
-          try {
-            decodedTarget = decodeURIComponent(encodedTarget);
-          } catch {
-            res.writeHead(400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-            res.end(JSON.stringify({ error: 'Invalid GBFS target encoding' }));
-            return;
-          }
-
-          let upstreamUrl = null;
-          try {
-            upstreamUrl = new URL(decodedTarget);
-          } catch {
-            res.writeHead(400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-            res.end(JSON.stringify({ error: 'Invalid GBFS upstream URL' }));
-            return;
-          }
-
-          if (upstreamUrl.protocol !== 'https:') {
-            res.writeHead(400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-            res.end(JSON.stringify({ error: 'Only https GBFS targets are allowed' }));
-            return;
-          }
-
-          if (!isAllowedGbfsHost(upstreamUrl.hostname)) {
-            res.writeHead(403, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-            res.end(JSON.stringify({ error: 'GBFS host not allowed' }));
-            return;
-          }
-
-          if (!isAllowedGbfsPath(upstreamUrl.pathname)) {
-            res.writeHead(400, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-            res.end(JSON.stringify({ error: 'Only station_information/station_status endpoints are allowed' }));
-            return;
-          }
-
-          // The deadline covers the body too, so a feed can't trickle it out.
-          const upstream = await fetchWithTimeout(upstreamUrl.toString(), {
-            method: 'GET',
-            headers: {
-              Accept: 'application/json',
-              'User-Agent': 'gods-eye-view-gbfs-proxy/1.0',
-            },
-          }, { timeoutMs: GBFS_PROXY_TIMEOUT_MS });
-
-          // Limit response size to prevent memory exhaustion from malicious upstream
-          const GBFS_MAX_BODY_BYTES = 5 * 1024 * 1024; // 5 MB
-          const { tooLarge, text: body } = await readResponseTextWithin(upstream, GBFS_MAX_BODY_BYTES);
-          if (tooLarge) {
-            res.writeHead(502, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-            res.end(JSON.stringify({ error: 'GBFS upstream response too large' }));
-            return;
-          }
-          if (!upstream.ok) {
-            // Never relay the feed's own error page or text.
-            res.writeHead(upstream.status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-            res.end(JSON.stringify({ error: upstreamErrorMessage('GBFS feed', upstream.status) }));
-            return;
-          }
-          const contentType = upstream.headers.get('content-type') || 'application/json';
-          res.writeHead(upstream.status, {
-            'Content-Type': contentType,
-            'Cache-Control': gbfsCacheControl(upstreamUrl.pathname),
-            'X-GBFS-Upstream': upstreamUrl.hostname,
-            'X-GBFS-Cache': 'MISS',
-          });
-          res.end(body);
-        } catch (error) {
-          if (upstreamErrorStatus(error) === 504) {
-            res.writeHead(504, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-            res.end(JSON.stringify({ error: 'GBFS upstream timeout' }));
-            return;
-          }
-          console.error('[GBFS Proxy]', error?.message || String(error));
-          res.writeHead(502, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-          res.end(JSON.stringify({ error: 'GBFS proxy error' }));
         }
       });
     },
