@@ -29,7 +29,7 @@ import {
   setOverlayEntries,
   setOverlaySourceVisible,
 } from '../overlays/worldOverlay.js';
-import { ensureGeoidReady, geoidHeight } from './geoid.js';
+import { ensureGeoidReadyWhenIdle, geoidHeight } from './geoid.js';
 import {
   registerSpriteCollection,
   restoreSpriteOrder,
@@ -367,7 +367,7 @@ const aisLiveVesselsLayer = {
     // failure leaves N = 0 forever, which is safe: sprites are depth-test-
     // free, so vessels stay visible either way.
     if (!_geoidReady) {
-      ensureGeoidReady()
+      ensureGeoidReadyWhenIdle()
         .then(() => {
           _geoidReady = true;
           refloorVesselRecords();

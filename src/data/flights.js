@@ -67,7 +67,7 @@ import { trackedModelZoomActive } from './trackedModelRegime.js';
 import { geoidSurfaceLastResortM, pickRenderAltitudeM } from './renderAltitude.js';
 import { allocateCorridorCells, cachedGroundFloor, cachedMeshFloor, coarseFloorCoord, corridorFloorCells, displayFloorHeightM, floorAltitudeM, neighborFloorM, stickyFloorCell, warmGroundFloor, resolveGroundFloorCellsBounded, GROUND_FLOOR_LIFT_M } from './groundFloor.js';
 import { sampleMeshFloorCells } from './meshFloorSampler.js';
-import { ensureGeoidReady, geoidHeight } from './geoid.js';
+import { ensureGeoidReady, ensureGeoidReadyWhenIdle, geoidHeight } from './geoid.js';
 import {
   advanceFocusEvidenceNowMs,
   advanceProjectedSpriteFocus,
@@ -3970,7 +3970,7 @@ const flightsLayer = {
     // only reads geoidHeight() synchronously after this resolves (guarded by
     // _geoidReady) — never awaited per-aircraft, never blocking a poll tick.
     if (!_geoidReady) {
-      ensureGeoidReady()
+      ensureGeoidReadyWhenIdle()
         .then(() => { _geoidReady = true; })
         .catch(() => { /* geoid grid failed to load — baro path stays un-geoid-corrected until retried */ });
     }

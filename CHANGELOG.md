@@ -59,6 +59,12 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   content. When the launcher steps aside for another surface, focus leaves
   it first there too, and the closing card is now `inert`.
 
+- Stop downloading the 2.8 MB geoid grid during startup. The HUD asked for it
+  on its first update, and the flight, military and vessel layers as soon as
+  they were turned on, while the globe was still loading. They now fetch it
+  once the page is idle, five seconds at most, and show uncorrected heights
+  until it arrives, as they already did while it loaded.
+
 - Separate optional Google server credentials for Places and Street View from
   the browser key, contributed by Tom-Neverwinter (#110). Provider Settings,
   Pinokio's app-specific credential handling and setup diagnostics recognize

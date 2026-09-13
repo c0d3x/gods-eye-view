@@ -17,7 +17,7 @@ import * as Cesium from 'cesium';
 import { forward as toMGRS } from 'mgrs';
 import { CITY_POIS } from './locations.js';
 import { composeLocalityTag } from './hudLocality.js';
-import { ellipsoidalToMslDisplayM, ensureGeoidReady, geoidHeight } from './data/geoid.js';
+import { ellipsoidalToMslDisplayM, ensureGeoidReadyWhenIdle, geoidHeight, isGeoidReady } from './data/geoid.js';
 import { getBasemapLabelContext } from './voice/gevActions.js';
 import { isHudSummaryUnconfigured } from './hudSummaryResponse.js';
 
@@ -261,10 +261,16 @@ export class IntelHUD {
    * @returns {number|null} N in metres, or null while the grid is unavailable.
    */
   _geoidUndulationM(latDeg, lonDeg) {
+    // A grid another module already loaded is used at once.
+    if (!this._geoidReady && isGeoidReady()) this._geoidReady = true;
     if (!this._geoidReady) {
       if (!this._geoidRequested) {
         this._geoidRequested = true;
-        ensureGeoidReady()
+        // The grid is a 2.8 MB chunk, so it is fetched once the page is idle,
+        // not on the first frame while Cesium is still loading the globe.
+        // Until then the readout shows the uncorrected height, as it does
+        // while the grid loads.
+        ensureGeoidReadyWhenIdle()
           .then(() => { this._geoidReady = true; })
           .catch(() => { /* readout falls back to the uncorrected height */ });
       }

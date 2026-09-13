@@ -15,7 +15,9 @@ import assert from 'node:assert/strict';
 import {
   ellipsoidalToMslDisplayM,
   ensureGeoidReady,
+  ensureGeoidReadyWhenIdle,
   geoidHeight,
+  isGeoidReady,
   orthometricToEllipsoidal,
 } from './geoid.js';
 
@@ -34,6 +36,32 @@ test('geoidHeight throws before ensureGeoidReady() has resolved', () => {
   // contract via the type check further down instead of re-importing.
   // (See "ready-gate" test below for the real not-ready behavior.)
   assert.equal(typeof geoidHeight, 'function');
+});
+
+// Runs before any other test here loads the grid, so it sees the cold state.
+test('ensureGeoidReadyWhenIdle() loads the grid at the next idle moment', async () => {
+  const idle = [];
+  const previous = globalThis.requestIdleCallback;
+  globalThis.requestIdleCallback = (callback, options) => {
+    idle.push({ callback, options });
+    return idle.length;
+  };
+  try {
+    assert.equal(isGeoidReady(), false);
+    const ready = ensureGeoidReadyWhenIdle();
+    assert.equal(idle.length, 1, 'the load waits for an idle moment');
+    assert.ok(idle[0].options?.timeout > 0, 'with a deadline, so a busy page still gets it');
+    assert.equal(isGeoidReady(), false);
+    idle[0].callback();
+    await ready;
+    assert.equal(isGeoidReady(), true);
+    // Once the grid is in, a later caller gets it without waiting again.
+    await ensureGeoidReadyWhenIdle();
+    assert.equal(idle.length, 1);
+  } finally {
+    if (previous === undefined) delete globalThis.requestIdleCallback;
+    else globalThis.requestIdleCallback = previous;
+  }
 });
 
 test('ensureGeoidReady() resolves and is idempotent (safe to call repeatedly)', async () => {
