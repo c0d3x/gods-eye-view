@@ -8,7 +8,7 @@ import {
   createAisWatchdog,
   isLiveAisStatus,
   parseSilenceTimeoutEnv,
-} from './aisWatchdog.mjs';
+} from './watchdog.mjs';
 
 const LIVE_ENV = { hasKey: true, hasTransport: true, keyFingerprint: 'key-a' };
 

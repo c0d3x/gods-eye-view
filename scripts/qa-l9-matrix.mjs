@@ -838,7 +838,7 @@ check({
     // exactly what makes an outage invisible" (src/data/aisLiveVessels.js:183).
     // A live claim therefore needs status === 'live' AND rows.
     // ('open' is the pre-watchdog spelling: still accepted by the client, never
-    // emitted by this server — server/aisWatchdog.mjs.)
+    // emitted by this server — server/ais/watchdog.mjs.)
     const healthy = status === 'live' || status === 'open';
     if (healthy && rows > 0) {
       return pass(`${rows} vessels, status=${status}, newest=${r.json?.newestPositionAt || 'n/a'}, silentFor=${r.json?.silentForMs ?? 'n/a'}ms`);

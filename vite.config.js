@@ -38,8 +38,8 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { defineConfig, loadEnv } from 'vite';
 import cesium from './scripts/cesium-vite-plugin.mjs';
-import { createAisStreamAdapter, isRecognizedAisEnvelope } from './server/aisStreamAdapter.mjs';
-import { parseSilenceTimeoutEnv } from './server/aisWatchdog.mjs';
+import { createAisStreamAdapter, isRecognizedAisEnvelope } from './server/ais/streamAdapter.mjs';
+import { parseSilenceTimeoutEnv } from './server/ais/watchdog.mjs';
 import { parseEnv as parseDotenvText } from 'node:util';
 import { readEnvironmentSource as readPinokioEnvironmentSource } from './scripts/pinokio-environment.mjs';
 import { knownKeySetupEnvVars } from './src/keySetupCatalog.js';
@@ -215,7 +215,7 @@ const AISSTREAM_STALE_MS = 30 * 60 * 1000;
 const AIS_TRACK_SAMPLES = 64;
 const AIS_TRACK_MIN_GAP_SEC = 30;
 const AIS_TRACK_MIN_MOVE_M = 25;
-// Watchdog budgets (policy lives in server/aisWatchdog.mjs). Silence is
+// Watchdog budgets (policy lives in server/ais/watchdog.mjs). Silence is
 // REPORTED quickly and ACTED ON slowly: a dead feed must read as dead within
 // ~2 min, but recycling the socket is throttled so recovery can never become a
 // reconnect cycle against AISStream's one-connection-per-key limit.
@@ -237,7 +237,7 @@ const AISSTREAM_TICK_MS = 15_000;
 /**
  * @type {ReturnType<typeof createAisStreamAdapter>|null}
  * Module-lifetime: it owns the socket-generation namespace, which must never
- * restart across a dev-server reload (see aisStreamAdapter.js ownership rules).
+ * restart across a dev-server reload (see the ownership rules in server/ais/streamAdapter.mjs).
  */
 let _aisAdapter = null;
 /** @type {{silenceWatch:boolean,reportMs:number,recycleMs:number,url:string}|null} */
@@ -1921,7 +1921,7 @@ const GEV_REALTIME_TOOLS = [
  *
  * Node's built-in WebSocket cannot be used here: it has no terminate(), and
  * its close() waits forever for a close frame a black-holed peer never sends
- * (verified in server/aisWatchdogTransport.test.mjs). A socket parked in
+ * (verified in server/ais/watchdogTransport.test.mjs). A socket parked in
  * CLOSING keeps holding AISStream's single per-key connection, which is how
  * the reverted watchdog wedged.
  *
