@@ -13,6 +13,7 @@ import {
   buildUnitTestPlan,
   discoverUnitTestFiles,
   isCalibratedAllocationRuntime,
+  parseUnitTestArgs,
   unitTestFlags,
 } from '../scripts/run-unit-tests.mjs';
 
@@ -130,4 +131,32 @@ test('the Windows job runs the DACL test, with the same deadline', () => {
   for (const file of args.filter((arg) => arg.endsWith('.test.mjs'))) {
     assert.ok(existsSync(path.join(root, file)), `${file} exists`);
   }
+});
+
+test('the suite runs whole by default, or either half on its own', () => {
+  assert.deepEqual(parseUnitTestArgs([]), { parallel: true, allocations: true });
+  assert.deepEqual(parseUnitTestArgs(['--skip-allocations']), { parallel: true, allocations: false });
+  assert.deepEqual(parseUnitTestArgs(['--allocations-only']), { parallel: false, allocations: true });
+  assert.throws(() => parseUnitTestArgs(['--allocation-only']), /Usage/);
+  assert.throws(() => parseUnitTestArgs(['--skip-allocations', '--allocations-only']), /Usage/);
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(pkg.scripts['test:allocations'], 'node scripts/run-unit-tests.mjs --allocations-only');
+});
+
+test('CI runs the allocation microbenchmarks in their own job, on the calibrated runtime', () => {
+  const workflow = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  const jobs = workflow.slice(workflow.indexOf('\njobs:\n'));
+  const section = (name) => {
+    const start = jobs.indexOf(`\n  ${name}:\n`);
+    assert.notEqual(start, -1, `the ${name} job exists`);
+    const next = jobs.slice(start + 1).search(/\n {2}[a-z][\w-]*:\n/);
+    return next === -1 ? jobs.slice(start) : jobs.slice(start, start + 1 + next);
+  };
+  const verify = section('verify');
+  assert.match(verify, /run: node scripts\/run-unit-tests\.mjs --skip-allocations\n/);
+  assert.doesNotMatch(verify, /GEV_REQUIRE_ALLOCATION_GATE/);
+  const allocations = section('allocation-budgets');
+  assert.match(allocations, /node-version: 24\./);
+  assert.match(allocations, /GEV_REQUIRE_ALLOCATION_GATE: '1'/);
+  assert.match(allocations, /run: pnpm run test:allocations\n/);
 });

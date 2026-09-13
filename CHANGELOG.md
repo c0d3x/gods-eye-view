@@ -15,6 +15,11 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 
 ### Development
 
+- Run the allocation microbenchmarks in their own CI job, in parallel with
+  the test jobs, instead of after the Node 24 job's tests, so push CI
+  finishes about half a minute sooner. `pnpm test` still runs everything,
+  and `pnpm run test:allocations` runs only the microbenchmarks.
+
 - Give every unit test a 60-second deadline, and stop a timed-out test's
   leftover timers or sockets from keeping the run alive, so a hung test
   fails within a minute instead of holding CI until the job's time limit.

@@ -24,7 +24,6 @@ jobs:
         node: [24.14.0, 26.x]
     env:
       PUPPETEER_SKIP_DOWNLOAD: '1'
-      GEV_REQUIRE_ALLOCATION_GATE: ${{ matrix.node == '24.14.0' && '1' || '0' }}
     steps:
       - name: Check out source
         uses: actions/checkout@v7
@@ -56,11 +55,41 @@ jobs:
       - name: Check package boundaries
         run: pnpm run check:boundaries
 
+      # The allocation microbenchmarks run in their own job, in parallel.
       - name: Run unit tests
-        run: pnpm test
+        run: node scripts/run-unit-tests.mjs --skip-allocations
 
       - name: Build production bundle
         run: pnpm run build
+
+  allocation-budgets:
+    name: Allocation budgets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: '1'
+      # The budgets are calibrated on Node 24; any other runtime fails here.
+      GEV_REQUIRE_ALLOCATION_GATE: '1'
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Use pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.14.0
+          cache: pnpm
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run allocation microbenchmarks
+        run: pnpm run test:allocations
 
   windows-onboarding:
     name: Windows onboarding

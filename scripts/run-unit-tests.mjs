@@ -94,10 +94,33 @@ function runTests(args) {
   return result.status ?? 1;
 }
 
-export function runUnitTests() {
+/** Command-line modes. CI runs the two halves of the suite as separate jobs. */
+export const UNIT_TEST_MODES = Object.freeze({
+  '--skip-allocations': Object.freeze({ parallel: true, allocations: false }),
+  '--allocations-only': Object.freeze({ parallel: false, allocations: true }),
+});
+
+/**
+ * Which halves of the suite to run. With no arguments, both: the parallel
+ * tests, then the allocation microbenchmarks.
+ * @param {string[]} argv - Arguments after the script path.
+ * @returns {{ parallel: boolean, allocations: boolean }}
+ */
+export function parseUnitTestArgs(argv = []) {
+  if (argv.length === 0) return { parallel: true, allocations: true };
+  const mode = argv.length === 1 ? UNIT_TEST_MODES[argv[0]] : undefined;
+  if (!mode) {
+    throw new Error(`Usage: node scripts/run-unit-tests.mjs [${Object.keys(UNIT_TEST_MODES).join(' | ')}]`);
+  }
+  return { ...mode };
+}
+
+export function runUnitTests({ parallel = true, allocations = true } = {}) {
   const plan = buildUnitTestPlan(discoverUnitTestFiles());
-  const parallelStatus = runTests(['--test', ...unitTestFlags(), ...plan.parallel]);
-  if (parallelStatus !== 0) return parallelStatus;
+  if (parallel) {
+    const parallelStatus = runTests(['--test', ...unitTestFlags(), ...plan.parallel]);
+    if (parallelStatus !== 0 || !allocations) return parallelStatus;
+  }
 
   // The GC-bracketed budgets are calibrated on Node 24 and are meaningless on
   // other allocators. A contributor's suite must stay green on any supported
@@ -123,4 +146,13 @@ export function runUnitTests() {
 }
 
 const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : '';
-if (import.meta.url === invokedPath) process.exitCode = runUnitTests();
+if (import.meta.url === invokedPath) {
+  let options;
+  try {
+    options = parseUnitTestArgs(process.argv.slice(2));
+  } catch (error) {
+    console.error(error.message);
+    process.exit(2);
+  }
+  process.exitCode = runUnitTests(options);
+}
