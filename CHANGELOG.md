@@ -8,6 +8,10 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-13
+
+Security hardening, fixes, Vite 8, Cesium 1.145 and new CI checks.
+
 ### Added
 
 - Publish tagged releases. Pushing a `vX.Y.Z` tag runs the CI checks, checks

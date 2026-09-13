@@ -86,7 +86,8 @@ ownership and adoption process.
 ## Releasing
 
 Releases follow [Semantic Versioning](https://semver.org/): a minor version for
-new features, a patch version for fixes only.
+new features, a patch version for fixes only. The fork continues upstream's
+line: upstream's last release was v0.1.1, and the fork's first is v0.2.0.
 
 1. Set `version` in `package.json`.
 2. In `CHANGELOG.md`, move the entries under `## [Unreleased]` to a new
