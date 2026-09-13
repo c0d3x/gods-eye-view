@@ -319,7 +319,7 @@ test('a refused write takes the tick back instead of promising "never again"', (
 
 test('a surface class that never clears is an ACCEPTED no-show, not a timer', () => {
   const module = fs.readFileSync(new URL('./firstRunExperience.js', import.meta.url), 'utf8');
-  const state = fs.readFileSync(new URL('../docs/CURRENT-STATE.md', import.meta.url), 'utf8');
+  const state = fs.readFileSync(new URL('../docs/current-state/first-run-and-sharing.md', import.meta.url), 'utf8');
 
   // A "reveal anyway after N seconds" would trade a benign no-show for the card
   // punching through a recording in progress — recordings run long, and none of
@@ -336,7 +336,7 @@ test('a surface class that never clears is an ACCEPTED no-show, not a timer', ()
     'the pin must cover the function the note governs, not just the note');
   assert.doesNotMatch(accepted, /setTimeout|setInterval/,
     'the acceptance is the decision NOT to time this out');
-  assert.match(accepted, /docs\/CURRENT-STATE\.md/);
+  assert.match(accepted, /docs\/current-state\/first-run-and-sharing\.md/);
   assert.match(state, /a surface class that never clears means no launcher for that page/i);
 });
 

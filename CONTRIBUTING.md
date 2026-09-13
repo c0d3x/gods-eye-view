@@ -67,7 +67,7 @@ The highest-leverage places to jump in:
 - **No framework.** Vanilla JS + [CesiumJS](https://cesium.com/platform/cesiumjs/) + [Vite](https://vitejs.dev/).
 - **UI lives in `src/ui.js`** (panels, HUD, styles, the control facade). **Layer logic lives in `src/data/<layer>.js`.** Keep them separate.
 - **Secrets stay server-side.** Anything needing a private key goes through a Vite proxy in `vite.config.js`. The browser only ever sees the Google Maps key (which you restrict) and ephemeral tokens.
-- `docs/CURRENT-STATE.md` is the authoritative runtime reference — read it first.
+- `docs/CURRENT-STATE.md` indexes the authoritative runtime reference, one page per subsystem under `docs/current-state/` — read it first.
 
 ## Coding style
 
@@ -100,7 +100,7 @@ ownership and adoption process.
 
 1. Branch off `main`.
 2. Keep `pnpm run build`, `pnpm test`, and `pnpm run test:track` green and avoid new console errors.
-3. If you change runtime behavior, update `docs/CURRENT-STATE.md` in the same PR, and add an entry to `CHANGELOG.md` under `## [Unreleased]`, in its Added, Changed, Fixed or Security section.
+3. If you change runtime behavior, update the page under `docs/current-state/` that describes it (`docs/CURRENT-STATE.md` lists them) in the same PR, and add an entry to `CHANGELOG.md` under `## [Unreleased]`, in its Added, Changed, Fixed or Security section.
 4. If you add or change a data source, update [DATA_SOURCES.md](DATA_SOURCES.md) with its license and attribution. **Don't add data you don't have the right to redistribute** — fetch it at runtime instead.
 5. Describe what you changed and how you verified it (screenshots welcome for anything visual).
 

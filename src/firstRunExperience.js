@@ -626,7 +626,7 @@ export function initFirstRunExperience({
    * And the no-show IS benign: the card stays hidden, the key handler is inert
    * (isTopmost() is false), no session flag is written, and the observer is
    * still watching — so it appears the moment the class clears, and returns next
-   * session regardless. Documented in docs/CURRENT-STATE.md.
+   * session regardless. Documented in docs/current-state/first-run-and-sharing.md.
    */
   const syncToExclusiveSurfaces = () => {
     if (closing) return;

@@ -34,7 +34,7 @@ const FILES = {
   vite: path.join(ROOT, 'vite.config.js'),
   main: path.join(ROOT, 'src', 'main.js'),
   ui: path.join(ROOT, 'src', 'ui.js'),
-  docs: path.join(ROOT, 'docs', 'CURRENT-STATE.md'),
+  docs: path.join(ROOT, 'docs', 'current-state', 'first-run-and-sharing.md'),
 };
 
 /** @type {Array<{defect: string, file: keyof FILES, from: string, to: string}>} */

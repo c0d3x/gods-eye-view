@@ -27,6 +27,12 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Changed
 
+- `docs/CURRENT-STATE.md`, 2,806 lines of current behavior, subsystem
+  reference and dated notes, is now the index of ten subsystem pages under
+  `docs/current-state/`, none longer than 500 lines. Links to it still land
+  on the index. Its dated milestone notes moved into this changelog's July
+  2026 history.
+
 - Repository metadata, the clone commands, CODEOWNERS and the contact point
   the server gives CelesTrak and Nominatim now name this fork,
   `c0d3x/gods-eye-view`. The README notes that it is a
@@ -685,6 +691,39 @@ again at 0.1.0.
 - Fixed elevated-airport aircraft placement, vessel sea-surface placement,
   close-zoom FIRMS anchors, antimeridian region framing, annotation resolution,
   cross-layer tracking ownership, and CCTV projection lifecycle issues.
+
+#### Milestone notes
+
+These dated notes moved here from `docs/CURRENT-STATE.md`.
+
+- **2026-07-02 milestone:** the skylight aircraft/satellite/enrichment work and
+  pre-ship hardening fixes landed.
+  Runtime changes: **voice tools 17→20 at the 2026-07-02 milestone** (`next_iss_pass` + the 19 already on
+  main), type-aware 8-class aircraft sprites + path-derived rate-limited display heading, adsbdb
+  flight enrichment (cached proxy + route-plausibility gate), disk-cached CelesTrak TLE proxy,
+  ISS pass prediction, and per-layer data attribution. Gate at close: unit 98/98, build clean,
+  track 19/19, + five QA harnesses (heading 16/16, sprites 9/9, cctv 5/5, failstate 5/5,
+  attribution 18/18). New modules: `src/data/{motionModel,aircraftMeta,aircraftClass,aircraftIcons,issPass,routePlausible,dataCredits}.js`.
+  The live runtime now declares 28 voice tools; the 17→20 count above is retained only as milestone history.
+- **Height-datum test surface:** `pnpm test` 184 unit · `pnpm run
+  test:track` 43 tracking invariants · headless QA harnesses under
+  `scripts/qa-*.mjs` incl. `qa-height-datum.mjs` (numeric heights) and
+  `qa-floor-verify.mjs` (any-airport ground-truth oracle).
+- **2026-07-16:** the FIRMS Active Fires layer is **LIVE** —
+  the bundled 2026-05-25 snapshot (58 MB) is deleted; a new `/api/firms` proxy
+  (vite.config.js) merges VIIRS NOAA-20/NOAA-21/Suomi-NPP NRT world CSVs
+  (days=2 → trailing-24h clamp, 30 min memory+disk cache, single-flight,
+  serve-stale-on-failure) behind server-side `FIRMS_MAP_KEY` (keyless → 503 +
+  in-app KEY REQUIRED chip). Client polls 10 min (`src/data/firmsHeatmap.js`;
+  adapter `src/data/firmsAdapt.js`, CSV parser `src/data/firmsCsv.js`).
+  `/api/firms/status` reports cache age + MAP_KEY transaction usage.
+- **2026-07-16:** Traffic supports optional live
+  TomTom flow through the server-side, budget-governed `/api/tomtom` proxy;
+  keyless installs retain the byte-identical white-dot simulation.
+- **2026-07-22 (CCTV v3 Parts A+B):** replay, color-coded viewsheds,
+  save-gated direct-manipulation calibration, `viewshed`/`adjust` voice
+  actions, shared-floor E/N drag grounding, and bounded snapshot requests are
+  integrated. Citywide static-plane LOD/pacing work remains outside runtime.
 
 ### June 2026
 
