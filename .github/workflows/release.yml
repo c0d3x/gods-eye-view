@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version whose notes to preview (x.y.z); a manual run publishes nothing
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: CI checks
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: GitHub Release
+    needs: checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      REQUESTED: ${{ github.event_name == 'push' && github.ref_name || inputs.version }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.14.0
+
+      - name: Check the version
+        run: |
+          version="${REQUESTED#v}"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::$REQUESTED is not a x.y.z version"
+            exit 1
+          fi
+          declared=$(node -p "require('./package.json').version")
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$version" != "$declared" ]; then
+            echo "::error::Tag v$version does not match package.json's version $declared"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Extract the release notes
+        run: |
+          node scripts/changelog.mjs section "$VERSION" > release-notes.md
+          node scripts/changelog.mjs title "$VERSION" > release-title.txt
+          {
+            echo "### $(cat release-title.txt)"
+            echo
+            cat release-notes.md
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publish the release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "v$VERSION" --title "$(cat release-title.txt)" --notes-file release-notes.md --verify-tag

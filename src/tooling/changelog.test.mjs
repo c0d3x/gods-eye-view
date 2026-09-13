@@ -6,6 +6,7 @@ import {
   changelogSections,
   releaseNotes,
   releases,
+  releaseTitle,
 } from '../../scripts/changelog.mjs';
 
 const CHANGELOG = readFileSync(
@@ -58,7 +59,10 @@ test('Unreleased and each release use the standard change types, once each', () 
   );
   for (const { heading, body } of sections.slice(0, history)) {
     const types = [...body.matchAll(/^### (.+)$/gm)].map((match) => match[1]);
-    assert.ok(types.length > 0, `${heading} has change types`);
+    // [Unreleased] is empty right after a release.
+    if (heading !== '[Unreleased]') {
+      assert.ok(types.length > 0, `${heading} has change types`);
+    }
     for (const type of types)
       assert.ok(CHANGE_TYPES.includes(type), `${heading}: ### ${type}`);
     assert.equal(
@@ -106,4 +110,14 @@ test('the parser reads release bodies and skips the history', () => {
   assert.deepEqual(releases(sample), [
     { version: '1.2.0', date: '2026-01-02', body: '### Fixed\n\n- Bug.' },
   ]);
+});
+
+test('a release is titled by its tag and summary line', () => {
+  assert.equal(
+    releaseTitle(CHANGELOG, '0.1.1'),
+    'v0.1.1 — Installation and live-data fixes',
+  );
+  const bare =
+    '## [Unreleased]\n\n## [1.2.0] - 2026-01-02\n\n### Fixed\n\n- Bug.\n';
+  assert.equal(releaseTitle(bare, 'v1.2.0'), 'v1.2.0');
 });

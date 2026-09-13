@@ -2,8 +2,8 @@
  * Reads CHANGELOG.md in the Keep a Changelog layout: `## [Unreleased]`, then
  * one `## [x.y.z] - YYYY-MM-DD` section per release, newest first.
  *
- * Usage: node scripts/changelog.mjs section <version>
- * prints one release's notes, as the release workflow publishes them.
+ * Usage: node scripts/changelog.mjs section|title <version>
+ * prints one release's notes or title, as the release workflow publishes them.
  */
 
 import { readFileSync } from 'node:fs';
@@ -69,16 +69,35 @@ export function releaseNotes(text, version) {
   return `${release.body}\n`;
 }
 
+/**
+ * A release's title: its tag, then the summary line under its heading when
+ * there is one, as in "v0.1.1 — Installation and live-data fixes".
+ * @param {string} text - The changelog.
+ * @param {string} version - `1.2.3` or `v1.2.3`.
+ * @returns {string}
+ */
+export function releaseTitle(text, version) {
+  const [summary] = releaseNotes(text, version).split('\n');
+  const tag = `v${String(version).replace(/^v/, '')}`;
+  return summary && !summary.startsWith('#')
+    ? `${tag} — ${summary.replace(/\.$/, '')}`
+    : tag;
+}
+
 function main([command, version]) {
-  if (command !== 'section' || !version) {
-    console.error('Usage: node scripts/changelog.mjs section <version>');
+  if (!['section', 'title'].includes(command) || !version) {
+    console.error('Usage: node scripts/changelog.mjs section|title <version>');
     process.exit(2);
   }
   const text = readFileSync(
     new URL('../CHANGELOG.md', import.meta.url),
     'utf8',
   );
-  process.stdout.write(releaseNotes(text, version));
+  process.stdout.write(
+    command === 'title'
+      ? `${releaseTitle(text, version)}\n`
+      : releaseNotes(text, version),
+  );
 }
 
 const invokedPath = process.argv[1]

@@ -5,6 +5,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # The Release workflow runs these same checks before it publishes.
+  workflow_call:
 
 permissions:
   contents: read

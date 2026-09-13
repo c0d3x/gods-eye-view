@@ -83,6 +83,25 @@ ownership and adoption process.
 4. If you add or change a data source, update [DATA_SOURCES.md](DATA_SOURCES.md) with its license and attribution. **Don't add data you don't have the right to redistribute** — fetch it at runtime instead.
 5. Describe what you changed and how you verified it (screenshots welcome for anything visual).
 
+## Releasing
+
+Releases follow [Semantic Versioning](https://semver.org/): a minor version for
+new features, a patch version for fixes only.
+
+1. Set `version` in `package.json`.
+2. In `CHANGELOG.md`, move the entries under `## [Unreleased]` to a new
+   `## [x.y.z] - YYYY-MM-DD` heading, with a one-line summary under it, and
+   leave `## [Unreleased]` empty above it.
+3. Commit to `main` and push.
+4. Tag the commit and push the tag: `git tag vX.Y.Z`, then
+   `git push origin vX.Y.Z`.
+
+The Release workflow runs the CI checks, checks the tag against
+`package.json`, and publishes a GitHub Release titled with the tag and the
+summary line, with that version's changelog section as its notes. Run it by
+hand from the Actions tab with a version to preview the notes without
+publishing anything.
+
 ## Maintainers
 
 God's Eye View is maintained by [Bilawal Sidhu](https://github.com/bilawalsidhu)

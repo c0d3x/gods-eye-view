@@ -80,7 +80,8 @@
       "scripts/lib/qaUrl.mjs",
       "src/tooling/qaUrl.test.mjs",
       "scripts/changelog.mjs",
-      "src/tooling/changelog.test.mjs"
+      "src/tooling/changelog.test.mjs",
+      "src/tooling/releaseWorkflow.test.mjs"
     ]
   },
   "formatter": {

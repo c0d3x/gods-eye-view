@@ -10,6 +10,11 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Added
 
+- Publish tagged releases. Pushing a `vX.Y.Z` tag runs the CI checks, checks
+  the tag against `package.json` and publishes a GitHub Release whose notes
+  are that version's section of this changelog. A manual run previews the
+  notes without publishing, and CONTRIBUTING lists the release steps.
+
 - Run the browser QA nightly, and on demand from the Actions tab. The QA
   workflow starts the dev server without keys, runs `pnpm run test:track`
   and a list of QA harnesses headless with SwiftShader, and keeps their
