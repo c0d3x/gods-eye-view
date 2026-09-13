@@ -1,16 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import createViteConfig, {
-  adsbLolFallbackAnchor,
-  coalesceProxyRequest,
-  launchLibraryRequestHeaders,
-  keylessGooglePlacesResponse,
-  LL2_CACHE_TTL_MS,
-  readResponseJsonCapped,
-  regionalBriefHasAnySource,
-  validMilitaryInstallationBox,
-  validRegionalPoint,
-} from '../../vite.config.js';
+import createViteConfig from '../../vite.config.js';
+import { adsbLolFallbackAnchor } from '../../server/proxies/opensky.mjs';
+import { coalesceProxyRequest } from '../../server/lib/coalesce.mjs';
+import { launchLibraryRequestHeaders, LL2_CACHE_TTL_MS } from '../../server/proxies/rocketLaunches.mjs';
+import { keylessGooglePlacesResponse } from '../../server/proxies/googlePlaces.mjs';
+import { readResponseJsonCapped } from '../../server/lib/upstreamBody.mjs';
+import { regionalBriefHasAnySource, validRegionalPoint } from '../../server/proxies/regional.mjs';
+import { validMilitaryInstallationBox } from '../../server/proxies/militaryInstallations.mjs';
 
 test('missing Google place context is a quiet keyless capability, not a 503', () => {
   assert.deepEqual(keylessGooglePlacesResponse(undefined), {

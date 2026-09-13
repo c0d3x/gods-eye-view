@@ -6,7 +6,9 @@ import { createBoundedCache } from '../server/lib/boundedCache.mjs';
 import { coalesceProxyRequest } from '../server/lib/coalesce.mjs';
 import { writeJson } from '../server/lib/jsonResponse.mjs';
 import { readResponseTextCapped } from '../server/lib/upstreamBody.mjs';
-import { ADSBDB_CACHE_MAX_ENTRIES, PROJECT_URL, TERRAIN_CACHE_MAX_POINTS } from '../vite.config.js';
+import { ADSBDB_CACHE_MAX_ENTRIES } from '../server/proxies/adsbdb.mjs';
+import { PROJECT_URL } from '../server/lib/projectUrl.mjs';
+import { TERRAIN_CACHE_MAX_POINTS } from '../server/proxies/terrainHeights.mjs';
 
 // The production plugins, read from their modules.
 const source = ['celestrak', 'rocketLaunches', 'terrainHeights', 'adsbdb']

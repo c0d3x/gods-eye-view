@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { googlePlacesContextProxy, keylessGooglePlacesResponse } from '../vite.config.js';
+import { googlePlacesContextProxy, keylessGooglePlacesResponse } from '../server/proxies/googlePlaces.mjs';
 
 const KEYLESS_PAYLOAD = { configured: false, error: null, places: [] };
 

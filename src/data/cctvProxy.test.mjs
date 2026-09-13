@@ -1,9 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  CCTV_FRAME_FETCH_TIMEOUT_MS,
-  fetchCctvImageFromUpstream,
-} from '../../vite.config.js';
+import { CCTV_FRAME_FETCH_TIMEOUT_MS, fetchCctvImageFromUpstream } from '../../server/proxies/cctv.mjs';
 
 // Feed cameras must resolve to public addresses; this stands in for DNS.
 const publicLookup = async () => [{ address: '93.184.216.34', family: 4 }];

@@ -52,7 +52,7 @@ process.env.CCTV_SOURCES_JSON = JSON.stringify([
   { id: 'metadata', url: `${cameraOrigin}/metadata`, feedType: 'mp4' },
 ]);
 
-const { cctvProxy } = await import('../vite.config.js');
+const { cctvProxy } = await import('../server/proxies/cctv.mjs');
 let route;
 cctvProxy().configureServer({
   middlewares: {

@@ -5,7 +5,7 @@ import {
   isHudSummaryUnconfigured,
   keylessHudSummaryResponse,
 } from './hudSummaryResponse.js';
-import { openAiRealtimeProxy } from '../vite.config.js';
+import { openAiRealtimeProxy } from '../server/realtime/openai.mjs';
 
 const UNCONFIGURED_PAYLOAD = {
   configured: false,

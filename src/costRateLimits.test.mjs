@@ -4,11 +4,9 @@ import {
   DEFAULT_GOOGLE_REQUESTS_PER_MINUTE,
   DEFAULT_OPENAI_REQUESTS_PER_MINUTE,
 } from '../server/lib/rateLimit.mjs';
-import {
-  cctvProxy,
-  googlePlacesContextProxy,
-  openAiRealtimeProxy,
-} from '../vite.config.js';
+import { cctvProxy } from '../server/proxies/cctv.mjs';
+import { googlePlacesContextProxy } from '../server/proxies/googlePlaces.mjs';
+import { openAiRealtimeProxy } from '../server/realtime/openai.mjs';
 
 // The cost limiters are built once per process from the environment, so this
 // file leaves GEV_RATELIMIT_* unset and every test sees the defaults. Each

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import config, { googleServerApiKey, googlePlacesContextProxy } from '../vite.config.js';
+import config from '../vite.config.js';
+import { googleServerApiKey } from '../server/lib/googleServerKey.mjs';
+import { googlePlacesContextProxy } from '../server/proxies/googlePlaces.mjs';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

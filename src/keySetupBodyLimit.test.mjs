@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import http from 'node:http';
 import test from 'node:test';
-import { keySetupEndpoint } from '../vite.config.js';
+import { keySetupEndpoint } from '../server/keySetupEndpoint.mjs';
 
 /** Serve the Provider Settings save route on 127.0.0.1 for one test. */
 async function serveKeySetup(t) {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { readResponseBytesCapped } from '../vite.config.js';
+import { readResponseBytesCapped } from '../server/lib/upstreamBody.mjs';
 
 test('a byte read within the cap returns the whole body', async () => {
   const bytes = await readResponseBytesCapped(

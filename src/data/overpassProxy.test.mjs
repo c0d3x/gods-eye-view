@@ -8,11 +8,7 @@
 // Run with: npm test   (node --test)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import {
-  simplifyOverpassPayloadBody,
-  isOverpassBoundaryQuery,
-  resolveOverpassPreflight,
-} from '../../vite.config.js';
+import { isOverpassBoundaryQuery, resolveOverpassPreflight, simplifyOverpassPayloadBody } from '../../server/proxies/overpass.mjs';
 
 test('preflight checks memory, in-flight, then disk before consuming limiter quota', async () => {
   const key = 'normalized query';

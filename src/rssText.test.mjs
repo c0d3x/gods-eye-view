@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { decodeRssText } from '../vite.config.js';
+import { decodeRssText } from '../server/proxies/regional.mjs';
 
 test('RSS text is decoded once, with tags dropped and whitespace collapsed', () => {
   assert.equal(

@@ -11,7 +11,8 @@ import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { Readable } from 'node:stream';
-import createViteConfig, { fetchOverpassPayload, overpassPayloadIsData, readOverpassDisk } from '../vite.config.js';
+import createViteConfig from '../vite.config.js';
+import { fetchOverpassPayload, overpassPayloadIsData, readOverpassDisk } from '../server/proxies/overpass.mjs';
 
 const ENDPOINTS = ['https://a.example/api', 'https://b.example/api', 'https://c.example/api'];
 

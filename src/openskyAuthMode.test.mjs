@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
-import { normalizeOpenSkyAuthMode } from '../vite.config.js';
+import { normalizeOpenSkyAuthMode } from '../server/proxies/opensky.mjs';
 
 test('OpenSky auth is oauth or anon, and the retired Basic modes mean oauth', (t) => {
   const warnings = [];

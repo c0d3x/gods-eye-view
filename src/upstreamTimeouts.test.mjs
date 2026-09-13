@@ -7,9 +7,11 @@ import test from 'node:test';
 import {
   GOOGLE_PLACES_TIMEOUT_MS,
   googlePlacesContextProxy,
+} from '../server/proxies/googlePlaces.mjs';
+import {
   OPENAI_TIMEOUT_MS,
   openAiRealtimeProxy,
-} from '../vite.config.js';
+} from '../server/realtime/openai.mjs';
 
 // The cost limiters are built once per process with their defaults. Each test
 // uses its own client address, so the per-client budgets never overlap.

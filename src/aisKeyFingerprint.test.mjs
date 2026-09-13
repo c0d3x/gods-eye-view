@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { aisKeyFingerprint } from '../vite.config.js';
+import { aisKeyFingerprint } from '../server/ais/relay.mjs';
 
 test('the AIS key fingerprint moves when the key does, and never carries the key', (t) => {
   const saved = process.env.AISSTREAM_API_KEY;

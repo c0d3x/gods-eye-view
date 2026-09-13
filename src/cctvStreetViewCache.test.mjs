@@ -5,7 +5,7 @@ import {
   CCTV_STREET_VIEW_CACHE_MAX_ENTRIES,
   CCTV_STREET_VIEW_CACHE_TTL_MS,
   cctvProxy,
-} from '../vite.config.js';
+} from '../server/proxies/cctv.mjs';
 
 // The Street View limiter is built once per process from the environment, so
 // this file leaves GEV_RATELIMIT_GOOGLE_PER_MIN unset (the default budget) and

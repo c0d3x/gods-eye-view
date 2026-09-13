@@ -5,7 +5,8 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 import test from 'node:test';
 import { DEBUG_LOG_MAX_RECORD_BYTES } from '../server/lib/debugLog.mjs';
-import config, { openAiRealtimeProxy } from '../vite.config.js';
+import { openAiRealtimeProxy } from '../server/realtime/openai.mjs';
+import config from '../vite.config.js';
 
 function setEnv(t, values) {
   const previous = Object.fromEntries(

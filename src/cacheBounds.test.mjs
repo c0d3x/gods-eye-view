@@ -3,13 +3,16 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import config, {
+import { DISK_CACHE_LIMITS } from '../server/lib/diskCacheLimits.mjs';
+import {
   ADSBDB_CACHE_MAX_ENTRIES,
   adsbdbProxy,
-  DISK_CACHE_LIMITS,
+} from '../server/proxies/adsbdb.mjs';
+import {
   TERRAIN_CACHE_MAX_POINTS,
   terrainHeightsProxy,
-} from '../vite.config.js';
+} from '../server/proxies/terrainHeights.mjs';
+import config from '../vite.config.js';
 
 async function temporaryDirectory(t) {
   const directory = await mkdtemp(path.join(tmpdir(), 'gev-cache-bounds-'));

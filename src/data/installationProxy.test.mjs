@@ -15,17 +15,17 @@ import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  migrateMilitaryInstallationEntry,
   militaryInstallationCacheKey,
-  militaryInstallationFailureReason,
   militaryInstallationDiskFresh,
   militaryInstallationDiskPath,
-  migrateMilitaryInstallationEntry,
+  militaryInstallationFailureReason,
   quantizeMilitaryInstallationBox,
   readMilitaryInstallationDisk,
   resolveMilitaryInstallationTier,
   validMilitaryInstallationBox,
   writeMilitaryInstallationDisk,
-} from '../../vite.config.js';
+} from '../../server/proxies/militaryInstallations.mjs';
 
 const DAY_MS = 86_400_000;
 test('installation failure reasons disclose no raw upstream error and do not guess overload', () => {

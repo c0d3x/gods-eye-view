@@ -31,17 +31,12 @@
  * @module vite.config
  */
 
-import { googleServerApiKey } from './server/lib/googleServerKey.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import cesium from './scripts/cesium-vite-plugin.mjs';
 import { resolveAllowedHosts } from './server/lib/allowedHosts.mjs';
 import { isDebugLogEnabled } from './server/lib/debugLog.mjs';
-import { coalesceProxyRequest } from './server/lib/coalesce.mjs';
-import { PROJECT_URL } from './server/lib/projectUrl.mjs';
-import { requiredFiniteQueryNumber } from './server/lib/queryParams.mjs';
-import { readResponseBytesCapped, readResponseJsonCapped, readResponseTextCapped } from './server/lib/upstreamBody.mjs';
 import { radioBrowserProxy } from './server/proxies/radio.mjs';
 import { militaryInstallationsProxy } from './server/proxies/militaryInstallations.mjs';
 import { overpassProxy } from './server/proxies/overpass.mjs';
@@ -63,94 +58,6 @@ import { trackBackfillProxies } from './server/proxies/trackBackfill.mjs';
 import { keySetupEndpoint } from './server/keySetupEndpoint.mjs';
 import { diskCacheJanitor } from './server/lib/diskCacheLimits.mjs';
 import { apiRequestGuard } from './server/lib/requestGuard.mjs';
-export {
-  keySetupEndpoint,
-} from './server/keySetupEndpoint.mjs';
-export {
-  ADSBDB_CACHE_MAX_ENTRIES,
-  adsbdbProxy,
-} from './server/proxies/adsbdb.mjs';
-export {
-  launchLibraryRequestHeaders,
-  LL2_CACHE_TTL_MS,
-} from './server/proxies/rocketLaunches.mjs';
-export {
-  TERRAIN_CACHE_MAX_POINTS,
-  terrainHeightsProxy,
-} from './server/proxies/terrainHeights.mjs';
-export {
-  openAiRealtimeProxy,
-} from './server/realtime/openai.mjs';
-export {
-  aisKeyFingerprint,
-} from './server/ais/relay.mjs';
-export {
-  GOOGLE_PLACES_TIMEOUT_MS,
-  googlePlacesContextProxy,
-  keylessGooglePlacesResponse,
-} from './server/proxies/googlePlaces.mjs';
-export {
-  OPENAI_TIMEOUT_MS,
-} from './server/realtime/openai.mjs';
-export {
-  adsbLolFallbackAnchor,
-  normalizeOpenSkyAuthMode,
-} from './server/proxies/opensky.mjs';
-export {
-  CCTV_FRAME_FETCH_TIMEOUT_MS,
-  CCTV_STREET_VIEW_CACHE_MAX_ENTRIES,
-  CCTV_STREET_VIEW_CACHE_TTL_MS,
-  cctvProxy,
-  fetchCctvImageFromUpstream,
-} from './server/proxies/cctv.mjs';
-export {
-  decodeRssText,
-  regionalBriefHasAnySource,
-  validRegionalPoint,
-} from './server/proxies/regional.mjs';
-export {
-  fetchOverpassPayload,
-  isOverpassBoundaryQuery,
-  overpassPayloadIsData,
-  readOverpassDisk,
-  resolveOverpassPreflight,
-  simplifyOverpassPayloadBody,
-} from './server/proxies/overpass.mjs';
-export {
-  migrateMilitaryInstallationEntry,
-  MILITARY_INSTALLATION_ELEMENT_CAP,
-  militaryInstallationCacheKey,
-  militaryInstallationDiskFresh,
-  militaryInstallationDiskPath,
-  militaryInstallationFailureReason,
-  quantizeMilitaryInstallationBox,
-  readMilitaryInstallationDisk,
-  resolveMilitaryInstallationTier,
-  validMilitaryInstallationBox,
-  writeMilitaryInstallationDisk,
-} from './server/proxies/militaryInstallations.mjs';
-export {
-  DISK_CACHE_LIMITS,
-} from './server/lib/diskCacheLimits.mjs';
-
-// These helpers now live in server/lib/; callers that import them from here
-// keep working.
-export {
-  coalesceProxyRequest,
-  googleServerApiKey,
-  PROJECT_URL,
-  readResponseBytesCapped,
-  readResponseJsonCapped,
-  readResponseTextCapped,
-  requiredFiniteQueryNumber,
-};
-export {
-  createRadioProxyMiddleware,
-  isPublicRadioAddress,
-  normalizeRadioBrowserStation,
-  publicRadioHttpsUrl,
-  publicRadioStation,
-} from './server/proxies/radio.mjs';
 
 /** Resolve __dirname for ESM context. */
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

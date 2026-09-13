@@ -4,9 +4,9 @@ import {
   createRadioProxyMiddleware,
   isPublicRadioAddress,
   normalizeRadioBrowserStation,
-  publicRadioStation,
   publicRadioHttpsUrl,
-} from '../../vite.config.js';
+  publicRadioStation,
+} from '../../server/proxies/radio.mjs';
 import { rankRadioStationsForRequest } from './radio.js';
 
 const UUID = '12345678-1234-4234-8234-123456789abc';
