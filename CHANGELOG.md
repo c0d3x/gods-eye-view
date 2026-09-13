@@ -207,6 +207,11 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   record, caps records at 256 KiB, rotates the file at 20 MB keeping one
   previous file, makes it readable only by your user, and returns generic
   errors.
+- Keep Vite's Host check on in LAN mode. `HOST=0.0.0.0` used to turn it off,
+  and local mode accepted any `.local` name. That left the API routes open to
+  DNS-rebinding attacks while the server was reachable from the network. Both
+  modes now answer only IP addresses, `localhost`, this machine's hostname
+  and `<hostname>.local`, plus names listed in the new `GEV_ALLOWED_HOSTS`.
 
 ## [0.1.1] — 2026-09-01 — Installation and live-data fixes
 

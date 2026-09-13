@@ -73,6 +73,7 @@ import {
   DEFAULT_OPENAI_REQUESTS_PER_MINUTE,
   resolveRateLimit,
 } from './server/lib/rateLimit.mjs';
+import { resolveAllowedHosts } from './server/lib/allowedHosts.mjs';
 import { createBoundedCache } from './server/lib/boundedCache.mjs';
 import {
   createDebugLogWriter,
@@ -7873,7 +7874,7 @@ export default defineConfig(({ mode }) => {
     if (process.env[key] === undefined) process.env[key] = val;
   }
   const env = { ...process.env };
-  const localAllowedHosts = ['localhost', '127.0.0.1', '.local'];
+  const allowedHosts = resolveAllowedHosts({ extra: env.GEV_ALLOWED_HOSTS });
   return {
     plugins: [
       apiRequestGuard(),
@@ -7902,10 +7903,10 @@ export default defineConfig(({ mode }) => {
     server: {
       host: env.HOST || 'localhost',
       port: parseInt(env.PORT, 10) || 4173,
-      // When binding to all interfaces, allow any host; otherwise restrict to local names
-      allowedHosts: (env.HOST === '0.0.0.0' || env.HOST === '::')
-        ? true
-        : localAllowedHosts,
+      // This machine's names plus GEV_ALLOWED_HOSTS, in every mode. LAN mode
+      // too: Vite accepts IP addresses anyway, and the Host check is what
+      // stops DNS rebinding from reaching the API routes.
+      allowedHosts,
       // No CORS. Vite's default lets any localhost origin read what this
       // server returns: API results, the Realtime token, served files. The
       // app itself only ever calls its own origin.

@@ -47,7 +47,10 @@
       "server/lib/debugLog.mjs",
       "server/lib/debugLog.test.mjs",
       "src/realtimeDebugLog.test.mjs",
-      "src/voice/gevRealtimeDebugLog.test.mjs"
+      "src/voice/gevRealtimeDebugLog.test.mjs",
+      "server/lib/allowedHosts.mjs",
+      "server/lib/allowedHosts.test.mjs",
+      "src/viteAllowedHosts.test.mjs"
     ]
   },
   "formatter": {
