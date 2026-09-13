@@ -116,6 +116,7 @@ import {
   resolveLeftStackBottomBoundary,
   resolvePanelStackCorridor,
 } from './panelStackLayout.js';
+import { takePanelLayoutResetNotice } from './panelLayoutStorage.js';
 import {
   resolveCockpitUtilityAnchor,
   resolveCockpitUtilityLayout,
@@ -4193,18 +4194,14 @@ export class StyleManager {
   }
 
   /**
-   * One-time toast when stored v6 panel positions are superseded by the v7
-   * layout defaults (positions reset; collapsed states are preserved).
+   * One-time toast when panel positions saved under an older storage version
+   * are superseded by the current layout defaults (positions reset; collapsed
+   * states are preserved). The superseded positions are deleted.
    * @returns {void}
    */
   _maybeNotifyLayoutReset() {
     try {
-      const marker = `godsEyeView.${PANEL_POSITION_STORAGE_VERSION}.layoutResetNotified`;
-      if (localStorage.getItem(marker)) return;
-      localStorage.setItem(marker, '1');
-      const hadOldPositions = Object.keys(localStorage)
-        .some((key) => key.startsWith('godsEyeView.v6.panelPos.'));
-      if (hadOldPositions) {
+      if (takePanelLayoutResetNotice(localStorage, PANEL_POSITION_STORAGE_VERSION)) {
         this._showToast('Panel layout updated — positions reset to new defaults');
       }
     } catch {

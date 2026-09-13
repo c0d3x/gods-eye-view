@@ -104,6 +104,12 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   poll has listed for six hours now drops out, and the registry holds at most
   4,096, forgetting the least recently seen first.
 
+- Show the "panel layout updated" notice to everyone whose saved panel
+  positions were reset. It only looked for positions saved under the v6
+  storage key, so anyone coming from v7 never saw it, and positions saved by
+  older layouts stayed in localStorage for good. Positions saved under any
+  older version now bring up the notice once and are then deleted.
+
 - Separate optional Google server credentials for Places and Street View from
   the browser key, contributed by Tom-Neverwinter (#110). Provider Settings,
   Pinokio's app-specific credential handling and setup diagnostics recognize

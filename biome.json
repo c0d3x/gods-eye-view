@@ -69,7 +69,9 @@
       "src/data/satellitesPropagation.test.mjs",
       "src/data/satellitesRenderHold.test.mjs",
       "src/fetchJson.js",
-      "src/fetchJson.test.mjs"
+      "src/fetchJson.test.mjs",
+      "src/panelLayoutStorage.js",
+      "src/panelLayoutStorage.test.mjs"
     ]
   },
   "formatter": {
