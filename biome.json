@@ -35,7 +35,10 @@
       "src/apiRequestGuard.test.mjs",
       "server/lib/rateLimit.mjs",
       "server/lib/rateLimit.test.mjs",
-      "src/costRateLimits.test.mjs"
+      "src/costRateLimits.test.mjs",
+      "server/lib/boundedCache.mjs",
+      "server/lib/boundedCache.test.mjs",
+      "src/cctvStreetViewCache.test.mjs"
     ]
   },
   "formatter": {

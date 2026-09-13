@@ -73,6 +73,7 @@ import {
   DEFAULT_OPENAI_REQUESTS_PER_MINUTE,
   resolveRateLimit,
 } from './server/lib/rateLimit.mjs';
+import { createBoundedCache } from './server/lib/boundedCache.mjs';
 import { createApiRequestGuard } from './server/lib/requestGuard.mjs';
 import {
   fetchTerrainChunkWithRetry,
@@ -3588,6 +3589,11 @@ const CCTV_SOURCE_FETCH_TIMEOUT_MS = 15 * 1000;
  * client refresh cadence. A bounded miss can fall through to Street View or
  * the synthetic frame instead of leaving the browser preview pending. */
 export const CCTV_FRAME_FETCH_TIMEOUT_MS = 8 * 1000;
+/** How long a Street View fallback frame is reused. The imagery is static,
+ * while the CCTV panel re-polls each camera every 10–60 s. */
+export const CCTV_STREET_VIEW_CACHE_TTL_MS = 30 * 60 * 1000;
+/** Street View frames kept at once, about 10 MB of 960x540 JPEGs. */
+export const CCTV_STREET_VIEW_CACHE_MAX_ENTRIES = 64;
 /** @type {Array<object>} Cached merged + normalized CCTV source list. */
 let _cctvSourceCache = [];
 /** @type {number} Epoch-ms when the source cache was last refreshed. */
@@ -4593,6 +4599,12 @@ export function cctvProxy() {
     };
   };
 
+  /** Successful Street View frames by camera pose (CCTV_STREET_VIEW_CACHE_*). */
+  const streetViewFrames = createBoundedCache({
+    maxEntries: CCTV_STREET_VIEW_CACHE_MAX_ENTRIES,
+    ttlMs: CCTV_STREET_VIEW_CACHE_TTL_MS,
+  });
+
   /**
    * Fetch a Google Street View static image as a fallback frame. Server-side
    * call, never reaches the browser — prefers GOOGLE_MAPS_SERVER_API_KEY
@@ -4600,22 +4612,33 @@ export function cctvProxy() {
    * rather than HTTP referrer) and falls back to the browser-exposed
    * GOOGLE_MAPS_API_KEY for setups that haven't split the two yet.
    *
-   * Each frame is a billed request, so it counts against the client's Street
-   * View budget (streetViewRateLimiter). Once that is spent this returns
-   * `{ ok: false, rateLimited: true }` without calling Google.
+   * Successful frames are cached by pose: the location rounded to 5 decimals
+   * (about a metre), heading, field of view and pitch. A camera's regular
+   * re-polls reuse its frame. Only a cache miss calls Google, and each miss
+   * counts against the client's Street View budget (streetViewRateLimiter);
+   * once that is spent this returns `{ ok: false, rateLimited: true }`.
    */
   const streetViewFallback = async ({ lat, lon, heading, fov, pitch, rateLimitKey }) => {
     const streetViewKey = googleServerApiKey();
     if (!streetViewKey || !Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    const pose = {
+      location: `${lat.toFixed(5)},${lon.toFixed(5)}`,
+      heading: String(Number.isFinite(heading) ? heading : 0),
+      fov: String(Number.isFinite(fov) ? Math.max(20, Math.min(120, fov)) : 80),
+      pitch: String(Number.isFinite(pitch) ? Math.max(-40, Math.min(20, pitch)) : 0),
+    };
+    const cacheKey = `${pose.location}|${pose.heading}|${pose.fov}|${pose.pitch}`;
+    const cached = streetViewFrames.get(cacheKey);
+    if (cached) return cached;
     const limiter = streetViewRateLimiter();
     if (limiter && !limiter(rateLimitKey)) return { ok: false, rateLimited: true };
     try {
       const sv = new URL('https://maps.googleapis.com/maps/api/streetview');
       sv.searchParams.set('size', '960x540');
-      sv.searchParams.set('location', `${lat},${lon}`);
-      sv.searchParams.set('heading', String(Number.isFinite(heading) ? heading : 0));
-      sv.searchParams.set('fov', String(Number.isFinite(fov) ? Math.max(20, Math.min(120, fov)) : 80));
-      sv.searchParams.set('pitch', String(Number.isFinite(pitch) ? Math.max(-40, Math.min(20, pitch)) : 0));
+      sv.searchParams.set('location', pose.location);
+      sv.searchParams.set('heading', pose.heading);
+      sv.searchParams.set('fov', pose.fov);
+      sv.searchParams.set('pitch', pose.pitch);
       sv.searchParams.set('source', 'outdoor');
       sv.searchParams.set('return_error_code', 'true');
       sv.searchParams.set('key', streetViewKey);
@@ -4627,11 +4650,11 @@ export function cctvProxy() {
       const svType = svResp.headers.get('content-type') || '';
       if (!svResp.ok || !svType.startsWith('image/')) return null;
 
-      return {
+      return streetViewFrames.set(cacheKey, {
         ok: true,
         body: Buffer.from(await svResp.arrayBuffer()),
         contentType: svType,
-      };
+      });
     } catch {
       return null;
     }

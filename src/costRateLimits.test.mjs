@@ -136,12 +136,20 @@ test('the Street View fallback has its own budget, then shows the synthetic fram
     return new Response('not found', { status: 404 });
   });
   const frames = installRoutes(cctvProxy()).get('/api/cctv');
-  const url = '/frame/test-camera?lat=30.27&lon=-97.74&heading=90';
+  // A new pose per request, so each one misses the Street View frame cache.
+  const url = (index) =>
+    `/frame/test-camera?lat=${30 + index / 1000}&lon=-97.74&heading=90`;
   for (let sent = 0; sent < DEFAULT_GOOGLE_REQUESTS_PER_MINUTE; sent += 1) {
-    const frame = await invoke(frames, { url, remoteAddress: '10.0.2.1' });
+    const frame = await invoke(frames, {
+      url: url(sent),
+      remoteAddress: '10.0.2.1',
+    });
     assert.equal(frame.headers['x-cctv-source'], 'streetview');
   }
-  const limited = await invoke(frames, { url, remoteAddress: '10.0.2.1' });
+  const limited = await invoke(frames, {
+    url: url(DEFAULT_GOOGLE_REQUESTS_PER_MINUTE),
+    remoteAddress: '10.0.2.1',
+  });
   assert.equal(limited.statusCode, 200);
   assert.equal(limited.headers['x-cctv-source'], 'synthetic');
   assert.match(limited.text, /STREET VIEW RATE LIMITED/);

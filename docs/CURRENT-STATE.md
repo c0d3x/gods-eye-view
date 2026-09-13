@@ -2169,7 +2169,9 @@ silently demoting every later lookup for the session.
   10-second active refresh: upstream and Street View attempts abort after 8 seconds, and the
   panel/monitor plane keep at most one same-camera image request in flight. This prevents a
   slow provider from being cancelled and restarted forever while stale `SNAPSHOT · OK` health
-  remains beside a pending preview. Grounding is shared with every other height consumer:
+  remains beside a pending preview. Street View fallback frames are cached per camera pose for 30
+  minutes (64 frames at most), so refreshes reuse the static image instead of billing Google again.
+  Grounding is shared with every other height consumer:
   CCTV warms/resolves `groundFloor.js` cells, reads `cachedGroundFloor()`, and delegates optional
   Google 3D refinement to the unchanged `meshFloorSampler.js`. During E/N gizmo movement the
   prior floor is frozen (constant elevation and zero transient samples); release or reset makes

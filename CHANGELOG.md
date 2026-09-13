@@ -175,6 +175,10 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
 - Refresh vulnerable transitive dependencies and update browser/image tooling
   to Puppeteer 25.10.0 and Sharp 0.35.4. Cesium remains on 1.138.0.
   Browser QA awaits the new asynchronous executable-path lookup.
+- CCTV cameras without a live feed no longer request a new, billed Google
+  Street View image on every 10–60 second refresh. Street View fallback frames
+  are cached for 30 minutes per camera pose, keeping at most 64, so repeated
+  refreshes reuse the frame instead of asking Google again.
 
 ### Security
 
