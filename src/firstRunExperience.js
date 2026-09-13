@@ -399,24 +399,34 @@ export function initFirstRunExperience({
     if (closing) return;
     closing = true;
     rememberFirstRunSessionDismissed(sessionStorageRef);
-    root.classList.remove('visible');
-    root.setAttribute('aria-hidden', 'true');
     documentRef.removeEventListener('keydown', onKeyDown, true);
     globalThis.removeEventListener?.('resize', onViewportResize);
     surfaceObserver?.disconnect();
+    // Focus leaves BEFORE the card hides: Chrome refuses aria-hidden on a
+    // subtree that still holds focus, and a screen reader can be left on
+    // content that is gone. Return the keyboard where it was, not to a node
+    // that is being removed — but never when yielding, because the surface
+    // taking over owns focus. If it has not taken it yet, focus only drops out
+    // of the card, so that surface can still claim it.
+    if (restoreFocus) {
+      if (typeof previouslyFocused?.focus === 'function' && previouslyFocused.isConnected) {
+        previouslyFocused.focus({ preventScroll: true });
+      } else {
+        documentRef.body?.focus?.({ preventScroll: true });
+      }
+    }
+    const active = documentRef.activeElement;
+    if (active && active !== documentRef.body && root.contains(active)) active.blur?.();
+    root.classList.remove('visible');
+    // inert keeps the leaving card out of the tab order and the accessibility
+    // tree; aria-hidden covers engines without inert.
+    root.inert = true;
+    root.setAttribute('aria-hidden', 'true');
     const remove = () => root.remove();
     root.addEventListener('transitionend', remove, { once: true });
     // `transitionend` never fires under prefers-reduced-motion (no transition),
     // so a bounded fallback is what actually removes the node there.
     globalThis.setTimeout?.(remove, 400);
-    // Return the keyboard where it was, not to a node that is being removed —
-    // but never when yielding, because the surface taking over owns focus now.
-    if (!restoreFocus) return;
-    if (typeof previouslyFocused?.focus === 'function' && previouslyFocused.isConnected) {
-      previouslyFocused.focus({ preventScroll: true });
-    } else {
-      documentRef.body?.focus?.({ preventScroll: true });
-    }
   };
 
   const setBusy = (next, choice = '') => {

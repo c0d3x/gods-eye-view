@@ -10,6 +10,7 @@ import {
   FIRST_RUN_STORAGE_KEY,
   environmentalLabel,
   exclusiveSurfaceActive,
+  initFirstRunExperience,
   rememberFirstRunSessionDismissed,
   runFirstRunChoice,
   setFirstRunSuppressed,
@@ -621,6 +622,116 @@ test('the launcher keeps focus, restores it, and never disables the focused butt
   assert.match(module, /previouslyFocused\?\.focus/);
   // Capture phase, so the app's global letter hotkeys cannot eat the launcher's keys.
   assert.match(module, /addEventListener\('keydown', onKeyDown, true\)/);
+});
+
+/**
+ * Mount the launcher on a minimal fake page. `focusWhenHidden` and
+ * `focusWhenInert` record where focus was at the moment the card was hidden
+ * with aria-hidden and made inert.
+ */
+function mountLauncher() {
+  const page = {};
+  const documentRef = {
+    activeElement: null,
+    getElementById: (id) => (id === 'first-run-launcher' ? page.root : null),
+    addEventListener() {},
+    removeEventListener() {},
+  };
+  const classes = () => {
+    const names = new Set();
+    return {
+      add: (name) => names.add(name),
+      remove: (name) => names.delete(name),
+      contains: (name) => names.has(name),
+    };
+  };
+  const element = (extra = {}) => ({
+    dataset: {},
+    isConnected: true,
+    classList: classes(),
+    addEventListener() {},
+    focus() { documentRef.activeElement = this; },
+    blur() { if (documentRef.activeElement === this) documentRef.activeElement = documentRef.body; },
+    ...extra,
+  });
+  documentRef.body = element();
+  page.documentRef = documentRef;
+  page.body = documentRef.body;
+  page.outside = element(); // had focus before the launcher appeared
+  page.surface = element(); // part of a surface that takes the screen
+  page.buttons = [
+    element({ dataset: { firstRunChoice: 'manual' } }),
+    element({ dataset: { firstRunChoice: 'live-contacts' } }),
+  ];
+  page.root = element({
+    attributes: {},
+    querySelector: () => null,
+    querySelectorAll: () => page.buttons,
+    contains: (node) => node === page.root || page.buttons.includes(node),
+    getClientRects: () => [{}],
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }),
+    setAttribute(name, value) {
+      if (name === 'aria-hidden') page.focusWhenHidden = documentRef.activeElement;
+      this.attributes[name] = String(value);
+    },
+    remove() { this.isConnected = false; },
+  });
+  let inert = false;
+  Object.defineProperty(page.root, 'inert', {
+    get: () => inert,
+    set: (value) => {
+      if (value) page.focusWhenInert = documentRef.activeElement;
+      inert = value;
+    },
+  });
+  page.outside.focus();
+
+  // reveal() focuses the first mission inside a frame callback, and the
+  // launcher yields from a body-class observer; run both on demand.
+  const saved = { raf: globalThis.requestAnimationFrame, observer: globalThis.MutationObserver };
+  globalThis.requestAnimationFrame = (callback) => callback();
+  globalThis.MutationObserver = class {
+    constructor(callback) { page.observe = callback; }
+    observe() {}
+    disconnect() {}
+  };
+  try {
+    page.launcher = initFirstRunExperience({
+      styleManager: { hasShareState: false },
+      documentRef,
+      ...fresh(),
+    });
+  } finally {
+    globalThis.requestAnimationFrame = saved.raf;
+    globalThis.MutationObserver = saved.observer;
+  }
+  return page;
+}
+
+test('focus leaves the launcher before it is hidden, whichever way it closes', () => {
+  // ESC or a finished mission: the keyboard goes back where it was first.
+  const closed = mountLauncher();
+  assert.equal(closed.documentRef.activeElement, closed.buttons[0], 'reveal focuses the first mission');
+  closed.launcher.dismiss();
+  assert.equal(closed.focusWhenHidden, closed.outside);
+  assert.equal(closed.focusWhenInert, closed.outside);
+  assert.equal(closed.root.inert, true);
+
+  // Yielding while a mission still has focus: focus drops out of the card and
+  // is NOT pulled back to where it was, so the surface taking over can claim it.
+  const yielded = mountLauncher();
+  yielded.body.classList.add('cockpit-mode');
+  yielded.observe();
+  assert.equal(yielded.focusWhenHidden, yielded.body);
+  assert.equal(yielded.focusWhenInert, yielded.body);
+
+  // Yielding after that surface already took focus: it keeps it.
+  const taken = mountLauncher();
+  taken.surface.focus();
+  taken.body.classList.add('cockpit-mode');
+  taken.observe();
+  assert.equal(taken.focusWhenHidden, taken.surface);
+  assert.equal(taken.documentRef.activeElement, taken.surface);
 });
 
 test('the DISPLAY rail starts collapsed on a first run, and a stored choice wins', () => {
