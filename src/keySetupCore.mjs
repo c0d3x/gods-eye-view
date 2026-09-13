@@ -279,6 +279,11 @@ export function keySetupRequirement(id) {
   return `Needs ${entry.envVars.join(' + ')} — add it in Provider Settings`;
 }
 
+/** The environment variables a key-setup entry needs, or none for an unknown id. */
+export function keySetupEnvVars(id) {
+  return KEY_SETUP_KEYS.find((candidate) => candidate.id === id)?.envVars || [];
+}
+
 /**
  * Decide whether a live provider value belongs to a source outside the store
  * Provider Settings is allowed to edit. `wasExternalAtBoot` carries source

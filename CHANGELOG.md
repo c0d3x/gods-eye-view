@@ -80,6 +80,12 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   earthquake and fire layers pass it to their fetches and draw nothing once
   it is aborted.
 
+- A layer that only lacks its API key no longer ends a load as LOAD FAILED.
+  The status banner reads KEY REQUIRED, names the key ("Needs
+  FIRMS_MAP_KEY"), and on a local dev server offers an ADD KEY button that
+  opens Provider Settings. NASA FIRMS on a first run without a key was the
+  common case. A real failure in the same load still reads LOAD FAILED.
+
 - Separate optional Google server credentials for Places and Street View from
   the browser key, contributed by Tom-Neverwinter (#110). Provider Settings,
   Pinokio's app-specific credential handling and setup diagnostics recognize

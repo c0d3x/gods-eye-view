@@ -2067,6 +2067,27 @@ body.ui-clean-view #scene-runtime.active {
 #global-loading-status[data-state='error'] #global-loading-label,
 #global-loading-status[data-state='error'] #global-loading-detail { color: #ff9b8e; }
 #global-loading-status[data-state='cancelled'] { color: #ffd488; }
+#global-loading-status[data-state='needs-key'] {
+  border-color: rgba(255, 212, 136, 0.55);
+  /* The one state with a control in it: the ADD KEY button. */
+  pointer-events: auto;
+}
+#global-loading-status[data-state='needs-key'] #global-loading-label,
+#global-loading-status[data-state='needs-key'] #global-loading-detail { color: #ffd488; }
+#global-loading-action {
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 4px;
+  background: #ffd488;
+  color: #03101a;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+#global-loading-action:focus-visible { outline: 2px solid #ffd488; outline-offset: 2px; }
+#global-loading-action[hidden] { display: none; }
 #global-loading-status[data-state='retry'] { border-color: rgba(255, 212, 136, 0.55); }
 #global-loading-status[data-state='retry'] #global-loading-label,
 #global-loading-status[data-state='retry'] #global-loading-detail { color: #ffd488; }

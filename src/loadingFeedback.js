@@ -1,4 +1,5 @@
 import { installationFeedback } from './data/installationFeedback.js';
+import { keySetupEnvVars } from './keySetupCore.mjs';
 
 export const LOADING_REVEAL_DELAY_MS = 160;
 export const LOADING_TERMINAL_DWELL_MS = 2200;
@@ -39,6 +40,7 @@ export function normalizeLayerLoading(layer = {}) {
     error,
     unavailable,
     keyRequired,
+    keySetupId: typeof stats.keySetupId === 'string' ? stats.keySetupId : null,
     degraded,
     installationRetry: layer.id === 'military-installations' && layer.enabled && !disabling
       ? { retryAt: Number(stats.retryAt) || 0, retrying: stats.retrying === true,
@@ -47,13 +49,27 @@ export function normalizeLayerLoading(layer = {}) {
   };
 }
 
+/**
+ * What one participant's stats say about the load. A layer that only lacks
+ * its API key needs a key, which is not a failure, even though its own row
+ * reports KEY REQUIRED as an error; an error or an unavailable feed is.
+ */
+function participantOutcome(record) {
+  if (record.keyRequired) return 'needs-key';
+  if (record.error || record.unavailable) return 'error';
+  return null;
+}
+
 function terminalFromParticipantStats(summary, participantIds) {
   if (!participantIds?.length) return null;
   const participants = new Set(participantIds);
-  return summary.records.some((record) => participants.has(record.id)
-    && (record.error || record.unavailable || record.keyRequired))
-    ? 'error'
-    : null;
+  let outcome = null;
+  for (const record of summary.records) {
+    if (participants.has(record.id)) {
+      outcome = mergeTerminalOutcome(outcome, participantOutcome(record));
+    }
+  }
+  return outcome;
 }
 
 /** Aggregate all manager layers without changing their lifecycle authority. */
@@ -136,7 +152,7 @@ export function canPresentDeferredStatusNotice(expectedGeneration, currentGenera
  */
 export function presentGlobalLoadingStatus(notice, loadingState, summary, nowMs = 0) {
   const loadingPresentation = presentLoadingFeedback(loadingState, summary, nowMs);
-  if (['error', 'retry'].includes(loadingPresentation?.state)) return loadingPresentation;
+  if (['error', 'needs-key', 'retry'].includes(loadingPresentation?.state)) return loadingPresentation;
   return presentGlobalStatusNotice(notice, nowMs) || loadingPresentation;
 }
 
@@ -217,7 +233,9 @@ function terminalFromEvent(event) {
 }
 
 function mergeTerminalOutcome(current, next) {
-  const severity = { complete: 1, cancelled: 2, error: 3 };
+  // A missing key outranks completion and cancellation, but a real failure
+  // anywhere in the same load still reads LOAD FAILED.
+  const severity = { complete: 1, cancelled: 2, 'needs-key': 3, error: 4 };
   if (!next) return current || null;
   if (!current || severity[next] > severity[current]) return next;
   return current;
@@ -270,7 +288,10 @@ export function reduceLoadingFeedback(previous, summary, nowMs, event = null) {
     ) || 'complete';
     const wasVisible = state.visible || now >= state.showAt;
     if (!wasVisible && terminal === 'complete') return createLoadingFeedbackState();
-    const dwell = terminal === 'error' ? LOADING_FAILURE_DWELL_MS : LOADING_TERMINAL_DWELL_MS;
+    // KEY REQUIRED carries a button, so it stays as long as a failure does.
+    const dwell = terminal === 'error' || terminal === 'needs-key'
+      ? LOADING_FAILURE_DWELL_MS
+      : LOADING_TERMINAL_DWELL_MS;
     return {
       ...state,
       phase: 'terminal',
@@ -305,6 +326,18 @@ export function presentLoadingFeedback(state, summary, nowMs) {
   }
   if (!state?.visible) return null;
   if (state.phase === 'terminal') {
+    if (state.terminal === 'needs-key') {
+      // Name the missing key; the UI offers the way into Provider Settings.
+      const needsKey = summary.records.find((record) => record.keyRequired
+        && (state.activeIds || []).includes(record.id));
+      const envVars = keySetupEnvVars(needsKey?.keySetupId);
+      return {
+        state: 'needs-key',
+        label: 'KEY REQUIRED',
+        detail: envVars.length ? `Needs ${envVars.join(' + ')}` : '',
+        keySetupId: needsKey?.keySetupId || null,
+      };
+    }
     const labels = { complete: 'LOAD COMPLETE', cancelled: 'LOAD CANCELLED', error: 'LOAD FAILED' };
     const label = state.operation === 'disabling' && state.terminal === 'complete'
       ? 'LIVE DATA OFF'

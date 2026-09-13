@@ -2431,6 +2431,11 @@ export class StyleManager {
     this._globalLoadingStatus = document.getElementById('global-loading-status');
     this._globalLoadingLabel = document.getElementById('global-loading-label');
     this._globalLoadingDetail = document.getElementById('global-loading-detail');
+    this._globalLoadingAction = document.getElementById('global-loading-action');
+    // A KEY REQUIRED status opens Provider Settings; keySetup.js listens.
+    this._globalLoadingAction?.addEventListener('click', () => {
+      document.dispatchEvent(new CustomEvent('gev:open-key-setup'));
+    });
     this._resetGlobeBtn = document.getElementById('reset-globe-view');
     this._cockpitResetGlobeBtn = document.getElementById('cockpit-reset-globe');
     this._styleButtons = document.getElementById('style-buttons');
@@ -9302,6 +9307,7 @@ export class StyleManager {
     this._globalLoadingStatus.hidden = !presentation;
     if (!presentation) {
       delete this._globalLoadingStatus.dataset.state;
+      if (this._globalLoadingAction) this._globalLoadingAction.hidden = true;
       return;
     }
     this._globalLoadingStatus.dataset.state = presentation.state;
@@ -9312,6 +9318,12 @@ export class StyleManager {
     // list that churns as layers join would be noise, not delight.
     setSplitFlapText(this._globalLoadingLabel, presentation.label);
     this._globalLoadingDetail.textContent = presentation.detail;
+    // The button can only help where Provider Settings exists: on a local dev
+    // server, keySetup.js keeps #key-setup; elsewhere it removes it.
+    if (this._globalLoadingAction) {
+      this._globalLoadingAction.hidden = presentation.state !== 'needs-key'
+        || !document.getElementById('key-setup');
+    }
   }
 
   /** Show a message in the universal top-center status banner. */

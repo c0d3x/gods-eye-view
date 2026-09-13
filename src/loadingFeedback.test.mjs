@@ -322,7 +322,7 @@ test('AIS first-connect grace expiry reports failure even without a terminal man
   assert.equal(presentLoadingFeedback(state, unavailable, 300).label, 'LOAD FAILED');
 });
 
-test('participant stats failure outranks a simultaneous visibility completion', () => {
+test('a missing key outranks a simultaneous visibility completion', () => {
   const enabling = aggregateLayerLoading([{
     id: 'ais-live-vessels',
     name: 'AIS Vessels',
@@ -343,7 +343,65 @@ test('participant stats failure outranks a simultaneous visibility completion', 
     type: 'visibility', layerId: 'ais-live-vessels', enabled: true,
   });
 
+  assert.equal(state.terminal, 'needs-key');
+});
+
+test('a layer that only lacks its key ends the load as KEY REQUIRED, not LOAD FAILED', () => {
+  const enabling = aggregateLayerLoading([{
+    id: 'local-firms', name: 'NASA FIRMS', lifecycleState: 'enabling', stats: { loading: true },
+  }]);
+  let state = reduceLoadingFeedback(createLoadingFeedbackState(), enabling, 0);
+  state = reduceLoadingFeedback(state, enabling, 200);
+  // What FIRMS reports without a key; its own layer row keeps the error wording.
+  const keyless = aggregateLayerLoading([{
+    id: 'local-firms',
+    name: 'NASA FIRMS',
+    enabled: true,
+    lifecycleState: 'enabled',
+    stats: { loading: false, keyRequired: true, keySetupId: 'firms', error: 'KEY REQUIRED' },
+  }]);
+  state = reduceLoadingFeedback(state, keyless, 300);
+  assert.equal(state.terminal, 'needs-key');
+  assert.equal(state.hideAt, 300 + LOADING_FAILURE_DWELL_MS, 'it stays long enough to act on');
+  assert.deepEqual(presentLoadingFeedback(state, keyless, 300), {
+    state: 'needs-key',
+    label: 'KEY REQUIRED',
+    detail: 'Needs FIRMS_MAP_KEY',
+    keySetupId: 'firms',
+  });
+  // A persistent notice does not hide it.
+  const notice = createGlobalStatusNotice('Recording', 300, { state: 'acquiring', persistent: true });
+  assert.equal(presentGlobalLoadingStatus(notice, state, keyless, 300).state, 'needs-key');
+});
+
+test('a real failure in the same load still reads LOAD FAILED', () => {
+  const enabling = aggregateLayerLoading([
+    { id: 'local-firms', lifecycleState: 'enabling', stats: { loading: true } },
+    { id: 'earthquakes', lifecycleState: 'enabling', stats: { loading: true } },
+  ]);
+  let state = reduceLoadingFeedback(createLoadingFeedbackState(), enabling, 0);
+  state = reduceLoadingFeedback(state, enabling, 200);
+  const settled = aggregateLayerLoading([
+    {
+      id: 'local-firms',
+      enabled: true,
+      lifecycleState: 'enabled',
+      stats: { keyRequired: true, keySetupId: 'firms', error: 'KEY REQUIRED' },
+    },
+    { id: 'earthquakes', enabled: true, lifecycleState: 'enabled', stats: { error: 'USGS network error' } },
+  ]);
+  state = reduceLoadingFeedback(state, settled, 300);
   assert.equal(state.terminal, 'error');
+  assert.equal(presentLoadingFeedback(state, settled, 300).label, 'LOAD FAILED');
+});
+
+test('the KEY REQUIRED banner keeps its detail and offers an ADD KEY button', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  assert.match(html, /<button id="global-loading-action" type="button" hidden>Add key<\/button>/);
+  assert.match(css, /#global-loading-status\[data-state='needs-key'\] \{[^}]*pointer-events: auto;/);
+  // Unlike the other terminal states, its detail line (the key's name) shows.
+  assert.doesNotMatch(css, /\[data-state='needs-key'\][^{}]*#global-loading-detail\s*\{\s*display:\s*none/);
 });
 
 test('retains the worst terminal outcome until every concurrent load drains', () => {

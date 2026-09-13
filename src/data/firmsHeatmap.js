@@ -320,6 +320,9 @@ export function createFirmsHeatmapLayer({
         lastUpdate: _lastUpdate,
         loading: _loading,
         stale: _stale,
+        // A missing key is its own state in the loading banner, not a failure.
+        keyRequired: _keyRequired,
+        keySetupId: 'firms',
         error: _keyRequired ? 'KEY REQUIRED' : (_stale ? staleText : _error),
         loadingLabel,
       };

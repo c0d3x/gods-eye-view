@@ -190,6 +190,13 @@ test('real FIRMS lifecycle clears host entries on disable and destroy', async ()
     layer.init(viewer);
     await layer.enable(viewer);
     assert.deepEqual(calls.at(-1), ['visible', FIRMS_OVERLAY_SOURCE_ID, true]);
+    // Keyless: the layer says a key is missing, and which one, so the loading
+    // banner reads KEY REQUIRED rather than LOAD FAILED.
+    await layer.update(viewer);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(layer.getStats().keyRequired, true);
+    assert.equal(layer.getStats().keySetupId, 'firms');
+    assert.equal(layer.getStats().error, 'KEY REQUIRED', 'its own row keeps its wording');
     layer.disable();
     assert.deepEqual(calls.slice(-2), [
       ['clear', FIRMS_OVERLAY_SOURCE_ID],

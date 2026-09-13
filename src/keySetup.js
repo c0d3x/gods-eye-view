@@ -328,6 +328,8 @@ export async function initKeySetup({ documentRef = globalThis.document, fetchImp
   };
 
   chip.addEventListener('click', openDialog);
+  // A KEY REQUIRED status offers the same way in (ui.js).
+  documentRef.addEventListener?.('gev:open-key-setup', openDialog, { signal: lifetime.signal });
   closeButton?.addEventListener('click', close);
   applyButton?.addEventListener('click', onApply);
   // Remove buttons are rendered per row; delegate so re-renders stay wired.
