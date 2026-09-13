@@ -18,7 +18,6 @@ import { forward as toMGRS } from 'mgrs';
 import { CITY_POIS } from './locations.js';
 import { composeLocalityTag } from './hudLocality.js';
 import { ellipsoidalToMslDisplayM, ensureGeoidReadyWhenIdle, geoidHeight, isGeoidReady } from './data/geoid.js';
-import { getBasemapLabelContext } from './voice/gevActions.js';
 import { isHudSummaryUnconfigured } from './hudSummaryResponse.js';
 
 /** Color palettes keyed by shader mode; applied as CSS custom properties. */
@@ -706,6 +705,8 @@ export class IntelHUD {
   }
 
   async _summaryContext() {
+    // The voice actions load with the voice stack's chunk; this reuses it.
+    const { getBasemapLabelContext } = await import('./voice/gevActions.js');
     const labels = await getBasemapLabelContext(this.viewer);
     const enabledLayers = this._dataManager?.getAll?.()
       ?.filter((layer) => layer.enabled)

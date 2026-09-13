@@ -27,6 +27,10 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Changed
 
+- The voice stack loads right after startup instead of with it, which takes
+  about 120 kB (35 kB gzipped) off the JavaScript the app parses before first
+  paint. The mic control appears once it arrives.
+
 - `vite.config.js` now holds only configuration and plugin wiring; it was
   7,800 lines. Every route plugin is a module under `server/proxies/`: radio,
   Overpass and routes, CCTV, military installations, regional briefs and

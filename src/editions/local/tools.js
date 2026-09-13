@@ -8,7 +8,6 @@ import {
 } from '../../renderGovernor.js';
 import { SceneDirector } from '../../scenes/director.js';
 import { destroyScopeMask, installScopeMask } from '../../scopeMask.js';
-import { initGevVoiceCommands } from '../../voice/gevRealtime.js';
 import { startLocalChrome } from './startupChrome.js';
 
 /** Attach scene tools, rendering listeners and the standalone debug handle. */
@@ -96,18 +95,45 @@ export function createLocalTools({
   defer(() => {
     if (window.__godsEyeView === debug) delete window.__godsEyeView;
   });
-  const voiceCommands = initGevVoiceCommands({
-    viewer,
-    styleManager,
-    dataManager,
-    sceneDirector,
-    annotations,
-  });
+  // The voice stack is a chunk of its own. It starts loading once everything
+  // above is attached, and its controls appear when it arrives; a teardown
+  // that comes first means it never starts.
+  let voiceCommands = null;
+  let closed = false;
   defer(() => {
+    closed = true;
+    if (!voiceCommands) return;
     voiceCommands.stop({ removeUi: true });
     if (window.__gevVoiceCommands === voiceCommands)
       delete window.__gevVoiceCommands;
   });
-  debug.voiceCommands = voiceCommands;
-  return { sceneDirector, annotations, voiceCommands };
+  const voiceReady = import('../../voice/gevRealtime.js').then(
+    ({ initGevVoiceCommands }) => {
+      if (closed) return null;
+      voiceCommands = initGevVoiceCommands({
+        viewer,
+        styleManager,
+        dataManager,
+        sceneDirector,
+        annotations,
+      });
+      debug.voiceCommands = voiceCommands;
+      return voiceCommands;
+    },
+    (error) => {
+      console.warn(
+        '[GEV] Voice control failed to load:',
+        error?.message || error,
+      );
+      return null;
+    },
+  );
+  return {
+    sceneDirector,
+    annotations,
+    voiceReady,
+    get voiceCommands() {
+      return voiceCommands;
+    },
+  };
 }
