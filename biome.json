@@ -81,7 +81,8 @@
       "src/tooling/qaUrl.test.mjs",
       "scripts/changelog.mjs",
       "src/tooling/changelog.test.mjs",
-      "src/tooling/releaseWorkflow.test.mjs"
+      "src/tooling/releaseWorkflow.test.mjs",
+      "src/openskyAuthMode.test.mjs"
     ]
   },
   "formatter": {

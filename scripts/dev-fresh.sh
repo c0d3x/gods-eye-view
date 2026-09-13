@@ -129,7 +129,11 @@ resolve_opensky_credentials() {
   OPENSKY_AUTH_MODE="$(printf '%s' "${OPENSKY_AUTH_MODE:-oauth}" | tr '[:upper:]' '[:lower:]')"
   OPENSKY_CREDENTIALS_FILE="${OPENSKY_CREDENTIALS_FILE:-$(read_dotenv_value "OPENSKY_CREDENTIALS_FILE")}"
   case "${OPENSKY_AUTH_MODE}" in
-    basic|oauth|auto|anon) ;;
+    oauth|anon) ;;
+    basic|auto)
+      echo "warning: OpenSky no longer accepts Basic auth; OPENSKY_AUTH_MODE='${OPENSKY_AUTH_MODE}' now means 'oauth'"
+      OPENSKY_AUTH_MODE="oauth"
+      ;;
     *)
       echo "warning: invalid OPENSKY_AUTH_MODE='${OPENSKY_AUTH_MODE}', defaulting to 'oauth'"
       OPENSKY_AUTH_MODE="oauth"
@@ -139,33 +143,11 @@ resolve_opensky_credentials() {
   # Explicit env wins, then .env, then the credentials file / Keychain below.
   OPENSKY_CLIENT_ID="${OPENSKY_CLIENT_ID:-$(read_dotenv_value "OPENSKY_CLIENT_ID")}"
   OPENSKY_CLIENT_SECRET="${OPENSKY_CLIENT_SECRET:-$(read_dotenv_value "OPENSKY_CLIENT_SECRET")}"
-  OPENSKY_USERNAME="${OPENSKY_USERNAME:-$(read_dotenv_value "OPENSKY_USERNAME")}"
-  OPENSKY_PASSWORD="${OPENSKY_PASSWORD:-$(read_dotenv_value "OPENSKY_PASSWORD")}"
 
-  if [[ "${OPENSKY_AUTH_MODE}" == "basic" || "${OPENSKY_AUTH_MODE}" == "auto" ]] && [[ -z "${OPENSKY_USERNAME}" ]]; then
-    for svc in "opensky-network" "opensky"; do
-      for acct in "username" "user" "login" "email" "default"; do
-        OPENSKY_USERNAME="$(read_keychain_secret "${svc}" "${acct}")"
-        if [[ -n "${OPENSKY_USERNAME}" ]]; then
-          break 2
-        fi
-      done
-    done
-  fi
-  if [[ "${OPENSKY_AUTH_MODE}" == "basic" || "${OPENSKY_AUTH_MODE}" == "auto" ]] && [[ -z "${OPENSKY_PASSWORD}" ]]; then
-    for svc in "opensky-network" "opensky"; do
-      for acct in "password" "pass" "token" "secret" "default"; do
-        OPENSKY_PASSWORD="$(read_keychain_secret "${svc}" "${acct}")"
-        if [[ -n "${OPENSKY_PASSWORD}" ]]; then
-          break 2
-        fi
-      done
-    done
-  fi
-  if [[ "${OPENSKY_AUTH_MODE}" == "oauth" || "${OPENSKY_AUTH_MODE}" == "auto" ]] && [[ -n "${OPENSKY_CREDENTIALS_FILE}" ]]; then
+  if [[ "${OPENSKY_AUTH_MODE}" == "oauth" ]] && [[ -n "${OPENSKY_CREDENTIALS_FILE}" ]]; then
     load_opensky_oauth_from_file "${OPENSKY_CREDENTIALS_FILE}"
   fi
-  if [[ "${OPENSKY_AUTH_MODE}" == "oauth" || "${OPENSKY_AUTH_MODE}" == "auto" ]] && [[ -z "${OPENSKY_CLIENT_ID}" ]]; then
+  if [[ "${OPENSKY_AUTH_MODE}" == "oauth" ]] && [[ -z "${OPENSKY_CLIENT_ID}" ]]; then
     for svc in "opensky-network" "opensky"; do
       for acct in "client_id" "client-id" "client" "api-key"; do
         OPENSKY_CLIENT_ID="$(read_keychain_secret "${svc}" "${acct}")"
@@ -175,7 +157,7 @@ resolve_opensky_credentials() {
       done
     done
   fi
-  if [[ "${OPENSKY_AUTH_MODE}" == "oauth" || "${OPENSKY_AUTH_MODE}" == "auto" ]] && [[ -z "${OPENSKY_CLIENT_SECRET}" ]]; then
+  if [[ "${OPENSKY_AUTH_MODE}" == "oauth" ]] && [[ -z "${OPENSKY_CLIENT_SECRET}" ]]; then
     for svc in "opensky-network" "opensky"; do
       for acct in "client_secret" "client-secret" "secret"; do
         OPENSKY_CLIENT_SECRET="$(read_keychain_secret "${svc}" "${acct}")"
@@ -186,22 +168,10 @@ resolve_opensky_credentials() {
     done
   fi
 
-  case "${OPENSKY_AUTH_MODE}" in
-    basic)
-      OPENSKY_CLIENT_ID=""
-      OPENSKY_CLIENT_SECRET=""
-      ;;
-    oauth)
-      OPENSKY_USERNAME=""
-      OPENSKY_PASSWORD=""
-      ;;
-    anon)
-      OPENSKY_CLIENT_ID=""
-      OPENSKY_CLIENT_SECRET=""
-      OPENSKY_USERNAME=""
-      OPENSKY_PASSWORD=""
-      ;;
-  esac
+  if [[ "${OPENSKY_AUTH_MODE}" == "anon" ]]; then
+    OPENSKY_CLIENT_ID=""
+    OPENSKY_CLIENT_SECRET=""
+  fi
 }
 
 resolve_opensky_credentials
@@ -297,27 +267,11 @@ if [[ -n "${OPENSKY_CREDENTIALS_FILE}" ]]; then
   fi
 fi
 case "${OPENSKY_AUTH_MODE}" in
-  basic)
-    if [[ -n "${OPENSKY_USERNAME}" && -n "${OPENSKY_PASSWORD}" ]]; then
-      echo "OpenSky basic auth: configured"
-    else
-      echo "OpenSky basic auth: missing credentials"
-    fi
-    ;;
   oauth)
     if [[ -n "${OPENSKY_CLIENT_ID}" && -n "${OPENSKY_CLIENT_SECRET}" ]]; then
       echo "OpenSky OAuth: configured"
     else
       echo "OpenSky OAuth: missing client credentials"
-    fi
-    ;;
-  auto)
-    if [[ -n "${OPENSKY_CLIENT_ID}" && -n "${OPENSKY_CLIENT_SECRET}" ]]; then
-      echo "OpenSky auto auth: OAuth configured"
-    elif [[ -n "${OPENSKY_USERNAME}" && -n "${OPENSKY_PASSWORD}" ]]; then
-      echo "OpenSky auto auth: basic configured"
-    else
-      echo "OpenSky auto auth: no credentials found"
     fi
     ;;
   anon)
@@ -373,8 +327,6 @@ put_env OPENSKY_AUTH_MODE "${OPENSKY_AUTH_MODE}"
 put_env_if_set OPENSKY_CREDENTIALS_FILE "${OPENSKY_CREDENTIALS_FILE}"
 put_env_if_set OPENSKY_CLIENT_ID "${OPENSKY_CLIENT_ID}"
 put_env_if_set OPENSKY_CLIENT_SECRET "${OPENSKY_CLIENT_SECRET}"
-put_env_if_set OPENSKY_USERNAME "${OPENSKY_USERNAME}"
-put_env_if_set OPENSKY_PASSWORD "${OPENSKY_PASSWORD}"
 put_env_if_set OPENAI_API_KEY "${OPENAI_API_KEY}"
 put_env_if_set AISSTREAM_API_KEY "${AISSTREAM_API_KEY}"
 put_env_if_set CESIUM_ION_TOKEN "${CESIUM_ION_TOKEN}"

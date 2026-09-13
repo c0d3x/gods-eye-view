@@ -3,7 +3,7 @@
  *
  * Registers the dev-server proxy middlewares that bypass CORS and add
  * caching/auth for upstream APIs:
- *   1. OpenSky  — aircraft state vectors (OAuth / Basic / anon)
+ *   1. OpenSky  — aircraft state vectors (OAuth / anon)
  *   2. CelesTrak — satellite TLE orbital elements
  *   3. Overpass  — OpenStreetMap road geometry queries
  *   4. GBFS     — bike-share station feeds
@@ -200,12 +200,18 @@ function openskyAdaptiveTtlMs(remaining) {
 }
 /** @type {boolean} Guards duplicate auth-failure warnings in logs. */
 let _openskyAuthWarned = false;
-/** @type {boolean} Guards duplicate invalid-auth-mode warnings. */
-let _openskyAuthModeWarned = false;
+/** @type {Set<string>} OPENSKY_AUTH_MODE values already warned about. */
+const _openskyAuthModeWarned = new Set();
 /** Default auth mode when OPENSKY_AUTH_MODE env is unset. */
 const OPENSKY_AUTH_MODE_DEFAULT = 'oauth';
 /** Set of valid OPENSKY_AUTH_MODE values. */
-const OPENSKY_AUTH_MODE_SET = new Set(['basic', 'oauth', 'auto', 'anon']);
+const OPENSKY_AUTH_MODE_SET = new Set(['oauth', 'anon']);
+/**
+ * Modes that relied on HTTP Basic auth, which OpenSky no longer accepts. Both
+ * now mean OAuth, which already falls back to anonymous access without a
+ * configured client.
+ */
+const OPENSKY_RETIRED_AUTH_MODES = new Set(['basic', 'auto']);
 /** Regional civilian fallback cache, keyed by a coarse 0.25° view anchor. */
 const _adsbLolPointCache = new Map();
 /** Per-anchor single-flight map for concurrent regional fallback requests. */
@@ -1527,18 +1533,20 @@ async function getOpenSkyToken() {
 /**
  * Validate and normalize the OPENSKY_AUTH_MODE env value.
  *
- * @param {string} value - Raw env value (e.g. 'basic', 'oauth', 'auto', 'anon').
+ * @param {string} value - Raw env value ('oauth' or 'anon').
  * @returns {string} One of the valid mode strings, or the default ('oauth').
  */
-function normalizeOpenSkyAuthMode(value) {
+export function normalizeOpenSkyAuthMode(value) {
   const raw = String(value || '').trim().toLowerCase();
   if (!raw) return OPENSKY_AUTH_MODE_DEFAULT;
   if (OPENSKY_AUTH_MODE_SET.has(raw)) return raw;
-  if (!_openskyAuthModeWarned) {
+  if (!_openskyAuthModeWarned.has(raw)) {
+    _openskyAuthModeWarned.add(raw);
     console.warn(
-      `[OpenSky] Invalid OPENSKY_AUTH_MODE="${raw}", defaulting to "${OPENSKY_AUTH_MODE_DEFAULT}"`
+      OPENSKY_RETIRED_AUTH_MODES.has(raw)
+        ? `[OpenSky] OPENSKY_AUTH_MODE="${raw}" relied on Basic auth, which OpenSky no longer accepts; using "${OPENSKY_AUTH_MODE_DEFAULT}"`
+        : `[OpenSky] Invalid OPENSKY_AUTH_MODE="${raw}", defaulting to "${OPENSKY_AUTH_MODE_DEFAULT}"`
     );
-    _openskyAuthModeWarned = true;
   }
   return OPENSKY_AUTH_MODE_DEFAULT;
 }
@@ -3065,12 +3073,12 @@ function openSkySourceIsStale(sourceEpochMs, now = Date.now()) {
 }
 
 /**
- * Vite plugin: OpenSky Network proxy with multi-mode auth and response caching.
+ * Vite plugin: OpenSky Network proxy with OAuth and response caching.
  *
- * Supports four auth modes controlled by OPENSKY_AUTH_MODE env:
- *   - 'oauth'  (default) — client_credentials bearer token
- *   - 'basic'  — HTTP Basic with OPENSKY_USERNAME / OPENSKY_PASSWORD
- *   - 'auto'   — try OAuth first, fall back to Basic, then anon
+ * OPENSKY_AUTH_MODE picks the auth mode. OpenSky accepts only OAuth2 client
+ * credentials, so the retired 'basic' and 'auto' modes mean 'oauth':
+ *   - 'oauth'  (default) — client_credentials bearer token, or anonymous
+ *               access while no client is configured
  *   - 'anon'   — no credentials
  *
  * Successful responses are cached for OPENSKY_CACHE_MS (~9 s). On
@@ -3139,22 +3147,11 @@ function openSkyProxy() {
             return;
           }
 
-          const basicUser = process.env.OPENSKY_USERNAME || '';
-          const basicPass = process.env.OPENSKY_PASSWORD || '';
-          const hasBasicCreds = Boolean(basicUser && basicPass);
           const headers = { 'Accept': 'application/json' };
           let usedMode = 'anon';
           let reason = 'forced_anonymous';
 
-          if (requestedMode === 'basic') {
-            if (hasBasicCreds) {
-              headers.Authorization = `Basic ${Buffer.from(`${basicUser}:${basicPass}`).toString('base64')}`;
-              usedMode = 'basic';
-              reason = 'basic_credentials';
-            } else {
-              reason = 'missing_basic_creds';
-            }
-          } else if (requestedMode === 'oauth') {
+          if (requestedMode === 'oauth') {
             const token = await getOpenSkyToken();
             if (token) {
               headers.Authorization = `Bearer ${token}`;
@@ -3163,48 +3160,15 @@ function openSkyProxy() {
             } else {
               reason = 'oauth_invalid_or_missing';
             }
-          } else if (requestedMode === 'auto') {
-            const token = await getOpenSkyToken();
-            if (token) {
-              headers.Authorization = `Bearer ${token}`;
-              usedMode = 'oauth';
-              reason = 'oauth_token';
-            } else if (hasBasicCreds) {
-              headers.Authorization = `Basic ${Buffer.from(`${basicUser}:${basicPass}`).toString('base64')}`;
-              usedMode = 'basic';
-              reason = 'oauth_unavailable_fallback_basic';
-            } else {
-              reason = 'missing_oauth_and_basic_creds';
-            }
           }
 
           // Not tied to this client's connection: a finished call still
           // refreshes the shared cache, and OpenSky charges for it either way.
-          let upstream = await fetchWithTimeout(
+          const upstream = await fetchWithTimeout(
             'https://opensky-network.org/api/states/all?extended=1',
             { headers },
             { timeoutMs: OPENSKY_STATES_TIMEOUT_MS }
           );
-          // Auto-mode fallback: if OAuth was rejected, retry with Basic credentials
-          if (
-            (upstream.status === 401 || upstream.status === 403) &&
-            requestedMode === 'auto' &&
-            usedMode === 'oauth' &&
-            hasBasicCreds
-          ) {
-            const retryHeaders = {
-              Accept: 'application/json',
-              Authorization: `Basic ${Buffer.from(`${basicUser}:${basicPass}`).toString('base64')}`,
-            };
-            try { await upstream.body?.cancel(); } catch { /* no-op */ }
-            upstream = await fetchWithTimeout(
-              'https://opensky-network.org/api/states/all?extended=1',
-              { headers: retryHeaders },
-              { timeoutMs: OPENSKY_STATES_TIMEOUT_MS }
-            );
-            usedMode = 'basic';
-            reason = 'oauth_rejected_fallback_basic';
-          }
 
           let body = await readResponseTextCapped(upstream, OPENSKY_STATES_MAX_BYTES);
           const sourceEpochMs = upstream.ok ? openSkySourceEpochMs(body) : null;
@@ -3264,31 +3228,16 @@ function openSkyProxy() {
           }
 
           if (upstream.status === 401 || upstream.status === 403) {
-            if (requestedMode === 'basic' && !hasBasicCreds) {
-              body = JSON.stringify({
-                error: 'OpenSky auth missing. Basic mode requires OPENSKY_USERNAME and OPENSKY_PASSWORD.',
-              });
-              reason = 'missing_basic_creds';
-            } else if (requestedMode === 'oauth' && usedMode !== 'oauth') {
+            if (requestedMode === 'oauth' && usedMode !== 'oauth') {
               body = JSON.stringify({
                 error: 'OpenSky auth invalid. OAuth mode requires valid OPENSKY_CLIENT_ID and OPENSKY_CLIENT_SECRET.',
               });
               reason = 'oauth_invalid_or_missing';
-            } else if (usedMode === 'basic') {
-              body = JSON.stringify({
-                error: 'OpenSky auth invalid. Username/password were rejected.',
-              });
-              reason = 'basic_invalid_credentials';
             } else if (usedMode === 'oauth') {
               body = JSON.stringify({
                 error: 'OpenSky auth invalid. OAuth client credentials were rejected.',
               });
               reason = 'oauth_invalid_credentials';
-            } else if (requestedMode === 'auto' && !hasBasicCreds) {
-              body = JSON.stringify({
-                error: 'OpenSky auth missing. Provide basic credentials or valid OAuth client credentials.',
-              });
-              reason = 'missing_oauth_and_basic_creds';
             } else {
               body = JSON.stringify({
                 error: 'OpenSky auth required.',
@@ -3304,8 +3253,6 @@ function openSkyProxy() {
           // Refine the reason string to reflect the actual outcome
           if (upstream.ok && reason === 'forced_anonymous') {
             reason = 'anonymous_ok';
-          } else if (upstream.ok && usedMode === 'basic' && reason === 'basic_credentials') {
-            reason = 'basic_ok';
           } else if (upstream.ok && usedMode === 'oauth' && reason === 'oauth_token') {
             reason = 'oauth_ok';
           }

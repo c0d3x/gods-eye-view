@@ -8,6 +8,13 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ## [Unreleased]
 
+### Removed
+
+- Drop OpenSky's Basic-auth modes. OpenSky's API accepts only OAuth2 client
+  credentials now, so `OPENSKY_AUTH_MODE=basic` and `auto` could no longer
+  work. Both now mean `oauth`, with a warning, and the proxy and the launcher
+  no longer read `OPENSKY_USERNAME` or `OPENSKY_PASSWORD`.
+
 ## [0.2.0] - 2026-09-13
 
 Security hardening, fixes, Vite 8, Cesium 1.145 and new CI checks.
