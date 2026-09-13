@@ -43,6 +43,32 @@ test('the global keyboard ring survives local active and outline-reset rules', (
   ]) assert.ok(rule.includes(selector), `${selector} receives the global ring`);
 });
 
+function selectorList(rule) {
+  return rule
+    .slice(rule.indexOf('(') + 1, rule.indexOf(')'))
+    .split(',')
+    .map((selector) => selector.trim());
+}
+
+test('focus scrolling leaves room for the widest ring', () => {
+  const ring = ruleText(':where(\n  button,');
+  const start = css.indexOf(':where(\n  button,', css.indexOf(ring) + ring.length);
+  assert.ok(start >= 0, 'a second :where() rule sets the scroll margin');
+  const margin = css.slice(start, css.indexOf('}', start) + 1);
+  assert.deepEqual(selectorList(margin), selectorList(ring), 'it covers the same controls');
+  // Set before focus arrives: the scroll happens as focus moves.
+  assert.match(margin, /\)\s*\{/, 'it is not limited to :focus-visible');
+  const scrollMargin = Number(/scroll-margin:\s*(\d+)px/.exec(margin)?.[1]);
+  const ringWidth = Number(/outline:\s*(\d+)px/.exec(ring)[1]);
+  const widestOffset = Math.max(
+    ...[...css.matchAll(/outline-offset:\s*(-?\d+(?:\.\d+)?)px/g)].map((match) => Number(match[1])),
+  );
+  assert.ok(
+    scrollMargin >= ringWidth + widestOffset,
+    `scroll-margin ${scrollMargin}px must fit a ${ringWidth}px ring drawn ${widestOffset}px out`,
+  );
+});
+
 test('Location city, POI, search toggle and search field use an inset ring', () => {
   const rule = ruleText('.location-pill:focus-visible,');
   assert.match(rule, /\.poi-pill:focus-visible/);

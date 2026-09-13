@@ -110,6 +110,12 @@ of current runtime behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md
   older layouts stayed in localStorage for good. Positions saved under any
   older version now bring up the notice once and are then deleted.
 
+- Keep keyboard focus rings whole in scrolling panels. Tabbing to a control
+  at the top or bottom of a scrolling list scrolled it flush with the edge,
+  which cut off its ring on that side: the scene controls, saved shots and
+  Provider Settings rows. Focusable controls now keep a 6-pixel scroll
+  margin. An audit of every control found that each one gets a visible ring.
+
 - Separate optional Google server credentials for Places and Street View from
   the browser key, contributed by Tom-Neverwinter (#110). Provider Settings,
   Pinokio's app-specific credential handling and setup diagnostics recognize
