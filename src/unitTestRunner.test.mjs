@@ -187,7 +187,7 @@ test('the Windows job runs the DACL test, with the same deadline', () => {
   const args = command.split(/\s+/);
   for (const flag of unitTestFlags()) assert.ok(args.includes(flag), `${flag} is passed`);
   assert.equal(args.includes('--test-force-exit'), false, 'force-exit can drop tests');
-  assert.ok(args.includes('src/keySetupHardening.test.mjs'), 'the real DACL check only runs on Windows');
+  assert.ok(args.includes('server/keySetupHardening.test.mjs'), 'the real DACL check only runs on Windows');
   const root = fileURLToPath(new URL('..', import.meta.url));
   for (const file of args.filter((arg) => arg.endsWith('.test.mjs'))) {
     assert.ok(existsSync(path.join(root, file)), `${file} exists`);

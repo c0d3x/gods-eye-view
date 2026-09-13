@@ -1,6 +1,6 @@
 import * as Cesium from 'cesium';
 import { governorRequestRender } from './renderGovernor.js';
-import { keySetupRequirement } from './keySetupCore.mjs';
+import { keySetupRequirement } from './keySetupCatalog.js';
 
 /**
  * Why Google 3D is unavailable, phrased so the tooltip and toast recommend the

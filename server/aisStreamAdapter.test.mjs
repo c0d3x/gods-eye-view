@@ -14,7 +14,7 @@ import {
   isRecognizedAisEnvelope,
   parseAisEnvelope,
   parseRetryAfterMs,
-} from './aisStreamAdapter.js';
+} from './aisStreamAdapter.mjs';
 
 const ENV = { hasKey: true, hasTransport: true, keyFingerprint: 'key-a' };
 

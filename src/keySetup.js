@@ -3,7 +3,7 @@
  *
  * A small chip sits bottom-right whenever the app is running under the dev
  * server with keys still missing. It opens a dialog rendered ENTIRELY from
- * GET /api/setup/status (the registry lives in src/keySetupCore.mjs and this
+ * GET /api/setup/status (the registry lives in src/keySetupCatalog.js and this
  * module never duplicates it): one row per key, what it unlocks, where to get
  * it, and a paste field. SAVE posts to /api/setup/keys, which writes the
  * repo-root .env and restarts the dev server — Vite's client then reloads the

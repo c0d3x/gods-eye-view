@@ -6,7 +6,7 @@ import {
   fetchTerrainChunkWithRetry,
   resolveTerrainHeightRequest,
   terrainPointKey,
-} from './terrainHeightsProxy.js';
+} from './terrainHeightsProxy.mjs';
 
 function result(id, ellipsoid) {
   return { id, ellipsoid, elevation: ellipsoid - 10, geoid: 10 };

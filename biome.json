@@ -92,7 +92,12 @@
       "src/tooling/qaSetup.test.mjs",
       "src/tooling/forkIdentity.test.mjs",
       "src/tooling/repoDocs.test.mjs",
-      "src/tooling/currentStateDocs.test.mjs"
+      "src/tooling/currentStateDocs.test.mjs",
+      "src/keySetupCatalog.js",
+      "server/lib/jsonResponse.mjs",
+      "server/lib/jsonResponse.test.mjs",
+      "server/lib/googleServerKey.mjs",
+      "server/lib/googleServerKey.test.mjs"
     ]
   },
   "formatter": {

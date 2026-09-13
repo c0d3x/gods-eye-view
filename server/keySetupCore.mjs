@@ -1,15 +1,17 @@
 /**
  * Key setup ("POWER UP") — the pure core.
  *
- * One registry, three pure functions, zero dependencies. The dev server's
- * /api/setup endpoints (vite.config.js) and the in-app panel (keySetup.js)
- * are both thin shells over this module, so what a key is called, what it
- * unlocks, and how a .env line is written each live in exactly one place.
+ * The dev server's /api/setup endpoints (vite.config.js) are a thin shell over
+ * this module: how a request is admitted, how an update is validated and how
+ * a .env line is written each live here once. The registry of keys itself is
+ * src/keySetupCatalog.js, which the in-app panel's tooltips read too.
  *
  * Nothing here touches the filesystem, the network, or process.env — callers
  * pass environments in and write text out, which is also what makes every
  * behavior below unit-testable.
  */
+
+import { KEY_SETUP_KEYS, knownKeySetupEnvVars } from '../src/keySetupCatalog.js';
 
 /** Longest accepted key/token value. Real provider keys are all far shorter. */
 export const KEY_SETUP_VALUE_LIMIT = 512;
@@ -19,90 +21,6 @@ export const KEY_SETUP_UPDATE_LIMIT = 16;
 
 /** Header line written above keys the panel appends to a .env file. */
 export const KEY_SETUP_APPEND_HEADER = '# Keys added by the in-app POWER UP panel';
-
-/**
- * Every key the panel offers, in the order it offers them — most magic per
- * minute first. `tier` mirrors the README's color legend: 'metered' (🔴) is a
- * billing-enabled account, 'free' (🟡) is a register-and-paste key.
- * `clientExposed` marks the two keys that are injected into the browser
- * bundle by design (restrict them at the provider, per SECURITY.md).
- */
-export const KEY_SETUP_KEYS = Object.freeze([
-  Object.freeze({
-    id: 'google-maps',
-    title: 'GOOGLE MAPS — BROWSER',
-    unlocks: 'The photorealistic 3D planet + place search',
-    getUrl: 'https://developers.google.com/maps/documentation/tile/get-api-key',
-    envVars: Object.freeze(['GOOGLE_MAPS_API_KEY']),
-    tier: 'metered',
-    clientExposed: true,
-  }),
-  Object.freeze({
-    id: 'google-maps-server',
-    title: 'GOOGLE MAPS — SERVER',
-    unlocks: 'Places context + Street View fallback; optional separate key',
-    getUrl: 'https://developers.google.com/maps/documentation/places/web-service/get-api-key',
-    envVars: Object.freeze(['GOOGLE_MAPS_SERVER_API_KEY']),
-    tier: 'metered',
-  }),
-  Object.freeze({
-    id: 'openai',
-    title: 'OPENAI',
-    unlocks: 'Voice control — talk to the planet',
-    getUrl: 'https://platform.openai.com/api-keys',
-    envVars: Object.freeze(['OPENAI_API_KEY']),
-    tier: 'metered',
-  }),
-  Object.freeze({
-    id: 'aisstream',
-    title: 'AISSTREAM',
-    unlocks: 'Live ships, worldwide',
-    getUrl: 'https://aisstream.io',
-    envVars: Object.freeze(['AISSTREAM_API_KEY']),
-    tier: 'free',
-  }),
-  Object.freeze({
-    id: 'firms',
-    title: 'NASA FIRMS',
-    unlocks: 'Live active-fire detections',
-    getUrl: 'https://firms.modaps.eosdis.nasa.gov/api/map_key/',
-    envVars: Object.freeze(['FIRMS_MAP_KEY']),
-    tier: 'free',
-  }),
-  Object.freeze({
-    id: 'tomtom',
-    title: 'TOMTOM',
-    unlocks: 'Real live traffic (keyless runs a simulation)',
-    getUrl: 'https://developer.tomtom.com',
-    envVars: Object.freeze(['TOMTOM_API_KEY']),
-    tier: 'free',
-  }),
-  Object.freeze({
-    id: 'cesium-ion',
-    title: 'CESIUM ION',
-    unlocks: 'Bing imagery map stacks + world terrain',
-    getUrl: 'https://ion.cesium.com/tokens',
-    envVars: Object.freeze(['CESIUM_ION_TOKEN']),
-    tier: 'free',
-    clientExposed: true,
-  }),
-  Object.freeze({
-    id: 'opensky',
-    title: 'OPENSKY',
-    unlocks: 'More flight-polling credits (anonymous works without)',
-    getUrl: 'https://opensky-network.org',
-    envVars: Object.freeze(['OPENSKY_CLIENT_ID', 'OPENSKY_CLIENT_SECRET']),
-    tier: 'free',
-  }),
-  Object.freeze({
-    id: 'launch-library',
-    title: 'LAUNCH LIBRARY',
-    unlocks: 'Higher space-missions request allowance',
-    getUrl: 'https://thespacedevs.com',
-    envVars: Object.freeze(['LL2_API_TOKEN']),
-    tier: 'free',
-  }),
-]);
 
 /** Hostnames a Provider Settings request may arrive under or originate from. */
 const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
@@ -261,27 +179,6 @@ export function admitKeySetupRequest({
     return { ok: false, status: 415, error: 'Content-Type must be application/json' };
   }
   return { ok: true };
-}
-
-/** @returns {Set<string>} every env var the panel is allowed to write. */
-export function knownKeySetupEnvVars() {
-  const names = new Set();
-  for (const entry of KEY_SETUP_KEYS) {
-    for (const envVar of entry.envVars) names.add(envVar);
-  }
-  return names;
-}
-
-/** Tooltip guidance for a control gated by one registry entry. */
-export function keySetupRequirement(id) {
-  const entry = KEY_SETUP_KEYS.find((candidate) => candidate.id === id);
-  if (!entry) return '';
-  return `Needs ${entry.envVars.join(' + ')} — add it in Provider Settings`;
-}
-
-/** The environment variables a key-setup entry needs, or none for an unknown id. */
-export function keySetupEnvVars(id) {
-  return KEY_SETUP_KEYS.find((candidate) => candidate.id === id)?.envVars || [];
 }
 
 /**

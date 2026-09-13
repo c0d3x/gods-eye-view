@@ -58,3 +58,14 @@ Neither export imports standalone UI, layers, tools or configuration. See
 
 UI panels and individual source adapters remain future extractions. They should
 become smaller modules with explicit lifecycle owners as their callers migrate.
+
+## Server boundary
+
+The dev server's code lives outside the browser tree: its modules under
+`server/`, and the helpers they share under `server/lib/`. Those helpers are
+the request guard, JSON responses, request bodies, rate limits, fetch
+timeouts, caches, camera fetching and the Google server key, each defined
+once. Server code may import browser modules that are safe on both sides, such
+as the provider catalog in `src/keySetupCatalog.js`. Browser code never imports
+`server/`: `pnpm run check:boundaries` builds the app's browser graph from
+`src/main.js` and fails when it reaches a module under `server/`.

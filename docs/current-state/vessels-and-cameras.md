@@ -43,9 +43,9 @@ Part of the [runtime reference](../CURRENT-STATE.md): live AIS and its health, v
   identity-checked (otherwise a pre-disposal close event orphans a
   post-disposal socket and two connections race for the one slot); durations
   use a monotonic clock, wall time only for display. Policy is a pure state
-  machine (`src/data/aisWatchdog.js`) returning actions; the socket lifecycle
-  is `src/data/aisStreamAdapter.js`, tested directly with mock sockets; the
-  transport assumption is pinned in `src/data/aisWatchdogTransport.test.mjs`.
+  machine (`server/aisWatchdog.mjs`) returning actions; the socket lifecycle
+  is `server/aisStreamAdapter.mjs`, tested directly with mock sockets; the
+  transport assumption is pinned in `server/aisWatchdogTransport.test.mjs`.
 - **Honest live AIS health:** the vessel layer treats socket connection,
   first message receipt, raw payload rows, and accepted vessel positions as
   separate stages. Each enabled session owns one 30-second first-connect

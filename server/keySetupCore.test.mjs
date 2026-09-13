@@ -2,14 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  KEY_SETUP_APPEND_HEADER,
   KEY_SETUP_KEYS,
+  keySetupRequirement,
+  knownKeySetupEnvVars,
+} from '../src/keySetupCatalog.js';
+import {
+  KEY_SETUP_APPEND_HEADER,
   KEY_SETUP_VALUE_LIMIT,
   commandCompletedSuccessfully,
   isKeySetupExternallyManaged,
   keySetupStatus,
-  keySetupRequirement,
-  knownKeySetupEnvVars,
   parseWindowsUserSid,
   upsertDotenvValues,
   validateKeySetupUpdates,

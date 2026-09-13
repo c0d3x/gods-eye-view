@@ -25,7 +25,7 @@
  * @module vite.config
  */
 
-import { resolveGoogleServerKey } from './scripts/google-server-key.mjs';
+import { resolveGoogleServerKey } from './server/lib/googleServerKey.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import { promises as fsp } from 'node:fs';
@@ -53,24 +53,27 @@ import {
   normalizeRegionalWeather,
 } from './src/data/regionalBrief.js';
 import { normalizeAdsbLolPointResponse } from './src/data/adsbLolFallback.js';
-import { createAisStreamAdapter, isRecognizedAisEnvelope } from './src/data/aisStreamAdapter.js';
-import { parseSilenceTimeoutEnv } from './src/data/aisWatchdog.js';
+import { createAisStreamAdapter, isRecognizedAisEnvelope } from './server/aisStreamAdapter.mjs';
+import { parseSilenceTimeoutEnv } from './server/aisWatchdog.mjs';
 import { keylessHudSummaryResponse } from './src/hudSummaryResponse.js';
 import { parseEnv as parseDotenvText } from 'node:util';
 import { readEnvironmentSource as readPinokioEnvironmentSource } from './scripts/pinokio-environment.mjs';
+import { knownKeySetupEnvVars } from './src/keySetupCatalog.js';
 import {
   admitKeySetupRequest,
   isKeySetupExternallyManaged,
   keySetupStatus,
-  knownKeySetupEnvVars,
   upsertDotenvValues,
   validateKeySetupUpdates,
-} from './src/keySetupCore.mjs';
-import { hardenCredentialFileReport } from './src/keySetupHardening.mjs';
+} from './server/keySetupCore.mjs';
+import { hardenCredentialFileReport } from './server/keySetupHardening.mjs';
 import {
+  createCostRateLimiter,
+  createRateLimiter,
   DEFAULT_GOOGLE_REQUESTS_PER_MINUTE,
   DEFAULT_OPENAI_REQUESTS_PER_MINUTE,
-  resolveRateLimit,
+  enforceRateLimit,
+  rateLimitKey,
 } from './server/lib/rateLimit.mjs';
 import { resolveAllowedHosts } from './server/lib/allowedHosts.mjs';
 import { createBoundedCache } from './server/lib/boundedCache.mjs';
@@ -80,6 +83,7 @@ import {
   DEBUG_LOG_MAX_RECORD_BYTES,
   isDebugLogEnabled,
 } from './server/lib/debugLog.mjs';
+import { writeJson } from './server/lib/jsonResponse.mjs';
 import { readBodyWithin } from './server/lib/requestBody.mjs';
 import { createApiRequestGuard } from './server/lib/requestGuard.mjs';
 import {
@@ -107,7 +111,7 @@ import {
   resolveTerrainHeightRequest,
   terrainPointKey,
   validTerrainResult,
-} from './src/data/terrainHeightsProxy.js';
+} from './server/terrainHeightsProxy.mjs';
 import { VOICE_MODELS, isKnownVoiceTier, resolveVoiceModel } from './src/voice/voiceCost.js';
 
 /** Resolve __dirname for ESM context. */
@@ -487,64 +491,15 @@ const ROUTE_MAX_LEG_KM = 600;
 const ROUTE_MAX_TOTAL_KM = 2500;
 
 /**
- * Minimal fixed-window per-key rate limiter for the dev proxies. Not a hard
- * security boundary (dev-only), just a backstop so a runaway client can't hammer
- * the public Overpass / OSRM mirrors or exhaust this process.
+ * Fixed-window backstops (server/lib/rateLimit.mjs) so a runaway client can't
+ * hammer the public Overpass / OSRM mirrors or exhaust this process.
  */
-const RATE_LIMITER_MAX_KEYS = 2000;
-function makeRateLimiter({ windowMs, max, globalMax }) {
-  const hits = new Map(); // key -> number[] (timestamps within window)
-  let globalTimes = []; // all hits in window, for the global backstop
-  return function allow(key) {
-    const now = Date.now();
-    globalTimes = globalTimes.filter((t) => now - t < windowMs);
-    if (globalMax && globalTimes.length >= globalMax) return false; // global backstop
-    const recent = (hits.get(key) || []).filter((t) => now - t < windowMs);
-    if (recent.length >= max) { hits.set(key, recent); return false; }
-    recent.push(now);
-    hits.set(key, recent);
-    globalTimes.push(now);
-    // Hard key cap so a key-rotating caller can't grow the map without bound.
-    if (hits.size > RATE_LIMITER_MAX_KEYS) {
-      const oldest = hits.keys().next().value;
-      if (oldest !== undefined) hits.delete(oldest);
-    }
-    if (hits.size > 256) {
-      for (const [k, v] of hits) {
-        if (!v.length || now - v[v.length - 1] > windowMs) hits.delete(k);
-      }
-    }
-    return true;
-  };
-}
-const _overpassRateLimiter = makeRateLimiter({ windowMs: 60_000, max: 90, globalMax: 300 });
-const _militaryInstallationsRateLimiter = makeRateLimiter({ windowMs: 60_000, max: 90, globalMax: 300 });
-const _routeRateLimiter = makeRateLimiter({ windowMs: 60_000, max: 60, globalMax: 200 });
+const _overpassRateLimiter = createRateLimiter({ windowMs: 60_000, max: 90, globalMax: 300 });
+const _militaryInstallationsRateLimiter = createRateLimiter({ windowMs: 60_000, max: 90, globalMax: 300 });
+const _routeRateLimiter = createRateLimiter({ windowMs: 60_000, max: 60, globalMax: 200 });
 
-/** GEV_RATELIMIT_* variables already reported as unreadable. */
-const _rateLimitWarnings = new Set();
-/**
- * Per-IP rate limiter for a route family that spends provider quota (OpenAI
- * or Google). On by default: server/lib/rateLimit.mjs holds the defaults and
- * reads the GEV_RATELIMIT_* value. The limit is a fixed 60 s window of N
- * requests per client IP, with a global backstop of 20N so one busy host
- * can't starve the rest. `0` or `off` disables it (null); an unreadable value
- * keeps the default and logs one warning per variable.
- *
- * @param {string} envName - The GEV_RATELIMIT_* variable to read.
- * @param {number} fallback - Default requests per minute per IP.
- * @returns {((key:string)=>boolean)|null} An `allow(key)` fn, or null when disabled.
- */
-function makeCostRateLimiter(envName, fallback) {
-  const raw = process.env[envName];
-  const { perMinute, status } = resolveRateLimit(raw, fallback);
-  if (status === 'invalid' && !_rateLimitWarnings.has(envName)) {
-    _rateLimitWarnings.add(envName);
-    console.warn(`[RateLimit] ${envName}=${JSON.stringify(String(raw).slice(0, 40))} is not a number, 0 or off; using the default of ${fallback} per minute.`);
-  }
-  if (perMinute === null) return null;
-  return makeRateLimiter({ windowMs: 60_000, max: perMinute, globalMax: perMinute * 20 });
-}
+// Cost limiters (server/lib/rateLimit.mjs) for the routes that spend OpenAI or
+// Google quota, from the GEV_RATELIMIT_* variables.
 // Built LAZILY on first request, NOT at module load: `.env` values are applied to process.env later
 // (the plugin config hook calls loadEnv → process.env, AFTER this module is imported), so reading
 // process.env here at import time would miss a limit configured in .env. Building on first request
@@ -556,14 +511,14 @@ let _streetViewRateLimiter;
 /** OpenAI cost endpoints (realtime/token + hud-summary). */
 function openAiRateLimiter() {
   if (_openAiRateLimiter === undefined) {
-    _openAiRateLimiter = makeCostRateLimiter('GEV_RATELIMIT_OPENAI_PER_MIN', DEFAULT_OPENAI_REQUESTS_PER_MINUTE);
+    _openAiRateLimiter = createCostRateLimiter('GEV_RATELIMIT_OPENAI_PER_MIN', DEFAULT_OPENAI_REQUESTS_PER_MINUTE);
   }
   return _openAiRateLimiter;
 }
 /** Google Places endpoints (nearby-places + text-search), one shared budget. */
 function googleRateLimiter() {
   if (_googleRateLimiter === undefined) {
-    _googleRateLimiter = makeCostRateLimiter('GEV_RATELIMIT_GOOGLE_PER_MIN', DEFAULT_GOOGLE_REQUESTS_PER_MINUTE);
+    _googleRateLimiter = createCostRateLimiter('GEV_RATELIMIT_GOOGLE_PER_MIN', DEFAULT_GOOGLE_REQUESTS_PER_MINUTE);
   }
   return _googleRateLimiter;
 }
@@ -575,38 +530,9 @@ function googleRateLimiter() {
  */
 function streetViewRateLimiter() {
   if (_streetViewRateLimiter === undefined) {
-    _streetViewRateLimiter = makeCostRateLimiter('GEV_RATELIMIT_GOOGLE_PER_MIN', DEFAULT_GOOGLE_REQUESTS_PER_MINUTE);
+    _streetViewRateLimiter = createCostRateLimiter('GEV_RATELIMIT_GOOGLE_PER_MIN', DEFAULT_GOOGLE_REQUESTS_PER_MINUTE);
   }
   return _streetViewRateLimiter;
-}
-
-/**
- * Apply a cost limiter to a request, writing a 429 when over the cap. A null
- * limiter (turned off with 0 or off) lets every request through.
- *
- * @param {((key:string)=>boolean)|null} limiter
- * @param {import('http').IncomingMessage} req
- * @param {import('http').ServerResponse} res
- * @returns {boolean} True if the request may proceed; false if a 429 was sent.
- */
-function enforceRateLimit(limiter, req, res) {
-  if (!limiter) return true; // turned off with 0 or off
-  if (limiter(clientKey(req))) return true;
-  res.statusCode = 429;
-  res.setHeader('Content-Type', 'application/json');
-  res.setHeader('Retry-After', '5');
-  res.end(JSON.stringify({ error: 'Rate limit exceeded' }));
-  return false;
-}
-
-/**
- * Client key for rate limiting. Uses the real socket peer address only — we do
- * NOT trust X-Forwarded-For (client-controlled; a rotating value would mint fresh
- * quota and grow the limiter map). This is a localhost dev proxy, so the socket
- * address is the real client.
- */
-function clientKey(req) {
-  return String(req.socket?.remoteAddress || 'local');
 }
 
 /** Server-side timeout ceiling (seconds) we allow inside an Overpass QL query. */
@@ -774,22 +700,6 @@ function sanitizeOverpassBody(rawBody) {
     (_, n) => `[timeout:${Math.min(Number(n) || OVERPASS_MAX_QL_TIMEOUT, OVERPASS_MAX_QL_TIMEOUT)}]`,
   );
   return { ok: true, body: `data=${encodeURIComponent(clamped)}` };
-}
-
-/** Read a request body with a hard byte cap; throws { code:'BODY_TOO_LARGE' } past the cap. */
-async function readRequestBodyCapped(req, maxBytes) {
-  const chunks = [];
-  let total = 0;
-  for await (const chunk of req) {
-    total += chunk.length;
-    if (total > maxBytes) {
-      const err = new Error('Request body too large');
-      err.code = 'BODY_TOO_LARGE';
-      throw err;
-    }
-    chunks.push(chunk);
-  }
-  return Buffer.concat(chunks);
 }
 
 /**
@@ -1388,7 +1298,7 @@ const AISSTREAM_STALE_MS = 30 * 60 * 1000;
 const AIS_TRACK_SAMPLES = 64;
 const AIS_TRACK_MIN_GAP_SEC = 30;
 const AIS_TRACK_MIN_MOVE_M = 25;
-// Watchdog budgets (policy lives in src/data/aisWatchdog.js). Silence is
+// Watchdog budgets (policy lives in server/aisWatchdog.mjs). Silence is
 // REPORTED quickly and ACTED ON slowly: a dead feed must read as dead within
 // ~2 min, but recycling the socket is throttled so recovery can never become a
 // reconnect cycle against AISStream's one-connection-per-key limit.
@@ -1956,15 +1866,8 @@ function tomtomProxy() {
       server.middlewares.use('/api/tomtom', async (req, res) => {
         // Sanitized responses only (proxy/security baseline): no upstream
         // error details, and never echo the key or the upstream URL.
-        const sendJson = (status, obj, extraHeaders = {}) => {
-          if (res.headersSent) return;
-          res.writeHead(status, {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-store',
-            ...extraHeaders,
-          });
-          res.end(JSON.stringify(obj));
-        };
+        const sendJson = (status, obj, extraHeaders = {}) =>
+          writeJson(res, status, obj, { 'Cache-Control': 'no-store', ...extraHeaders });
         const sendTile = (buf, cacheStatus) => {
           if (res.headersSent) return;
           res.writeHead(200, {
@@ -2212,11 +2115,7 @@ function firmsProxy() {
     name: 'firms-proxy',
     configureServer(server) {
       server.middlewares.use('/api/firms', async (req, res) => {
-        const sendJson = (status, obj) => {
-          if (res.headersSent) return;
-          res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-          res.end(JSON.stringify(obj));
-        };
+        const sendJson = (status, obj) => writeJson(res, status, obj, { 'Cache-Control': 'no-store' });
         try {
           const subPath = String(req.url || '').split('?')[0];
           const key = mapKey();
@@ -2398,11 +2297,7 @@ export function terrainHeightsProxy({ cacheDir = path.join(process.cwd(), '.gev-
     name: 'terrain-heights-proxy',
     configureServer(server) {
       server.middlewares.use('/api/terrain/heights', async (req, res) => {
-        const send = (status, bodyObj) => {
-          if (res.headersSent) return;
-          res.writeHead(status, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify(bodyObj));
-        };
+        const send = (status, bodyObj) => writeJson(res, status, bodyObj);
         try {
           await loadDiskOnce();
           const parsedUrl = new URL(req.url || '', 'http://internal');
@@ -2767,17 +2662,13 @@ function overpassProxy() {
           }
 
           // Collect POST body with a hard byte cap (Overpass QL queries are small)
-          let body;
-          try {
-            body = (await readRequestBodyCapped(req, OVERPASS_MAX_BODY_BYTES)).toString();
-          } catch (err) {
-            if (err?.code === 'BODY_TOO_LARGE') {
-              res.writeHead(413, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ error: 'Overpass query too large' }));
-              return;
-            }
-            throw err;
+          const bodyRead = await readBodyWithin(req, OVERPASS_MAX_BODY_BYTES);
+          if (!bodyRead.ok) {
+            res.writeHead(413, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Overpass query too large' }));
+            return;
           }
+          let body = bodyRead.text;
           if (!body) {
             res.writeHead(400, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Missing Overpass query body' }));
@@ -2803,7 +2694,7 @@ function overpassProxy() {
             // Fresh-enough disk entries survive restarts and skip the public
             // mirrors; boundary-class queries keep their month-long TTL.
             readDisk: () => readOverpassDisk(cacheKey, overpassDiskTtlMs(cacheKey)),
-            allowUpstream: () => _overpassRateLimiter(clientKey(req)),
+            allowUpstream: () => _overpassRateLimiter(rateLimitKey(req)),
           });
           if (preflight.source === 'RATE_LIMITED') {
             res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '5' });
@@ -2891,7 +2782,7 @@ function overpassProxy() {
           res.end(JSON.stringify({ ok: false, error: msg }));
         };
         try {
-          if (!_routeRateLimiter(clientKey(req))) {
+          if (!_routeRateLimiter(rateLimitKey(req))) {
             res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '5' });
             res.end(JSON.stringify({ ok: false, error: 'rate limited' }));
             return;
@@ -4896,7 +4787,7 @@ export function cctvProxy() {
             return;
           }
 
-          const sv = await streetViewFallback({ lat, lon, heading, fov, pitch, rateLimitKey: clientKey(req) });
+          const sv = await streetViewFallback({ lat, lon, heading, fov, pitch, rateLimitKey: rateLimitKey(req) });
           if (sv?.ok) {
             setHealth(cameraId, {
               status: 'degraded',
@@ -5250,7 +5141,14 @@ export function openAiRealtimeProxy({ debugLogDirectory = REALTIME_DEBUG_LOG_DIR
 
       let context;
       try {
-        context = JSON.parse((await readRequestBody(req, 64 * 1024)) || '{}');
+        const bodyRead = await readBodyWithin(req, 64 * 1024);
+        if (!bodyRead.ok) {
+          res.statusCode = 413;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'HUD summary request too large' }));
+          return;
+        }
+        context = JSON.parse(bodyRead.text || '{}');
       } catch {
         res.statusCode = 400;
         res.setHeader('Content-Type', 'application/json');
@@ -5558,24 +5456,6 @@ function toFiveWordHudSummary(value) {
     .join(' ');
 }
 
-function readRequestBody(req, maxBytes = 1024 * 1024) {
-  return new Promise((resolve, reject) => {
-    let total = 0;
-    const chunks = [];
-    req.on('data', (chunk) => {
-      total += chunk.length;
-      if (total > maxBytes) {
-        reject(new Error(`Request body exceeds ${maxBytes} bytes`));
-        req.destroy();
-        return;
-      }
-      chunks.push(chunk);
-    });
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    req.on('error', reject);
-  });
-}
-
 /**
  * Optional Google place context is an empty capability when no key is present,
  * not a server outage. Returning 200 keeps a deliberately keyless session out
@@ -5635,7 +5515,7 @@ export function googlePlacesContextProxy() {
       // Inlined (not the shared helper) so the 429 body keeps this endpoint's
       // `places: []` contract that the client expects on every error response.
       const _grl = googleRateLimiter();
-      if (_grl && !_grl(clientKey(req))) {
+      if (_grl && !_grl(rateLimitKey(req))) {
         res.statusCode = 429;
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Retry-After', '5');
@@ -5761,7 +5641,7 @@ export function googlePlacesContextProxy() {
       // Inlined (like nearby-places) so the 429 body keeps the `places: []`
       // contract the client expects on every error response.
       const _grl = googleRateLimiter();
-      if (_grl && !_grl(clientKey(req))) {
+      if (_grl && !_grl(rateLimitKey(req))) {
         res.statusCode = 429;
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Retry-After', '5');
@@ -6521,7 +6401,7 @@ const GEV_REALTIME_TOOLS = [
  *
  * Node's built-in WebSocket cannot be used here: it has no terminate(), and
  * its close() waits forever for a close frame a black-holed peer never sends
- * (verified in src/data/aisWatchdogTransport.test.mjs). A socket parked in
+ * (verified in server/aisWatchdogTransport.test.mjs). A socket parked in
  * CLOSING keeps holding AISStream's single per-key connection, which is how
  * the reverted watchdog wedged.
  *
@@ -7238,7 +7118,7 @@ function militaryInstallationsProxy() {
         res.end(JSON.stringify({ error: 'Method Not Allowed' }));
         return;
       }
-      if (!_militaryInstallationsRateLimiter(clientKey(req))) {
+      if (!_militaryInstallationsRateLimiter(rateLimitKey(req))) {
         res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '5' });
         res.end(JSON.stringify({ error: 'Rate limit exceeded' }));
         return;
@@ -7332,14 +7212,14 @@ const REGIONAL_BRIEF_MAX_CACHE = 120;
 const REGIONAL_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const _regionalBriefCache = new Map();
 const _regionalBriefInFlight = new Map();
-const _regionalBriefRateLimiter = makeRateLimiter({ windowMs: 60_000, max: 30, globalMax: 90 });
+const _regionalBriefRateLimiter = createRateLimiter({ windowMs: 60_000, max: 30, globalMax: 90 });
 const WEATHER_EFFECTS_CACHE_MS = 5 * 60_000;
 const WEATHER_EFFECTS_STALE_MS = 30 * 60_000;
 const WEATHER_EFFECTS_MAX_CACHE = 180;
 const WEATHER_EFFECTS_MAX_RESPONSE_BYTES = 512 * 1024;
 const _weatherEffectsCache = new Map();
 const _weatherEffectsInFlight = new Map();
-const _weatherEffectsRateLimiter = makeRateLimiter({ windowMs: 60_000, max: 45, globalMax: 120 });
+const _weatherEffectsRateLimiter = createRateLimiter({ windowMs: 60_000, max: 45, globalMax: 120 });
 let _nominatimQueue = Promise.resolve();
 let _nominatimLastRequestAt = 0;
 
@@ -7572,7 +7452,7 @@ function regionalBriefProxy() {
         res.end(JSON.stringify({ error: 'Method Not Allowed' }));
         return;
       }
-      if (!_regionalBriefRateLimiter(clientKey(req))) {
+      if (!_regionalBriefRateLimiter(rateLimitKey(req))) {
         res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '10' });
         res.end(JSON.stringify({ error: 'Rate limit exceeded' }));
         return;
@@ -7646,7 +7526,7 @@ function weatherEffectsProxy() {
         res.end(JSON.stringify({ error: 'Method Not Allowed' }));
         return;
       }
-      if (!_weatherEffectsRateLimiter(clientKey(req))) {
+      if (!_weatherEffectsRateLimiter(rateLimitKey(req))) {
         res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '10' });
         res.end(JSON.stringify({ error: 'Rate limit exceeded' }));
         return;
@@ -7763,7 +7643,7 @@ function normalizeAisTimestamp(value) {
  *
  * GET  /api/setup/status → which keys are configured, as presence plus a
  *   source classification. Never a value or suffix. The panel renders itself entirely from
- *   this payload, so the key registry stays in one place (src/keySetupCore.mjs).
+ *   this payload, so the key registry stays in one place (src/keySetupCatalog.js).
  * POST /api/setup/keys → validate {ENV_VAR: value} pairs and upsert them into
  *   the repo-root .env (created if absent), set process.env live, then restart
  *   the dev server so the client-exposed defines re-inject and the page
@@ -7833,7 +7713,7 @@ export function keySetupEndpoint() {
     }
   };
   // The gate itself is pure and unit-tested (admitKeySetupRequest in
-  // src/keySetupCore.mjs) — this just feeds it the request.
+  // server/keySetupCore.mjs) — this just feeds it the request.
   const admit = (req) => admitKeySetupRequest({
     method: req.method,
     remoteAddress: req.socket?.remoteAddress,

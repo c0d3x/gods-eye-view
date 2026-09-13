@@ -25,7 +25,7 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
-import { resolveGoogleServerKey } from '../scripts/google-server-key.mjs';
+import { resolveGoogleServerKey } from '../server/lib/googleServerKey.mjs';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '..');

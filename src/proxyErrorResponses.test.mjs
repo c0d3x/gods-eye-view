@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { createBoundedCache } from '../server/lib/boundedCache.mjs';
+import { writeJson } from '../server/lib/jsonResponse.mjs';
 import { ADSBDB_CACHE_MAX_ENTRIES, PROJECT_URL, TERRAIN_CACHE_MAX_POINTS } from '../vite.config.js';
 
 const source = readFileSync(new URL('../vite.config.js', import.meta.url), 'utf8');
@@ -36,6 +37,7 @@ function fixture(name, overrides = {}, preview = false) {
     TERRAIN_CACHE_MAX_POINTS,
     ADSBDB_CACHE_MAX_ENTRIES,
     PROJECT_URL,
+    writeJson,
     ...overrides,
   };
   const helpers = ['readResponseTextCapped', 'coalesceProxyRequest', 'launchLibraryRequestHeaders'].map(extract).join('\n');

@@ -27,6 +27,15 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Changed
 
+- Server code no longer lives in the browser tree. The Provider Settings
+  core, its credential-file hardening, the terrain-heights resolver, the
+  AISStream adapter and its watchdog moved to `server/`; the provider catalog
+  the browser also reads is now `src/keySetupCatalog.js`. The dev server's
+  shared helpers (JSON responses, request bodies, rate limiting and the Google
+  server key) each exist once, in `server/lib/`, and
+  `pnpm run check:boundaries` fails when browser code imports from `server/`.
+  An oversized HUD summary request now gets 413 instead of 400.
+
 - `docs/CURRENT-STATE.md`, 2,806 lines of current behavior, subsystem
   reference and dated notes, is now the index of ten subsystem pages under
   `docs/current-state/`, none longer than 500 lines. Links to it still land

@@ -112,18 +112,94 @@ export async function checkPackageBoundaries(root) {
   return reports;
 }
 
+/** Whether an import specifier names a package rather than a file. */
+function isPackageSpecifier(id) {
+  return !(
+    id.startsWith('.') ||
+    id.startsWith('/') ||
+    id.startsWith('\0') ||
+    path.isAbsolute(id)
+  );
+}
+
+/**
+ * Build the app's browser graph from `entry` and reject every import of a
+ * module under server/: the dev server's code never ships to the browser.
+ * Packages stay external, so only this repository's modules are followed.
+ */
+export async function checkServerBoundary(root, entry = 'src/main.js') {
+  root = await realpath(root);
+  const server = `${normalizePath(path.join(root, 'server'))}/`;
+  const inServer = (id) => normalizePath(id).startsWith(server);
+  const relative = (id) => normalizePath(path.relative(root, id));
+  const crossings = new Set();
+  const modules = new Set();
+  await build({
+    root,
+    configFile: false,
+    envFile: false,
+    publicDir: false,
+    logLevel: 'silent',
+    plugins: [
+      {
+        name: 'check-server-boundary',
+        enforce: 'pre',
+        resolveId(source, importer) {
+          if (!importer || isPackageSpecifier(source)) return null;
+          const from = importer.split('?')[0];
+          const file = source.split('?')[0];
+          let target = path.resolve(path.dirname(from), file);
+          if (path.isAbsolute(file)) {
+            target = normalizePath(file).startsWith(normalizePath(root))
+              ? file
+              : path.join(root, file);
+          }
+          if (inServer(target) && !inServer(from)) {
+            crossings.add(`${relative(from)} → ${relative(target)}`);
+          }
+          return null;
+        },
+        moduleParsed(info) {
+          modules.add(info.id);
+        },
+      },
+    ],
+    worker: { format: 'es' },
+    build: {
+      lib: { entry: path.resolve(root, entry), formats: ['es'] },
+      write: false,
+      minify: false,
+      target: 'esnext',
+      assetsInlineLimit: 0,
+      rolldownOptions: {
+        external: isPackageSpecifier,
+        treeshake: false,
+      },
+    },
+  });
+  if (crossings.size) {
+    throw new Error(
+      `Browser code imports from server/: ${[...crossings].join(', ')}`,
+    );
+  }
+  return { name: 'browser', modules: modules.size };
+}
+
 const invoked = process.argv[1]
   ? pathToFileURL(path.resolve(process.argv[1])).href
   : '';
 if (import.meta.url === invoked) {
   try {
-    const reports = await checkPackageBoundaries(
-      fileURLToPath(new URL('../', import.meta.url)),
-    );
+    const root = fileURLToPath(new URL('../', import.meta.url));
+    const reports = await checkPackageBoundaries(root);
     for (const report of reports)
       console.log(
         `Checked ${report.name}: ${report.exports} exports, ${report.modules} owned modules.`,
       );
+    const browser = await checkServerBoundary(root);
+    console.log(
+      `Checked ${browser.name}: ${browser.modules} modules, none from server/.`,
+    );
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;

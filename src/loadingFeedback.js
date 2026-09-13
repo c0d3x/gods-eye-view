@@ -1,5 +1,5 @@
 import { installationFeedback } from './data/installationFeedback.js';
-import { keySetupEnvVars } from './keySetupCore.mjs';
+import { keySetupEnvVars } from './keySetupCatalog.js';
 
 export const LOADING_REVEAL_DELAY_MS = 160;
 export const LOADING_TERMINAL_DWELL_MS = 2200;

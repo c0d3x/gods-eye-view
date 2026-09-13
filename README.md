@@ -369,7 +369,8 @@ src/                        # The browser app
 ├── annotations/            # Voice map annotations: footprints, callouts, rings
 ├── scenes/                 # Cinematic scene director
 └── styles/                 # Visual styles as GLSL post-process shaders
-server/lib/                 # Dev-server helpers: request guard, rate limits, caches
+server/                     # Dev-server modules: key setup, terrain heights, AIS relay
+└── lib/                    # Shared helpers: request guard, JSON, rate limits, caches
 vite.config.js              # Dev server: API proxies, AIS relay, voice tool schemas
 scripts/                    # Launchers, setup doctor, test runner, QA harnesses
 pinokio/                    # One-click Pinokio launcher

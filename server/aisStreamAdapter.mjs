@@ -18,7 +18,7 @@
 // still own, and (b) decoded into a real AIS record. Handshakes, malformed
 // frames and error envelopes are never liveness.
 
-import { createAisWatchdog } from './aisWatchdog.js';
+import { createAisWatchdog } from './aisWatchdog.mjs';
 
 const DEFAULT_CLOCK = Object.freeze({
   wall: () => Date.now(),
