@@ -77,6 +77,10 @@ async function section(name, body) {
 }
 
 const LAUNCHER = '#first-run-launcher';
+// SwiftShader draws the globe on the CPU, so a navigation that takes seconds
+// on a GPU can outlast Puppeteer's 30 s default (#50). Every open() still
+// waits on app readiness once the DOM is in.
+const QA_NAVIGATION_TIMEOUT_MS = 90_000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -633,6 +637,7 @@ async function main() {
   const consoleErrors = [];
   try {
     const page = await browser.newPage();
+    page.setDefaultNavigationTimeout(QA_NAVIGATION_TIMEOUT_MS);
     await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
     page.on('console', (message) => {
       if (message.type() !== 'error') return;

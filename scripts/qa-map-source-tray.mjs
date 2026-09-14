@@ -258,6 +258,26 @@ const tabTo = async (selector, { backwards = false, limit = 160 } = {}) => {
     if (backwards) await page.keyboard.up('Shift');
   }
 };
+/** Wait until an element's box has held still for a few animation frames. */
+const waitForStableBox = async (selector, frames = 4) => {
+  await page.evaluate(() => {
+    window.__qaStableBox = { key: '', frames: 0 };
+  });
+  await page.waitForFunction(
+    (match, needed) => {
+      const rect = document.querySelector(match)?.getBoundingClientRect();
+      if (!rect) return false;
+      const key = [rect.left, rect.top, rect.width, rect.height].join();
+      const state = window.__qaStableBox;
+      if (state.key === key) state.frames += 1;
+      else Object.assign(state, { key, frames: 0 });
+      return state.frames >= needed;
+    },
+    { polling: 'raf', timeout: 10_000 },
+    selector,
+    frames,
+  );
+};
 const locationState = async () => ({
   ...(await focusMetrics('#location-bar-toggle')),
   ...(await page.evaluate(() => {
@@ -747,7 +767,6 @@ try {
   await page.evaluate(() => {
     const manager = window.__godsEyeView.styleManager;
     const voice = window.__godsEyeView.voiceCommands;
-    const grid = document.getElementById('style-buttons');
     const root = document.getElementById('gev-voice-control');
     const originalSetStyle = manager.setStyle;
     const originalVoiceStart = voice.start;
@@ -777,8 +796,11 @@ try {
         detail: event.detail ?? null,
         style: event.target.closest('.style-btn')?.dataset.style || null,
       });
+    // A long hold blurs the focused style, and on a slow page that can come
+    // before the key repeat (#50). Listening on the document records the
+    // repeat wherever it lands.
     for (const type of ['keydown', 'keyup', 'click'])
-      grid.addEventListener(type, record, true);
+      document.addEventListener(type, record, true);
     manager.setStyle = function (...args) {
       probe.activations.push(args[0]);
       return originalSetStyle.apply(this, args);
@@ -828,7 +850,7 @@ try {
       voice.start = originalVoiceStart;
       observer.disconnect();
       for (const type of ['keydown', 'keyup', 'click'])
-        grid.removeEventListener(type, record, true);
+        document.removeEventListener(type, record, true);
     };
     window.__qaStyleKeyProbe = probe;
   });
@@ -2001,6 +2023,9 @@ try {
             { persist: false, syncShare: false },
           ),
         );
+        // The list reflows for a few frames after the viewport changes, and a
+        // ring checked mid-reflow can sit under a neighbour (#50).
+        await waitForStableBox('#data-toggles');
         await page.focus('#data-panel .panel-collapse-btn');
         const targets = [
           [dataSetup.offId, 'OFF', false],
