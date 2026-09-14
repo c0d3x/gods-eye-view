@@ -43,16 +43,20 @@ export class PanelChrome {
    */
   _initPanelChrome() {
     const targets = new Set();
-    document.querySelectorAll('.panel-collapse-btn[data-collapse-target]').forEach((btn) => {
-      const targetId = btn.dataset.collapseTarget;
-      if (targetId) targets.add(targetId);
-      btn.addEventListener('click', () => {
+    document
+      .querySelectorAll('.panel-collapse-btn[data-collapse-target]')
+      .forEach((btn) => {
         const targetId = btn.dataset.collapseTarget;
-        if (!targetId) return;
-        const nextCollapsed = !document.getElementById(targetId)?.classList.contains('collapsed');
-        this.setPanelCollapsed(targetId, nextCollapsed, { explicit: true });
+        if (targetId) targets.add(targetId);
+        btn.addEventListener('click', () => {
+          const targetId = btn.dataset.collapseTarget;
+          if (!targetId) return;
+          const nextCollapsed = !document
+            .getElementById(targetId)
+            ?.classList.contains('collapsed');
+          this.setPanelCollapsed(targetId, nextCollapsed, { explicit: true });
+        });
       });
-    });
 
     for (const targetId of targets) {
       const panelEl = document.getElementById(targetId);
@@ -65,10 +69,22 @@ export class PanelChrome {
     }
     // The command dock always starts compact; either wing reveals on hover,
     // focus, or click and collapses again after the interaction moves away.
-    this.setPanelCollapsed('control-panel', true, { syncShare: false, persist: false });
-    this.setPanelCollapsed('location-bar', true, { syncShare: false, persist: false });
-    this._initAutoHoverPanel('control-panel', { openDelayMs: 140, closeDelayMs: 420 });
-    this._initAutoHoverPanel('location-bar', { openDelayMs: 140, closeDelayMs: 420 });
+    this.setPanelCollapsed('control-panel', true, {
+      syncShare: false,
+      persist: false,
+    });
+    this.setPanelCollapsed('location-bar', true, {
+      syncShare: false,
+      persist: false,
+    });
+    this._initAutoHoverPanel('control-panel', {
+      openDelayMs: 140,
+      closeDelayMs: 420,
+    });
+    this._initAutoHoverPanel('location-bar', {
+      openDelayMs: 140,
+      closeDelayMs: 420,
+    });
     this._initCommandDockPins();
     this._initCommandDockTrayMetrics();
     this._maybeNotifyLayoutReset();
@@ -87,7 +103,11 @@ export class PanelChrome {
   _collapsePanelOnEscape(event, panelId) {
     if (event.key !== 'Escape' || event.defaultPrevented) return false;
     const panelEl = document.getElementById(panelId);
-    if (!panelEl || panelEl.classList.contains('collapsed') || !panelEl.contains(event.target)) {
+    if (
+      !panelEl ||
+      panelEl.classList.contains('collapsed') ||
+      !panelEl.contains(event.target)
+    ) {
       return false;
     }
     const focusedPanel = event.target?.closest?.(
@@ -105,10 +125,11 @@ export class PanelChrome {
       this._locationSearch.blur();
     }
     this.setPanelCollapsed(panelId, true, { explicit: true });
-    const disclosure = panelEl.querySelector(`[data-dock-toggle-target="${panelId}"]`)
-      || panelEl.querySelector(`[data-collapse-target="${panelId}"]`);
-    const escapedFromDisclosure = event.target === disclosure
-      || disclosure?.contains?.(event.target);
+    const disclosure =
+      panelEl.querySelector(`[data-dock-toggle-target="${panelId}"]`) ||
+      panelEl.querySelector(`[data-collapse-target="${panelId}"]`);
+    const escapedFromDisclosure =
+      event.target === disclosure || disclosure?.contains?.(event.target);
     if (escapedFromDisclosure) disclosure?.blur?.();
     else disclosure?.focus?.({ preventScroll: true });
     return true;
@@ -120,31 +141,38 @@ export class PanelChrome {
    * @returns {void}
    */
   _initCommandDockPins() {
-    document.querySelectorAll('.dock-pin-btn[data-pin-target]').forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.stopPropagation();
-        const panelId = button.dataset.pinTarget;
-        this._setCommandDockPanelPinState(panelId);
+    document
+      .querySelectorAll('.dock-pin-btn[data-pin-target]')
+      .forEach((button) => {
+        button.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const panelId = button.dataset.pinTarget;
+          this._setCommandDockPanelPinState(panelId);
+        });
       });
-    });
   }
 
-  _setCommandDockPanelPinState(panelId, pin, {
-    restore = false,
-    persist = true,
-    syncShare = true,
-  } = {}) {
+  _setCommandDockPanelPinState(
+    panelId,
+    pin,
+    { restore = false, persist = true, syncShare = true } = {},
+  ) {
     const panelEl = document.getElementById(panelId);
-    const button = document.querySelector(`.dock-pin-btn[data-pin-target="${panelId}"]`);
+    const button = document.querySelector(
+      `.dock-pin-btn[data-pin-target="${panelId}"]`,
+    );
     if (!panelEl || !button) return undefined;
-    const shouldPin = typeof pin === 'boolean'
-      ? pin
-      : !panelEl.classList.contains('dock-pinned');
+    const shouldPin =
+      typeof pin === 'boolean'
+        ? pin
+        : !panelEl.classList.contains('dock-pinned');
     panelEl.classList.toggle('dock-pinned', shouldPin);
     button.setAttribute('aria-pressed', String(shouldPin));
-    document.querySelectorAll('#command-dock .dock-pinned-top').forEach((pinnedPanel) => {
-      pinnedPanel.classList.remove('dock-pinned-top');
-    });
+    document
+      .querySelectorAll('#command-dock .dock-pinned-top')
+      .forEach((pinnedPanel) => {
+        pinnedPanel.classList.remove('dock-pinned-top');
+      });
     if (shouldPin) {
       panelEl.classList.add('dock-pinned-top');
       this.setPanelCollapsed(panelId, false, {
@@ -154,7 +182,9 @@ export class PanelChrome {
         syncShare: false,
       });
     } else {
-      const remainingPinnedPanel = document.querySelector('#command-dock .dock-pinned');
+      const remainingPinnedPanel = document.querySelector(
+        '#command-dock .dock-pinned',
+      );
       remainingPinnedPanel?.classList.add('dock-pinned-top');
       if (!restore && !panelEl.matches(':hover')) {
         this.setPanelCollapsed(panelId, true, {
@@ -182,7 +212,9 @@ export class PanelChrome {
     if (!dock) return;
     this._commandDockTrayObserver?.disconnect?.();
     if (typeof ResizeObserver === 'function') {
-      this._commandDockTrayObserver = new ResizeObserver(() => this._updateCommandDockTrayStack());
+      this._commandDockTrayObserver = new ResizeObserver(() =>
+        this._updateCommandDockTrayStack(),
+      );
       dock.querySelectorAll('.dock-popover-content').forEach((tray) => {
         this._commandDockTrayObserver.observe(tray);
       });
@@ -198,24 +230,48 @@ export class PanelChrome {
   _updateCommandDockTrayStack() {
     const dock = document.getElementById('command-dock');
     if (!dock) return;
-    const locationPanel = dock.querySelector('#location-bar.dock-pinned:not(.collapsed)');
-    const presetsPanel = dock.querySelector('#control-panel.dock-pinned:not(.collapsed)');
-    const locationHeight = locationPanel?.querySelector('.dock-popover-content')?.getBoundingClientRect().height || 0;
-    const presetsHeight = presetsPanel?.querySelector('.dock-popover-content')?.getBoundingClientRect().height || 0;
+    const locationPanel = dock.querySelector(
+      '#location-bar.dock-pinned:not(.collapsed)',
+    );
+    const presetsPanel = dock.querySelector(
+      '#control-panel.dock-pinned:not(.collapsed)',
+    );
+    const locationHeight =
+      locationPanel
+        ?.querySelector('.dock-popover-content')
+        ?.getBoundingClientRect().height || 0;
+    const presetsHeight =
+      presetsPanel
+        ?.querySelector('.dock-popover-content')
+        ?.getBoundingClientRect().height || 0;
     const pinnedCount = Number(locationHeight > 0) + Number(presetsHeight > 0);
     const locationHeightPx = Math.ceil(locationHeight);
     const presetsHeightPx = Math.ceil(presetsHeight);
-    const topPinnedPanel = dock.querySelector('.dock-pinned-top.dock-pinned:not(.collapsed)');
-    const lowerPinnedPanel = topPinnedPanel?.id === 'location-bar' ? presetsPanel : locationPanel;
-    const lowerPinnedHeight = lowerPinnedPanel
-      ?.querySelector('.dock-popover-content')
-      ?.getBoundingClientRect().height || 0;
-    const stackHeight = pinnedCount > 1
-      ? `calc(${locationHeightPx}px + ${presetsHeightPx}px + 1.2rem)`
-      : `${locationHeightPx + presetsHeightPx}px`;
-    dock.style.setProperty('--dock-location-pinned-height', `${locationHeightPx}px`);
-    dock.style.setProperty('--dock-presets-pinned-height', `${presetsHeightPx}px`);
-    dock.style.setProperty('--dock-lower-pinned-height', `${Math.ceil(lowerPinnedHeight)}px`);
+    const topPinnedPanel = dock.querySelector(
+      '.dock-pinned-top.dock-pinned:not(.collapsed)',
+    );
+    const lowerPinnedPanel =
+      topPinnedPanel?.id === 'location-bar' ? presetsPanel : locationPanel;
+    const lowerPinnedHeight =
+      lowerPinnedPanel
+        ?.querySelector('.dock-popover-content')
+        ?.getBoundingClientRect().height || 0;
+    const stackHeight =
+      pinnedCount > 1
+        ? `calc(${locationHeightPx}px + ${presetsHeightPx}px + 1.2rem)`
+        : `${locationHeightPx + presetsHeightPx}px`;
+    dock.style.setProperty(
+      '--dock-location-pinned-height',
+      `${locationHeightPx}px`,
+    );
+    dock.style.setProperty(
+      '--dock-presets-pinned-height',
+      `${presetsHeightPx}px`,
+    );
+    dock.style.setProperty(
+      '--dock-lower-pinned-height',
+      `${Math.ceil(lowerPinnedHeight)}px`,
+    );
     dock.style.setProperty('--dock-pinned-stack-height', stackHeight);
     dock.classList.toggle('dock-has-pinned-tray', pinnedCount > 0);
     dock.classList.toggle('dock-has-two-pinned-trays', pinnedCount > 1);
@@ -229,8 +285,12 @@ export class PanelChrome {
    */
   _maybeNotifyLayoutReset() {
     try {
-      if (takePanelLayoutResetNotice(localStorage, PANEL_POSITION_STORAGE_VERSION)) {
-        this._showToast('Panel layout updated — positions reset to new defaults');
+      if (
+        takePanelLayoutResetNotice(localStorage, PANEL_POSITION_STORAGE_VERSION)
+      ) {
+        this._showToast(
+          'Panel layout updated — positions reset to new defaults',
+        );
       }
     } catch {
       // storage unavailable
@@ -248,10 +308,15 @@ export class PanelChrome {
    * @param {number} [options.closeDelayMs=1000] - Delay after pointer leaves before collapsing.
    * @returns {void}
    */
-  _initAutoHoverPanel(panelId, { openDelayMs = 850, closeDelayMs = 1000 } = {}) {
+  _initAutoHoverPanel(
+    panelId,
+    { openDelayMs = 850, closeDelayMs = 1000 } = {},
+  ) {
     const panelEl = document.getElementById(panelId);
     if (!panelEl) return;
-    const disclosure = panelEl.querySelector(`[data-dock-toggle-target="${panelId}"]`);
+    const disclosure = panelEl.querySelector(
+      `[data-dock-toggle-target="${panelId}"]`,
+    );
     let openTimer = null;
     let closeTimer = null;
     let lastWheelTime = 0;
@@ -305,7 +370,11 @@ export class PanelChrome {
     const keyboardFocusInside = () => {
       const active = document.activeElement;
       if (!active || !panelEl.contains(active)) return false;
-      try { return active.matches(':focus-visible'); } catch { return true; }
+      try {
+        return active.matches(':focus-visible');
+      } catch {
+        return true;
+      }
     };
 
     const scheduleClose = () => {
@@ -319,13 +388,18 @@ export class PanelChrome {
       }, closeDelayMs);
     };
 
-    panelEl.addEventListener('wheel', () => {
-      lastWheelTime = performance.now();
-      clearOpen();
-    }, { passive: true });
+    panelEl.addEventListener(
+      'wheel',
+      () => {
+        lastWheelTime = performance.now();
+        clearOpen();
+      },
+      { passive: true },
+    );
 
     panelEl.addEventListener('click', (event) => {
-      if (event.target.closest('.panel-collapse-btn, .dock-tray-toggle')) return;
+      if (event.target.closest('.panel-collapse-btn, .dock-tray-toggle'))
+        return;
       clearOpen();
       clearClose();
       if (panelEl.classList.contains('collapsed')) {
@@ -357,8 +431,9 @@ export class PanelChrome {
 
     const focusMapSource = () => {
       if (panelId !== 'control-panel') return false;
-      const chip = panelEl.querySelector('.map-stack-chip.active')
-        || panelEl.querySelector('.map-stack-chip');
+      const chip =
+        panelEl.querySelector('.map-stack-chip.active') ||
+        panelEl.querySelector('.map-stack-chip');
       if (!chip?.focus) return false;
       chip.focus({ preventScroll: true });
       // .focus() on a still-hidden element is a SILENT no-op, so the caller
@@ -459,7 +534,9 @@ export class PanelChrome {
     // full row set a frame or two later, so the restore-time clamp used a stale (shorter) height and
     // the panel could still hang off the bottom (audit U2). Re-clamp on every size change.
     if (this._ppToggles && typeof ResizeObserver !== 'undefined') {
-      this._draggableResizeObserver = new ResizeObserver(() => this._reclampDraggablePanels());
+      this._draggableResizeObserver = new ResizeObserver(() =>
+        this._reclampDraggablePanels(),
+      );
       this._draggableResizeObserver.observe(this._ppToggles);
     }
   }
@@ -523,7 +600,10 @@ export class PanelChrome {
    */
   _savePanelCollapsedState(panelId, collapsed) {
     try {
-      localStorage.setItem(this._panelCollapseStorageKey(panelId), collapsed ? '1' : '0');
+      localStorage.setItem(
+        this._panelCollapseStorageKey(panelId),
+        collapsed ? '1' : '0',
+      );
     } catch {
       // storage unavailable
     }
@@ -536,37 +616,54 @@ export class PanelChrome {
    * @returns {void}
    */
   _syncPanelCollapseButton(panelEl) {
-    const isRightRail = ['pp-toggles', 'cctv-panel', 'global-context-panel'].includes(panelEl?.id);
+    const isRightRail = [
+      'pp-toggles',
+      'cctv-panel',
+      'global-context-panel',
+    ].includes(panelEl?.id);
     const collapsed = panelEl.classList.contains('collapsed');
-    panelEl.querySelectorAll('.panel-collapse-btn[data-collapse-target]').forEach((btn) => {
-      const owner = btn.closest('[data-panel-id], #param-slider-panel');
-      if (owner !== panelEl) return;
-      if (isRightRail) {
-        btn.textContent = collapsed ? '◀' : '▶';
-      } else {
-        btn.textContent = collapsed ? '+' : '−';
-      }
-      btn.setAttribute('aria-expanded', String(!collapsed));
-      const panelName = panelEl.querySelector('.panel-title, .pp-header-label')?.textContent?.trim() || 'panel';
-      const action = collapsed ? 'Expand' : 'Collapse';
-      btn.title = `${action} ${panelName}`;
-      btn.setAttribute('aria-label', `${action} ${panelName}`);
-      if (panelEl.id === 'radio-panel') {
+    panelEl
+      .querySelectorAll('.panel-collapse-btn[data-collapse-target]')
+      .forEach((btn) => {
+        const owner = btn.closest('[data-panel-id], #param-slider-panel');
+        if (owner !== panelEl) return;
+        if (isRightRail) {
+          btn.textContent = collapsed ? '◀' : '▶';
+        } else {
+          btn.textContent = collapsed ? '+' : '−';
+        }
+        btn.setAttribute('aria-expanded', String(!collapsed));
+        const panelName =
+          panelEl
+            .querySelector('.panel-title, .pp-header-label')
+            ?.textContent?.trim() || 'panel';
         const action = collapsed ? 'Expand' : 'Collapse';
-        btn.title = `${action} Radio`;
-        btn.setAttribute('aria-label', `${action} Radio section`);
-      }
-    });
-    const dockToggle = panelEl.querySelector(`[data-dock-toggle-target="${panelEl.id}"]`);
+        btn.title = `${action} ${panelName}`;
+        btn.setAttribute('aria-label', `${action} ${panelName}`);
+        if (panelEl.id === 'radio-panel') {
+          const action = collapsed ? 'Expand' : 'Collapse';
+          btn.title = `${action} Radio`;
+          btn.setAttribute('aria-label', `${action} Radio section`);
+        }
+      });
+    const dockToggle = panelEl.querySelector(
+      `[data-dock-toggle-target="${panelEl.id}"]`,
+    );
     if (dockToggle) {
-      const panelName = panelEl.querySelector('.panel-title, .location-toolbar-label')?.textContent?.trim() || 'panel';
+      const panelName =
+        panelEl
+          .querySelector('.panel-title, .location-toolbar-label')
+          ?.textContent?.trim() || 'panel';
       const action = collapsed ? 'Expand' : 'Collapse';
       dockToggle.setAttribute('aria-expanded', String(!collapsed));
       dockToggle.setAttribute('aria-label', `${action} ${panelName}`);
       dockToggle.title = `${action} ${panelName}`;
     }
     if (panelEl.id === 'radio-panel' && this._contextRadioDetailsBtn) {
-      this._contextRadioDetailsBtn.setAttribute('aria-expanded', String(!collapsed));
+      this._contextRadioDetailsBtn.setAttribute(
+        'aria-expanded',
+        String(!collapsed),
+      );
     }
     if (panelEl.id === 'radio-panel' || panelEl.id === 'global-context-panel') {
       this._syncContextRadioLauncherState();
@@ -599,10 +696,15 @@ export class PanelChrome {
       const raw = localStorage.getItem(this._panelStorageKey(panelId));
       if (!raw) return;
       const pos = JSON.parse(raw);
-      if (!pos || typeof pos.left !== 'number' || typeof pos.top !== 'number') return;
+      if (!pos || typeof pos.left !== 'number' || typeof pos.top !== 'number')
+        return;
       // Clamp to the viewport: a position saved at one window size would otherwise land off-screen at
       // another (audit U2 — observed a panel at x:-192). The drag handler clamps; restore must too.
-      const { left, top } = this._clampToViewport(Math.round(pos.left), Math.round(pos.top), panelEl);
+      const { left, top } = this._clampToViewport(
+        Math.round(pos.left),
+        Math.round(pos.top),
+        panelEl,
+      );
       panelEl.style.left = `${left}px`;
       panelEl.style.top = `${top}px`;
       panelEl.style.right = 'auto';
@@ -642,10 +744,13 @@ export class PanelChrome {
   _savePanelPosition(panelId, panelEl) {
     const rect = panelEl.getBoundingClientRect();
     try {
-      localStorage.setItem(this._panelStorageKey(panelId), JSON.stringify({
-        left: Math.round(rect.left),
-        top: Math.round(rect.top),
-      }));
+      localStorage.setItem(
+        this._panelStorageKey(panelId),
+        JSON.stringify({
+          left: Math.round(rect.left),
+          top: Math.round(rect.top),
+        }),
+      );
     } catch {
       // storage unavailable
     }
@@ -695,7 +800,12 @@ export class PanelChrome {
     handleEl.addEventListener('pointerdown', (event) => {
       if (event.button !== 0) return;
       if (event.target.closest('.panel-collapse-btn')) return;
-      if (event.target.closest('input, select, option, button:not(.panel-collapse-btn)')) return;
+      if (
+        event.target.closest(
+          'input, select, option, button:not(.panel-collapse-btn)',
+        )
+      )
+        return;
 
       event.preventDefault();
       const rect = panelEl.getBoundingClientRect();
@@ -757,40 +867,61 @@ export class PanelChrome {
    * @param {boolean} [options.explicit=false] Whether a direct user action owns the panel lane.
    * @returns {void}
    */
-  setPanelCollapsed(panelId, collapsed, {
-    explicit = false,
-    restore = false,
-    persist = true,
-    syncShare = true,
-  } = {}) {
-    if (panelId === 'control-panel' && collapsed) this._cancelMapSourceFocus?.();
+  setPanelCollapsed(
+    panelId,
+    collapsed,
+    {
+      explicit = false,
+      restore = false,
+      persist = true,
+      syncShare = true,
+    } = {},
+  ) {
+    if (panelId === 'control-panel' && collapsed)
+      this._cancelMapSourceFocus?.();
     const panelEl = document.getElementById(panelId);
     if (!panelEl) return;
-    if (explicit && !restore) this.shareLinkManager?.claimRestoreLane?.('panel', panelId);
+    if (explicit && !restore)
+      this.shareLinkManager?.claimRestoreLane?.('panel', panelId);
     const nextCollapsed = Boolean(collapsed);
-    const wasAutoCollapsed = panelEl.classList.contains('layout-auto-collapsed');
-    const leftOwnerPanel = this._leftPanelStack?.contains(panelEl) ? panelEl : null;
-    const rightOwnerPanel = panelId === 'radio-panel'
-      ? document.getElementById('global-context-panel')
-      : (this._rightPanelStack?.contains(panelEl) ? panelEl : null);
+    const wasAutoCollapsed = panelEl.classList.contains(
+      'layout-auto-collapsed',
+    );
+    const leftOwnerPanel = this._leftPanelStack?.contains(panelEl)
+      ? panelEl
+      : null;
+    const rightOwnerPanel =
+      panelId === 'radio-panel'
+        ? document.getElementById('global-context-panel')
+        : this._rightPanelStack?.contains(panelEl)
+          ? panelEl
+          : null;
     const priorLeftOwner = this._leftStackPreferredPanelId;
     const priorRightOwner = this._rightStackPreferredPanelId;
     if (explicit && !restore && !nextCollapsed && leftOwnerPanel) {
       this._leftStackPreferredPanelId = leftOwnerPanel.id;
-    } else if (explicit && !restore && nextCollapsed && leftOwnerPanel?.id === this._leftStackPreferredPanelId) {
+    } else if (
+      explicit &&
+      !restore &&
+      nextCollapsed &&
+      leftOwnerPanel?.id === this._leftStackPreferredPanelId
+    ) {
       this._leftStackPreferredPanelId = null;
     }
     if (explicit && !restore && !nextCollapsed && rightOwnerPanel) {
       this._rightStackPreferredPanelId = rightOwnerPanel.id;
     } else if (
-      explicit
-      && !restore
-      && nextCollapsed
-      && rightOwnerPanel?.id === this._rightStackPreferredPanelId
+      explicit &&
+      !restore &&
+      nextCollapsed &&
+      rightOwnerPanel?.id === this._rightStackPreferredPanelId
     ) {
       this._rightStackPreferredPanelId = null;
     }
-    if (panelEl.classList.contains('collapsed') === nextCollapsed && !wasAutoCollapsed) {
+    if (
+      panelEl.classList.contains('collapsed') === nextCollapsed &&
+      !wasAutoCollapsed
+    ) {
       this._syncPanelCollapseButton(panelEl);
       if (priorLeftOwner !== this._leftStackPreferredPanelId) {
         this._scheduleLeftPanelLayout({ reconsiderAutoCollapse: true });
@@ -801,39 +932,69 @@ export class PanelChrome {
       return;
     }
     panelEl.classList.remove('layout-auto-collapsed');
-    if (!nextCollapsed && this.cockpitView?.active && panelId === 'data-panel') {
-      this._cockpitContextCollapsedForDataPanel = !this.cockpitView.contextCollapsed;
+    if (
+      !nextCollapsed &&
+      this.cockpitView?.active &&
+      panelId === 'data-panel'
+    ) {
+      this._cockpitContextCollapsedForDataPanel =
+        !this.cockpitView.contextCollapsed;
       if (this._cockpitContextCollapsedForDataPanel) {
         this.cockpitView.setContextCollapsed(true);
       }
     }
-    if (!nextCollapsed && panelId === 'global-context-panel'
-        && this._contextRadioDock?.classList.contains('disclosure-open')) {
+    if (
+      !nextCollapsed &&
+      panelId === 'global-context-panel' &&
+      this._contextRadioDock?.classList.contains('disclosure-open')
+    ) {
       this._setRadioDisclosure?.(false);
     }
-    if (!nextCollapsed && panelId === 'radio-panel'
-        && document.getElementById('global-context-panel')?.classList.contains('collapsed')) {
-      this.setPanelCollapsed('global-context-panel', false, { restore, persist, syncShare });
+    if (
+      !nextCollapsed &&
+      panelId === 'radio-panel' &&
+      document
+        .getElementById('global-context-panel')
+        ?.classList.contains('collapsed')
+    ) {
+      this.setPanelCollapsed('global-context-panel', false, {
+        restore,
+        persist,
+        syncShare,
+      });
     }
     if (!nextCollapsed && !restore && panelId === 'location-bar') {
       const otherPanel = document.getElementById('control-panel');
       if (otherPanel && !otherPanel.classList.contains('dock-pinned')) {
-        this.setPanelCollapsed('control-panel', true, { restore, persist, syncShare });
+        this.setPanelCollapsed('control-panel', true, {
+          restore,
+          persist,
+          syncShare,
+        });
       }
     } else if (!nextCollapsed && !restore && panelId === 'control-panel') {
       const otherPanel = document.getElementById('location-bar');
       if (otherPanel && !otherPanel.classList.contains('dock-pinned')) {
-        this.setPanelCollapsed('location-bar', true, { restore, persist, syncShare });
+        this.setPanelCollapsed('location-bar', true, {
+          restore,
+          persist,
+          syncShare,
+        });
       }
     }
     panelEl.classList.toggle('collapsed', nextCollapsed);
-    if (nextCollapsed && this.cockpitView?.active && panelId === 'data-panel'
-        && this._cockpitContextCollapsedForDataPanel) {
+    if (
+      nextCollapsed &&
+      this.cockpitView?.active &&
+      panelId === 'data-panel' &&
+      this._cockpitContextCollapsedForDataPanel
+    ) {
       this._cockpitContextCollapsedForDataPanel = false;
       this.cockpitView.setContextCollapsed(false);
     }
     this._syncPanelCollapseButton(panelEl);
-    if (persist !== false) this._savePanelCollapsedState(panelId, nextCollapsed);
+    if (persist !== false)
+      this._savePanelCollapsedState(panelId, nextCollapsed);
     if (panelId === 'pp-toggles') {
       this._layoutRightPanels();
     }

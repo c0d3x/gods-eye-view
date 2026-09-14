@@ -21,19 +21,31 @@ export class StatusFeedback {
    * @returns {void}
    */
   _updateTrafficSyncChip(forceShow = false, now = performance.now()) {
-    if (!this._trafficSyncChip || !this._trafficSyncLabel || !this._trafficSyncProgress) return;
+    if (
+      !this._trafficSyncChip ||
+      !this._trafficSyncLabel ||
+      !this._trafficSyncProgress
+    )
+      return;
     const layers = this._dataManager?.getAll?.();
-    const traffic = Array.isArray(layers) ? layers.find((layer) => layer.id === 'traffic') : null;
+    const traffic = Array.isArray(layers)
+      ? layers.find((layer) => layer.id === 'traffic')
+      : null;
     this._trafficSyncFeedbackState = reduceTrafficSyncFeedback(
       this._trafficSyncFeedbackState,
-      { enabled: traffic?.enabled === true, stats: traffic?.stats || {}, forceShow },
+      {
+        enabled: traffic?.enabled === true,
+        stats: traffic?.stats || {},
+        forceShow,
+      },
       now,
     );
     const presentation = this._trafficSyncFeedbackState;
     // setSplitFlapText carries the same unchanged-text guard internally, and
     // the flap keeps textContent equal to the settled label throughout, so
     // this stays a no-op on the repeat ticks exactly as it did before.
-    if (presentation.label) setSplitFlapText(this._trafficSyncLabel, presentation.label);
+    if (presentation.label)
+      setSplitFlapText(this._trafficSyncLabel, presentation.label);
     // Written on every change INCLUDING the empty settled value — the reducer
     // clears the progress number once the sync lands, and a truthiness guard
     // here would strand the last "..." beside the settled label.
@@ -67,9 +79,11 @@ export class StatusFeedback {
       summary,
       now,
     );
-    if (this._globalStatusNotice?.persistent !== true
-        && Number.isFinite(this._globalStatusNotice?.hideAt)
-        && now >= this._globalStatusNotice.hideAt) {
+    if (
+      this._globalStatusNotice?.persistent !== true &&
+      Number.isFinite(this._globalStatusNotice?.hideAt) &&
+      now >= this._globalStatusNotice.hideAt
+    ) {
       this._globalStatusNotice = null;
     }
     // Loading phases and universal notices both have time-driven transitions.
@@ -96,8 +110,9 @@ export class StatusFeedback {
     // The button can only help where Provider Settings exists: on a local dev
     // server, keySetup.js keeps #key-setup; elsewhere it removes it.
     if (this._globalLoadingAction) {
-      this._globalLoadingAction.hidden = presentation.state !== 'needs-key'
-        || !document.getElementById('key-setup');
+      this._globalLoadingAction.hidden =
+        presentation.state !== 'needs-key' ||
+        !document.getElementById('key-setup');
     }
   }
 
@@ -152,7 +167,9 @@ export class StatusFeedback {
       const now = performance.now();
       this._lastLoadingFeedbackUpdateAt = now;
       this._updateGlobalLoadingFeedback(now);
-      const noticeNeedsTicker = Number.isFinite(this._globalStatusNotice?.hideAt);
+      const noticeNeedsTicker = Number.isFinite(
+        this._globalStatusNotice?.hideAt,
+      );
       if (this._loadingFeedbackState?.phase === 'idle' && !noticeNeedsTicker) {
         this._stopLoadingFeedbackTicker();
       }

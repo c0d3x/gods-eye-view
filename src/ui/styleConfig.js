@@ -11,14 +11,19 @@ import { noirShader } from '../styles/noir.js';
 import { snowShader } from '../styles/snow.js';
 import { nightVisionShader } from '../styles/surveillance.js';
 import { thermalShader } from '../styles/thermal.js';
-import {
-  BLOOM_INTENSITY_DEFAULT,
-} from '../bloom.js';
+import { BLOOM_INTENSITY_DEFAULT } from '../bloom.js';
 
 /** Duration (ms) for shader intensity crossfade between style presets. */
 export const TRANSITION_DURATION_MS = 500;
 /** Map of style name to its GLSL shader module for post-process stages. */
-export const STYLES = { retro: retroShader, surveillance: nightVisionShader, thermal: thermalShader, anime: animeShader, noir: noirShader, snow: snowShader };
+export const STYLES = {
+  retro: retroShader,
+  surveillance: nightVisionShader,
+  thermal: thermalShader,
+  anime: animeShader,
+  noir: noirShader,
+  snow: snowShader,
+};
 /** Display labels shown in the mini-status readout for each active style. */
 export const STYLE_STATUS_LABELS = {
   normal: 'NORMAL',
@@ -46,7 +51,10 @@ export const STYLE_STATUS_LABELS = {
  * SPARSE. Declared ahead of GLOBAL_POST_DEFAULTS because that baseline now reads
  * from it.
  */
-export const MILITARY_DETECTION_PRESET = Object.freeze({ mode: 'dense', densityPct: 75 });
+export const MILITARY_DETECTION_PRESET = Object.freeze({
+  mode: 'dense',
+  densityPct: 75,
+});
 /** Baseline post-processing settings applied on first load (before share-link restore). */
 export const GLOBAL_POST_DEFAULTS = {
   bloom: { enabled: false, intensity: BLOOM_INTENSITY_DEFAULT },

@@ -5,7 +5,10 @@
 //
 // These are StyleManager methods, kept here and adopted by StyleManager (see
 // src/ui/adoptMethods.js); they run on its state.
-import { getKeyholeFadeTuning, setKeyholeFadeTuning } from '../celestialRing.js';
+import {
+  getKeyholeFadeTuning,
+  setKeyholeFadeTuning,
+} from '../celestialRing.js';
 import {
   getDetectionDiagnostics as readDetectionDiagnostics,
   getDetectionTuning,
@@ -57,8 +60,9 @@ export class DetectionControls {
       restore: this._contactsDetectionRestore,
       // A map style picked DURING the session owns detection on the way out —
       // its auto-enable preset is younger than the entry snapshot.
-      styleOwnsDetection: !this._detectionUserOverridden
-        && Boolean(STYLE_PRESET_DEFAULTS[this.activeStyle]?.detection),
+      styleOwnsDetection:
+        !this._detectionUserOverridden &&
+        Boolean(STYLE_PRESET_DEFAULTS[this.activeStyle]?.detection),
       // The snapshot must cover everything activation mutates — the preset
       // writes DENSITY as well as mode, so a mode-only snapshot returned
       // OFF @ 25% as OFF @ 75% and the next manual enable came back Dense.
@@ -84,11 +88,14 @@ export class DetectionControls {
     // style's preset already matches), and returning early there left a copied
     // link claiming the operator's pre-Contacts values while the map showed
     // Dense @ 75%.
-    if (!shareCacheNeedsHeal({
-      changed: result.changed,
-      hadOwnership,
-      hasOwnership: Boolean(result.restore),
-    })) return;
+    if (
+      !shareCacheNeedsHeal({
+        changed: result.changed,
+        hadOwnership,
+        hasOwnership: Boolean(result.restore),
+      })
+    )
+      return;
     if (result.changed) this._syncDetectionUiFromEngine();
     this._syncShareState();
   }
@@ -102,23 +109,36 @@ export class DetectionControls {
     if (!this._detectionDensitySlider) return;
     const pct = canonicalizeDensity(this._detectionDensitySlider.value);
     this._detectionDensitySlider.value = String(pct);
-    if (this._detectionDensityValue) this._detectionDensityValue.textContent = `${pct}%`;
+    if (this._detectionDensityValue)
+      this._detectionDensityValue.textContent = `${pct}%`;
     setDetectionTuning({ densityPct: pct });
     this._updateDetectionButton(getDetectionMode());
   }
 
   /** Apply responsive keyhole fade controls from normalized UI percentages. */
   _applyDetectionFadeFromUi() {
-    const fadePct = Math.max(0, Math.min(40, Math.round(Number(this._detectionFadeSlider?.value) || 0)));
+    const fadePct = Math.max(
+      0,
+      Math.min(40, Math.round(Number(this._detectionFadeSlider?.value) || 0)),
+    );
     const outsideOpacityValue = this._detectionOpacitySlider?.value;
     const outsideOpacityPct = Math.max(
       0,
-      Math.min(100, Math.round(outsideOpacityValue == null ? 3 : Number(outsideOpacityValue) || 0)),
+      Math.min(
+        100,
+        Math.round(
+          outsideOpacityValue == null ? 3 : Number(outsideOpacityValue) || 0,
+        ),
+      ),
     );
-    if (this._detectionFadeSlider) this._detectionFadeSlider.value = String(fadePct);
-    if (this._detectionFadeValue) this._detectionFadeValue.textContent = `${fadePct}%`;
-    if (this._detectionOpacitySlider) this._detectionOpacitySlider.value = String(outsideOpacityPct);
-    if (this._detectionOpacityValue) this._detectionOpacityValue.textContent = `${outsideOpacityPct}%`;
+    if (this._detectionFadeSlider)
+      this._detectionFadeSlider.value = String(fadePct);
+    if (this._detectionFadeValue)
+      this._detectionFadeValue.textContent = `${fadePct}%`;
+    if (this._detectionOpacitySlider)
+      this._detectionOpacitySlider.value = String(outsideOpacityPct);
+    if (this._detectionOpacityValue)
+      this._detectionOpacityValue.textContent = `${outsideOpacityPct}%`;
     setKeyholeFadeTuning({
       fadeRatio: fadePct / 100,
       outsideOpacity: outsideOpacityPct / 100,
@@ -127,7 +147,9 @@ export class DetectionControls {
   }
 
   _setDetectionAllocation(strategy, { syncShare = true, persist = true } = {}) {
-    const raw = String(strategy || '').trim().toUpperCase();
+    const raw = String(strategy || '')
+      .trim()
+      .toUpperCase();
     if (!ALLOCATION_STRATEGIES.includes(raw)) return false;
     const normalized = normalizeAllocationStrategy(raw);
     this._detectionAllocationPreference = normalized;
@@ -138,7 +160,11 @@ export class DetectionControls {
       button.setAttribute('aria-checked', String(active));
     }
     if (persist) {
-      try { localStorage.setItem(DETECTION_ALLOCATION_STORAGE_KEY, normalized); } catch { /* best effort */ }
+      try {
+        localStorage.setItem(DETECTION_ALLOCATION_STORAGE_KEY, normalized);
+      } catch {
+        /* best effort */
+      }
     }
     if (syncShare) this._syncShareState();
     return true;
@@ -146,13 +172,23 @@ export class DetectionControls {
 
   _syncDetectionUiFromEngine() {
     const tuning = getDetectionTuning();
-    if (this._detectionDensitySlider) this._detectionDensitySlider.value = String(tuning.densityPct);
-    if (this._detectionDensityValue) this._detectionDensityValue.textContent = `${tuning.densityPct}%`;
-    this._setDetectionAllocation(tuning.allocationStrategy, { syncShare: false, persist: false });
+    if (this._detectionDensitySlider)
+      this._detectionDensitySlider.value = String(tuning.densityPct);
+    if (this._detectionDensityValue)
+      this._detectionDensityValue.textContent = `${tuning.densityPct}%`;
+    this._setDetectionAllocation(tuning.allocationStrategy, {
+      syncShare: false,
+      persist: false,
+    });
     const fadeTuning = getKeyholeFadeTuning();
-    if (this._detectionFadeSlider) this._detectionFadeSlider.value = String(Math.round(fadeTuning.fadeRatio * 100));
+    if (this._detectionFadeSlider)
+      this._detectionFadeSlider.value = String(
+        Math.round(fadeTuning.fadeRatio * 100),
+      );
     if (this._detectionOpacitySlider) {
-      this._detectionOpacitySlider.value = String(Math.round(fadeTuning.outsideOpacity * 100));
+      this._detectionOpacitySlider.value = String(
+        Math.round(fadeTuning.outsideOpacity * 100),
+      );
     }
     this._applyDetectionFadeFromUi();
     this._updateDetectionButton(getDetectionMode());
@@ -185,7 +221,8 @@ export class DetectionControls {
     if (typeof det.densityPct === 'number' && this._detectionDensitySlider) {
       const pct = canonicalizeDensity(det.densityPct);
       this._detectionDensitySlider.value = String(pct);
-      if (this._detectionDensityValue) this._detectionDensityValue.textContent = `${pct}%`;
+      if (this._detectionDensityValue)
+        this._detectionDensityValue.textContent = `${pct}%`;
       this._applyDetectionDensityFromUi();
     }
     if (det.mode) this._setDetectionMode(String(det.mode).toUpperCase());
@@ -230,7 +267,10 @@ export class DetectionControls {
       densityPct: pct,
       allocationStrategy: getDetectionTuning().allocationStrategy,
       fadePct: parseInt(this._detectionFadeSlider?.value || '7', 10),
-      outsideOpacityPct: parseInt(this._detectionOpacitySlider?.value || '0', 10),
+      outsideOpacityPct: parseInt(
+        this._detectionOpacitySlider?.value || '0',
+        10,
+      ),
     };
   }
 
@@ -252,26 +292,49 @@ export class DetectionControls {
    * @param {number} [options.outsideOpacityPct] - Opacity beyond the fade distance, 0-100%.
    * @returns {{ok: boolean, detectionMode?: string, densityPct?: number|null, error?: string}}
    */
-  setDetection({ enabled, mode, densityPct, allocationStrategy, fadePct, outsideOpacityPct } = {}) {
+  setDetection({
+    enabled,
+    mode,
+    densityPct,
+    allocationStrategy,
+    fadePct,
+    outsideOpacityPct,
+  } = {}) {
     if (enabled !== undefined && typeof enabled !== 'boolean') {
-      return { ok: false, error: `Invalid detection enabled value: ${enabled}`, ...this.getDetectionState() };
+      return {
+        ok: false,
+        error: `Invalid detection enabled value: ${enabled}`,
+        ...this.getDetectionState(),
+      };
     }
     let requestedProfile = null;
     if (typeof mode === 'string' && mode.trim()) {
       requestedProfile = normalizeProfile(mode);
       if (!requestedProfile) {
-        return { ok: false, error: `Unknown detection mode: ${mode}`, ...this.getDetectionState() };
+        return {
+          ok: false,
+          error: `Unknown detection mode: ${mode}`,
+          ...this.getDetectionState(),
+        };
       }
     }
     let requestedDensity = null;
     if (densityPct != null) {
       if (!Number.isFinite(Number(densityPct))) {
-        return { ok: false, error: `Invalid density: ${densityPct}`, ...this.getDetectionState() };
+        return {
+          ok: false,
+          error: `Invalid density: ${densityPct}`,
+          ...this.getDetectionState(),
+        };
       }
       requestedDensity = canonicalizeDensity(Number(densityPct));
     }
-    if (requestedProfile && requestedProfile !== 'OFF' && requestedDensity != null
-      && profileForDensity(requestedDensity) !== requestedProfile) {
+    if (
+      requestedProfile &&
+      requestedProfile !== 'OFF' &&
+      requestedDensity != null &&
+      profileForDensity(requestedDensity) !== requestedProfile
+    ) {
       return {
         ok: false,
         error: `Detection mode ${requestedProfile} conflicts with density ${requestedDensity}%`,
@@ -282,25 +345,38 @@ export class DetectionControls {
     if (allocationStrategy != null) {
       requestedAllocation = String(allocationStrategy).trim().toUpperCase();
       if (!ALLOCATION_STRATEGIES.includes(requestedAllocation)) {
-        return { ok: false, error: `Unknown allocation strategy: ${allocationStrategy}`, ...this.getDetectionState() };
+        return {
+          ok: false,
+          error: `Unknown allocation strategy: ${allocationStrategy}`,
+          ...this.getDetectionState(),
+        };
       }
     }
     if (fadePct != null) {
       if (!Number.isFinite(Number(fadePct))) {
-        return { ok: false, error: `Invalid fade distance: ${fadePct}`, ...this.getDetectionState() };
+        return {
+          ok: false,
+          error: `Invalid fade distance: ${fadePct}`,
+          ...this.getDetectionState(),
+        };
       }
     }
     if (outsideOpacityPct != null) {
       if (!Number.isFinite(Number(outsideOpacityPct))) {
-        return { ok: false, error: `Invalid outside opacity: ${outsideOpacityPct}`, ...this.getDetectionState() };
+        return {
+          ok: false,
+          error: `Invalid outside opacity: ${outsideOpacityPct}`,
+          ...this.getDetectionState(),
+        };
       }
     }
-    const hasExplicitVisualChange = typeof enabled === 'boolean'
-      || requestedProfile !== null
-      || requestedDensity !== null
-      || requestedAllocation !== null
-      || fadePct != null
-      || outsideOpacityPct != null;
+    const hasExplicitVisualChange =
+      typeof enabled === 'boolean' ||
+      requestedProfile !== null ||
+      requestedDensity !== null ||
+      requestedAllocation !== null ||
+      fadePct != null ||
+      outsideOpacityPct != null;
     if (hasExplicitVisualChange) {
       // Voice/scripted detection control counts as an explicit user choice, so
       // neither style presets nor a still-pending shared visual restore can
@@ -312,14 +388,23 @@ export class DetectionControls {
       this._setDetectionAllocation(requestedAllocation, { syncShare: false });
     }
     if (fadePct != null && this._detectionFadeSlider) {
-      this._detectionFadeSlider.value = String(Math.max(0, Math.min(40, Math.round(Number(fadePct)))));
+      this._detectionFadeSlider.value = String(
+        Math.max(0, Math.min(40, Math.round(Number(fadePct)))),
+      );
     }
     if (outsideOpacityPct != null && this._detectionOpacitySlider) {
-      this._detectionOpacitySlider.value = String(Math.max(0, Math.min(100, Math.round(Number(outsideOpacityPct)))));
+      this._detectionOpacitySlider.value = String(
+        Math.max(0, Math.min(100, Math.round(Number(outsideOpacityPct)))),
+      );
     }
-    if (fadePct != null || outsideOpacityPct != null) this._applyDetectionFadeFromUi();
+    if (fadePct != null || outsideOpacityPct != null)
+      this._applyDetectionFadeFromUi();
 
-    if (requestedProfile && requestedProfile !== 'OFF' && requestedDensity == null) {
+    if (
+      requestedProfile &&
+      requestedProfile !== 'OFF' &&
+      requestedDensity == null
+    ) {
       requestedDensity = defaultDensityForProfile(requestedProfile);
     }
     if (requestedDensity != null && this._detectionDensitySlider) {
@@ -332,9 +417,11 @@ export class DetectionControls {
     } else if (requestedProfile) {
       setDetectionModeByLabel(requestedProfile);
     } else if (enabled === true && getDetectionMode() === 'OFF') {
-      setDetectionModeByLabel(profileForDensity(
-        requestedDensity ?? this._detectionDensitySlider?.value ?? 50,
-      ));
+      setDetectionModeByLabel(
+        profileForDensity(
+          requestedDensity ?? this._detectionDensitySlider?.value ?? 50,
+        ),
+      );
     }
     this._syncDetectionUiFromEngine();
     this._syncShareState();
@@ -352,9 +439,12 @@ export class DetectionControls {
     const btn = this._detectionBtn;
     const enabled = modeLabel !== 'OFF';
     btn.setAttribute('aria-pressed', String(enabled));
-    btn.setAttribute('aria-label', enabled
-      ? `Detection overlay: ${String(modeLabel).toLowerCase()}`
-      : 'Detection overlay: off');
+    btn.setAttribute(
+      'aria-label',
+      enabled
+        ? `Detection overlay: ${String(modeLabel).toLowerCase()}`
+        : 'Detection overlay: off',
+    );
     btn.classList.remove('active', 'god', 'panoptic');
     if (modeLabel === 'SPARSE') {
       btn.querySelector('.pp-label').textContent = 'SPARSE';
@@ -373,13 +463,19 @@ export class DetectionControls {
       this._detectionSliderRow.classList.toggle('visible', modeLabel !== 'OFF');
     }
     if (this._detectionAllocationRow) {
-      this._detectionAllocationRow.classList.toggle('visible', modeLabel !== 'OFF');
+      this._detectionAllocationRow.classList.toggle(
+        'visible',
+        modeLabel !== 'OFF',
+      );
     }
     if (this._detectionFadeRow) {
       this._detectionFadeRow.classList.toggle('visible', modeLabel !== 'OFF');
     }
     if (this._detectionOpacityRow) {
-      this._detectionOpacityRow.classList.toggle('visible', modeLabel !== 'OFF');
+      this._detectionOpacityRow.classList.toggle(
+        'visible',
+        modeLabel !== 'OFF',
+      );
     }
     this._layoutRightPanels();
   }

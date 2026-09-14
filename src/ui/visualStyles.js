@@ -14,16 +14,14 @@ import {
   bloomStrengthFromIntensity,
   clampBloomIntensity,
 } from '../bloom.js';
+import { isCelestialRingStyleSupported } from '../celestialRing.js';
+import { setDetectionStyle } from '../data/detection.js';
+import { canonicalizeDensity } from '../data/detectionPolicy.js';
 import {
-  isCelestialRingStyleSupported,
-} from '../celestialRing.js';
-import {
-  setDetectionStyle,
-} from '../data/detection.js';
-import {
-  canonicalizeDensity,
-} from '../data/detectionPolicy.js';
-import { holdContinuousRender, releaseContinuousRender, governorRequestRender } from '../renderGovernor.js';
+  holdContinuousRender,
+  releaseContinuousRender,
+  governorRequestRender,
+} from '../renderGovernor.js';
 import {
   TRANSITION_DURATION_MS,
   STYLES,
@@ -94,7 +92,8 @@ export class VisualStyles {
     stage.enabled = value > 0.001;
     // An animated shader becoming visible needs the style loop (its clock)
     // running again; the loop self-stops when nothing visible animates.
-    if (stage.enabled && stage.uniforms.time !== undefined) this._startAnimationLoop();
+    if (stage.enabled && stage.uniforms.time !== undefined)
+      this._startAnimationLoop();
     governorRequestRender('style-stage');
   }
 
@@ -144,7 +143,9 @@ export class VisualStyles {
     this._sharpenStage.enabled = false;
     this.viewer.scene.postProcessStages.add(this._sharpenStage);
     if (this._sharpenSlider) {
-      this._applySharpenIntensity(parseInt(this._sharpenSlider.value, 10) / 100);
+      this._applySharpenIntensity(
+        parseInt(this._sharpenSlider.value, 10) / 100,
+      );
     }
   }
 
@@ -153,7 +154,9 @@ export class VisualStyles {
    * @returns {number} Clamped bloom intensity (0-200).
    */
   _getBloomIntensity() {
-    return clampBloomIntensity(parseInt(this._bloomSlider?.value || `${BLOOM_INTENSITY_DEFAULT}`, 10));
+    return clampBloomIntensity(
+      parseInt(this._bloomSlider?.value || `${BLOOM_INTENSITY_DEFAULT}`, 10),
+    );
   }
 
   /**
@@ -178,7 +181,8 @@ export class VisualStyles {
     governorRequestRender('bloom');
     const clamped = clampBloomIntensity(intensity);
     if (this._bloomSlider) this._bloomSlider.value = String(clamped);
-    if (this._bloomSliderValue) this._bloomSliderValue.textContent = `${clamped}%`;
+    if (this._bloomSliderValue)
+      this._bloomSliderValue.textContent = `${clamped}%`;
     this._applyBloomIntensity(clamped);
     if (syncShare) this._syncShareState();
   }
@@ -194,18 +198,18 @@ export class VisualStyles {
     if (!this._bloomStage) return;
     const rawStrength = bloomStrengthFromIntensity(intensity);
     // Dead-zone: strengths below 0.06 are imperceptible, clamp to zero.
-    const strength = rawStrength <= 0.06 ? 0.0 : ((rawStrength - 0.06) / 0.94);
+    const strength = rawStrength <= 0.06 ? 0.0 : (rawStrength - 0.06) / 0.94;
     // Smoothstep easing for perceptually linear bloom ramp
     const eased = strength * strength * (3.0 - 2.0 * strength);
 
     // Mapping tuned for intuitive UX:
     // 0 => effectively no glow, 200 => strong glow.
     // Keep threshold strict at low values so only very bright highlights bloom.
-    this._bloomStage.uniforms.contrast = 255.0 - (eased * 168.0);
-    this._bloomStage.uniforms.brightness = -0.5 + (eased * 0.36);
-    this._bloomStage.uniforms.sigma = 0.28 + (eased * 6.3);
-    this._bloomStage.uniforms.delta = 0.2 + (eased * 2.25);
-    this._bloomStage.uniforms.stepSize = 1.0 + (eased * 1.25);
+    this._bloomStage.uniforms.contrast = 255.0 - eased * 168.0;
+    this._bloomStage.uniforms.brightness = -0.5 + eased * 0.36;
+    this._bloomStage.uniforms.sigma = 0.28 + eased * 6.3;
+    this._bloomStage.uniforms.delta = 0.2 + eased * 2.25;
+    this._bloomStage.uniforms.stepSize = 1.0 + eased * 1.25;
     this._syncBloomStageEnabled();
   }
 
@@ -253,7 +257,9 @@ export class VisualStyles {
       this._sharpenSliderRow.classList.toggle('visible', this.sharpenEnabled);
     }
     if (this.sharpenEnabled && this._sharpenSlider) {
-      this._applySharpenIntensity(parseInt(this._sharpenSlider.value, 10) / 100);
+      this._applySharpenIntensity(
+        parseInt(this._sharpenSlider.value, 10) / 100,
+      );
     }
     this._syncShareState();
     this._layoutRightPanels();
@@ -284,7 +290,9 @@ export class VisualStyles {
 
     const bloomInput = preset.bloom || {};
     if (typeof bloomInput.intensity === 'number' && this._bloomSlider) {
-      this._setBloomIntensity(clampBloomIntensity(bloomInput.intensity), { syncShare: false });
+      this._setBloomIntensity(clampBloomIntensity(bloomInput.intensity), {
+        syncShare: false,
+      });
     }
     if (typeof bloomInput.enabled === 'boolean') {
       this._setBloomEnabled(bloomInput.enabled);
@@ -292,7 +300,10 @@ export class VisualStyles {
 
     const sharpenInput = preset.sharpen || {};
     if (typeof sharpenInput.intensity === 'number' && this._sharpenSlider) {
-      const sharpenPct = Math.max(0, Math.min(100, Math.round(sharpenInput.intensity)));
+      const sharpenPct = Math.max(
+        0,
+        Math.min(100, Math.round(sharpenInput.intensity)),
+      );
       this._sharpenSlider.value = String(sharpenPct);
       this._sharpenSliderValue.textContent = `${sharpenPct}%`;
       this._applySharpenIntensity(sharpenPct / 100);
@@ -327,14 +338,22 @@ export class VisualStyles {
   _applyGlobalPostDefaults() {
     const defaults = GLOBAL_POST_DEFAULTS;
     if (typeof defaults.bloom?.intensity === 'number' && this._bloomSlider) {
-      this._setBloomIntensity(clampBloomIntensity(defaults.bloom.intensity), { syncShare: false });
+      this._setBloomIntensity(clampBloomIntensity(defaults.bloom.intensity), {
+        syncShare: false,
+      });
     }
     if (typeof defaults.bloom?.enabled === 'boolean') {
       this._setBloomEnabled(defaults.bloom.enabled);
     }
 
-    if (typeof defaults.sharpen?.intensity === 'number' && this._sharpenSlider) {
-      const sharpenPct = Math.max(0, Math.min(100, Math.round(defaults.sharpen.intensity)));
+    if (
+      typeof defaults.sharpen?.intensity === 'number' &&
+      this._sharpenSlider
+    ) {
+      const sharpenPct = Math.max(
+        0,
+        Math.min(100, Math.round(defaults.sharpen.intensity)),
+      );
       this._sharpenSlider.value = String(sharpenPct);
       this._sharpenSliderValue.textContent = `${sharpenPct}%`;
       this._applySharpenIntensity(sharpenPct / 100);
@@ -354,25 +373,35 @@ export class VisualStyles {
     if (defaults.detectionMode) {
       this._setDetectionMode(defaults.detectionMode);
     }
-    if (typeof defaults.detectionDensity === 'number' && this._detectionDensitySlider) {
+    if (
+      typeof defaults.detectionDensity === 'number' &&
+      this._detectionDensitySlider
+    ) {
       const density = canonicalizeDensity(defaults.detectionDensity);
       this._detectionDensitySlider.value = String(density);
       this._detectionDensityValue.textContent = `${density}%`;
       this._applyDetectionDensityFromUi();
     }
     this._setDetectionAllocation(
-      this._detectionAllocationPreference || defaults.detectionAllocation || 'ELASTIC',
+      this._detectionAllocationPreference ||
+        defaults.detectionAllocation ||
+        'ELASTIC',
       { syncShare: false, persist: false },
     );
     if (this._detectionFadeSlider) {
       this._detectionFadeSlider.value = String(defaults.detectionFadePct ?? 7);
     }
     if (this._detectionOpacitySlider) {
-      this._detectionOpacitySlider.value = String(defaults.detectionOutsideOpacityPct ?? 1);
+      this._detectionOpacitySlider.value = String(
+        defaults.detectionOutsideOpacityPct ?? 1,
+      );
     }
     this._applyDetectionFadeFromUi();
     if (typeof defaults.celestialRing === 'boolean') {
-      this.setCelestialRingEnabled(defaults.celestialRing, { syncShare: false, focus: false });
+      this.setCelestialRingEnabled(defaults.celestialRing, {
+        syncShare: false,
+        focus: false,
+      });
     }
   }
 
@@ -386,19 +415,35 @@ export class VisualStyles {
   setBloom({ enabled, intensityPct } = {}) {
     const current = () => ({
       enabled: !!this.bloomEnabled,
-      intensityPct: this._bloomSlider ? parseInt(this._bloomSlider.value, 10) : null,
+      intensityPct: this._bloomSlider
+        ? parseInt(this._bloomSlider.value, 10)
+        : null,
     });
     if (enabled !== undefined && typeof enabled !== 'boolean') {
-      return { ok: false, error: `Invalid bloom enabled value: ${enabled}`, bloom: current() };
+      return {
+        ok: false,
+        error: `Invalid bloom enabled value: ${enabled}`,
+        bloom: current(),
+      };
     }
-    if (intensityPct !== undefined
-      && (typeof intensityPct !== 'number' || !Number.isFinite(intensityPct))) {
-      return { ok: false, error: `Invalid bloom intensity: ${intensityPct}`, bloom: current() };
+    if (
+      intensityPct !== undefined &&
+      (typeof intensityPct !== 'number' || !Number.isFinite(intensityPct))
+    ) {
+      return {
+        ok: false,
+        error: `Invalid bloom intensity: ${intensityPct}`,
+        bloom: current(),
+      };
     }
-    const hasExplicitVisualChange = intensityPct !== undefined || enabled !== undefined;
-    if (hasExplicitVisualChange) this.shareLinkManager?.claimRestoreLane?.('visual');
+    const hasExplicitVisualChange =
+      intensityPct !== undefined || enabled !== undefined;
+    if (hasExplicitVisualChange)
+      this.shareLinkManager?.claimRestoreLane?.('visual');
     if (intensityPct !== undefined) {
-      this._setBloomIntensity(Math.round(Math.max(0, Math.min(200, intensityPct))));
+      this._setBloomIntensity(
+        Math.round(Math.max(0, Math.min(200, intensityPct))),
+      );
     }
     if (enabled !== undefined) this._setBloomEnabled(enabled);
     return {
@@ -417,21 +462,36 @@ export class VisualStyles {
   setSharpen({ enabled, intensityPct } = {}) {
     const current = () => ({
       enabled: !!this.sharpenEnabled,
-      intensityPct: this._sharpenSlider ? parseInt(this._sharpenSlider.value, 10) : null,
+      intensityPct: this._sharpenSlider
+        ? parseInt(this._sharpenSlider.value, 10)
+        : null,
     });
     if (enabled !== undefined && typeof enabled !== 'boolean') {
-      return { ok: false, error: `Invalid sharpen enabled value: ${enabled}`, sharpen: current() };
+      return {
+        ok: false,
+        error: `Invalid sharpen enabled value: ${enabled}`,
+        sharpen: current(),
+      };
     }
-    if (intensityPct !== undefined
-      && (typeof intensityPct !== 'number' || !Number.isFinite(intensityPct))) {
-      return { ok: false, error: `Invalid sharpen intensity: ${intensityPct}`, sharpen: current() };
+    if (
+      intensityPct !== undefined &&
+      (typeof intensityPct !== 'number' || !Number.isFinite(intensityPct))
+    ) {
+      return {
+        ok: false,
+        error: `Invalid sharpen intensity: ${intensityPct}`,
+        sharpen: current(),
+      };
     }
-    const hasExplicitVisualChange = intensityPct !== undefined || enabled !== undefined;
-    if (hasExplicitVisualChange) this.shareLinkManager?.claimRestoreLane?.('visual');
+    const hasExplicitVisualChange =
+      intensityPct !== undefined || enabled !== undefined;
+    if (hasExplicitVisualChange)
+      this.shareLinkManager?.claimRestoreLane?.('visual');
     if (intensityPct !== undefined) {
       const pct = Math.round(Math.max(0, Math.min(100, intensityPct)));
       if (this._sharpenSlider) this._sharpenSlider.value = String(pct);
-      if (this._sharpenSliderValue) this._sharpenSliderValue.textContent = `${pct}%`;
+      if (this._sharpenSliderValue)
+        this._sharpenSliderValue.textContent = `${pct}%`;
       this._applySharpenIntensity(pct / 100);
       this._syncShareState();
     }
@@ -549,7 +609,9 @@ export class VisualStyles {
 
       const valueDisplay = document.createElement('span');
       valueDisplay.className = 'param-value';
-      valueDisplay.textContent = parseFloat(slider.value).toFixed(uMeta.max <= 1 ? 2 : 1);
+      valueDisplay.textContent = parseFloat(slider.value).toFixed(
+        uMeta.max <= 1 ? 2 : 1,
+      );
 
       slider.addEventListener('input', () => {
         this.shareLinkManager?.claimRestoreLane?.('visual');
@@ -581,13 +643,15 @@ export class VisualStyles {
     this._sliderPanel.classList.remove('collapsed');
     this._syncPanelCollapseButton(this._sliderPanel);
     this.setPanelCollapsed('pp-toggles', false, { explicit: true });
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      const scrollOwner = this._ppToggles;
-      if (!scrollOwner) return;
-      const ownerRect = scrollOwner.getBoundingClientRect();
-      const panelRect = this._sliderPanel.getBoundingClientRect();
-      scrollOwner.scrollTop += panelRect.top - ownerRect.top - 8;
-    }));
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const scrollOwner = this._ppToggles;
+        if (!scrollOwner) return;
+        const ownerRect = scrollOwner.getBoundingClientRect();
+        const panelRect = this._sliderPanel.getBoundingClientRect();
+        scrollOwner.scrollTop += panelRect.top - ownerRect.top - 8;
+      }),
+    );
   }
 
   // ── Style switching ───────────────────────────
@@ -603,14 +667,18 @@ export class VisualStyles {
    * @param {boolean} [options.applyPreset=true] - Whether to apply STYLE_PRESET_DEFAULTS for the new style.
    * @returns {void}
    */
-  setStyle(styleName, {
-    applyPreset = true,
-    revealParameters = applyPreset,
-    restore = false,
-  } = {}) {
+  setStyle(
+    styleName,
+    {
+      applyPreset = true,
+      revealParameters = applyPreset,
+      restore = false,
+    } = {},
+  ) {
     if (!restore) this.shareLinkManager?.claimRestoreLane?.('visual');
     if (styleName === this.activeStyle) {
-      if (revealParameters && styleName !== 'normal') this._revealStyleParameters();
+      if (revealParameters && styleName !== 'normal')
+        this._revealStyleParameters();
       return;
     }
 
@@ -624,12 +692,20 @@ export class VisualStyles {
 
     // Transition out the previous shader style
     if (previousStyle !== 'normal' && this.stages[previousStyle]) {
-      this._startTransition(previousStyle, this.stages[previousStyle].uniforms.intensity, 0.0);
+      this._startTransition(
+        previousStyle,
+        this.stages[previousStyle].uniforms.intensity,
+        0.0,
+      );
     }
 
     // Transition in the new shader style
     if (styleName !== 'normal' && this.stages[styleName]) {
-      this._startTransition(styleName, this.stages[styleName].uniforms.intensity, 1.0);
+      this._startTransition(
+        styleName,
+        this.stages[styleName].uniforms.intensity,
+        1.0,
+      );
     }
 
     if (applyPreset) {
@@ -637,13 +713,14 @@ export class VisualStyles {
     }
 
     // Update button UI
-    document.querySelectorAll('.style-btn').forEach(btn => {
+    document.querySelectorAll('.style-btn').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.style === styleName);
     });
 
     // Update style indicator
     const displayNames = { surveillance: 'NVG', thermal: 'FLIR', retro: 'CRT' };
-    this._styleIndicator.textContent = displayNames[styleName] || styleName.toUpperCase();
+    this._styleIndicator.textContent =
+      displayNames[styleName] || styleName.toUpperCase();
     this._updateStyleMiniStatus(styleName);
 
     // Update parameter sliders
@@ -656,9 +733,11 @@ export class VisualStyles {
     // Sync detection overlay tone to active post-process style
     setDetectionStyle(styleName);
     this._syncIrBoost();
-    window.dispatchEvent(new CustomEvent('gev:style-change', {
-      detail: { style: styleName },
-    }));
+    window.dispatchEvent(
+      new CustomEvent('gev:style-change', {
+        detail: { style: styleName },
+      }),
+    );
 
     this._syncCockpitInheritedStyle();
 
@@ -706,7 +785,8 @@ export class VisualStyles {
         const t = Math.min(elapsed / TRANSITION_DURATION_MS, 1.0);
         // Ease-in-out quadratic: smooth acceleration then deceleration
         const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-        const value = transition.from + (transition.to - transition.from) * eased;
+        const value =
+          transition.from + (transition.to - transition.from) * eased;
 
         this._setStageIntensity(this.stages[styleName], value);
 
@@ -751,6 +831,8 @@ export class VisualStyles {
    */
   _updateStyleMiniStatus(styleName = this.activeStyle) {
     if (!this._styleMiniValue) return;
-    this._styleMiniValue.textContent = STYLE_STATUS_LABELS[styleName] || String(styleName || 'normal').toUpperCase();
+    this._styleMiniValue.textContent =
+      STYLE_STATUS_LABELS[styleName] ||
+      String(styleName || 'normal').toUpperCase();
   }
 }

@@ -28,52 +28,68 @@ import { shouldExpandGlobalContextPanel } from '../rightRailPolicy.js';
 
 export class ContextPanel {
   _initGlobalContextPanel() {
-    const contextTabs = [this._globalContextFlightsBtn, this._globalContextMissionsBtn].filter(Boolean);
-    contextTabs.forEach((tab, index) => tab.addEventListener('keydown', (event) => {
-      let nextIndex = null;
-      if (event.key === 'ArrowRight') nextIndex = (index + 1) % contextTabs.length;
-      else if (event.key === 'ArrowLeft') nextIndex = (index - 1 + contextTabs.length) % contextTabs.length;
-      else if (event.key === 'Home') nextIndex = 0;
-      else if (event.key === 'End') nextIndex = contextTabs.length - 1;
-      if (nextIndex === null) return;
-      event.preventDefault();
-      contextTabs[nextIndex].focus({ preventScroll: true });
-      contextTabs[nextIndex].click();
-    }));
+    const contextTabs = [
+      this._globalContextFlightsBtn,
+      this._globalContextMissionsBtn,
+    ].filter(Boolean);
+    contextTabs.forEach((tab, index) =>
+      tab.addEventListener('keydown', (event) => {
+        let nextIndex = null;
+        if (event.key === 'ArrowRight')
+          nextIndex = (index + 1) % contextTabs.length;
+        else if (event.key === 'ArrowLeft')
+          nextIndex = (index - 1 + contextTabs.length) % contextTabs.length;
+        else if (event.key === 'Home') nextIndex = 0;
+        else if (event.key === 'End') nextIndex = contextTabs.length - 1;
+        if (nextIndex === null) return;
+        event.preventDefault();
+        contextTabs[nextIndex].focus({ preventScroll: true });
+        contextTabs[nextIndex].click();
+      }),
+    );
     this._globalContextFlightsBtn?.addEventListener('click', () => {
       if (this._contextModeChanging || this._clearSelectedLayersPromise) return;
       const nextMode = this._contextMode === 'flights' ? null : 'flights';
       this._claimContextVisualAuthority();
       void this._runUserFacingContextAction(
-        (notificationToken) => this._selectContextMode(
-          nextMode,
-          { notificationToken },
-        ),
+        (notificationToken) =>
+          this._selectContextMode(nextMode, { notificationToken }),
         'Contacts could not complete the requested transition; try again',
       ).then((succeeded) => {
-        if (nextMode && shouldExpandGlobalContextPanel({
-          action: 'contacts',
-          explicitUserAction: true,
-          succeeded: succeeded === true,
-        })) this.setPanelCollapsed('global-context-panel', false, { explicit: true });
+        if (
+          nextMode &&
+          shouldExpandGlobalContextPanel({
+            action: 'contacts',
+            explicitUserAction: true,
+            succeeded: succeeded === true,
+          })
+        )
+          this.setPanelCollapsed('global-context-panel', false, {
+            explicit: true,
+          });
       });
     });
     this._globalContextMissionsBtn?.addEventListener('click', () => {
       if (this._contextModeChanging || this._clearSelectedLayersPromise) return;
-      const nextMode = this._contextMode === 'space-missions' ? null : 'space-missions';
+      const nextMode =
+        this._contextMode === 'space-missions' ? null : 'space-missions';
       this._claimContextVisualAuthority();
       void this._runUserFacingContextAction(
-        (notificationToken) => this._selectContextMode(
-          nextMode,
-          { notificationToken },
-        ),
+        (notificationToken) =>
+          this._selectContextMode(nextMode, { notificationToken }),
         'Space Missions could not complete the requested transition; try again',
       ).then((succeeded) => {
-        if (nextMode && shouldExpandGlobalContextPanel({
-          action: 'space-missions',
-          explicitUserAction: true,
-          succeeded: succeeded === true,
-        })) this.setPanelCollapsed('global-context-panel', false, { explicit: true });
+        if (
+          nextMode &&
+          shouldExpandGlobalContextPanel({
+            action: 'space-missions',
+            explicitUserAction: true,
+            succeeded: succeeded === true,
+          })
+        )
+          this.setPanelCollapsed('global-context-panel', false, {
+            explicit: true,
+          });
       });
     });
     this._installationsSearchBtn?.addEventListener('click', () => {
@@ -83,22 +99,35 @@ export class ContextPanel {
       button.setAttribute('aria-disabled', 'true');
       button.setAttribute('aria-busy', 'true');
       void this._runUserFacingContextAction(async (notificationToken) => {
-        const enabled = await this._dataManager.setEnabled('military-installations', true, {
-          origin: 'user',
-          notificationToken,
-        });
-        if (enabled === false || !this._dataManager.isEnabled('military-installations')) return false;
+        const enabled = await this._dataManager.setEnabled(
+          'military-installations',
+          true,
+          {
+            origin: 'user',
+            notificationToken,
+          },
+        );
+        if (
+          enabled === false ||
+          !this._dataManager.isEnabled('military-installations')
+        )
+          return false;
         const searched = await militaryInstallationsLayer.searchNearby?.();
         if (searched === false) return false;
         const stats = militaryInstallationsLayer.getStats?.();
-        this._showToast(stats?.statusMessage || (stats?.status === 'zoom-in'
-          ? 'Zoom in to search mapped installations'
-          : 'Nearby installations refreshed'));
+        this._showToast(
+          stats?.statusMessage ||
+            (stats?.status === 'zoom-in'
+              ? 'Zoom in to search mapped installations'
+              : 'Nearby installations refreshed'),
+        );
         return true;
-      }, 'Nearby installations could not be refreshed; try again').finally(() => {
-        button.setAttribute('aria-disabled', 'false');
-        button.setAttribute('aria-busy', 'false');
-      });
+      }, 'Nearby installations could not be refreshed; try again').finally(
+        () => {
+          button.setAttribute('aria-disabled', 'false');
+          button.setAttribute('aria-busy', 'false');
+        },
+      );
     });
   }
 
@@ -126,7 +155,9 @@ export class ContextPanel {
   _trackContextLayerReaction(promise) {
     const tracked = Promise.resolve(promise);
     this._contextLayerReactionPromises.add(tracked);
-    void tracked.finally(() => this._contextLayerReactionPromises.delete(tracked));
+    void tracked.finally(() =>
+      this._contextLayerReactionPromises.delete(tracked),
+    );
     return tracked;
   }
 
@@ -180,8 +211,9 @@ export class ContextPanel {
       // dependency releases can supersede the restore's same-target requests
       // and make a valid Contacts-to-Missions handoff look like a failure.
       const contactsCoordinatorId = 'military-awareness';
-      const settleContactsCoordinator = !restoreState.enabledLayerIds.has(contactsCoordinatorId)
-        && this._dataManager.isEffectivelyEnabled(contactsCoordinatorId);
+      const settleContactsCoordinator =
+        !restoreState.enabledLayerIds.has(contactsCoordinatorId) &&
+        this._dataManager.isEffectivelyEnabled(contactsCoordinatorId);
       if (settleContactsCoordinator) {
         const coordinatorSettled = await this._dataManager.setEnabled(
           contactsCoordinatorId,
@@ -193,19 +225,24 @@ export class ContextPanel {
           },
         );
         if (coordinatorSettled === false) {
-          const error = new Error('Failed to settle Contacts before restoring Context');
+          const error = new Error(
+            'Failed to settle Contacts before restoring Context',
+          );
           error.failedLayerIds = [contactsCoordinatorId];
           throw error;
         }
       }
-      await this._dataManager.restoreEnabledLayerIds(restoreState.enabledLayerIds, {
-        origin: 'context-restore',
-        excludeLayerIds: settleContactsCoordinator
-          ? [...excludeLayerIds, contactsCoordinatorId]
-          : excludeLayerIds,
-        notificationToken,
-        ...(restoreSignal ? { signal: restoreSignal } : {}),
-      });
+      await this._dataManager.restoreEnabledLayerIds(
+        restoreState.enabledLayerIds,
+        {
+          origin: 'context-restore',
+          excludeLayerIds: settleContactsCoordinator
+            ? [...excludeLayerIds, contactsCoordinatorId]
+            : excludeLayerIds,
+          notificationToken,
+          ...(restoreSignal ? { signal: restoreSignal } : {}),
+        },
+      );
     };
     try {
       await restoreSnapshot(signal);
@@ -220,11 +257,15 @@ export class ContextPanel {
           await restoreSnapshot(null);
           restoreError = null;
         } catch (compensationError) {
-          restoreError = mergeContextTransitionErrors(restoreError, compensationError);
+          restoreError = mergeContextTransitionErrors(
+            restoreError,
+            compensationError,
+          );
         }
       }
     } finally {
-      if (this._contextRestoreState === restoreState) this._contextRestoreState = null;
+      if (this._contextRestoreState === restoreState)
+        this._contextRestoreState = null;
     }
     // Clear Selected Layers owns a newer global OFF intent. A restore that was
     // already awaiting lifecycle work must not replay its captured companion
@@ -236,11 +277,11 @@ export class ContextPanel {
     const replaySignal = signal?.aborted ? null : signal;
     const replayError = await settleContextIntentReplay({
       restoreState,
-      setEnabled: (layerId, enabled, options = {}) => this._dataManager.setEnabled(
-        layerId,
-        enabled,
-        { ...options, ...(replaySignal ? { signal: replaySignal } : {}) },
-      ),
+      setEnabled: (layerId, enabled, options = {}) =>
+        this._dataManager.setEnabled(layerId, enabled, {
+          ...options,
+          ...(replaySignal ? { signal: replaySignal } : {}),
+        }),
       notificationToken,
     });
     restoreError = mergeContextTransitionErrors(restoreError, replayError);
@@ -277,7 +318,10 @@ export class ContextPanel {
    * generation discipline the surrounding transaction already follows.
    */
 
-  async _restoreContextSessionAfterLayerSettles(layerId, { notificationToken = null } = {}) {
+  async _restoreContextSessionAfterLayerSettles(
+    layerId,
+    { notificationToken = null } = {},
+  ) {
     await this._dataManager?.waitForLayerSettled?.(layerId);
     return this._restoreContextSession({ notificationToken });
   }
@@ -303,7 +347,10 @@ export class ContextPanel {
     this.shareLinkManager?.claimRestoreLane?.('visual');
   }
 
-  async _selectContextMode(mode, { notificationToken = null, signal = null } = {}) {
+  async _selectContextMode(
+    mode,
+    { notificationToken = null, signal = null } = {},
+  ) {
     if (!this._dataManager) return false;
     if (this._clearSelectedLayersPromise) return false;
     this._contextTransitionFailedLayerIds = [];
@@ -328,7 +375,9 @@ export class ContextPanel {
       // and the resting state is Context OFF — reported as such by
       // setContextMode rather than dressed up as a clean cancellation. See the
       // note above _restoreContextSessionAfterLayerSettles.
-      const crossModeSwitch = Boolean(this._contextMode && this._contextMode !== mode);
+      const crossModeSwitch = Boolean(
+        this._contextMode && this._contextMode !== mode,
+      );
       if (crossModeSwitch) {
         this._contextMode = null;
         await this._restoreContextSession({ notificationToken, signal });
@@ -342,7 +391,10 @@ export class ContextPanel {
       // keeps its non-dependency teardown in the background so slow source
       // shutdown does not delay cockpit entry.
       try {
-        await this._clearLayersOutsideContextMode(mode, { notificationToken, signal });
+        await this._clearLayersOutsideContextMode(mode, {
+          notificationToken,
+          signal,
+        });
       } catch (error) {
         if (!isCurrent()) return false;
         let transitionError = error;
@@ -352,20 +404,30 @@ export class ContextPanel {
         try {
           await this._restoreContextSession({ notificationToken });
         } catch (restoreError) {
-          transitionError = mergeContextTransitionErrors(transitionError, restoreError);
-          this._contextTransitionFailedLayerIds = [...(transitionError.failedLayerIds || [])];
+          transitionError = mergeContextTransitionErrors(
+            transitionError,
+            restoreError,
+          );
+          this._contextTransitionFailedLayerIds = [
+            ...(transitionError.failedLayerIds || []),
+          ];
           throw transitionError;
         }
-        this._contextTransitionFailedLayerIds = [...(transitionError?.failedLayerIds || [])];
+        this._contextTransitionFailedLayerIds = [
+          ...(transitionError?.failedLayerIds || []),
+        ];
         return false;
       }
       if (!isCurrent()) return false;
       // Entry is one transaction: isolation succeeded above, so a failed mode
       // activation must roll the cleared layers back instead of stranding the
       // user in a half-entered mode with an orphaned snapshot.
-      const entryLayerId = mode === 'flights' ? 'military-awareness' : 'rocket-launches';
+      const entryLayerId =
+        mode === 'flights' ? 'military-awareness' : 'rocket-launches';
       if (mode === 'flights') {
-        this._dataManager.setLayerParams('military-awareness', { passive: false });
+        this._dataManager.setLayerParams('military-awareness', {
+          passive: false,
+        });
       }
       let activated = false;
       let activationError = null;
@@ -383,19 +445,21 @@ export class ContextPanel {
           intentEpoch: activationIntent.intentEpoch,
         };
         activated = await activationIntent.promise;
-        terminalIntentOutcome = await this._dataManager._waitForVisibilityIntent?.(
-          entryLayerId,
-          activationIntent.intentEpoch,
-        );
+        terminalIntentOutcome =
+          await this._dataManager._waitForVisibilityIntent?.(
+            entryLayerId,
+            activationIntent.intentEpoch,
+          );
       } catch (error) {
         activationError = error;
       }
       if (!isCurrent()) return false;
-      let replacementIntent = mode === 'space-missions'
-        && this._contextModeReplacementIntent?.generation === generation
-        && this._contextModeReplacementIntent.layerId === entryLayerId
-        ? this._contextModeReplacementIntent
-        : null;
+      let replacementIntent =
+        mode === 'space-missions' &&
+        this._contextModeReplacementIntent?.generation === generation &&
+        this._contextModeReplacementIntent.layerId === entryLayerId
+          ? this._contextModeReplacementIntent
+          : null;
       while (replacementIntent) {
         const outcome = await this._dataManager._waitForVisibilityIntent?.(
           entryLayerId,
@@ -403,9 +467,10 @@ export class ContextPanel {
         );
         terminalIntentOutcome = outcome;
         if (!isCurrent()) return false;
-        const replacementOwnsMode = outcome?.intentEpoch === replacementIntent.intentEpoch
-          && outcome.enabled === true
-          && outcome.succeeded === true;
+        const replacementOwnsMode =
+          outcome?.intentEpoch === replacementIntent.intentEpoch &&
+          outcome.enabled === true &&
+          outcome.succeeded === true;
         if (replacementOwnsMode) {
           this._contextModeEntering = null;
           this._contextModeEntryIntent = null;
@@ -413,34 +478,51 @@ export class ContextPanel {
           this._syncContextModeButtons();
           return true;
         }
-        const successorEpoch = outcome?.cancellationReason === 'superseded'
-          && outcome.successorEnabled === true
-          && Number.isInteger(outcome.successorIntentEpoch)
-          && outcome.successorIntentEpoch > replacementIntent.intentEpoch
-          ? outcome.successorIntentEpoch
-          : null;
-        replacementIntent = successorEpoch === null ? null : {
-          generation,
-          layerId: entryLayerId,
-          intentEpoch: successorEpoch,
-        };
+        const successorEpoch =
+          outcome?.cancellationReason === 'superseded' &&
+          outcome.successorEnabled === true &&
+          Number.isInteger(outcome.successorIntentEpoch) &&
+          outcome.successorIntentEpoch > replacementIntent.intentEpoch
+            ? outcome.successorIntentEpoch
+            : null;
+        replacementIntent =
+          successorEpoch === null
+            ? null
+            : {
+                generation,
+                layerId: entryLayerId,
+                intentEpoch: successorEpoch,
+              };
       }
-      if (activationError || activated === false || !this._dataManager.isEnabled(entryLayerId)) {
-        const cancelledAndSettled = terminalIntentOutcome?.succeeded === false
-          && ['caller-abort', 'resource-abort', 'superseded'].includes(
+      if (
+        activationError ||
+        activated === false ||
+        !this._dataManager.isEnabled(entryLayerId)
+      ) {
+        const cancelledAndSettled =
+          terminalIntentOutcome?.succeeded === false &&
+          ['caller-abort', 'resource-abort', 'superseded'].includes(
             terminalIntentOutcome.cancellationReason,
           );
         let transitionError = null;
         if (!cancelledAndSettled) {
-          transitionError = activationError instanceof Error
-            ? activationError
-            : new Error(`Context activation failed for: ${entryLayerId}`);
-          transitionError.failedLayerIds = [...new Set([
-            ...(transitionError.failedLayerIds || []),
-            entryLayerId,
-          ])];
-          this._contextTransitionFailedLayerIds = [...transitionError.failedLayerIds];
-          console.warn(`[Context] ${mode} activation failed; restoring previous layers`, activationError || 'not enabled');
+          transitionError =
+            activationError instanceof Error
+              ? activationError
+              : new Error(`Context activation failed for: ${entryLayerId}`);
+          transitionError.failedLayerIds = [
+            ...new Set([
+              ...(transitionError.failedLayerIds || []),
+              entryLayerId,
+            ]),
+          ];
+          this._contextTransitionFailedLayerIds = [
+            ...transitionError.failedLayerIds,
+          ];
+          console.warn(
+            `[Context] ${mode} activation failed; restoring previous layers`,
+            activationError || 'not enabled',
+          );
         }
         this._contextMode = null;
         this._contextModeEntryIntent = null;
@@ -452,8 +534,13 @@ export class ContextPanel {
             notificationToken,
           });
         } catch (restoreError) {
-          transitionError = mergeContextTransitionErrors(transitionError, restoreError);
-          this._contextTransitionFailedLayerIds = [...(transitionError?.failedLayerIds || [])];
+          transitionError = mergeContextTransitionErrors(
+            transitionError,
+            restoreError,
+          );
+          this._contextTransitionFailedLayerIds = [
+            ...(transitionError?.failedLayerIds || []),
+          ];
           throw transitionError;
         }
         // `null` means the requested entry was cancelled and its exact rollback
@@ -477,7 +564,8 @@ export class ContextPanel {
     this._contextMode = null;
     this._contextModeEntryIntent = null;
     this._contextModeReplacementIntent = null;
-    if (this.cockpitView?.active) this.cockpitView.exit({ restoreTracking: false });
+    if (this.cockpitView?.active)
+      this.cockpitView.exit({ restoreTracking: false });
     this._syncContextModeButtons();
     try {
       await this._restoreContextSession({ notificationToken });
@@ -496,7 +584,10 @@ export class ContextPanel {
     for (const [layerId] of this._dataManager.layers || []) {
       // Effective visibility: a disallowed layer still mid-ENABLING must be
       // isolated too, or it settles ON inside the exclusive mode.
-      if (!allowed.has(layerId) && this._dataManager.isEffectivelyEnabled(layerId)) {
+      if (
+        !allowed.has(layerId) &&
+        this._dataManager.isEffectivelyEnabled(layerId)
+      ) {
         pending.push({
           layerId,
           transition: this._dataManager.setEnabled(layerId, false, {
@@ -506,24 +597,34 @@ export class ContextPanel {
         });
       }
     }
-    const results = await Promise.all(pending.map(({ transition }) => transition));
+    const results = await Promise.all(
+      pending.map(({ transition }) => transition),
+    );
     const failed = pending
-      .filter(({ layerId }, index) => results[index] === false || this._dataManager.isEnabled(layerId))
+      .filter(
+        ({ layerId }, index) =>
+          results[index] === false || this._dataManager.isEnabled(layerId),
+      )
       .map(({ layerId }) => layerId);
     if (failed.length > 0) {
-      const error = new Error(`Context isolation failed for: ${failed.join(', ')}`);
+      const error = new Error(
+        `Context isolation failed for: ${failed.join(', ')}`,
+      );
       error.failedLayerIds = failed;
       throw error;
     }
   }
 
   _handleContextLayerChange(change) {
-    if (change?.layerId === 'radio' && [
-      'visibility-transition',
-      'visibility',
-      'visibility-cancelled',
-      'visibility-failed',
-    ].includes(change.type)) {
+    if (
+      change?.layerId === 'radio' &&
+      [
+        'visibility-transition',
+        'visibility',
+        'visibility-cancelled',
+        'visibility-failed',
+      ].includes(change.type)
+    ) {
       this._renderRadioState(radioLayer.getUIState());
     }
     if (change?.type === 'visibility-transition') return;
@@ -536,8 +637,8 @@ export class ContextPanel {
         change,
       });
       if (
-        this._contextModeDeferredEntryIntent?.layerId === change.layerId
-        && this._contextModeDeferredEntryIntent.intentEpoch === change.intentEpoch
+        this._contextModeDeferredEntryIntent?.layerId === change.layerId &&
+        this._contextModeDeferredEntryIntent.intentEpoch === change.intentEpoch
       ) {
         if (cancellationDisposition !== 'replacement') {
           this._contextModeDeferredEntryIntent = null;
@@ -547,9 +648,9 @@ export class ContextPanel {
         this._contextModeEntering = 'space-missions';
         const entryIntent = this._contextModeEntryIntent;
         if (
-          entryIntent?.generation === this._contextModeGeneration
-          && entryIntent.layerId === change.layerId
-          && entryIntent.intentEpoch === change.intentEpoch
+          entryIntent?.generation === this._contextModeGeneration &&
+          entryIntent.layerId === change.layerId &&
+          entryIntent.intentEpoch === change.intentEpoch
         ) {
           this._contextModeReplacementIntent = {
             generation: entryIntent.generation,
@@ -563,30 +664,36 @@ export class ContextPanel {
         this._contextModeReplacementIntent = null;
         if (this._contextSessionSnapshot && !this._contextModeChanging) {
           this._contextMode = null;
-          void this._trackContextLayerReaction(this._runUserFacingContextAction(
-            async (notificationToken) => {
+          void this._trackContextLayerReaction(
+            this._runUserFacingContextAction(async (notificationToken) => {
               await this._restoreContextSessionAfterLayerSettles(
                 change.layerId,
                 { notificationToken },
               );
               return true;
-            },
-            'Space Missions cancellation could not restore the previous layer state',
-          ));
+            }, 'Space Missions cancellation could not restore the previous layer state'),
+          );
         }
       }
       this._syncContextModeButtons();
       return;
     }
     if (
-      change?.layerId === 'rocket-launches'
-      && ['visibility', 'visibility-blocked', 'visibility-failed'].includes(change.type)
+      change?.layerId === 'rocket-launches' &&
+      ['visibility', 'visibility-blocked', 'visibility-failed'].includes(
+        change.type,
+      )
     ) {
       this._contextModeEntering = null;
     }
     if (change?.type === 'visibility-blocked') {
-      if (!this._userFacingContextNotificationTokens.has(change.notificationToken)) {
-        this._showToast(change.reason || 'That layer is unavailable in the current Context mode');
+      if (
+        !this._userFacingContextNotificationTokens.has(change.notificationToken)
+      ) {
+        this._showToast(
+          change.reason ||
+            'That layer is unavailable in the current Context mode',
+        );
       }
       this._syncContextModeButtons();
       return;
@@ -597,29 +704,28 @@ export class ContextPanel {
       // cleared by the visibility guard. Wait outside the synchronous manager
       // notification for this queue to settle, then reconcile the complete
       // snapshot, including an uncertain failed shell.
-      const needsDeferredShellRestore = (
-        ['military-awareness', 'rocket-launches'].includes(change.layerId)
-        && change.enabled
-        && this._contextSessionSnapshot
-        && !this._contextModeChanging
-      );
+      const needsDeferredShellRestore =
+        ['military-awareness', 'rocket-launches'].includes(change.layerId) &&
+        change.enabled &&
+        this._contextSessionSnapshot &&
+        !this._contextModeChanging;
       if (needsDeferredShellRestore) {
         this._contextMode = null;
-        void this._trackContextLayerReaction(this._runUserFacingContextAction(
-          async (notificationToken) => {
-            await this._restoreContextSessionAfterLayerSettles(
-              change.layerId,
-              { notificationToken },
-            );
+        void this._trackContextLayerReaction(
+          this._runUserFacingContextAction(async (notificationToken) => {
+            await this._restoreContextSessionAfterLayerSettles(change.layerId, {
+              notificationToken,
+            });
             // The wrapper owns failure announcements. On a successful rollback
             // announce the original activation failure here so the same direct
             // action still produces exactly one accessible notification.
             this._showToast(failureMessage);
             return true;
-          },
-          failureMessage,
-        ));
-      } else if (!this._userFacingContextNotificationTokens.has(change.notificationToken)) {
+          }, failureMessage),
+        );
+      } else if (
+        !this._userFacingContextNotificationTokens.has(change.notificationToken)
+      ) {
         this._showToast(failureMessage);
       }
       this._syncContextModeButtons();
@@ -643,14 +749,19 @@ export class ContextPanel {
       restoreState: this._contextRestoreState,
       change,
     });
-    if (shouldExitContextForLayerChange({
-      contextMode: this._contextMode,
-      globalContextEnabled: !!this._dataManager?.isEnabled('military-awareness'),
-      change,
-    })) {
-      void this._trackContextLayerReaction(this._runUserFacingContextAction((notificationToken) => (
-        this._deactivateContextForLayerChange({ notificationToken })
-      )));
+    if (
+      shouldExitContextForLayerChange({
+        contextMode: this._contextMode,
+        globalContextEnabled:
+          !!this._dataManager?.isEnabled('military-awareness'),
+        change,
+      })
+    ) {
+      void this._trackContextLayerReaction(
+        this._runUserFacingContextAction((notificationToken) =>
+          this._deactivateContextForLayerChange({ notificationToken }),
+        ),
+      );
       return;
     }
     if (!this._contextModeChanging) {
@@ -660,43 +771,64 @@ export class ContextPanel {
         // dedicated right-side Global Context chooser.
         this._contextMode = change.enabled
           ? null
-          : (this._contextMode === 'flights' ? null : this._contextMode);
+          : this._contextMode === 'flights'
+            ? null
+            : this._contextMode;
         if (change.enabled) {
           this._syncContextModeButtons();
         } else if (this._contextSessionSnapshot) {
-          void this._trackContextLayerReaction(this._runUserFacingContextAction((notificationToken) => (
-            this._deactivateContextForLayerChange({ notificationToken })
-          )));
+          void this._trackContextLayerReaction(
+            this._runUserFacingContextAction((notificationToken) =>
+              this._deactivateContextForLayerChange({ notificationToken }),
+            ),
+          );
         }
       } else if (change.layerId === 'rocket-launches') {
-        const ownsContextEntry = isExplicitUserIntentOrigin(change.origin, change.layerId)
-          || this._contextMode === 'space-missions'
-          || effectiveContextMode === 'space-missions';
+        const ownsContextEntry =
+          isExplicitUserIntentOrigin(change.origin, change.layerId) ||
+          this._contextMode === 'space-missions' ||
+          effectiveContextMode === 'space-missions';
         if (!ownsContextEntry) return;
-        this._contextMode = change.enabled ? 'space-missions' : (this._contextMode === 'space-missions' ? null : this._contextMode);
+        this._contextMode = change.enabled
+          ? 'space-missions'
+          : this._contextMode === 'space-missions'
+            ? null
+            : this._contextMode;
         if (change.enabled) {
           this._syncContextModeButtons();
         } else if (this._contextSessionSnapshot) {
-          void this._trackContextLayerReaction(this._runUserFacingContextAction((notificationToken) => (
-            this._deactivateContextForLayerChange({ notificationToken })
-          )));
+          void this._trackContextLayerReaction(
+            this._runUserFacingContextAction((notificationToken) =>
+              this._deactivateContextForLayerChange({ notificationToken }),
+            ),
+          );
         }
       } else if (
-        this._contextMode === 'flights'
-        && ['flights', 'military', 'ais-live-vessels', 'military-installations'].includes(change.layerId)
-        && !change.enabled
+        this._contextMode === 'flights' &&
+        [
+          'flights',
+          'military',
+          'ais-live-vessels',
+          'military-installations',
+        ].includes(change.layerId) &&
+        !change.enabled
       ) {
-        void this._trackContextLayerReaction(this._runUserFacingContextAction((notificationToken) => (
-          this._deactivateContextForLayerChange({ notificationToken })
-        )));
+        void this._trackContextLayerReaction(
+          this._runUserFacingContextAction((notificationToken) =>
+            this._deactivateContextForLayerChange({ notificationToken }),
+          ),
+        );
       }
     }
-    if (this.cockpitView?.active && !cockpitEntryAllowed({
-      contextMode: this._contextMode,
-      contextModeChanging: this._contextModeChanging,
-      flightsEnabled: !!this._dataManager?.isEnabled('flights'),
-      militaryEnabled: !!this._dataManager?.isEnabled('military'),
-    })) {
+    if (
+      this.cockpitView?.active &&
+      !cockpitEntryAllowed({
+        contextMode: this._contextMode,
+        contextModeChanging: this._contextModeChanging,
+        flightsEnabled: !!this._dataManager?.isEnabled('flights'),
+        militaryEnabled: !!this._dataManager?.isEnabled('military'),
+      })
+    ) {
       this.cockpitView.exit({ restoreTracking: false });
     }
     this._syncContextModeButtons();
@@ -709,24 +841,36 @@ export class ContextPanel {
     panel?.classList.toggle('context-enabled', flightsActive || missionsActive);
     panel?.setAttribute('data-context-mode', this._contextMode || 'none');
     this._globalContextFlightsBtn?.classList.toggle('active', flightsActive);
-    this._globalContextFlightsBtn?.setAttribute('aria-selected', String(flightsActive));
+    this._globalContextFlightsBtn?.setAttribute(
+      'aria-selected',
+      String(flightsActive),
+    );
     this._globalContextMissionsBtn?.classList.toggle('active', missionsActive);
-    this._globalContextMissionsBtn?.setAttribute('aria-selected', String(missionsActive));
+    this._globalContextMissionsBtn?.setAttribute(
+      'aria-selected',
+      String(missionsActive),
+    );
     const transitionBusy = Boolean(this._contextModeChanging);
     // Both Context choices stay in the ordinary Tab sequence. Arrow keys still
     // provide tablist navigation, but must not be the only way to reach Space
     // Missions from the keyboard. Semantic busy state keeps them perceivable
     // while synchronous click guards prevent a second transition.
-    for (const button of [this._globalContextFlightsBtn, this._globalContextMissionsBtn]) {
+    for (const button of [
+      this._globalContextFlightsBtn,
+      this._globalContextMissionsBtn,
+    ]) {
       if (!button) continue;
       button.disabled = false;
       button.tabIndex = 0;
       button.setAttribute('aria-disabled', String(transitionBusy));
       button.setAttribute('aria-busy', String(transitionBusy));
     }
-    if (this._contextModeStandby) this._contextModeStandby.hidden = flightsActive || missionsActive;
-    if (this._contextFlightsView) this._contextFlightsView.hidden = !flightsActive;
-    if (this._contextMissionsView) this._contextMissionsView.hidden = !missionsActive;
+    if (this._contextModeStandby)
+      this._contextModeStandby.hidden = flightsActive || missionsActive;
+    if (this._contextFlightsView)
+      this._contextFlightsView.hidden = !flightsActive;
+    if (this._contextMissionsView)
+      this._contextMissionsView.hidden = !missionsActive;
     this.cockpitView?.syncEntry();
     // Every _contextMode mutation funnels through here; the sync no-ops until
     // the transaction settles, so this is the activation/deactivation edge.
@@ -764,14 +908,17 @@ export class ContextPanel {
    *   operator and must stay inert, so they pass `false`.
    * @returns {Promise<{ok:boolean, mode:'flights'|'space-missions'|null, active:boolean, action:string, error?:string}>}
    */
-  async setContextMode(mode, {
-    notificationToken = null,
-    signal = null,
-    isCurrent = null,
-    claimVisualAuthority = true,
-  } = {}) {
-    const requestIsCurrent = () => !signal?.aborted
-      && (typeof isCurrent !== 'function' || isCurrent());
+  async setContextMode(
+    mode,
+    {
+      notificationToken = null,
+      signal = null,
+      isCurrent = null,
+      claimVisualAuthority = true,
+    } = {},
+  ) {
+    const requestIsCurrent = () =>
+      !signal?.aborted && (typeof isCurrent !== 'function' || isCurrent());
     const cancellationResult = () => ({
       ok: false,
       action: 'set_context_mode',
@@ -789,15 +936,21 @@ export class ContextPanel {
         // visual lane before a delayed shared restore can reclaim it. Internal
         // Cockpit choreography opts out: it is not an operator Context request.
         if (claimVisualAuthority) this._claimContextVisualAuthority();
-        const result = await this._selectContextMode(null, { notificationToken, signal });
-        if (result === null || (!requestIsCurrent() && result !== true)) return cancellationResult();
+        const result = await this._selectContextMode(null, {
+          notificationToken,
+          signal,
+        });
+        if (result === null || (!requestIsCurrent() && result !== true))
+          return cancellationResult();
         const state = this.getContextModeState();
         return {
           ok: result === true,
           action: 'set_context_mode',
           mode: state.mode,
           ...state,
-          ...(result === true ? {} : { error: 'Context mode transition did not complete' }),
+          ...(result === true
+            ? {}
+            : { error: 'Context mode transition did not complete' }),
           ...(this._contextTransitionFailedLayerIds?.length
             ? { failedLayerIds: [...this._contextTransitionFailedLayerIds] }
             : {}),
@@ -818,29 +971,41 @@ export class ContextPanel {
       // takes no authority and leaves the shared visual state eligible. Internal
       // Cockpit choreography opts out: it is not an operator Context request.
       if (claimVisualAuthority) this._claimContextVisualAuthority();
-      const transitioned = await this._selectContextMode(canonical, { notificationToken, signal });
-      if (transitioned === null || (!requestIsCurrent() && transitioned !== true)) return cancellationResult();
+      const transitioned = await this._selectContextMode(canonical, {
+        notificationToken,
+        signal,
+      });
+      if (
+        transitioned === null ||
+        (!requestIsCurrent() && transitioned !== true)
+      )
+        return cancellationResult();
       const state = this.getContextModeState();
       // A cross-mode switch tears the prior mode down before it commits, so a
       // cancelled or failed switch rests on Context OFF. Say that plainly:
       // reporting a bare "did not complete" while the operator's Context is
       // gone is the dishonesty this whole path was fixed for. The state fields
       // below carry the same verdict, so text and state cannot disagree.
-      const crossModeSwitchLost = transitioned !== true
-        && Boolean(priorMode) && priorMode !== canonical && !state.mode;
+      const crossModeSwitchLost =
+        transitioned !== true &&
+        Boolean(priorMode) &&
+        priorMode !== canonical &&
+        !state.mode;
       return {
         ok: transitioned === true,
         action: 'set_context_mode',
         mode: state.mode,
         ...state,
-        ...(transitioned === true ? {} : {
-          // Named in the operator's vocabulary, not the internal id: this
-          // string is read by the voice model, which takes 'contacts'.
-          error: crossModeSwitchLost
-            ? `Switch to ${contextModeWord(canonical)} did not complete — Context is now off`
-            : 'Context mode transition did not complete',
-          ...(crossModeSwitchLost ? { contextOff: true, priorMode } : {}),
-        }),
+        ...(transitioned === true
+          ? {}
+          : {
+              // Named in the operator's vocabulary, not the internal id: this
+              // string is read by the voice model, which takes 'contacts'.
+              error: crossModeSwitchLost
+                ? `Switch to ${contextModeWord(canonical)} did not complete — Context is now off`
+                : 'Context mode transition did not complete',
+              ...(crossModeSwitchLost ? { contextOff: true, priorMode } : {}),
+            }),
         ...(this._contextTransitionFailedLayerIds?.length
           ? { failedLayerIds: [...this._contextTransitionFailedLayerIds] }
           : {}),

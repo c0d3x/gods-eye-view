@@ -24,8 +24,11 @@ export class CockpitControls {
     if (!this.stages) return;
     if (!active) {
       if (this._cockpitVisionRestore) {
-        for (const [name, intensity] of Object.entries(this._cockpitVisionRestore)) {
-          if (this.stages[name]) this._setStageIntensity(this.stages[name], intensity);
+        for (const [name, intensity] of Object.entries(
+          this._cockpitVisionRestore,
+        )) {
+          if (this.stages[name])
+            this._setStageIntensity(this.stages[name], intensity);
         }
       }
       this._cockpitVisionRestore = null;
@@ -36,10 +39,17 @@ export class CockpitControls {
       return;
     }
     if (!this._cockpitVisionRestore) {
-      this._cockpitVisionRestore = captureCockpitVisionBaseline(this.stages, this.transitions);
+      this._cockpitVisionRestore = captureCockpitVisionBaseline(
+        this.stages,
+        this.transitions,
+      );
     }
     if (next === 'optical') {
-      applyCockpitVisionStageIntensities(this.stages, next, this._cockpitVisionRestore);
+      applyCockpitVisionStageIntensities(
+        this.stages,
+        next,
+        this._cockpitVisionRestore,
+      );
       this._syncStagesEnabledFromIntensity();
       this._cockpitVisionMode = next;
       this._syncIrBoost();
@@ -47,7 +57,11 @@ export class CockpitControls {
       this._revealCockpitStyleParameters({ openDisplay: revealParameters });
       return;
     }
-    const target = applyCockpitVisionStageIntensities(this.stages, next, this._cockpitVisionRestore);
+    const target = applyCockpitVisionStageIntensities(
+      this.stages,
+      next,
+      this._cockpitVisionRestore,
+    );
     this._syncStagesEnabledFromIntensity();
     this._cockpitVisionMode = next;
     this._syncIrBoost(); // Cockpit vision override ('nvg'/'thermal' boost; CRT/NOIR clear)
@@ -62,9 +76,15 @@ export class CockpitControls {
    *  ('nvg'/'thermal', which can differ from the map preset in BOTH
    *  directions), otherwise the map preset ('surveillance'/'thermal'). */
   _syncIrBoost() {
-    const cockpitMode = this.cockpitView?.active ? this._cockpitVisionMode : null;
-    const effective = cockpitMode && cockpitMode !== 'optical' ? cockpitMode : this.activeStyle;
-    const irBoost = effective === 'surveillance' || effective === 'thermal' || effective === 'nvg';
+    const cockpitMode = this.cockpitView?.active
+      ? this._cockpitVisionMode
+      : null;
+    const effective =
+      cockpitMode && cockpitMode !== 'optical' ? cockpitMode : this.activeStyle;
+    const irBoost =
+      effective === 'surveillance' ||
+      effective === 'thermal' ||
+      effective === 'nvg';
     this._dataManager?.setLayerParams('flights', { irBoost });
     this._dataManager?.setLayerParams('military', { irBoost });
     // Fog blends distant geometry toward an effectively-BLACK color in this
@@ -91,7 +111,10 @@ export class CockpitControls {
   _syncCockpitInheritedStyle() {
     if (!this.cockpitView?.active || !this.stages) return;
     this._cockpitVisionRestore = Object.fromEntries(
-      Object.keys(this.stages).map((name) => [name, name === this.activeStyle ? 1 : 0]),
+      Object.keys(this.stages).map((name) => [
+        name,
+        name === this.activeStyle ? 1 : 0,
+      ]),
     );
     for (const name of Object.keys(this.stages)) this.transitions.delete(name);
     this.cockpitView.setVisionMode(this.cockpitView.visionMode);
@@ -99,17 +122,27 @@ export class CockpitControls {
 
   /** Reveal shared style parameters, optionally opening Cockpit Display first. */
   _revealCockpitStyleParameters({ openDisplay = false } = {}) {
-    if (!this.cockpitView?.active || !this._sliderPanel?.classList.contains('active')) return;
-    if (openDisplay && this._cockpitDisplayToggleBtn?.getAttribute('aria-expanded') !== 'true') {
+    if (
+      !this.cockpitView?.active ||
+      !this._sliderPanel?.classList.contains('active')
+    )
+      return;
+    if (
+      openDisplay &&
+      this._cockpitDisplayToggleBtn?.getAttribute('aria-expanded') !== 'true'
+    ) {
       this._setCockpitDisclosure?.('display', true);
       return;
     }
-    if (this._cockpitDisplayToggleBtn?.getAttribute('aria-expanded') !== 'true') return;
+    if (this._cockpitDisplayToggleBtn?.getAttribute('aria-expanded') !== 'true')
+      return;
     this._sliderPanel.classList.remove('collapsed');
     this._syncPanelCollapseButton(this._sliderPanel);
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      this._sliderPanel?.scrollIntoView?.({ block: 'nearest' });
-    }));
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        this._sliderPanel?.scrollIntoView?.({ block: 'nearest' });
+      }),
+    );
   }
 
   /**
@@ -126,55 +159,70 @@ export class CockpitControls {
     // `viewer.trackedEntity` on entry and NEXT puts one back, which made this
     // flip true/false between calls while `active` stayed true; readers
     // (including the voice model) read that as a broken half-entered state.
-    const entryAllowed = !active && Boolean(
-      gateOpen
-      && info
-      && this.viewer?.trackedEntity?.position,
-    );
+    const entryAllowed =
+      !active &&
+      Boolean(gateOpen && info && this.viewer?.trackedEntity?.position);
     return {
       active,
       entryAllowed,
       // Why entry is unavailable, so a refusal can be explained rather than
       // guessed at.
-      entryBlockedReason: entryAllowed || active
-        ? null
-        : (!gateOpen
-          ? (this._contextModeChanging ? 'contacts-starting' : 'contacts-inactive')
-          : 'no-tracked-aircraft'),
+      entryBlockedReason:
+        entryAllowed || active
+          ? null
+          : !gateOpen
+            ? this._contextModeChanging
+              ? 'contacts-starting'
+              : 'contacts-inactive'
+            : 'no-tracked-aircraft',
       visionMode: this.cockpitView?.visionMode || null,
-      subject: info ? {
-        id: info.icao24 || info.id || null,
-        layerId: info.layerId || null,
-        callsign: info.callsign || null,
-      } : null,
-      navigation: snapshot ? {
-        canPrevious: Boolean(snapshot.navigation?.canPrevious),
-        canNext: Boolean(snapshot.navigation?.canNext),
-        canFocus: Boolean(snapshot.navigation?.canFocus),
-      } : null,
-      awareness: snapshot ? {
-        radiusM: Number.isFinite(snapshot.radiusM) ? snapshot.radiusM : null,
-        subject: snapshot.subject ? {
-          id: snapshot.subject.id || null,
-          layerId: snapshot.subject.layerId || null,
-        } : null,
-        cohorts: Array.isArray(snapshot.cohorts)
-          ? snapshot.cohorts.map((cohort) => ({
-            id: cohort?.id || null,
-            source: cohort?.source || null,
-            count: Number.isFinite(cohort?.count) ? cohort.count : null,
-            relationship: cohort?.relationship || null,
-            reason: cohort?.reason || null,
-            coverage: cohort?.coverage || null,
-          }))
-          : [],
-        navigation: snapshot.navigation ? {
-          canPrevious: Boolean(snapshot.navigation.canPrevious),
-          canNext: Boolean(snapshot.navigation.canNext),
-          canFocus: Boolean(snapshot.navigation.canFocus),
-        } : null,
-      } : null,
-      activeTracked: this.cockpitView?.active ? Boolean(this.cockpitView?.trackedEntity) : false,
+      subject: info
+        ? {
+            id: info.icao24 || info.id || null,
+            layerId: info.layerId || null,
+            callsign: info.callsign || null,
+          }
+        : null,
+      navigation: snapshot
+        ? {
+            canPrevious: Boolean(snapshot.navigation?.canPrevious),
+            canNext: Boolean(snapshot.navigation?.canNext),
+            canFocus: Boolean(snapshot.navigation?.canFocus),
+          }
+        : null,
+      awareness: snapshot
+        ? {
+            radiusM: Number.isFinite(snapshot.radiusM)
+              ? snapshot.radiusM
+              : null,
+            subject: snapshot.subject
+              ? {
+                  id: snapshot.subject.id || null,
+                  layerId: snapshot.subject.layerId || null,
+                }
+              : null,
+            cohorts: Array.isArray(snapshot.cohorts)
+              ? snapshot.cohorts.map((cohort) => ({
+                  id: cohort?.id || null,
+                  source: cohort?.source || null,
+                  count: Number.isFinite(cohort?.count) ? cohort.count : null,
+                  relationship: cohort?.relationship || null,
+                  reason: cohort?.reason || null,
+                  coverage: cohort?.coverage || null,
+                }))
+              : [],
+            navigation: snapshot.navigation
+              ? {
+                  canPrevious: Boolean(snapshot.navigation.canPrevious),
+                  canNext: Boolean(snapshot.navigation.canNext),
+                  canFocus: Boolean(snapshot.navigation.canFocus),
+                }
+              : null,
+          }
+        : null,
+      activeTracked: this.cockpitView?.active
+        ? Boolean(this.cockpitView?.trackedEntity)
+        : false,
       activeMapView: !this.cockpitView?.active && entryAllowed,
     };
   }
@@ -193,22 +241,29 @@ export class CockpitControls {
    * @param {{layerId: string}|null} options.selectedTarget Pending selection.
    * @returns {{ok: boolean, retargeted?: boolean, error?: string}} Outcome.
    */
-  _retargetCockpitEntryLayer({ targetLayer, aircraftClass, currentTarget, selectedTarget }) {
+  _retargetCockpitEntryLayer({
+    targetLayer,
+    aircraftClass,
+    currentTarget,
+    selectedTarget,
+  }) {
     if (!['flights', 'military'].includes(targetLayer)) {
       return {
         ok: false,
         error: `Cockpit flies aircraft only — ${targetLayer} contacts cannot be entered`,
       };
     }
-    const activeLayer = selectedTarget?.layerId || currentTarget?.layerId || null;
+    const activeLayer =
+      selectedTarget?.layerId || currentTarget?.layerId || null;
     const alreadyOnLayer = activeLayer === targetLayer;
-    if (alreadyOnLayer && !aircraftClass) return { ok: true, retargeted: false };
+    if (alreadyOnLayer && !aircraftClass)
+      return { ok: true, retargeted: false };
     const moved = militaryAwarenessLayer?.navigateNext
       ? !!militaryAwarenessLayer.navigateNext({
-        targetLayer,
-        aircraftClass,
-        origin: 'voice',
-      })
+          targetLayer,
+          aircraftClass,
+          origin: 'voice',
+        })
       : false;
     if (moved) return { ok: true, retargeted: true };
     // A filter that matched nothing still enters, as long as the layer is
@@ -233,13 +288,16 @@ export class CockpitControls {
    * @param {{layerId:'flights'|'military',id:string}|null} [options.rollbackTarget]
    * @returns {{ok:boolean, action:string, error?:string, state?:object}}
    */
-  controlCockpit(action, {
-    notificationToken = null,
-    targetLayer = null,
-    aircraftClass = null,
-    selectedTarget = null,
-    rollbackTarget = undefined,
-  } = {}) {
+  controlCockpit(
+    action,
+    {
+      notificationToken = null,
+      targetLayer = null,
+      aircraftClass = null,
+      selectedTarget = null,
+      rollbackTarget = undefined,
+    } = {},
+  ) {
     const normalized = String(action || '').toLowerCase();
     if (!this.cockpitView) {
       return {
@@ -273,9 +331,12 @@ export class CockpitControls {
         };
       }
       let currentTarget = this.getAircraftTrackingTarget();
-      const layerForTarget = (target) => target?.layerId === 'military'
-        ? militaryFlightsLayer
-        : target?.layerId === 'flights' ? flightsLayer : null;
+      const layerForTarget = (target) =>
+        target?.layerId === 'military'
+          ? militaryFlightsLayer
+          : target?.layerId === 'flights'
+            ? flightsLayer
+            : null;
       // A requested layer retargets BEFORE entry, through the same filtered
       // navigation NEXT uses. Ignoring it entered on whatever was already
       // tracked and reported success, so "cockpit in that military helicopter"
@@ -299,13 +360,17 @@ export class CockpitControls {
           // The retarget is now the authority; a selection sampled before it
           // would drag entry back to the wrong layer.
           selectedTarget = null;
-          rollbackTarget = rollbackTarget === undefined ? currentTarget : rollbackTarget;
+          rollbackTarget =
+            rollbackTarget === undefined ? currentTarget : rollbackTarget;
           currentTarget = this.getAircraftTrackingTarget();
         }
       }
-      const selectedLayer = selectedTarget?.layerId === 'military'
-        ? militaryFlightsLayer
-        : selectedTarget?.layerId === 'flights' ? flightsLayer : null;
+      const selectedLayer =
+        selectedTarget?.layerId === 'military'
+          ? militaryFlightsLayer
+          : selectedTarget?.layerId === 'flights'
+            ? flightsLayer
+            : null;
       const entry = enterCockpitWithTracking({
         cockpitView: this.cockpitView,
         selectedLayer,
@@ -388,16 +453,30 @@ export class CockpitControls {
     };
     this._cockpitDisplayScrollHandler = () => {
       if (this._cockpitDisplayPortalActive) {
-        this._cockpitDisplayScrollTop = this._cockpitDisplayPanel?.scrollTop || 0;
+        this._cockpitDisplayScrollTop =
+          this._cockpitDisplayPanel?.scrollTop || 0;
       }
     };
-    this._ppToggles?.addEventListener('scroll', this._standardDisplayScrollHandler, { passive: true });
-    this._cockpitDisplayPanel?.addEventListener('scroll', this._cockpitDisplayScrollHandler, { passive: true });
+    this._ppToggles?.addEventListener(
+      'scroll',
+      this._standardDisplayScrollHandler,
+      { passive: true },
+    );
+    this._cockpitDisplayPanel?.addEventListener(
+      'scroll',
+      this._cockpitDisplayScrollHandler,
+      { passive: true },
+    );
     this._cockpitDisplayModeHandler = (event) => {
       this._setCockpitDisplayPortalActive(event?.detail?.active === true);
     };
-    window.addEventListener('gev:cockpit-mode-changed', this._cockpitDisplayModeHandler);
-    this._setCockpitDisplayPortalActive(document.body.classList.contains('cockpit-mode'));
+    window.addEventListener(
+      'gev:cockpit-mode-changed',
+      this._cockpitDisplayModeHandler,
+    );
+    this._setCockpitDisplayPortalActive(
+      document.body.classList.contains('cockpit-mode'),
+    );
   }
 
   /**
@@ -409,9 +488,9 @@ export class CockpitControls {
   _setCockpitDisplayPortalActive(active) {
     const nextActive = active === true;
     if (this._cockpitDisplayPortalActive === nextActive) return;
-    const focusedRecord = this._cockpitDisplayPortalRecords.find((record) => (
-      record.group.contains(document.activeElement)
-    ));
+    const focusedRecord = this._cockpitDisplayPortalRecords.find((record) =>
+      record.group.contains(document.activeElement),
+    );
     const focusedElement = focusedRecord ? document.activeElement : null;
     this._displayPortalScrollRestoreOwner = nextActive ? 'cockpit' : 'standard';
     this._cockpitDisplayPortalActive = nextActive;
@@ -422,7 +501,10 @@ export class CockpitControls {
         record.anchor.after(record.group);
       }
     }
-    this._cockpitDisplayPanel?.classList.toggle('uses-shared-display-controls', nextActive);
+    this._cockpitDisplayPanel?.classList.toggle(
+      'uses-shared-display-controls',
+      nextActive,
+    );
     requestAnimationFrame(() => {
       if (nextActive && this._cockpitDisplayPanel) {
         this._cockpitDisplayPanel.scrollTop = this._cockpitDisplayScrollTop;
@@ -441,7 +523,10 @@ export class CockpitControls {
         if (!nextActive && this._ppToggles) {
           this._ppToggles.scrollTop = this._standardDisplayScrollTop;
         }
-        if (this._displayPortalScrollRestoreOwner === (nextActive ? 'cockpit' : 'standard')) {
+        if (
+          this._displayPortalScrollRestoreOwner ===
+          (nextActive ? 'cockpit' : 'standard')
+        ) {
           this._displayPortalScrollRestoreOwner = null;
         }
       });
@@ -456,15 +541,25 @@ export class CockpitControls {
    */
   _disposeCockpitDisplayPortal() {
     if (this._cockpitDisplayModeHandler) {
-      window.removeEventListener('gev:cockpit-mode-changed', this._cockpitDisplayModeHandler);
+      window.removeEventListener(
+        'gev:cockpit-mode-changed',
+        this._cockpitDisplayModeHandler,
+      );
       this._cockpitDisplayModeHandler = null;
     }
     this._setCockpitDisplayPortalActive(false);
-    this._ppToggles?.removeEventListener('scroll', this._standardDisplayScrollHandler);
-    this._cockpitDisplayPanel?.removeEventListener('scroll', this._cockpitDisplayScrollHandler);
+    this._ppToggles?.removeEventListener(
+      'scroll',
+      this._standardDisplayScrollHandler,
+    );
+    this._cockpitDisplayPanel?.removeEventListener(
+      'scroll',
+      this._cockpitDisplayScrollHandler,
+    );
     this._standardDisplayScrollHandler = null;
     this._cockpitDisplayScrollHandler = null;
-    for (const record of this._cockpitDisplayPortalRecords) record.anchor.remove();
+    for (const record of this._cockpitDisplayPortalRecords)
+      record.anchor.remove();
     this._cockpitDisplayPortalRecords = [];
   }
 }

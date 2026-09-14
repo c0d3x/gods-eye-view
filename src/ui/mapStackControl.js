@@ -27,13 +27,22 @@ export class MapStackControl {
         this._renderMapStackState(event.detail);
         this._syncShareState();
       };
-      window.addEventListener('gev:map-stack-changed', this._mapStackChangeHandler);
+      window.addEventListener(
+        'gev:map-stack-changed',
+        this._mapStackChangeHandler,
+      );
     }
 
-    renderMapStackChips(this._mapStackChips, this.mapStackController.getStacks(), {
-      activeId: this.mapStackController.getActiveId(),
-      onSelect: (stackId) => { this._setMapStack(stackId); },
-    });
+    renderMapStackChips(
+      this._mapStackChips,
+      this.mapStackController.getStacks(),
+      {
+        activeId: this.mapStackController.getActiveId(),
+        onSelect: (stackId) => {
+          this._setMapStack(stackId);
+        },
+      },
+    );
 
     this._renderMapStackState(this.mapStackController.getState());
   }
@@ -71,9 +80,10 @@ export class MapStackControl {
     syncMapStackChips(this._mapStackChips, state.activeId);
     if (this._mapStackStatus) {
       const stack = state.activeStack;
-      const label = state.status === 'switching'
-        ? '...'
-        : (stack?.shortLabel || stack?.label || 'MAP');
+      const label =
+        state.status === 'switching'
+          ? '...'
+          : stack?.shortLabel || stack?.label || 'MAP';
       this._mapStackStatus.textContent = label;
       this._mapStackStatus.classList.toggle('warn', !!state.lastError);
     }
@@ -91,10 +101,18 @@ export class MapStackControl {
     const stacks = this.mapStackController.getStacks();
     const target = stacks.find((stack) => stack.id === stackId);
     if (!target) {
-      return { ok: false, error: `Unknown map stack: ${stackId}`, available: stacks.map((s) => s.id) };
+      return {
+        ok: false,
+        error: `Unknown map stack: ${stackId}`,
+        available: stacks.map((s) => s.id),
+      };
     }
     if (!target.available) {
-      return { ok: false, error: `${target.label} requires a Cesium ion token`, activeStack: this.mapStackController.getActiveId() };
+      return {
+        ok: false,
+        error: `${target.label} requires a Cesium ion token`,
+        activeStack: this.mapStackController.getActiveId(),
+      };
     }
     await this._setMapStack(stackId);
     const state = this.mapStackController.getState();
@@ -102,7 +120,7 @@ export class MapStackControl {
     return {
       ok: landed,
       activeStack: state.activeId,
-      error: landed ? null : (state.lastError || 'Map stack did not switch'),
+      error: landed ? null : state.lastError || 'Map stack did not switch',
     };
   }
 }

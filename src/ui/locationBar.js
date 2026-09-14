@@ -5,12 +5,14 @@
 // These are StyleManager methods, kept here and adopted by StyleManager (see
 // src/ui/adoptMethods.js); they run on its state. _initLocationBar() wires the
 // bar, and _disposeLocationBar() removes its keyboard listener.
-import { CITY_POIS, flyToPresetLocation, flyToPOI, searchAndFlyTo } from '../locations.js';
-import { locationMiniStatus } from '../locationStatus.js';
 import {
-  suspendDetection,
-  resumeDetection,
-} from '../data/detection.js';
+  CITY_POIS,
+  flyToPresetLocation,
+  flyToPOI,
+  searchAndFlyTo,
+} from '../locations.js';
+import { locationMiniStatus } from '../locationStatus.js';
+import { suspendDetection, resumeDetection } from '../data/detection.js';
 import trafficLayer from '../data/traffic.js';
 
 export class LocationBar {
@@ -49,8 +51,9 @@ export class LocationBar {
       if (!this._expandedCityId) return;
       // Bail while a form control is focused so POI hotkeys don't fire from a
       // <select> dropdown's type-ahead or while typing in a field (M9).
-      const isFormControl = e.target?.matches?.('select, input, textarea')
-        || e.target === this._locationSearch;
+      const isFormControl =
+        e.target?.matches?.('select, input, textarea') ||
+        e.target === this._locationSearch;
       if (isFormControl) return;
 
       const keyIndex = QWERTY_KEYS.indexOf(e.key.toUpperCase());
@@ -88,7 +91,8 @@ export class LocationBar {
           const destination = await searchAndFlyTo(this.viewer, query, {
             beforeFly: () => this._reassertNavigationHandoff(generation),
           });
-          if (this._disposed || generation !== this._navigationGeneration) return;
+          if (this._disposed || generation !== this._navigationGeneration)
+            return;
           if (destination?.cancelled) {
             // Authority changed while the lookup was resolving; remain inert.
           } else if (destination) {
@@ -110,7 +114,8 @@ export class LocationBar {
           }
         } catch (err) {
           console.error('[Search] Geocoding failed:', err);
-          if (this._disposed || generation !== this._navigationGeneration) return;
+          if (this._disposed || generation !== this._navigationGeneration)
+            return;
           this._showToast('Search failed');
         } finally {
           this._settleLocationSearchUi(generation);
@@ -196,8 +201,11 @@ export class LocationBar {
       return;
     }
 
-    const isCityChanged = this._activeLocationId && this._activeLocationId !== cityId;
-    const result = this._flyWithTransition(!!isCityChanged, (hooks) => flyToPresetLocation(this.viewer, cityId, hooks));
+    const isCityChanged =
+      this._activeLocationId && this._activeLocationId !== cityId;
+    const result = this._flyWithTransition(!!isCityChanged, (hooks) =>
+      flyToPresetLocation(this.viewer, cityId, hooks),
+    );
     if (result === false) return;
     this._expandPOIRow(cityId);
     this._setActiveLocation(cityId);
@@ -220,8 +228,11 @@ export class LocationBar {
    * @returns {void}
    */
   _onPoiClick(cityId, poiIndex) {
-    const isCityChanged = this._activeLocationId && this._activeLocationId !== cityId;
-    const result = this._flyWithTransition(!!isCityChanged, (hooks) => flyToPOI(this.viewer, cityId, poiIndex, hooks));
+    const isCityChanged =
+      this._activeLocationId && this._activeLocationId !== cityId;
+    const result = this._flyWithTransition(!!isCityChanged, (hooks) =>
+      flyToPOI(this.viewer, cityId, poiIndex, hooks),
+    );
     if (result === false) return;
     this._setActiveLocation(cityId);
     this._activePoiIndex = poiIndex;
@@ -288,8 +299,11 @@ export class LocationBar {
    * @returns {void}
    */
   _updatePoiHighlight() {
-    this._poiRow.querySelectorAll('.poi-pill').forEach(pill => {
-      pill.classList.toggle('active', parseInt(pill.dataset.poiIndex) === this._activePoiIndex);
+    this._poiRow.querySelectorAll('.poi-pill').forEach((pill) => {
+      pill.classList.toggle(
+        'active',
+        parseInt(pill.dataset.poiIndex) === this._activePoiIndex,
+      );
     });
   }
 
@@ -316,7 +330,7 @@ export class LocationBar {
     // free-text destination has been superseded. Clearing only on a real id
     // leaves the search path's own _setActiveLocation(null) untouched.
     if (locationId) this._searchedLocationLabel = null;
-    this._locationPills.querySelectorAll('.location-pill').forEach(pill => {
+    this._locationPills.querySelectorAll('.location-pill').forEach((pill) => {
       pill.classList.toggle('active', pill.dataset.locationId === locationId);
     });
     this._updateLocationMiniStatus();

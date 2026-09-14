@@ -12,14 +12,14 @@ import {
   getDetectionTuning,
   getMode as getDetectionMode,
 } from '../data/detection.js';
-import { canonicalizeDensity, } from '../data/detectionPolicy.js';
+import { canonicalizeDensity } from '../data/detectionPolicy.js';
 import {
   setScopeMaskEnabled,
   isScopeMaskEnabled,
   setScopeMaskFeather,
   getScopeMaskFeather,
 } from '../scopeMask.js';
-import { STYLES, } from './styleConfig.js';
+import { STYLES } from './styleConfig.js';
 
 export class SceneState {
   /**
@@ -37,7 +37,11 @@ export class SceneState {
       return { ok: true, orbiting: false };
     }
     if (!this._currentTarget) {
-      return { ok: false, orbiting: false, error: 'No active landmark to orbit — fly to a landmark first' };
+      return {
+        ok: false,
+        orbiting: false,
+        error: 'No active landmark to orbit — fly to a landmark first',
+      };
     }
     this._toggleOrbit();
     return { ok: true, orbiting: !!this.orbitController?.active };
@@ -52,15 +56,22 @@ export class SceneState {
     return {
       style: this.activeStyle || 'normal',
       mapStack: this.mapStackController?.getActiveId?.() || null,
-      hud: { visible: !!this.hud?.visible, layout: this.hud?.getVariant?.() || null },
+      hud: {
+        visible: !!this.hud?.visible,
+        layout: this.hud?.getVariant?.() || null,
+      },
       detection: this.getDetectionState(),
       bloom: {
         enabled: !!this.bloomEnabled,
-        intensityPct: this._bloomSlider ? parseInt(this._bloomSlider.value, 10) : null,
+        intensityPct: this._bloomSlider
+          ? parseInt(this._bloomSlider.value, 10)
+          : null,
       },
       sharpen: {
         enabled: !!this.sharpenEnabled,
-        intensityPct: this._sharpenSlider ? parseInt(this._sharpenSlider.value, 10) : null,
+        intensityPct: this._sharpenSlider
+          ? parseInt(this._sharpenSlider.value, 10)
+          : null,
       },
       celestialRing: {
         enabled: this.celestialRingEnabled,
@@ -101,7 +112,7 @@ export class SceneState {
       destination: Cesium.Cartesian3.fromDegrees(
         cameraState.lon,
         cameraState.lat,
-        cameraState.alt
+        cameraState.alt,
       ),
       orientation: {
         heading: Cesium.Math.toRadians(cameraState.heading || 0),
@@ -149,7 +160,10 @@ export class SceneState {
         density: parseInt(this._detectionDensitySlider?.value || '50', 10),
         allocation: getDetectionTuning().allocationStrategy,
         fadePct: parseInt(this._detectionFadeSlider?.value || '7', 10),
-        outsideOpacityPct: parseInt(this._detectionOpacitySlider?.value || '0', 10),
+        outsideOpacityPct: parseInt(
+          this._detectionOpacitySlider?.value || '0',
+          10,
+        ),
       },
       scope: {
         enabled: isScopeMaskEnabled(),
@@ -188,7 +202,7 @@ export class SceneState {
     if (typeof bloomState.intensity === 'number' && this._bloomSlider) {
       const intensity = decodeBloomIntensity(
         bloomState.intensity,
-        bloomState.version ?? state.bloomVersion ?? BLOOM_SCALE_VERSION
+        bloomState.version ?? state.bloomVersion ?? BLOOM_SCALE_VERSION,
       );
       this._setBloomIntensity(intensity, { syncShare: false });
     }
@@ -198,7 +212,10 @@ export class SceneState {
 
     const sharpenState = state.sharpen || {};
     if (typeof sharpenState.intensity === 'number' && this._sharpenSlider) {
-      const pct = Math.max(0, Math.min(100, Math.round(sharpenState.intensity)));
+      const pct = Math.max(
+        0,
+        Math.min(100, Math.round(sharpenState.intensity)),
+      );
       this._sharpenSlider.value = String(pct);
       this._sharpenSliderValue.textContent = `${pct}%`;
       this._applySharpenIntensity(pct / 100);
@@ -225,25 +242,40 @@ export class SceneState {
     if (typeof scopeState.featherPct === 'number' && this._scopeFeatherSlider) {
       const pct = Math.max(0, Math.min(100, Math.round(scopeState.featherPct)));
       this._scopeFeatherSlider.value = String(pct);
-      if (this._scopeFeatherValue) this._scopeFeatherValue.textContent = `${pct}%`;
+      if (this._scopeFeatherValue)
+        this._scopeFeatherValue.textContent = `${pct}%`;
       setScopeMaskFeather(pct / 100);
     }
 
     const detectionState = state.detection || {};
-    if (typeof detectionState.density === 'number' && this._detectionDensitySlider) {
+    if (
+      typeof detectionState.density === 'number' &&
+      this._detectionDensitySlider
+    ) {
       const pct = canonicalizeDensity(detectionState.density);
       this._detectionDensitySlider.value = String(pct);
-      if (this._detectionDensityValue) this._detectionDensityValue.textContent = `${pct}%`;
+      if (this._detectionDensityValue)
+        this._detectionDensityValue.textContent = `${pct}%`;
       this._applyDetectionDensityFromUi();
     }
     if (detectionState.allocation) {
-      this._setDetectionAllocation(detectionState.allocation, { syncShare: false });
+      this._setDetectionAllocation(detectionState.allocation, {
+        syncShare: false,
+      });
     }
-    if (typeof detectionState.fadePct === 'number' && this._detectionFadeSlider) {
+    if (
+      typeof detectionState.fadePct === 'number' &&
+      this._detectionFadeSlider
+    ) {
       this._detectionFadeSlider.value = String(detectionState.fadePct);
     }
-    if (typeof detectionState.outsideOpacityPct === 'number' && this._detectionOpacitySlider) {
-      this._detectionOpacitySlider.value = String(detectionState.outsideOpacityPct);
+    if (
+      typeof detectionState.outsideOpacityPct === 'number' &&
+      this._detectionOpacitySlider
+    ) {
+      this._detectionOpacitySlider.value = String(
+        detectionState.outsideOpacityPct,
+      );
     }
     this._applyDetectionFadeFromUi();
     if (detectionState.mode) {
@@ -255,7 +287,8 @@ export class SceneState {
       // so it needs a gate on BOTH sides of the await.
       if (superseded()) return false;
       const stackBefore = this.mapStackController?.getActiveId?.() ?? null;
-      const genBefore = this.mapStackController?.getSwitchGeneration?.() ?? null;
+      const genBefore =
+        this.mapStackController?.getSwitchGeneration?.() ?? null;
 
       await this._setMapStack(state.mapStack, { syncShare: false });
 
@@ -266,13 +299,14 @@ export class SceneState {
         // state that omits `mapStack` never issues one — every normalized scene
         // shot omits it — so this stale globe would simply stand. Put back what
         // the winner inherited.
-        const genAfter = this.mapStackController?.getSwitchGeneration?.() ?? null;
+        const genAfter =
+          this.mapStackController?.getSwitchGeneration?.() ?? null;
         // _setMapStack issues exactly one setStack(), which advances the
         // generation once, or not at all when the stack was unavailable and
         // nothing was mutated. Anything past that is a NEWER switch whose
         // caller owns the globe now, and reverting would stomp a live intent.
-        const globeIsStillOurs = genBefore !== null && genAfter !== null
-          && genAfter <= genBefore + 1;
+        const globeIsStillOurs =
+          genBefore !== null && genAfter !== null && genAfter <= genBefore + 1;
         const landed = this.mapStackController?.getActiveId?.() ?? null;
         if (globeIsStillOurs && stackBefore && landed !== stackBefore) {
           await this._setMapStack(stackBefore, { syncShare: false });

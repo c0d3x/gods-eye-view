@@ -5,7 +5,7 @@
 // These are StyleManager methods, kept here and adopted by StyleManager (see
 // src/ui/adoptMethods.js); they run on its state.
 import { BLOOM_SCALE_VERSION, decodeBloomIntensity } from '../bloom.js';
-import { canonicalizeDensity, } from '../data/detectionPolicy.js';
+import { canonicalizeDensity } from '../data/detectionPolicy.js';
 
 export class RecordingControls {
   /**
@@ -14,7 +14,11 @@ export class RecordingControls {
    */
   _initRecordingOverlay() {
     if (!this._safeFrameOverlay || !this._safeFrameBox) return;
-    this._safeFrameOverlay.classList.remove('active', 'ratio-9-16', 'ratio-16-9');
+    this._safeFrameOverlay.classList.remove(
+      'active',
+      'ratio-9-16',
+      'ratio-16-9',
+    );
   }
 
   /**
@@ -22,24 +26,35 @@ export class RecordingControls {
    * @param {object} preset
    */
   applyCinematicPreset(preset = {}) {
-    const bloomInput = typeof preset.bloom === 'object' ? preset.bloom : { intensity: preset.bloom };
+    const bloomInput =
+      typeof preset.bloom === 'object'
+        ? preset.bloom
+        : { intensity: preset.bloom };
     let decodedBloomIntensity = null;
     if (typeof bloomInput.intensity === 'number') {
       decodedBloomIntensity = decodeBloomIntensity(
         bloomInput.intensity,
-        bloomInput.version ?? preset.bloomVersion ?? BLOOM_SCALE_VERSION
+        bloomInput.version ?? preset.bloomVersion ?? BLOOM_SCALE_VERSION,
       );
       this._setBloomIntensity(decodedBloomIntensity, { syncShare: false });
     }
     if (typeof bloomInput.enabled === 'boolean') {
       this._setBloomEnabled(bloomInput.enabled);
     } else if (typeof bloomInput.intensity === 'number') {
-      this._setBloomEnabled((decodedBloomIntensity ?? this._getBloomIntensity()) > 0);
+      this._setBloomEnabled(
+        (decodedBloomIntensity ?? this._getBloomIntensity()) > 0,
+      );
     }
 
-    const sharpenInput = typeof preset.sharpen === 'object' ? preset.sharpen : { enabled: preset.sharpen };
+    const sharpenInput =
+      typeof preset.sharpen === 'object'
+        ? preset.sharpen
+        : { enabled: preset.sharpen };
     if (typeof sharpenInput.intensity === 'number' && this._sharpenSlider) {
-      const sharpenPct = Math.max(0, Math.min(100, Math.round(sharpenInput.intensity)));
+      const sharpenPct = Math.max(
+        0,
+        Math.min(100, Math.round(sharpenInput.intensity)),
+      );
       this._sharpenSlider.value = String(sharpenPct);
       this._sharpenSliderValue.textContent = `${sharpenPct}%`;
       this._applySharpenIntensity(sharpenPct / 100);
@@ -57,14 +72,19 @@ export class RecordingControls {
     if (preset.detectionMode) {
       this._setDetectionMode(preset.detectionMode);
     }
-    if (typeof preset.detectionDensity === 'number' && this._detectionDensitySlider) {
+    if (
+      typeof preset.detectionDensity === 'number' &&
+      this._detectionDensitySlider
+    ) {
       const density = canonicalizeDensity(preset.detectionDensity);
       this._detectionDensitySlider.value = String(density);
       this._detectionDensityValue.textContent = `${density}%`;
       this._applyDetectionDensityFromUi();
     }
     if (preset.detectionAllocation) {
-      this._setDetectionAllocation(preset.detectionAllocation, { syncShare: false });
+      this._setDetectionAllocation(preset.detectionAllocation, {
+        syncShare: false,
+      });
     }
 
     if (preset.styleParams && typeof preset.styleParams === 'object') {
@@ -97,16 +117,25 @@ export class RecordingControls {
    * @returns {void}
    */
   setRecordingMode(enabled, options = {}) {
-    const { hidePanels = true, hudMode = 'minimal', safeFrame = '16:9' } = options;
+    const {
+      hidePanels = true,
+      hudMode = 'minimal',
+      safeFrame = '16:9',
+    } = options;
     this._recordingMode = !!enabled;
     this._recordingConfig = { hidePanels, hudMode, safeFrame };
 
-    document.body.classList.toggle('recording-mode', this._recordingMode && hidePanels);
+    document.body.classList.toggle(
+      'recording-mode',
+      this._recordingMode && hidePanels,
+    );
 
     if (this._safeFrameOverlay) {
       this._safeFrameOverlay.classList.remove('ratio-9-16', 'ratio-16-9');
       this._safeFrameOverlay.classList.toggle('active', this._recordingMode);
-      this._safeFrameOverlay.classList.add(safeFrame === '9:16' ? 'ratio-9-16' : 'ratio-16-9');
+      this._safeFrameOverlay.classList.add(
+        safeFrame === '9:16' ? 'ratio-9-16' : 'ratio-16-9',
+      );
     }
 
     if (this._recordingMode) {
@@ -123,7 +152,8 @@ export class RecordingControls {
       } else if (hudMode === 'full' || hudMode === 'minimal') {
         this.hud.setMode('on');
         this.hud.setVariant(hudMode === 'minimal' ? 'minimal' : 'tactical');
-        if (this._hudLayoutSelect) this._hudLayoutSelect.value = this.hud.getVariant();
+        if (this._hudLayoutSelect)
+          this._hudLayoutSelect.value = this.hud.getVariant();
       } else {
         this.hud.setMode('auto');
       }
@@ -132,11 +162,16 @@ export class RecordingControls {
       this._preRecordingHudState = null;
       if (saved) {
         this.hud.setVariant(saved.variant);
-        if (this._hudLayoutSelect) this._hudLayoutSelect.value = this.hud.getVariant();
+        if (this._hudLayoutSelect)
+          this._hudLayoutSelect.value = this.hud.getVariant();
       }
       this.hud.setMode(saved ? saved.mode : 'auto');
       if (this._safeFrameOverlay) {
-        this._safeFrameOverlay.classList.remove('active', 'ratio-9-16', 'ratio-16-9');
+        this._safeFrameOverlay.classList.remove(
+          'active',
+          'ratio-9-16',
+          'ratio-16-9',
+        );
       }
     }
     this._hudBtn.classList.toggle('active', this.hud.visible);

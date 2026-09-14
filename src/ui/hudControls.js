@@ -5,9 +5,7 @@
 //
 // These are StyleManager methods, kept here and adopted by StyleManager (see
 // src/ui/adoptMethods.js); they run on its state.
-import {
-  cycleMode as cycleDetectionMode,
-} from '../data/detection.js';
+import { cycleMode as cycleDetectionMode } from '../data/detection.js';
 
 export class HudControls {
   /**
@@ -19,7 +17,10 @@ export class HudControls {
   _setHudVariant(variantName) {
     if (!variantName) return;
     this.hud.setVariant(variantName);
-    if (this._hudLayoutSelect && this._hudLayoutSelect.value !== this.hud.getVariant()) {
+    if (
+      this._hudLayoutSelect &&
+      this._hudLayoutSelect.value !== this.hud.getVariant()
+    ) {
       this._hudLayoutSelect.value = this.hud.getVariant();
     }
     this._syncShareState();
@@ -32,9 +33,10 @@ export class HudControls {
    * @returns {void}
    */
   toggleCleanView(forceEnabled) {
-    const shouldEnable = typeof forceEnabled === 'boolean'
-      ? forceEnabled
-      : !document.body.classList.contains('ui-clean-view');
+    const shouldEnable =
+      typeof forceEnabled === 'boolean'
+        ? forceEnabled
+        : !document.body.classList.contains('ui-clean-view');
     document.body.classList.toggle('ui-clean-view', shouldEnable);
     if (this._cleanViewBtn) {
       this._cleanViewBtn.classList.toggle('active', shouldEnable);
@@ -61,7 +63,12 @@ export class HudControls {
     this.hud.setMode(normalized);
     this._updateHudButtonState();
     this._syncShareState();
-    return { ok: true, visible: !!this.hud.visible, mode: normalized, layout: this.hud.getVariant() };
+    return {
+      ok: true,
+      visible: !!this.hud.visible,
+      mode: normalized,
+      layout: this.hud.getVariant(),
+    };
   }
 
   /**
@@ -76,7 +83,11 @@ export class HudControls {
     }
     this.shareLinkManager?.claimRestoreLane?.('visual');
     this._setHudVariant(variant);
-    return { ok: true, layout: this.hud.getVariant(), visible: !!this.hud.visible };
+    return {
+      ok: true,
+      layout: this.hud.getVariant(),
+      visible: !!this.hud.visible,
+    };
   }
 
   /**
@@ -86,7 +97,10 @@ export class HudControls {
    */
   setCleanView(enabled) {
     this.toggleCleanView(enabled);
-    return { ok: true, cleanView: document.body.classList.contains('ui-clean-view') };
+    return {
+      ok: true,
+      cleanView: document.body.classList.contains('ui-clean-view'),
+    };
   }
 
   // ── HUD Toggle ───────────────────────────────
@@ -132,7 +146,11 @@ export class HudControls {
     if (!this._models3dBtn) return;
     // The Proximity/All mode row is revealed only while 3D is on (mirrors the DETECT slider row).
     const syncModeRow = () => {
-      if (this._models3dModeRow) this._models3dModeRow.classList.toggle('visible', this._models3dEnabled);
+      if (this._models3dModeRow)
+        this._models3dModeRow.classList.toggle(
+          'visible',
+          this._models3dEnabled,
+        );
       this._layoutRightPanels();
     };
     this._models3dBtn.addEventListener('click', () => {
@@ -176,7 +194,10 @@ export class HudControls {
     // ACTIVE from markup (default-on, 2026-08-22): the very first thing assistive
     // tech reported was an unpressed-looking control over an armed layer.
     // Mirrors #scope-toggle, which has always carried aria-pressed.
-    this._models3dBtn?.setAttribute('aria-pressed', String(this._models3dEnabled));
+    this._models3dBtn?.setAttribute(
+      'aria-pressed',
+      String(this._models3dEnabled),
+    );
   }
 
   _initHUDToggle() {
@@ -202,7 +223,8 @@ export class HudControls {
       this._syncShareState();
     });
     this._cockpitDisplayToggleBtn?.addEventListener('click', () => {
-      const open = this._cockpitDisplayToggleBtn.getAttribute('aria-expanded') === 'true';
+      const open =
+        this._cockpitDisplayToggleBtn.getAttribute('aria-expanded') === 'true';
       this._setCockpitDisclosure?.('display', !open);
     });
     this._initCockpitDisplayPortal();

@@ -5,13 +5,9 @@
 //
 // These are StyleManager methods, kept here and adopted by StyleManager (see
 // src/ui/adoptMethods.js); they run on its state.
-import { BLOOM_SCALE_VERSION, } from '../bloom.js';
-import {
-  getDetectionTuning,
-} from '../data/detection.js';
-import {
-  canPresentDeferredStatusNotice,
-} from '../loadingFeedback.js';
+import { BLOOM_SCALE_VERSION } from '../bloom.js';
+import { getDetectionTuning } from '../data/detection.js';
+import { canPresentDeferredStatusNotice } from '../loadingFeedback.js';
 import {
   isScopeMaskEnabled,
   getScopeMaskFeather,
@@ -33,26 +29,34 @@ const SHARE_PANEL_STATE_SPECS = Object.freeze([
 export class ShareState {
   _syncShareState() {
     const detection = this._shareableDetectionState();
-    this.shareLinkManager.onToggleChange(this.bloomEnabled, this.sharpenEnabled, {
-      bloomIntensity: this._getBloomIntensity(),
-      bloomVersion: BLOOM_SCALE_VERSION,
-      sharpenIntensity: parseInt(this._sharpenSlider?.value || '49', 10),
-      hudVariant: this.hud.getVariant(),
-      hudVisible: this.hud.visible,
-      detectionMode: detection.mode,
-      detectionDensity: detection.densityPct,
-      detectionAllocation: getDetectionTuning().allocationStrategy,
-      detectionFadePct: parseInt(this._detectionFadeSlider?.value || '7', 10),
-      detectionOutsideOpacityPct: parseInt(this._detectionOpacitySlider?.value || '1', 10),
-      celestialRingEnabled: this.celestialRingEnabled,
-      scopeEnabled: isScopeMaskEnabled(),
-      scopeFeatherPct: Math.round(getScopeMaskFeather() * 100),
-      // null when adaptive — the share layer omits `sce` entirely in that case.
-      scopeTerminusPct: getScopeTerminusOverride() == null
-        ? null
-        : Math.round(getScopeTerminusOverride() * 100),
-      mapStack: this.mapStackController?.getActiveId?.() || 'photoreal',
-    });
+    this.shareLinkManager.onToggleChange(
+      this.bloomEnabled,
+      this.sharpenEnabled,
+      {
+        bloomIntensity: this._getBloomIntensity(),
+        bloomVersion: BLOOM_SCALE_VERSION,
+        sharpenIntensity: parseInt(this._sharpenSlider?.value || '49', 10),
+        hudVariant: this.hud.getVariant(),
+        hudVisible: this.hud.visible,
+        detectionMode: detection.mode,
+        detectionDensity: detection.densityPct,
+        detectionAllocation: getDetectionTuning().allocationStrategy,
+        detectionFadePct: parseInt(this._detectionFadeSlider?.value || '7', 10),
+        detectionOutsideOpacityPct: parseInt(
+          this._detectionOpacitySlider?.value || '1',
+          10,
+        ),
+        celestialRingEnabled: this.celestialRingEnabled,
+        scopeEnabled: isScopeMaskEnabled(),
+        scopeFeatherPct: Math.round(getScopeMaskFeather() * 100),
+        // null when adaptive — the share layer omits `sce` entirely in that case.
+        scopeTerminusPct:
+          getScopeTerminusOverride() == null
+            ? null
+            : Math.round(getScopeTerminusOverride() * 100),
+        mapStack: this.mapStackController?.getActiveId?.() || 'photoreal',
+      },
+    );
   }
 
   _handleShareTrackingRestoreStatus(result) {
@@ -77,27 +81,38 @@ export class ShareState {
         this._updateGlobalLoadingFeedback();
       }
     }
-    if (result.classification === 'followed' || result.classification === 'cancelled') return;
+    if (
+      result.classification === 'followed' ||
+      result.classification === 'cancelled'
+    )
+      return;
     // A stale terminal result must never replace a newer target's acquisition.
     if (this._shareTrackingAcquiringKey) return;
     const noticeGeneration = ownsAcquiringNotice
       ? this._shareTrackingNoticeGeneration
       : ++this._shareTrackingNoticeGeneration;
     const subject = result.label || 'entity';
-    const message = result.classification === 'expired'
-      ? `Shared ${subject} follow expired`
-      : result.classification === 'source-unavailable'
-        ? `Shared ${subject} could not be restored — feed unavailable`
-        : `Shared ${subject} is unavailable`;
+    const message =
+      result.classification === 'expired'
+        ? `Shared ${subject} follow expired`
+        : result.classification === 'source-unavailable'
+          ? `Shared ${subject} could not be restored — feed unavailable`
+          : `Shared ${subject} is unavailable`;
     const showAfterStartupCover = () => {
       requestAnimationFrame(() => {
-        if (!canPresentDeferredStatusNotice(
-          noticeGeneration,
-          this._shareTrackingNoticeGeneration,
-          this._disposed,
-        )) return;
+        if (
+          !canPresentDeferredStatusNotice(
+            noticeGeneration,
+            this._shareTrackingNoticeGeneration,
+            this._disposed,
+          )
+        )
+          return;
         const startupCover = document.getElementById('loading-screen');
-        if (!startupCover || getComputedStyle(startupCover).visibility === 'hidden') {
+        if (
+          !startupCover ||
+          getComputedStyle(startupCover).visibility === 'hidden'
+        ) {
           this._showGlobalStatusNotice(message);
           return;
         }
@@ -105,13 +120,18 @@ export class ShareState {
         const showOnce = () => {
           startupCover.removeEventListener('transitionend', showOnce);
           if (fallbackTimer) clearTimeout(fallbackTimer);
-          if (canPresentDeferredStatusNotice(
-            noticeGeneration,
-            this._shareTrackingNoticeGeneration,
-            this._disposed,
-          )) this._showGlobalStatusNotice(message);
+          if (
+            canPresentDeferredStatusNotice(
+              noticeGeneration,
+              this._shareTrackingNoticeGeneration,
+              this._disposed,
+            )
+          )
+            this._showGlobalStatusNotice(message);
         };
-        startupCover.addEventListener('transitionend', showOnce, { once: true });
+        startupCover.addEventListener('transitionend', showOnce, {
+          once: true,
+        });
         fallbackTimer = setTimeout(showOnce, 1000);
       });
     };
@@ -133,7 +153,8 @@ export class ShareState {
         ? false
         : panelEl.classList.contains('collapsed');
       const entry = { id: spec.id, collapsed };
-      if (spec.pinnable) entry.pinned = panelEl.classList.contains('dock-pinned');
+      if (spec.pinnable)
+        entry.pinned = panelEl.classList.contains('dock-pinned');
       specs.push(entry);
     }
     return specs.length ? { specs } : null;
@@ -152,7 +173,8 @@ export class ShareState {
           syncShare: false,
         });
       }
-      const nextCollapsed = state.pinned && spec.pinnable ? false : state.collapsed;
+      const nextCollapsed =
+        state.pinned && spec.pinnable ? false : state.collapsed;
       this.setPanelCollapsed(spec.id, nextCollapsed, {
         restore: true,
         persist: false,
@@ -182,7 +204,10 @@ export class ShareState {
 
   /** Terminal result for the complete initial share restoration. */
   get initialRestorePromise() {
-    return this._initialShareRestorePromise || Promise.resolve({ status: 'not-requested' });
+    return (
+      this._initialShareRestorePromise ||
+      Promise.resolve({ status: 'not-requested' })
+    );
   }
 
   _settleInitialShareRestore(result) {
@@ -190,6 +215,8 @@ export class ShareState {
     const resolve = this._resolveInitialShareRestore;
     this._resolveInitialShareRestore = null;
     resolve(result);
-    window.dispatchEvent(new CustomEvent('gev:initial-share-restore-settled', { detail: result }));
+    window.dispatchEvent(
+      new CustomEvent('gev:initial-share-restore-settled', { detail: result }),
+    );
   }
 }

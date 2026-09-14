@@ -9,9 +9,7 @@
 import * as Cesium from 'cesium';
 import { GLOBE_VIEW, flyToGlobeView } from '../locations.js';
 import { interruptCameraMotion } from '../cameraVerbs.js';
-import {
-  aircraftTrackingTarget,
-} from '../cockpitTracking.js';
+import { aircraftTrackingTarget } from '../cockpitTracking.js';
 import flightsLayer from '../data/flights.js';
 import militaryFlightsLayer from '../data/militaryFlights.js';
 import satellitesLayer from '../data/satellites.js';
@@ -26,7 +24,10 @@ import {
 
 export class GlobeNavigation {
   /** Advance camera authority and settle any older search UI immediately. */
-  _stampNavigation({ cancelPendingSelection = true, clearSearchedLocation = true } = {}) {
+  _stampNavigation({
+    cancelPendingSelection = true,
+    clearSearchedLocation = true,
+  } = {}) {
     this._navigationGeneration += 1;
     // A newer destination owns the camera, so the last free-text search is no
     // longer where we are. DEFERRED navigation opts out here and clears at the
@@ -34,33 +35,67 @@ export class GlobeNavigation {
     // a lookup that fails must not blank a readout that is still true.
     if (clearSearchedLocation) this.clearSearchedLocation();
     if (cancelPendingSelection) {
-      if (this._hasShareState && this._resolveInitialShareRestore && !this._layerStateCoordinator) {
+      if (
+        this._hasShareState &&
+        this._resolveInitialShareRestore &&
+        !this._layerStateCoordinator
+      ) {
         this._initialShareSelectionSuperseded = true;
       }
-      const passivelyClearedShareSelection = this._layerStateCoordinator
-        ?.cancelPendingShareTracking?.(
+      const passivelyClearedShareSelection =
+        this._layerStateCoordinator?.cancelPendingShareTracking?.(
           'superseded-by-explicit-navigation',
           { clearSelection: true },
         ) === true;
-      try { flightsLayer.cancelPendingTrackingRestore?.(); } catch { /* best effort */ }
-      try { militaryFlightsLayer.cancelPendingTrackingRestore?.(); } catch { /* best effort */ }
-      try { satellitesLayer.cancelPendingTrackingRestore?.(); } catch { /* best effort */ }
+      try {
+        flightsLayer.cancelPendingTrackingRestore?.();
+      } catch {
+        /* best effort */
+      }
+      try {
+        militaryFlightsLayer.cancelPendingTrackingRestore?.();
+      } catch {
+        /* best effort */
+      }
+      try {
+        satellitesLayer.cancelPendingTrackingRestore?.();
+      } catch {
+        /* best effort */
+      }
       // A deliberate destination supersedes share-selected entities that have
       // not arrived yet. Active owners publish their clear when released.
       if (!passivelyClearedShareSelection && !flightsLayer.getTrackedInfo?.()) {
-        this._dataManager?.setLayerParams('flights', {
-          selectedFlightsTrackingId: null,
-        }, { origin: 'tool' });
+        this._dataManager?.setLayerParams(
+          'flights',
+          {
+            selectedFlightsTrackingId: null,
+          },
+          { origin: 'tool' },
+        );
       }
-      if (!passivelyClearedShareSelection && !militaryFlightsLayer.getTrackedInfo?.()) {
-        this._dataManager?.setLayerParams('military', {
-          selectedMilitaryTrackingId: null,
-        }, { origin: 'tool' });
+      if (
+        !passivelyClearedShareSelection &&
+        !militaryFlightsLayer.getTrackedInfo?.()
+      ) {
+        this._dataManager?.setLayerParams(
+          'military',
+          {
+            selectedMilitaryTrackingId: null,
+          },
+          { origin: 'tool' },
+        );
       }
-      if (!passivelyClearedShareSelection && !satellitesLayer.getTrackedInfo?.()) {
-        this._dataManager?.setLayerParams('satellites', {
-          selectedSatTrackingId: null,
-        }, { origin: 'tool' });
+      if (
+        !passivelyClearedShareSelection &&
+        !satellitesLayer.getTrackedInfo?.()
+      ) {
+        this._dataManager?.setLayerParams(
+          'satellites',
+          {
+            selectedSatTrackingId: null,
+          },
+          { origin: 'tool' },
+        );
       }
     }
     if (this._activeLocationSearchGeneration !== null) {
@@ -84,21 +119,43 @@ export class GlobeNavigation {
         }),
       );
     } catch {
-      try { flightsLayer.stopTracking?.({ origin: trackingOrigin }); } catch { /* best-effort release */ }
-      try { militaryFlightsLayer.stopTracking?.({ origin: trackingOrigin }); } catch { /* best-effort release */ }
+      try {
+        flightsLayer.stopTracking?.({ origin: trackingOrigin });
+      } catch {
+        /* best-effort release */
+      }
+      try {
+        militaryFlightsLayer.stopTracking?.({ origin: trackingOrigin });
+      } catch {
+        /* best-effort release */
+      }
       if (!preserveVesselSelection) {
-        try { aisLiveVesselsLayer.clearSelection?.(); } catch { /* best-effort release */ }
+        try {
+          aisLiveVesselsLayer.clearSelection?.();
+        } catch {
+          /* best-effort release */
+        }
       }
     }
-    try { satellitesLayer.stopTracking?.({ origin: trackingOrigin }); } catch { /* best-effort release */ }
-    try { rocketLaunchesLayer.releaseCameraOwnership?.(); } catch { /* best-effort release */ }
+    try {
+      satellitesLayer.stopTracking?.({ origin: trackingOrigin });
+    } catch {
+      /* best-effort release */
+    }
+    try {
+      rocketLaunchesLayer.releaseCameraOwnership?.();
+    } catch {
+      /* best-effort release */
+    }
     this.viewer.trackedEntity = undefined;
     interruptCameraMotion('explicit-navigation');
     this._stopOrbit();
     if (!preserveCameraFlight) this.viewer.camera.cancelFlight();
     try {
       this.viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
-    } catch { /* teardown race */ }
+    } catch {
+      /* teardown race */
+    }
     return contactSelected;
   }
 
@@ -116,7 +173,10 @@ export class GlobeNavigation {
   }
 
   /** Accept a delayed lookup without releasing its current camera owner. */
-  _beginDeferredNavigation(noun = 'location', { cancelPendingSelection = true } = {}) {
+  _beginDeferredNavigation(
+    noun = 'location',
+    { cancelPendingSelection = true } = {},
+  ) {
     return beginDeferredNavigation({
       disposed: this._disposed,
       cockpitActive: !!this.cockpitView?.active,
@@ -124,7 +184,11 @@ export class GlobeNavigation {
       showToast: (text) => this._showToast(text),
       // The searched-location readout survives the STAMP; only a flight that
       // actually starts invalidates it (see the release hook below).
-      stamp: () => this._stampNavigation({ cancelPendingSelection, clearSearchedLocation: false }),
+      stamp: () =>
+        this._stampNavigation({
+          cancelPendingSelection,
+          clearSearchedLocation: false,
+        }),
     });
   }
 
@@ -191,7 +255,8 @@ export class GlobeNavigation {
     // Create orbit indicator element
     this._orbitIndicator = document.createElement('div');
     this._orbitIndicator.id = 'orbit-indicator';
-    this._orbitIndicator.innerHTML = '<span class="orbit-icon">&#x21BB;</span> ORBIT';
+    this._orbitIndicator.innerHTML =
+      '<span class="orbit-icon">&#x21BB;</span> ORBIT';
     document.body.appendChild(this._orbitIndicator);
   }
 
@@ -227,7 +292,9 @@ export class GlobeNavigation {
 
   /** Wire the persistent reset control to the same route used by voice. */
   _initResetGlobeButton() {
-    this._globeResetHandler = () => { this.resetToGlobeView(); };
+    this._globeResetHandler = () => {
+      this.resetToGlobeView();
+    };
     for (const button of [this._resetGlobeBtn, this._cockpitResetGlobeBtn]) {
       button?.addEventListener('click', this._globeResetHandler);
     }
@@ -236,8 +303,13 @@ export class GlobeNavigation {
   /** Wire the top-center action that clears only manager-owned data layers. */
   _initClearSelectedLayersButton() {
     if (!this._clearSelectedLayersBtn) return;
-    this._clearSelectedLayersHandler = () => { void this.clearSelectedLayers(); };
-    this._clearSelectedLayersBtn.addEventListener('click', this._clearSelectedLayersHandler);
+    this._clearSelectedLayersHandler = () => {
+      void this.clearSelectedLayers();
+    };
+    this._clearSelectedLayersBtn.addEventListener(
+      'click',
+      this._clearSelectedLayersHandler,
+    );
   }
 
   /**
@@ -247,9 +319,15 @@ export class GlobeNavigation {
    * @returns {Promise<object>} Aggregate manager lifecycle truth for the batch.
    */
   clearSelectedLayers() {
-    if (this._clearSelectedLayersPromise) return this._clearSelectedLayersPromise;
+    if (this._clearSelectedLayersPromise)
+      return this._clearSelectedLayersPromise;
     if (!this._dataManager?.clearSelectedLayers) {
-      return Promise.resolve({ targetIds: [], items: [], clearedIds: [], notClearedIds: [] });
+      return Promise.resolve({
+        targetIds: [],
+        items: [],
+        clearedIds: [],
+        notClearedIds: [],
+      });
     }
     const generation = ++this._contextModeGeneration;
     const notificationToken = Symbol('clear-selected-layers');
@@ -266,45 +344,58 @@ export class GlobeNavigation {
     this._userFacingContextNotificationTokens.add(notificationToken);
     this._clearSelectedLayersBtn.setAttribute('aria-disabled', 'true');
     this._clearSelectedLayersBtn.setAttribute('aria-busy', 'true');
-    this._clearSelectedLayersBtn.setAttribute('aria-label', 'Clearing selected data layers');
+    this._clearSelectedLayersBtn.setAttribute(
+      'aria-label',
+      'Clearing selected data layers',
+    );
 
     const managerOperation = this._dataManager.clearSelectedLayers({
       origin: 'user',
       notificationToken,
     });
     this._clearSelectedLayersManagerPromise = managerOperation;
-    const operation = managerOperation.then((result) => {
-      if (result.targetIds.length === 0) {
-        this._showToast('No selected data layers');
-      } else if (result.notClearedIds.length > 0) {
-        this._showToast(`${result.notClearedIds.length} data layer${result.notClearedIds.length === 1 ? '' : 's'} could not be cleared`);
-      } else {
-        this._showToast(`Cleared ${result.clearedIds.length} data layer${result.clearedIds.length === 1 ? '' : 's'}`);
-      }
-      return result;
-    }).catch((error) => {
-      console.warn('[Data] clear selected layers failed', error);
-      this._showToast('Selected data layers could not be cleared');
-      return {
-        targetIds: [],
-        items: [],
-        clearedIds: [],
-        notClearedIds: [],
-        error,
-      };
-    }).finally(() => {
-      this._userFacingContextNotificationTokens.delete(notificationToken);
-      if (generation === this._contextModeGeneration) {
-        this._contextModeChanging = false;
-        this._syncContextModeButtons();
-      }
-      this._clearSelectedLayersBtn.setAttribute('aria-disabled', 'false');
-      this._clearSelectedLayersBtn.setAttribute('aria-busy', 'false');
-      this._clearSelectedLayersBtn.setAttribute('aria-label', 'Clear selected data layers');
-      this._preservePanelStateDuringLayerClear = false;
-      this._clearSelectedLayersManagerPromise = null;
-      this._clearSelectedLayersPromise = null;
-    });
+    const operation = managerOperation
+      .then((result) => {
+        if (result.targetIds.length === 0) {
+          this._showToast('No selected data layers');
+        } else if (result.notClearedIds.length > 0) {
+          this._showToast(
+            `${result.notClearedIds.length} data layer${result.notClearedIds.length === 1 ? '' : 's'} could not be cleared`,
+          );
+        } else {
+          this._showToast(
+            `Cleared ${result.clearedIds.length} data layer${result.clearedIds.length === 1 ? '' : 's'}`,
+          );
+        }
+        return result;
+      })
+      .catch((error) => {
+        console.warn('[Data] clear selected layers failed', error);
+        this._showToast('Selected data layers could not be cleared');
+        return {
+          targetIds: [],
+          items: [],
+          clearedIds: [],
+          notClearedIds: [],
+          error,
+        };
+      })
+      .finally(() => {
+        this._userFacingContextNotificationTokens.delete(notificationToken);
+        if (generation === this._contextModeGeneration) {
+          this._contextModeChanging = false;
+          this._syncContextModeButtons();
+        }
+        this._clearSelectedLayersBtn.setAttribute('aria-disabled', 'false');
+        this._clearSelectedLayersBtn.setAttribute('aria-busy', 'false');
+        this._clearSelectedLayersBtn.setAttribute(
+          'aria-label',
+          'Clear selected data layers',
+        );
+        this._preservePanelStateDuringLayerClear = false;
+        this._clearSelectedLayersManagerPromise = null;
+        this._clearSelectedLayersPromise = null;
+      });
     this._clearSelectedLayersPromise = operation;
     return operation;
   }
@@ -324,19 +415,41 @@ export class GlobeNavigation {
       militaryAwarenessLayer.releaseCameraOwnership?.({ origin: 'tool' });
     } catch {
       // Keep reset available if Context has not initialized completely.
-      try { flightsLayer.stopTracking?.({ origin: 'tool' }); } catch { /* best-effort release */ }
-      try { militaryFlightsLayer.stopTracking?.({ origin: 'tool' }); } catch { /* best-effort release */ }
-      try { aisLiveVesselsLayer.clearSelection?.(); } catch { /* best-effort release */ }
+      try {
+        flightsLayer.stopTracking?.({ origin: 'tool' });
+      } catch {
+        /* best-effort release */
+      }
+      try {
+        militaryFlightsLayer.stopTracking?.({ origin: 'tool' });
+      } catch {
+        /* best-effort release */
+      }
+      try {
+        aisLiveVesselsLayer.clearSelection?.();
+      } catch {
+        /* best-effort release */
+      }
     }
-    try { satellitesLayer.stopTracking?.({ origin: 'tool' }); } catch { /* best-effort release */ }
-    try { rocketLaunchesLayer.releaseCameraOwnership?.(); } catch { /* best-effort release */ }
+    try {
+      satellitesLayer.stopTracking?.({ origin: 'tool' });
+    } catch {
+      /* best-effort release */
+    }
+    try {
+      rocketLaunchesLayer.releaseCameraOwnership?.();
+    } catch {
+      /* best-effort release */
+    }
     this.viewer.trackedEntity = undefined;
     this.viewer.camera.cancelFlight();
     this.viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
     this._beginWorldJumpTransition();
 
     let resolveReset;
-    const resetPromise = new Promise((resolve) => { resolveReset = resolve; });
+    const resetPromise = new Promise((resolve) => {
+      resolveReset = resolve;
+    });
     this._globeResetPromise = resetPromise;
     let settled = false;
     let timer = null;
@@ -356,17 +469,32 @@ export class GlobeNavigation {
           longitude: Number(Cesium.Math.toDegrees(carto.longitude).toFixed(2)),
         },
       };
-      this._resetGlobeBtn?.setAttribute('aria-label', 'Reset to full globe view');
-      this._cockpitResetGlobeBtn?.setAttribute('aria-label', 'Reset cockpit to full globe view');
+      this._resetGlobeBtn?.setAttribute(
+        'aria-label',
+        'Reset to full globe view',
+      );
+      this._cockpitResetGlobeBtn?.setAttribute(
+        'aria-label',
+        'Reset cockpit to full globe view',
+      );
       this._globeResetPromise = null;
       resolveReset(result);
     };
     timer = window.setTimeout(() => {
       const height = this.viewer.camera.positionCartographic?.height;
-      finish(!Number.isFinite(height) || Math.abs(height - GLOBE_VIEW.heightM) > 1000);
+      finish(
+        !Number.isFinite(height) ||
+          Math.abs(height - GLOBE_VIEW.heightM) > 1000,
+      );
     }, 4200);
-    this._resetGlobeBtn?.setAttribute('aria-label', 'Resetting to full globe view');
-    this._cockpitResetGlobeBtn?.setAttribute('aria-label', 'Resetting cockpit to full globe view');
+    this._resetGlobeBtn?.setAttribute(
+      'aria-label',
+      'Resetting to full globe view',
+    );
+    this._cockpitResetGlobeBtn?.setAttribute(
+      'aria-label',
+      'Resetting cockpit to full globe view',
+    );
     const target = flyToGlobeView(this.viewer, {
       onComplete: () => finish(false),
       onCancel: () => finish(true),
@@ -381,12 +509,21 @@ export class GlobeNavigation {
    */
   _disposeGlobeNavigation() {
     if (this._globeResetHandler) {
-      this._resetGlobeBtn?.removeEventListener('click', this._globeResetHandler);
-      this._cockpitResetGlobeBtn?.removeEventListener('click', this._globeResetHandler);
+      this._resetGlobeBtn?.removeEventListener(
+        'click',
+        this._globeResetHandler,
+      );
+      this._cockpitResetGlobeBtn?.removeEventListener(
+        'click',
+        this._globeResetHandler,
+      );
       this._globeResetHandler = null;
     }
     if (this._clearSelectedLayersBtn && this._clearSelectedLayersHandler) {
-      this._clearSelectedLayersBtn.removeEventListener('click', this._clearSelectedLayersHandler);
+      this._clearSelectedLayersBtn.removeEventListener(
+        'click',
+        this._clearSelectedLayersHandler,
+      );
       this._clearSelectedLayersHandler = null;
     }
   }

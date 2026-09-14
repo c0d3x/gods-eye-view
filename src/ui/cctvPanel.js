@@ -43,37 +43,55 @@ const signedNormalizeDeg = (deg) => ((((deg + 180) % 360) + 360) % 360) - 180;
  */
 const CCTV_CAL_FIELDS = {
   heading: {
-    label: 'HDG', unit: '°', decimals: 1,
+    label: 'HDG',
+    unit: '°',
+    decimals: 1,
     get: (cam) => cam.headingDeg,
-    toPatch: (value, base) => ({ headingDeg: signedNormalizeDeg(value - base.headingDeg) }),
+    toPatch: (value, base) => ({
+      headingDeg: signedNormalizeDeg(value - base.headingDeg),
+    }),
   },
   pitch: {
-    label: 'PITCH', unit: '°', decimals: 1,
+    label: 'PITCH',
+    unit: '°',
+    decimals: 1,
     get: (cam) => cam.pitchDeg,
     toPatch: (value, base) => ({ pitchDeg: value - base.pitchDeg }),
   },
   fov: {
-    label: 'FOV', unit: '°', decimals: 0,
+    label: 'FOV',
+    unit: '°',
+    decimals: 0,
     get: (cam) => cam.fovDeg,
     toPatch: (value, base) => ({ fovDeg: value - base.fovDeg }),
   },
   range: {
-    label: 'RANGE', unit: 'm', decimals: 0,
+    label: 'RANGE',
+    unit: 'm',
+    decimals: 0,
     get: (cam) => cam.rangeM,
-    toPatch: (value, base) => ({ rangeScale: base.rangeM > 0 ? value / base.rangeM : 1 }),
+    toPatch: (value, base) => ({
+      rangeScale: base.rangeM > 0 ? value / base.rangeM : 1,
+    }),
   },
   height: {
-    label: 'HGT', unit: 'm', decimals: 0,
+    label: 'HGT',
+    unit: 'm',
+    decimals: 0,
     get: (cam) => cam.mountHeightM,
     toPatch: (value, base) => ({ heightM: value - base.mountHeightM }),
   },
   north: {
-    label: 'ΔN', unit: 'm', decimals: 1,
+    label: 'ΔN',
+    unit: 'm',
+    decimals: 1,
     get: (cam) => cam.calibration?.offsetNorthM || 0,
     toPatch: (value) => ({ offsetNorthM: value }),
   },
   east: {
-    label: 'ΔE', unit: 'm', decimals: 1,
+    label: 'ΔE',
+    unit: 'm',
+    decimals: 1,
     get: (cam) => cam.calibration?.offsetEastM || 0,
     toPatch: (value) => ({ offsetEastM: value }),
   },
@@ -90,7 +108,8 @@ export class CctvPanel {
    * @returns {void}
    */
   _updateCctvSyncChip(loading, enabled) {
-    if (!this._cctvSyncChip || !this._cctvSyncLabel || !this._cctvSyncProgress) return;
+    if (!this._cctvSyncChip || !this._cctvSyncLabel || !this._cctvSyncProgress)
+      return;
     const total = Number(loading?.total) || 0;
     const loaded = Math.max(0, Math.min(Number(loading?.loaded) || 0, total));
     const busy = !!enabled && !!loading?.active && total > 0;
@@ -155,7 +174,7 @@ export class CctvPanel {
     });
 
     this._cctvNearestBtn?.addEventListener('click', async () => {
-      if (!await this._toggleCctvEnabled(true)) return;
+      if (!(await this._toggleCctvEnabled(true))) return;
       this._runExplicitCctvFocus(
         () => cctvLayer.focusNearest({ focus: false }),
         (cameraId) => cctvLayer.focusCamera(cameraId, 1.8),
@@ -163,7 +182,7 @@ export class CctvPanel {
     });
 
     this._cctvPrevBtn?.addEventListener('click', async () => {
-      if (!await this._toggleCctvEnabled(true)) return;
+      if (!(await this._toggleCctvEnabled(true))) return;
       this._runExplicitCctvFocus(
         () => cctvLayer.cycleCamera(-1),
         (cameraId) => cctvLayer.focusCamera(cameraId, 1.4),
@@ -171,7 +190,7 @@ export class CctvPanel {
     });
 
     this._cctvNextBtn?.addEventListener('click', async () => {
-      if (!await this._toggleCctvEnabled(true)) return;
+      if (!(await this._toggleCctvEnabled(true))) return;
       this._runExplicitCctvFocus(
         () => cctvLayer.cycleCamera(1),
         (cameraId) => cctvLayer.focusCamera(cameraId, 1.4),
@@ -181,7 +200,7 @@ export class CctvPanel {
     this._cctvSelect?.addEventListener('change', async () => {
       const cameraId = this._cctvSelect.value;
       if (!cameraId) return;
-      if (!await this._toggleCctvEnabled(true)) return;
+      if (!(await this._toggleCctvEnabled(true))) return;
       // Picking a camera from the dropdown flies to it. The catalog spans
       // three metros, so a bare selection used to leave the view in the old
       // city with a camera active thousands of km away.
@@ -189,40 +208,67 @@ export class CctvPanel {
         () => (cctvLayer.selectCamera(cameraId) ? cameraId : null),
         (selectedId) => cctvLayer.focusCamera(selectedId, 2.2),
       );
-      this._dataManager?.setLayerParams('cctv', { selectedCameraId: cameraId }, { origin: 'user' });
+      this._dataManager?.setLayerParams(
+        'cctv',
+        { selectedCameraId: cameraId },
+        { origin: 'user' },
+      );
     });
 
     this._cctvFocusBtn?.addEventListener('click', async () => {
-      const selected = this._cctvState?.activeCameraId || this._cctvSelect?.value;
+      const selected =
+        this._cctvState?.activeCameraId || this._cctvSelect?.value;
       if (!selected) return;
-      if (!await this._toggleCctvEnabled(true)) return;
+      if (!(await this._toggleCctvEnabled(true))) return;
       this._runExplicitCctvFocus(
         () => selected,
         (cameraId) => cctvLayer.focusCamera(cameraId, 1.9),
       );
-      this._dataManager?.setLayerParams('cctv', { selectedCameraId: selected }, { origin: 'user' });
+      this._dataManager?.setLayerParams(
+        'cctv',
+        { selectedCameraId: selected },
+        { origin: 'user' },
+      );
     });
 
     this._cctvCoverageBtn?.addEventListener('click', () => {
-      const current = this._cctvState?.coverageMode
-        || (this._cctvState?.showCoverage ? 'on' : 'off');
-      const next = current === 'off' ? 'on' : current === 'on' ? 'viewshed' : 'off';
-      this._dataManager?.setLayerParams('cctv', { coverageMode: next }, { origin: 'user' });
+      const current =
+        this._cctvState?.coverageMode ||
+        (this._cctvState?.showCoverage ? 'on' : 'off');
+      const next =
+        current === 'off' ? 'on' : current === 'on' ? 'viewshed' : 'off';
+      this._dataManager?.setLayerParams(
+        'cctv',
+        { coverageMode: next },
+        { origin: 'user' },
+      );
     });
 
     this._cctvAutoHopBtn?.addEventListener('click', () => {
       const current = !!this._cctvState?.autoHop;
-      this._dataManager?.setLayerParams('cctv', { autoHop: !current }, { origin: 'user' });
+      this._dataManager?.setLayerParams(
+        'cctv',
+        { autoHop: !current },
+        { origin: 'user' },
+      );
     });
 
     this._cctvProjectionBtn?.addEventListener('click', () => {
       const current = this._cctvState?.showProjection !== false;
-      this._dataManager?.setLayerParams('cctv', { showProjection: !current }, { origin: 'user' });
+      this._dataManager?.setLayerParams(
+        'cctv',
+        { showProjection: !current },
+        { origin: 'user' },
+      );
     });
 
     this._cctvAdjustBtn?.addEventListener('click', () => {
       const current = !!this._cctvState?.calibrationMode;
-      this._dataManager?.setLayerParams('cctv', { calibrationMode: !current }, { origin: 'user' });
+      this._dataManager?.setLayerParams(
+        'cctv',
+        { calibrationMode: !current },
+        { origin: 'user' },
+      );
     });
 
     // Click-to-edit pose readout: each chip swaps to a number input; Enter or
@@ -237,10 +283,14 @@ export class CctvPanel {
     this._cctvCalibSaveBtn?.addEventListener('click', () => {
       const cameraId = this._activeCctvCameraId();
       if (!cameraId || !this._dataManager) return;
-      this._dataManager.setLayerParams('cctv', {
-        selectedCameraId: cameraId,
-        calibration: { cameraId, save: true },
-      }, { origin: 'user' });
+      this._dataManager.setLayerParams(
+        'cctv',
+        {
+          selectedCameraId: cameraId,
+          calibration: { cameraId, save: true },
+        },
+        { origin: 'user' },
+      );
       this._showToast('CCTV calibration saved');
     });
 
@@ -315,7 +365,7 @@ export class CctvPanel {
     this._cctvFrame.dataset.error = '';
     this._cctvFrameWrap?.classList.toggle(
       'loading',
-      !this._cctvFrameWrap?.classList.contains('has-frame')
+      !this._cctvFrameWrap?.classList.contains('has-frame'),
     );
 
     const preloader = new Image();
@@ -339,10 +389,11 @@ export class CctvPanel {
     this._cctvFrame.dataset.loading = '';
     this._cctvFrameWrap?.classList.remove('loading');
 
-    const syncBadge = () => this._syncCctvSourceBadge(
-      this._cctvState?.activeCamera,
-      !!this._cctvState?.enabled && !!this._dataManager?.isEnabled('cctv')
-    );
+    const syncBadge = () =>
+      this._syncCctvSourceBadge(
+        this._cctvState?.activeCamera,
+        !!this._cctvState?.enabled && !!this._dataManager?.isEnabled('cctv'),
+      );
 
     if (!ok) {
       // Leave the element untouched — a settled frame stays on screen.
@@ -372,7 +423,8 @@ export class CctvPanel {
       this._cctvSourceBadge.dataset.frameState = 'idle';
       return;
     }
-    const hasDisplayedFrame = this._cctvFrameWrap?.classList.contains('has-frame');
+    const hasDisplayedFrame =
+      this._cctvFrameWrap?.classList.contains('has-frame');
     if (this._cctvFrame?.dataset.loading === 'true' && !hasDisplayedFrame) {
       this._cctvSourceBadge.textContent = 'FRAME · LOADING';
       this._cctvSourceBadge.dataset.frameState = 'loading';
@@ -383,7 +435,9 @@ export class CctvPanel {
       this._cctvSourceBadge.dataset.frameState = 'error';
       return;
     }
-    const kind = String(activeCamera.sourceKind || activeCamera.feedType || 'unknown').toUpperCase();
+    const kind = String(
+      activeCamera.sourceKind || activeCamera.feedType || 'unknown',
+    ).toUpperCase();
     const status = String(activeCamera.sourceStatus || 'unknown').toUpperCase();
     this._cctvSourceBadge.textContent = `${kind} · ${status}`;
     this._cctvSourceBadge.dataset.frameState = 'ready';
@@ -396,13 +450,17 @@ export class CctvPanel {
   _resetCctvCalibration() {
     const cameraId = this._activeCctvCameraId();
     if (!cameraId || !this._dataManager) return;
-    this._dataManager.setLayerParams('cctv', {
-      selectedCameraId: cameraId,
-      calibration: {
-        cameraId,
-        reset: true,
+    this._dataManager.setLayerParams(
+      'cctv',
+      {
+        selectedCameraId: cameraId,
+        calibration: {
+          cameraId,
+          reset: true,
+        },
       },
-    }, { origin: 'user' });
+      { origin: 'user' },
+    );
     this._showToast('CCTV calibration reset');
   }
 
@@ -437,14 +495,24 @@ export class CctvPanel {
       if (commit && Number.isFinite(typed)) {
         const cameraId = this._activeCctvCameraId();
         if (cameraId && this._dataManager) {
-          this._dataManager.setLayerParams('cctv', {
-            selectedCameraId: cameraId,
-            calibration: { cameraId, patch: field.toPatch(typed, activeCamera.basePose) },
-          }, { origin: 'user' });
+          this._dataManager.setLayerParams(
+            'cctv',
+            {
+              selectedCameraId: cameraId,
+              calibration: {
+                cameraId,
+                patch: field.toPatch(typed, activeCamera.basePose),
+              },
+            },
+            { origin: 'user' },
+          );
           return; // re-render restores the chip text from fresh state
         }
       }
-      this._syncCctvCalReadout(!!this._cctvState?.enabled, this._cctvState?.activeCamera || null);
+      this._syncCctvCalReadout(
+        !!this._cctvState?.enabled,
+        this._cctvState?.activeCamera || null,
+      );
     };
     input.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') finish(true);
@@ -471,7 +539,9 @@ export class CctvPanel {
       this._cctvAdjustBtn.disabled = !canCalibrate;
     }
     if (this._cctvCalReadout) {
-      for (const chip of this._cctvCalReadout.querySelectorAll('.cctv-cal-value')) {
+      for (const chip of this._cctvCalReadout.querySelectorAll(
+        '.cctv-cal-value',
+      )) {
         if (chip.querySelector('input')) continue; // an edit is in flight — don't clobber
         const field = CCTV_CAL_FIELDS[chip.dataset.calField];
         if (!field) continue;
@@ -503,17 +573,19 @@ export class CctvPanel {
     if (target === enabled) return true;
     await runCctvLayerEnableTransition({
       target,
-      setEnabled: (next) => this._dataManager.setEnabled('cctv', next, { origin: 'user' }),
+      setEnabled: (next) =>
+        this._dataManager.setEnabled('cctv', next, { origin: 'user' }),
       readOwnership: () => ({
         trackedEntity: this.viewer?.trackedEntity,
         cockpitActive: !!this.cockpitView?.active,
       }),
       shouldFocus: () => !this._cctvState?.activeCameraId,
       activate: () => cctvLayer.focusNearest({ focus: false }),
-      fly: (cameraId) => this._runExplicitCctvFocus(
-        () => cameraId,
-        (selectedId) => cctvLayer.focusCamera(selectedId, 1.6),
-      ),
+      fly: (cameraId) =>
+        this._runExplicitCctvFocus(
+          () => cameraId,
+          (selectedId) => cctvLayer.focusCamera(selectedId, 1.6),
+        ),
     });
     return true;
   }
@@ -527,10 +599,14 @@ export class CctvPanel {
    */
   _calBadgeLabel(badge) {
     switch (badge) {
-      case 'calibrated': return 'CALIBRATED';
-      case 'curated': return 'CURATED';
-      case 'raw-prior': return 'RAW PRIOR';
-      default: return '--';
+      case 'calibrated':
+        return 'CALIBRATED';
+      case 'curated':
+        return 'CURATED';
+      case 'raw-prior':
+        return 'RAW PRIOR';
+      default:
+        return '--';
     }
   }
 
@@ -556,12 +632,16 @@ export class CctvPanel {
     // from re-expanding a panel the user deliberately collapsed, and timed
     // auto-hop transitions only expand on the first activation so the panel
     // does not pop open on every hop.
-    const effectiveActiveId = enabled ? (activeId || null) : null;
+    const effectiveActiveId = enabled ? activeId || null : null;
     const isFirstActivation = this._lastSeenCctvActiveId === null;
-    if (effectiveActiveId
-      && effectiveActiveId !== this._lastSeenCctvActiveId
-      && (!state?.autoHop || isFirstActivation)) {
-      this.setPanelCollapsed('cctv-panel', false, { explicit: Boolean(state?.explicitSelection) });
+    if (
+      effectiveActiveId &&
+      effectiveActiveId !== this._lastSeenCctvActiveId &&
+      (!state?.autoHop || isFirstActivation)
+    ) {
+      this.setPanelCollapsed('cctv-panel', false, {
+        explicit: Boolean(state?.explicitSelection),
+      });
     }
     this._lastSeenCctvActiveId = effectiveActiveId;
 
@@ -573,8 +653,11 @@ export class CctvPanel {
     }
 
     if (this._cctvSelect) {
-      const shouldRebuild = this._cctvSelect.options.length !== cameras.length
-        || cameras.some((cam, idx) => this._cctvSelect.options[idx]?.value !== cam.id);
+      const shouldRebuild =
+        this._cctvSelect.options.length !== cameras.length ||
+        cameras.some(
+          (cam, idx) => this._cctvSelect.options[idx]?.value !== cam.id,
+        );
       if (shouldRebuild) {
         this._cctvSelect.innerHTML = '';
         for (const camera of cameras) {
@@ -585,19 +668,29 @@ export class CctvPanel {
         }
       }
       this._cctvSelect.disabled = !enabled || cameras.length === 0;
-      if (activeId && Array.from(this._cctvSelect.options).some((opt) => opt.value === activeId)) {
+      if (
+        activeId &&
+        Array.from(this._cctvSelect.options).some(
+          (opt) => opt.value === activeId,
+        )
+      ) {
         this._cctvSelect.value = activeId;
       } else if (!activeId) {
         this._cctvSelect.selectedIndex = -1;
       }
     }
 
-    for (const btn of [this._cctvNearestBtn, this._cctvPrevBtn, this._cctvNextBtn]) {
+    for (const btn of [
+      this._cctvNearestBtn,
+      this._cctvPrevBtn,
+      this._cctvNextBtn,
+    ]) {
       if (!btn) continue;
       btn.disabled = !enabled || cameras.length === 0;
     }
     if (this._cctvFocusBtn) {
-      this._cctvFocusBtn.disabled = !enabled || cameras.length === 0 || !activeId;
+      this._cctvFocusBtn.disabled =
+        !enabled || cameras.length === 0 || !activeId;
     }
 
     if (this._cctvCoverageBtn) {
@@ -605,23 +698,30 @@ export class CctvPanel {
       // (color-coded volumes). The click handler cycles; this renders.
       const mode = state?.coverageMode || (state?.showCoverage ? 'on' : 'off');
       this._cctvCoverageBtn.classList.toggle('active', mode !== 'off');
-      this._cctvCoverageBtn.textContent = mode === 'viewshed'
-        ? 'VIEWSHED ON'
-        : mode === 'on' ? 'COVERAGE ON' : 'COVERAGE OFF';
+      this._cctvCoverageBtn.textContent =
+        mode === 'viewshed'
+          ? 'VIEWSHED ON'
+          : mode === 'on'
+            ? 'COVERAGE ON'
+            : 'COVERAGE OFF';
       this._cctvCoverageBtn.disabled = !enabled;
     }
 
     if (this._cctvAutoHopBtn) {
       const autoHop = !!state?.autoHop;
       this._cctvAutoHopBtn.classList.toggle('active', autoHop);
-      this._cctvAutoHopBtn.textContent = autoHop ? 'AUTO HOP ON' : 'AUTO HOP OFF';
+      this._cctvAutoHopBtn.textContent = autoHop
+        ? 'AUTO HOP ON'
+        : 'AUTO HOP OFF';
       this._cctvAutoHopBtn.disabled = !enabled;
     }
 
     if (this._cctvProjectionBtn) {
       const showProjection = state?.showProjection !== false;
       this._cctvProjectionBtn.classList.toggle('active', showProjection);
-      this._cctvProjectionBtn.textContent = showProjection ? 'PROJECTION ON' : 'PROJECTION OFF';
+      this._cctvProjectionBtn.textContent = showProjection
+        ? 'PROJECTION ON'
+        : 'PROJECTION OFF';
       this._cctvProjectionBtn.disabled = !enabled;
     }
 
@@ -638,16 +738,23 @@ export class CctvPanel {
       this._cctvQualityChip.textContent = dirty
         ? 'CAL · EDITED (UNSAVED)'
         : `CAL · ${this._calBadgeLabel(badge)}`;
-      this._cctvQualityChip.dataset.calBadge = dirty ? 'edited' : (badge || '');
+      this._cctvQualityChip.dataset.calBadge = dirty ? 'edited' : badge || '';
     }
 
     this._syncCctvCalReadout(enabled, activeCamera);
 
     if (this._cctvMeta) {
       if (activeCamera) {
-        const provider = activeCamera.sourceLabel || activeCamera.provider || 'Configured Source';
-        const statusMsg = activeCamera.sourceMessage ? ` · ${activeCamera.sourceMessage}` : '';
-        const calBadge = activeCamera.calBadge ? this._calBadgeLabel(activeCamera.calBadge) : '';
+        const provider =
+          activeCamera.sourceLabel ||
+          activeCamera.provider ||
+          'Configured Source';
+        const statusMsg = activeCamera.sourceMessage
+          ? ` · ${activeCamera.sourceMessage}`
+          : '';
+        const calBadge = activeCamera.calBadge
+          ? this._calBadgeLabel(activeCamera.calBadge)
+          : '';
         const projLabel = state?.showProjection !== false ? 'MONITOR' : 'OFF';
         this._cctvMeta.textContent = `${activeCamera.city} · HDG ${Math.round(activeCamera.headingDeg)}° · FOV ${Math.round(activeCamera.fovDeg)}° · RANGE ${Math.round(activeCamera.rangeM)}m · ${projLabel}${calBadge ? ` · ${calBadge}` : ''} · ${provider}${statusMsg}`;
       } else if (cameras.length > 0) {
@@ -661,14 +768,18 @@ export class CctvPanel {
 
     if (this._cctvFrame) {
       const nextSrc = enabled ? activeCamera?.frameUrl : null;
-      const nextCameraId = enabled ? (activeCamera?.id || '') : '';
+      const nextCameraId = enabled ? activeCamera?.id || '' : '';
       const cameraChanged = this._cctvFrame.dataset.cameraId !== nextCameraId;
       const frameLoading = this._cctvFrame.dataset.loading === 'true';
       // A same-camera refresh waits for the current image to settle. Replacing
       // src every 10 seconds can cancel a slow but healthy decode forever and
       // leave SNAPSHOT · OK beside a blank/loading preview. Camera changes are
       // immediate so navigation never waits on the prior camera's request.
-      if (nextSrc && (cameraChanged || (!frameLoading && this._cctvFrame.dataset.currentSrc !== nextSrc))) {
+      if (
+        nextSrc &&
+        (cameraChanged ||
+          (!frameLoading && this._cctvFrame.dataset.currentSrc !== nextSrc))
+      ) {
         this._queueCctvFrame(nextSrc, nextCameraId, cameraChanged);
       }
       if (!nextSrc) {
@@ -677,7 +788,10 @@ export class CctvPanel {
     }
 
     this._syncCctvSourceBadge(activeCamera, enabled);
-    this._typeCctvSummary(state?.summary || 'Enable CCTV to start camera-linked intelligence summaries.');
+    this._typeCctvSummary(
+      state?.summary ||
+        'Enable CCTV to start camera-linked intelligence summaries.',
+    );
   }
 
   /**
@@ -724,7 +838,10 @@ export class CctvPanel {
         return;
       }
       const rect = this._cctvPanel.getBoundingClientRect();
-      const availableHeight = Math.max(190, Math.floor(window.innerHeight - rect.top - 12));
+      const availableHeight = Math.max(
+        190,
+        Math.floor(window.innerHeight - rect.top - 12),
+      );
       this._cctvPanel.style.maxHeight = `${availableHeight}px`;
       if (inner) {
         inner.style.maxHeight = `${availableHeight}px`;
