@@ -2038,9 +2038,10 @@ function _describeFlight(icao24) {
     position: Cesium.Cartesian3.clone(basePos),
     latitude: Cesium.Math.toDegrees(carto.latitude),
     longitude: Cesium.Math.toDegrees(carto.longitude),
-    // Keep the cockpit readout on the reported aviation altitude. Render
-    // terrain height is a separate visual datum and may be below zero.
-    altitudeM: Number.isFinite(info?.altitudeM) ? info.altitudeM : carto.height,
+    // Keep the cockpit readout on the reported aviation altitude: the sticky
+    // barometric feet, in meters. Render terrain height is a separate visual
+    // datum and may be below zero.
+    altitudeM: Number.isFinite(info?.altitudeFt) ? info.altitudeFt * 0.3048 : carto.height,
     renderAltitudeM: Number.isFinite(info?.renderAltitudeM) ? info.renderAltitudeM : carto.height,
     onGround: info?.onGround === true,
     velocityMps: displayed.speedMps,

@@ -103,6 +103,11 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Fixed
 
+- Cockpit's altitude readout for a military aircraft shows the altitude the
+  aircraft reports, as it does for a civil one, instead of the height the
+  globe draws it at. The military layer read a field its records never had,
+  so the readout fell back to the render height, which includes the geoid.
+
 - The unit-test runner fails a run in which a test file stopped early. Node
   counts such a file as passing, with only the tests it reached; one run
   silently skipped 30 of the AIS layer's 73 tests. The runner now lists any
