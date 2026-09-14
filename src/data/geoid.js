@@ -33,7 +33,9 @@ let readyPromise = null;
  * @returns {Promise<Uint8Array>}
  */
 async function gunzip(bytes) {
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  const stream = new Blob([bytes])
+    .stream()
+    .pipeThrough(new DecompressionStream('gzip'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
@@ -46,9 +48,12 @@ async function gunzip(bytes) {
  * @returns {Promise<Int16Array>}
  */
 async function decodeGrid(file) {
-  const bytes = file[0] === 0x1f && file[1] === 0x8b ? await gunzip(file) : file;
+  const bytes =
+    file[0] === 0x1f && file[1] === 0x8b ? await gunzip(file) : file;
   if (bytes.byteLength !== ROWS * COLS * 2) {
-    throw new Error(`geoid.js: the grid is ${bytes.byteLength} bytes, not ${ROWS * COLS * 2}`);
+    throw new Error(
+      `geoid.js: the grid is ${bytes.byteLength} bytes, not ${ROWS * COLS * 2}`,
+    );
   }
   const deltas = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const cells = new Int16Array(ROWS * COLS);
@@ -110,7 +115,9 @@ export const GEOID_IDLE_TIMEOUT_MS = 5000;
  * @param {{timeoutMs?: number}} [options]
  * @returns {Promise<void>}
  */
-export function ensureGeoidReadyWhenIdle({ timeoutMs = GEOID_IDLE_TIMEOUT_MS } = {}) {
+export function ensureGeoidReadyWhenIdle({
+  timeoutMs = GEOID_IDLE_TIMEOUT_MS,
+} = {}) {
   if (readyPromise) return readyPromise;
   return new Promise((resolve) => {
     const start = () => resolve(ensureGeoidReady());
@@ -124,7 +131,9 @@ export function ensureGeoidReadyWhenIdle({ timeoutMs = GEOID_IDLE_TIMEOUT_MS } =
 
 /** Wraps an angle in radians into [center − π, center + π). */
 function normalizeRadians(rads, center = 0) {
-  return rads - (2 * Math.PI) * Math.floor((rads + Math.PI - center) / (2 * Math.PI));
+  return (
+    rads - 2 * Math.PI * Math.floor((rads + Math.PI - center) / (2 * Math.PI))
+  );
 }
 
 /** Undulation at one grid node, in metres. */
@@ -133,7 +142,7 @@ function node(row, col) {
 }
 
 function lerp(a, b, t) {
-  return a + ((b - a) * t);
+  return a + (b - a) * t;
 }
 
 /**
@@ -152,7 +161,7 @@ export function geoidHeight(latDeg, lonDeg) {
   if (!grid) {
     throw new Error(
       'geoid.js: geoidHeight() called before ensureGeoidReady() resolved — ' +
-        'await ensureGeoidReady() first.'
+        'await ensureGeoidReady() first.',
     );
   }
   const latNum = Number(latDeg);
@@ -161,7 +170,7 @@ export function geoidHeight(latDeg, lonDeg) {
   const lat = normalizeRadians(latNum * (Math.PI / 180));
   const lon = normalizeRadians(lonNum * (Math.PI / 180));
 
-  let topRow = Math.floor(((Math.PI / 2) - lat) / INTERVAL);
+  let topRow = Math.floor((Math.PI / 2 - lat) / INTERVAL);
   // At 90°S there is no row below; interpolate from the one above instead.
   topRow = topRow === ROWS - 1 ? topRow - 1 : topRow;
   const bottomRow = topRow + 1;
@@ -171,7 +180,7 @@ export function geoidHeight(latDeg, lonDeg) {
   const rightCol = (leftCol + 1) % COLS;
 
   const x = (lon - normalizeRadians(leftCol * INTERVAL)) / INTERVAL;
-  const y = ((Math.PI / 2) - (topRow * INTERVAL) - lat) / INTERVAL;
+  const y = (Math.PI / 2 - topRow * INTERVAL - lat) / INTERVAL;
   const top = lerp(node(topRow, leftCol), node(topRow, rightCol), x);
   const bottom = lerp(node(bottomRow, leftCol), node(bottomRow, rightCol), x);
   return lerp(top, bottom, y);

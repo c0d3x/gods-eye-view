@@ -20,8 +20,12 @@
 // the mesh legitimately sits ABOVE bare earth, so the window is asymmetric.
 import * as Cesium from 'cesium';
 import {
-  coarseFloorCoord, cachedMeshFloor, reportValidatedMeshFloorCell,
-  setMeshFloorPreferred, meshFloorPreferred, cachedGroundFloor,
+  coarseFloorCoord,
+  cachedMeshFloor,
+  reportValidatedMeshFloorCell,
+  setMeshFloorPreferred,
+  meshFloorPreferred,
+  cachedGroundFloor,
 } from './groundFloor.js';
 
 /** @constant {number} Max scene samples per call (one call per layer poll). */
@@ -67,7 +71,9 @@ function _visibleTilesetLoaded(scene) {
         return !!p.tilesLoaded;
       }
     }
-  } catch { /* mid-teardown */ }
+  } catch {
+    /* mid-teardown */
+  }
   return false;
 }
 
@@ -76,7 +82,8 @@ function _visibleTilesetLoaded(scene) {
  */
 function _approxKm(lat1, lon1, lat2, lon2) {
   const dLat = (lat2 - lat1) * 111.32;
-  const dLon = (lon2 - lon1) * 111.32 * Math.cos(((lat1 + lat2) / 2) * Math.PI / 180);
+  const dLon =
+    (lon2 - lon1) * 111.32 * Math.cos((((lat1 + lat2) / 2) * Math.PI) / 180);
   return Math.hypot(dLat, dLon);
 }
 
@@ -95,7 +102,11 @@ function _approxKm(lat1, lon1, lat2, lon2) {
  * @param {number} [options.viewerLat] @param {number} [options.viewerLon]
  *   Viewer subpoint (computed once by the caller's poll).
  */
-export function sampleMeshFloorCells(scene, points, { excludeObjects = [], viewerLat, viewerLon } = {}) {
+export function sampleMeshFloorCells(
+  scene,
+  points,
+  { excludeObjects = [], viewerLat, viewerLon } = {},
+) {
   if (!meshFloorPreferred()) return;
   if (!scene || typeof scene.sampleHeight !== 'function') return;
   if (!Array.isArray(points) || !points.length) return;
@@ -117,13 +128,21 @@ export function sampleMeshFloorCells(scene, points, { excludeObjects = [], viewe
     if (attempted.has(key)) continue;
     attempted.add(key);
     if (cachedMeshFloor(cell.lat, cell.lon) != null) continue; // one-shot latch
-    if (Number.isFinite(viewerLat) && Number.isFinite(viewerLon) &&
-        _approxKm(viewerLat, viewerLon, cell.lat, cell.lon) > MAX_SAMPLE_DIST_KM) {
+    if (
+      Number.isFinite(viewerLat) &&
+      Number.isFinite(viewerLon) &&
+      _approxKm(viewerLat, viewerLon, cell.lat, cell.lon) > MAX_SAMPLE_DIST_KM
+    ) {
       continue; // too far: tiles not streamed there, probe would be a guaranteed miss
     }
     let height;
     try {
-      const carto = Cesium.Cartographic.fromDegrees(cell.lon, cell.lat, 0, _scratchProbe);
+      const carto = Cesium.Cartographic.fromDegrees(
+        cell.lon,
+        cell.lat,
+        0,
+        _scratchProbe,
+      );
       height = scene.sampleHeight(carto, excludeObjects);
       sampled += 1;
     } catch {

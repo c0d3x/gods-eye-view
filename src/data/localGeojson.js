@@ -35,8 +35,10 @@ export const localGeoJsonServices = Object.freeze({
 export function createLocalGeoJsonLayer(options) {
   return createLayer(options, {
     ...localGeoJsonServices,
-    overlayHost: options.overlayHost === undefined
-      ? localGeoJsonServices.overlayHost : options.overlayHost,
+    overlayHost:
+      options.overlayHost === undefined
+        ? localGeoJsonServices.overlayHost
+        : options.overlayHost,
   });
 }
 
@@ -44,6 +46,9 @@ export function createLocalGeoJsonLayer(options) {
 export function createLocalInfrastructureOverlayPublisher(options) {
   return createPublisher({
     ...options,
-    host: options.host === undefined ? localGeoJsonServices.overlayHost : options.host,
+    host:
+      options.host === undefined
+        ? localGeoJsonServices.overlayHost
+        : options.host,
   });
 }

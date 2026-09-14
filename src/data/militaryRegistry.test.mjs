@@ -50,8 +50,12 @@ test('active-change listener fires on transitions only, with committed state', (
 
 test('unsubscribe stops delivery; throwing listeners never break the toggle', () => {
   let calls = 0;
-  const unsubBroken = onMilitaryLayerActiveChange(() => { throw new Error('boom'); });
-  const unsubCounter = onMilitaryLayerActiveChange(() => { calls++; });
+  const unsubBroken = onMilitaryLayerActiveChange(() => {
+    throw new Error('boom');
+  });
+  const unsubCounter = onMilitaryLayerActiveChange(() => {
+    calls++;
+  });
   try {
     setMilitaryLayerActive(true); // broken listener swallowed, counter still runs
     assert.equal(calls, 1);
@@ -87,16 +91,27 @@ test('past the cap the registry forgets the least recently seen hexes, and looku
   assert.equal(_militaryRegistrySizeForTest(), MILITARY_REGISTRY_MAX_ENTRIES);
 
   // The next poll lists the first hex again and ten new ones.
-  registerMilitaryIcaos([hexes[0], ...hexes.slice(MILITARY_REGISTRY_MAX_ENTRIES)], t0 + 30_000);
+  registerMilitaryIcaos(
+    [hexes[0], ...hexes.slice(MILITARY_REGISTRY_MAX_ENTRIES)],
+    t0 + 30_000,
+  );
 
   assert.equal(_militaryRegistrySizeForTest(), MILITARY_REGISTRY_MAX_ENTRIES);
   assert.equal(isMilitaryIcao(hexes[0]), true, 'listed again, so it is recent');
   for (let i = 1; i <= 10; i++) {
-    assert.equal(isMilitaryIcao(hexes[i]), false, `${hexes[i]} was among the least recently seen`);
+    assert.equal(
+      isMilitaryIcao(hexes[i]),
+      false,
+      `${hexes[i]} was among the least recently seen`,
+    );
   }
   assert.equal(isMilitaryIcao(hexes[11]), true);
   assert.equal(isMilitaryIcao(hexes.at(-1)), true);
-  assert.equal(isMilitaryIcao(hexes.at(-1).toUpperCase()), true, 'lookups ignore case');
+  assert.equal(
+    isMilitaryIcao(hexes.at(-1).toUpperCase()),
+    true,
+    'lookups ignore case',
+  );
   _resetMilitaryRegistryForTest();
 });
 

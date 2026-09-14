@@ -88,7 +88,9 @@ export function onMilitaryLayerActiveChange(listener) {
  */
 export function registerMilitaryIcaos(icaos, now = Date.now()) {
   for (const icao of icaos || []) {
-    const hex = String(icao || '').trim().toLowerCase();
+    const hex = String(icao || '')
+      .trim()
+      .toLowerCase();
     if (!hex) continue;
     // Delete first so the hex moves to the end: newest last.
     _milIcaos.delete(hex);
@@ -131,11 +133,13 @@ export function _resetMilitaryRegistryForTest() {
  */
 export function refreshMilitaryRegistryIfStale() {
   if (_militaryLayerActive) return; // military layer's polls keep us fresh
-  if (_polling || (Date.now() - _lastRefreshMs) < MIL_POLL_INTERVAL_MS) return;
+  if (_polling || Date.now() - _lastRefreshMs < MIL_POLL_INTERVAL_MS) return;
   _polling = true;
   (async () => {
     try {
-      const response = await fetch('/api/adsblol/mil', { signal: AbortSignal.timeout(10000) });
+      const response = await fetch('/api/adsblol/mil', {
+        signal: AbortSignal.timeout(10000),
+      });
       if (!response.ok) return;
       const data = await response.json();
       const aircraft = Array.isArray(data?.ac) ? data.ac : [];

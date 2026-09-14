@@ -51,9 +51,15 @@ export const AWARENESS_QUERY_LIMIT = 20000;
 const AWARENESS_MAX_NAVIGATION_EXAMPLES = 10000;
 const CONTEXT_RIM_HEIGHT_M = 2500;
 const VESSEL_FOCUS_RADIUS_M = 3000;
-const DIRECTION_SCRATCH = Array.from({ length: 3 }, () => new Cesium.Cartesian3());
+const DIRECTION_SCRATCH = Array.from(
+  { length: 3 },
+  () => new Cesium.Cartesian3(),
+);
 const SUBJECT_CARTOGRAPHIC_SCRATCH = new Cesium.Cartographic();
-const TARGET_CARTOGRAPHIC_SCRATCH = Array.from({ length: 3 }, () => new Cesium.Cartographic());
+const TARGET_CARTOGRAPHIC_SCRATCH = Array.from(
+  { length: 3 },
+  () => new Cesium.Cartographic(),
+);
 const SOURCE_LABEL = {
   flights: 'OpenSky',
   military: 'adsb.lol',
@@ -70,8 +76,12 @@ const SOURCE_LABEL = {
  * @param {HTMLElement|null} [body=document.body] Document body to inspect.
  * @returns {boolean} Whether the target may start a camera flight.
  */
-export function contextTargetFlyToAllowed(layerId, body = globalThis.document?.body) {
-  const nonAircraft = layerId === 'ais-live-vessels' || layerId === 'military-installations';
+export function contextTargetFlyToAllowed(
+  layerId,
+  body = globalThis.document?.body,
+) {
+  const nonAircraft =
+    layerId === 'ais-live-vessels' || layerId === 'military-installations';
   return !nonAircraft || !body?.classList?.contains('cockpit-mode');
 }
 
@@ -120,14 +130,20 @@ export function awarenessRefreshIntervalMs(cameraMoving) {
  * @param {boolean} input.wasMoving Whether the previous frame counted as moving.
  * @returns {{moving: boolean, refresh: boolean}}
  */
-export function awarenessRefreshDecision({ nowMs, lastRefreshMs, lastPoseChangeMs, wasMoving }) {
+export function awarenessRefreshDecision({
+  nowMs,
+  lastRefreshMs,
+  lastPoseChangeMs,
+  wasMoving,
+}) {
   const moving = nowMs - lastPoseChangeMs < AWARENESS_MOTION_SETTLE_MS;
   // The single frame where hysteresis expires: settle the readout at rest
   // instead of leaving it up to a parked interval stale.
   const settling = Boolean(wasMoving) && !moving;
   const sinceRefresh = nowMs - lastRefreshMs;
-  const refresh = sinceRefresh >= awarenessRefreshIntervalMs(true)
-    && (moving || settling || sinceRefresh >= awarenessRefreshIntervalMs(false));
+  const refresh =
+    sinceRefresh >= awarenessRefreshIntervalMs(true) &&
+    (moving || settling || sinceRefresh >= awarenessRefreshIntervalMs(false));
   return { moving, refresh };
 }
 
@@ -155,13 +171,18 @@ export function awarenessClearIsEviction(cleared) {
  * @param {boolean} input.sourceRevisionChanged Whether any source state changed.
  * @returns {boolean} Whether cohorts should be evaluated again.
  */
-export function awarenessRefreshRequired({ force, hasResults, movementM, sourceRevisionChanged }) {
+export function awarenessRefreshRequired({
+  force,
+  hasResults,
+  movementM,
+  sourceRevisionChanged,
+}) {
   return Boolean(
-    force
-    || !hasResults
-    || sourceRevisionChanged
-    || !Number.isFinite(movementM)
-    || movementM >= AWARENESS_REEVALUATE_DISTANCE_M,
+    force ||
+      !hasResults ||
+      sourceRevisionChanged ||
+      !Number.isFinite(movementM) ||
+      movementM >= AWARENESS_REEVALUATE_DISTANCE_M,
   );
 }
 
@@ -239,15 +260,25 @@ function ensurePanel() {
     const action = event.target.closest('button[data-awareness-action]');
     if (action) {
       event.preventDefault();
-      if (action.dataset.awarenessAction === 'previous') navigateHistory(-1, { origin: 'user' });
-      if (action.dataset.awarenessAction === 'next') navigateHistory(1, { origin: 'user' });
-      if (action.dataset.awarenessAction === 'focus') focusCurrentSubject({ origin: 'user' });
+      if (action.dataset.awarenessAction === 'previous')
+        navigateHistory(-1, { origin: 'user' });
+      if (action.dataset.awarenessAction === 'next')
+        navigateHistory(1, { origin: 'user' });
+      if (action.dataset.awarenessAction === 'focus')
+        focusCurrentSubject({ origin: 'user' });
       return;
     }
-    const target = event.target.closest('button[data-awareness-layer][data-awareness-id]');
+    const target = event.target.closest(
+      'button[data-awareness-layer][data-awareness-id]',
+    );
     if (!target) return;
     event.preventDefault();
-    requestFocus(target.dataset.awarenessLayer, target.dataset.awarenessId, false, { origin: 'user' });
+    requestFocus(
+      target.dataset.awarenessLayer,
+      target.dataset.awarenessId,
+      false,
+      { origin: 'user' },
+    );
   };
   panel.addEventListener('click', state.panelClickListener);
   if (!existing) document.body.appendChild(panel);
@@ -271,10 +302,14 @@ function hidePanel() {
 }
 
 function sourceState(layerId) {
-  const lifecycle = state.dataManager?.getLayerLifecycleState?.(layerId) || null;
-  const enabled = lifecycle?.enabled === true || state.dataManager?.isEnabled(layerId) === true;
+  const lifecycle =
+    state.dataManager?.getLayerLifecycleState?.(layerId) || null;
+  const enabled =
+    lifecycle?.enabled === true ||
+    state.dataManager?.isEnabled(layerId) === true;
   const enabling = lifecycle?.lifecycleState === 'enabling';
-  const moduleStats = state.dataManager?.layers?.get(layerId)?.module?.getStats?.() || {};
+  const moduleStats =
+    state.dataManager?.layers?.get(layerId)?.module?.getStats?.() || {};
   const stats = enabling
     ? { ...moduleStats, loading: true, status: 'loading' }
     : moduleStats;
@@ -308,16 +343,19 @@ function sourceState(layerId) {
   // source that HAS answered once (lastUpdate set) keeps its last real count
   // through every later poll rather than blanking to `?` on each refresh.
   const neverAnswered = stats.loading === true && !stats.lastUpdate;
-  const unavailable = enabling
-    || !enabled
-    || neverAnswered
-    || ['unavailable', 'zoom-in'].includes(stats.status)
-    || Boolean(stats.error && stats.count === 0);
+  const unavailable =
+    enabling ||
+    !enabled ||
+    neverAnswered ||
+    ['unavailable', 'zoom-in'].includes(stats.status) ||
+    Boolean(stats.error && stats.count === 0);
   return { available: !unavailable, stale: Boolean(stats.stale), stats };
 }
 
 function collectSourceStates() {
-  return Object.fromEntries(DEPENDENCIES.map((layerId) => [layerId, sourceState(layerId)]));
+  return Object.fromEntries(
+    DEPENDENCIES.map((layerId) => [layerId, sourceState(layerId)]),
+  );
 }
 
 function sourceRevision(sourceStates) {
@@ -333,11 +371,15 @@ function sourceRevision(sourceStates) {
       stats.status || null,
       stats.error || null,
     ];
-  }).map((parts) => parts.join(':')).join('|');
+  })
+    .map((parts) => parts.join(':'))
+    .join('|');
 }
 
 function isSame(subject, item, prefix, key) {
-  return subject?.layerId === prefix && String(subject.id) === String(item?.[key]);
+  return (
+    subject?.layerId === prefix && String(subject.id) === String(item?.[key])
+  );
 }
 
 /**
@@ -348,9 +390,10 @@ function isSame(subject, item, prefix, key) {
  */
 export function summarizeInstallationViewport(items, source) {
   const summary = summarizeAwarenessCohortForNavigation(items, source);
-  if (summary.count === null) return source.stats?.statusMessage
-    ? { ...summary, reason: source.stats.statusMessage }
-    : summary;
+  if (summary.count === null)
+    return source.stats?.statusMessage
+      ? { ...summary, reason: source.stats.statusMessage }
+      : summary;
   return {
     ...summary,
     reason: summary.count
@@ -359,11 +402,18 @@ export function summarizeInstallationViewport(items, source) {
   };
 }
 
-function summarizeAwarenessCohortForNavigation(items, source, {
-  displayLimit = AWARENESS_MAX_EXAMPLES,
-  navigationLimit = AWARENESS_MAX_NAVIGATION_EXAMPLES,
-} = {}) {
-  const summary = summarizeAwarenessCohort(items, { ...source, limit: navigationLimit });
+function summarizeAwarenessCohortForNavigation(
+  items,
+  source,
+  {
+    displayLimit = AWARENESS_MAX_EXAMPLES,
+    navigationLimit = AWARENESS_MAX_NAVIGATION_EXAMPLES,
+  } = {},
+) {
+  const summary = summarizeAwarenessCohort(items, {
+    ...source,
+    limit: navigationLimit,
+  });
   if (summary.count === null) return summary;
   return {
     ...summary,
@@ -405,9 +455,10 @@ export function contactsWindowFromSnapshot(snapshot) {
     radiusKm: Number.isFinite(snapshot.radiusM)
       ? Math.round(snapshot.radiusM / 1000)
       : null,
-    aircraft: Number.isFinite(flights) && Number.isFinite(military)
-      ? flights + military
-      : 'unknown',
+    aircraft:
+      Number.isFinite(flights) && Number.isFinite(military)
+        ? flights + military
+        : 'unknown',
     flights,
     military,
     vessels: countFor('ais-live-vessels'),
@@ -415,7 +466,11 @@ export function contactsWindowFromSnapshot(snapshot) {
 }
 
 /** Build the read-only Awareness snapshot shared with compact HUD consumers. */
-export function buildAwarenessContextSnapshot(results, navigation = {}, { subjectPresent = true } = {}) {
+export function buildAwarenessContextSnapshot(
+  results,
+  navigation = {},
+  { subjectPresent = true } = {},
+) {
   if (!results) return null;
   return {
     subject: { ...results.subject },
@@ -460,16 +515,20 @@ export function buildAwarenessContextSnapshot(results, navigation = {}, { subjec
  * @returns {{flights: Array, military: Array, aircraft: number}|null} Cohorts
  *   plus the combined aircraft count, or null without a position.
  */
-export function collectAircraftProximityWindow(position, {
-  radiusM = AWARENESS_RADIUS_M,
-  subject = null,
-} = {}) {
+export function collectAircraftProximityWindow(
+  position,
+  { radiusM = AWARENESS_RADIUS_M, subject = null } = {},
+) {
   if (!position) return null;
   const flights = flightsLayer
-    .getNearby(position, radiusM, AWARENESS_QUERY_LIMIT, { includeHidden: true })
+    .getNearby(position, radiusM, AWARENESS_QUERY_LIMIT, {
+      includeHidden: true,
+    })
     .filter((item) => !subject || !isSame(subject, item, 'flights', 'icao24'));
   const military = militaryFlightsLayer
-    .getNearby(position, radiusM, AWARENESS_QUERY_LIMIT, { includeHidden: true })
+    .getNearby(position, radiusM, AWARENESS_QUERY_LIMIT, {
+      includeHidden: true,
+    })
     .filter((item) => !subject || !isSame(subject, item, 'military', 'icao24'));
   return { flights, military, aircraft: flights.length + military.length };
 }
@@ -482,25 +541,49 @@ function evaluateSubject(subject, sourceStates = collectSourceStates()) {
   const vesselsState = sourceStates['ais-live-vessels'];
   const installationsState = sourceStates['military-installations'];
   // Same engine the voice analyst calls — see collectAircraftProximityWindow.
-  const { flights, military } = collectAircraftProximityWindow(position, { subject });
-  const vessels = aisLiveVesselsLayer.getNearby(position, AWARENESS_RADIUS_M, AWARENESS_QUERY_LIMIT)
+  const { flights, military } = collectAircraftProximityWindow(position, {
+    subject,
+  });
+  const vessels = aisLiveVesselsLayer
+    .getNearby(position, AWARENESS_RADIUS_M, AWARENESS_QUERY_LIMIT)
     .filter((item) => !isSame(subject, item, 'ais-live-vessels', 'mmsi'));
-  const installations = militaryInstallationsLayer.getNearby(position, AWARENESS_RADIUS_M, AWARENESS_QUERY_LIMIT)
+  const installations = militaryInstallationsLayer
+    .getNearby(position, AWARENESS_RADIUS_M, AWARENESS_QUERY_LIMIT)
     .filter((item) => !isSame(subject, item, 'military-installations', 'id'));
   return {
     subject,
     evaluatedAt: Date.now(),
     radiusM: AWARENESS_RADIUS_M,
     cohorts: [
-      { id: 'flights', label: 'Flights', source: flightsState.stats.source || SOURCE_LABEL.flights, summary: summarizeAwarenessCohortForNavigation(flights, flightsState) },
-      { id: 'military', label: 'Military flights', source: militaryState.stats.source || SOURCE_LABEL.military, summary: summarizeAwarenessCohortForNavigation(military, militaryState) },
-      { id: 'ais-live-vessels', label: 'AIS vessels', source: vesselsState.stats.source || SOURCE_LABEL['ais-live-vessels'], summary: summarizeAwarenessCohortForNavigation(vessels, vesselsState) },
+      {
+        id: 'flights',
+        label: 'Flights',
+        source: flightsState.stats.source || SOURCE_LABEL.flights,
+        summary: summarizeAwarenessCohortForNavigation(flights, flightsState),
+      },
+      {
+        id: 'military',
+        label: 'Military flights',
+        source: militaryState.stats.source || SOURCE_LABEL.military,
+        summary: summarizeAwarenessCohortForNavigation(military, militaryState),
+      },
+      {
+        id: 'ais-live-vessels',
+        label: 'AIS vessels',
+        source: vesselsState.stats.source || SOURCE_LABEL['ais-live-vessels'],
+        summary: summarizeAwarenessCohortForNavigation(vessels, vesselsState),
+      },
       {
         id: 'military-installations',
         label: 'Mapped installations',
-        source: installationsState.stats.source || SOURCE_LABEL['military-installations'],
+        source:
+          installationsState.stats.source ||
+          SOURCE_LABEL['military-installations'],
         coverage: 'CURRENT VIEWPORT ONLY',
-        summary: summarizeInstallationViewport(installations, installationsState),
+        summary: summarizeInstallationViewport(
+          installations,
+          installationsState,
+        ),
       },
     ],
   };
@@ -510,17 +593,26 @@ function rowHtml(cohort) {
   const summary = cohort.summary;
   const count = summary.count === null ? '?' : String(summary.count);
   const page = state.cohortPages.get(cohort.id) || 0;
-  const nearest = summary.nearest.slice(page, page + AWARENESS_PAGE_SIZE).map((item) => {
-    const label = formatAwarenessLabel(item);
-    const targetId = item.icao24 || item.mmsi || item.id;
-    if (!targetId) {
-      return `<li><span class="military-awareness-target unavailable" aria-label="Unavailable">${escapeHtml(label)} <span>${formatAwarenessDistance(item.distanceM)}</span></span></li>`;
-    }
-    const accessibleLabel = label === '—' ? 'Unavailable' : label;
-    return `<li><button type="button" class="military-awareness-target" data-awareness-layer="${escapeHtml(cohort.id)}" data-awareness-id="${escapeHtml(targetId)}" aria-label="Focus ${escapeHtml(accessibleLabel)}">${escapeHtml(label)} <span>${formatAwarenessDistance(item.distanceM)}</span></button></li>`;
-  }).join('');
-  const pageCount = Math.max(1, Math.ceil(summary.nearest.length / AWARENESS_PAGE_SIZE));
-  const pageLabel = pageCount > 1 ? ` · ${Math.floor(page / AWARENESS_PAGE_SIZE) + 1}/${pageCount}` : '';
+  const nearest = summary.nearest
+    .slice(page, page + AWARENESS_PAGE_SIZE)
+    .map((item) => {
+      const label = formatAwarenessLabel(item);
+      const targetId = item.icao24 || item.mmsi || item.id;
+      if (!targetId) {
+        return `<li><span class="military-awareness-target unavailable" aria-label="Unavailable">${escapeHtml(label)} <span>${formatAwarenessDistance(item.distanceM)}</span></span></li>`;
+      }
+      const accessibleLabel = label === '—' ? 'Unavailable' : label;
+      return `<li><button type="button" class="military-awareness-target" data-awareness-layer="${escapeHtml(cohort.id)}" data-awareness-id="${escapeHtml(targetId)}" aria-label="Focus ${escapeHtml(accessibleLabel)}">${escapeHtml(label)} <span>${formatAwarenessDistance(item.distanceM)}</span></button></li>`;
+    })
+    .join('');
+  const pageCount = Math.max(
+    1,
+    Math.ceil(summary.nearest.length / AWARENESS_PAGE_SIZE),
+  );
+  const pageLabel =
+    pageCount > 1
+      ? ` · ${Math.floor(page / AWARENESS_PAGE_SIZE) + 1}/${pageCount}`
+      : '';
   const coverage = cohort.coverage ? ` · ${escapeHtml(cohort.coverage)}` : '';
   return `<section class="military-awareness-row ${summary.relationship.toLowerCase()}">
     <div><strong>${escapeHtml(cohort.label)}</strong><b aria-live="polite">${count}${pageLabel}</b></div>
@@ -533,22 +625,33 @@ function rowHtml(cohort) {
 function focusNearbyTarget(layerId, id, { origin = 'programmatic' } = {}) {
   if (!layerId || !id) return false;
   if (layerId === 'flights') {
-    return flightsLayer.refocusTrackedById?.(id, { origin }) || flightsLayer.trackById(id, { origin });
+    return (
+      flightsLayer.refocusTrackedById?.(id, { origin }) ||
+      flightsLayer.trackById(id, { origin })
+    );
   }
   if (layerId === 'military') {
-    return militaryFlightsLayer.refocusTrackedById?.(id, { origin }) || militaryFlightsLayer.trackById(id, { origin });
+    return (
+      militaryFlightsLayer.refocusTrackedById?.(id, { origin }) ||
+      militaryFlightsLayer.trackById(id, { origin })
+    );
   }
   if (layerId === 'military-installations') {
-    if (!contextTargetFlyToAllowed(layerId)) return selectKnownContextTarget(layerId, id);
+    if (!contextTargetFlyToAllowed(layerId))
+      return selectKnownContextTarget(layerId, id);
     // focusById flies the camera; it never assigns a tracked entity, so the
     // stamp has to be announced here.
     announceNavigationAuthority('context-installation-focus');
     return militaryInstallationsLayer.focusById(id);
   }
-  if (layerId !== 'ais-live-vessels' || !aisLiveVesselsLayer.selectById(id)) return false;
+  if (layerId !== 'ais-live-vessels' || !aisLiveVesselsLayer.selectById(id))
+    return false;
 
-  const vessel = aisLiveVesselsLayer.getAllPositions(12000).find((item) => String(item.id) === String(id));
-  if (!contextTargetFlyToAllowed(layerId) || !vessel?.position || !state.viewer) return true;
+  const vessel = aisLiveVesselsLayer
+    .getAllPositions(12000)
+    .find((item) => String(item.id) === String(id));
+  if (!contextTargetFlyToAllowed(layerId) || !vessel?.position || !state.viewer)
+    return true;
   announceNavigationAuthority('context-vessel-focus');
   state.viewer.camera.flyToBoundingSphere(
     new Cesium.BoundingSphere(vessel.position, VESSEL_FOCUS_RADIUS_M),
@@ -562,7 +665,9 @@ function subjectKey(subject) {
 }
 
 function normalizeContextId(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .toLowerCase();
 }
 
 function normalizedSubjectKey(subject) {
@@ -593,10 +698,15 @@ function selectKnownContextTarget(layerId, id) {
   const known = [
     state.subject,
     ...state.navigationHistory,
-    ...(state.results?.cohorts || []).flatMap((cohort) => (
-      cohort.id === layerId ? (cohort.summary.navigationNearest || cohort.summary.nearest || []) : []
-    )),
-  ].find((item) => item && `${item.layerId || layerId}:${item.id || item.mmsi}` === key);
+    ...(state.results?.cohorts || []).flatMap((cohort) =>
+      cohort.id === layerId
+        ? cohort.summary.navigationNearest || cohort.summary.nearest || []
+        : [],
+    ),
+  ].find(
+    (item) =>
+      item && `${item.layerId || layerId}:${item.id || item.mmsi}` === key,
+  );
   if (!known?.position) return false;
   if (contextTargetFlyToAllowed(layerId)) releaseAircraftTracking();
   selectSubject({
@@ -609,7 +719,12 @@ function selectKnownContextTarget(layerId, id) {
   return true;
 }
 
-function requestFocus(layerId, id, preserveHistory = false, { origin = 'programmatic' } = {}) {
+function requestFocus(
+  layerId,
+  id,
+  preserveHistory = false,
+  { origin = 'programmatic' } = {},
+) {
   const key = `${layerId}:${id}`;
   state.pendingSelectionKey = key;
   if (preserveHistory) state.suppressedHistoryKey = key;
@@ -633,7 +748,9 @@ function isFlightLayer(layerId) {
 }
 
 function normalizeAircraftClass(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .toLowerCase();
 }
 
 function aircraftClassMatchesFilter(item, aircraftClass) {
@@ -649,15 +766,22 @@ function aircraftClassMatchesFilter(item, aircraftClass) {
     .map((value) => normalizeAircraftClass(value))
     .filter(Boolean);
   if (!candidates.length) return false;
-  return candidates.some((candidate) => candidate === requested || candidate.includes(requested));
+  return candidates.some(
+    (candidate) => candidate === requested || candidate.includes(requested),
+  );
 }
 
-function selectNavigationTargets(sourceCohorts, subject, visitedKeys, {
-  targetLayer = null,
-  aircraftClass = null,
-  aircraftOnly = false,
-} = {}) {
-  let targets = getAwarenessNavigationTargets(sourceCohorts, subject, visitedKeys);
+function selectNavigationTargets(
+  sourceCohorts,
+  subject,
+  visitedKeys,
+  { targetLayer = null, aircraftClass = null, aircraftOnly = false } = {},
+) {
+  let targets = getAwarenessNavigationTargets(
+    sourceCohorts,
+    subject,
+    visitedKeys,
+  );
   if (aircraftOnly) {
     targets = targets.filter((target) => isFlightLayer(target.layerId));
   }
@@ -665,7 +789,9 @@ function selectNavigationTargets(sourceCohorts, subject, visitedKeys, {
     targets = targets.filter((target) => target.layerId === targetLayer);
   }
   if (aircraftClass) {
-    targets = targets.filter((target) => aircraftClassMatchesFilter(target.item, aircraftClass));
+    targets = targets.filter((target) =>
+      aircraftClassMatchesFilter(target.item, aircraftClass),
+    );
   }
   return targets;
 }
@@ -678,94 +804,122 @@ function selectNavigationTargets(sourceCohorts, subject, visitedKeys, {
  *   Detached awareness subject, or null when no flight owns the follow camera.
  */
 function currentTrackedFlightSubject() {
-  const trackedKey = normalizeContextId(state.viewer?.trackedEntity?.gevTrackedId);
+  const trackedKey = normalizeContextId(
+    state.viewer?.trackedEntity?.gevTrackedId,
+  );
   if (!trackedKey) return null;
   const subjects = [
     flightsLayer.getTrackedSubject?.(),
     militaryFlightsLayer.getTrackedSubject?.(),
   ];
-  return subjects.find((subject) => normalizedSubjectKey(subject) === trackedKey) || null;
+  return (
+    subjects.find((subject) => normalizedSubjectKey(subject) === trackedKey) ||
+    null
+  );
 }
 
 function alternativeFlightAvailable({
   targetLayer = null,
   aircraftClass = null,
 } = {}) {
-  if (!isFlightLayer(state.subject?.layerId) || !state.subject?.position) return false;
+  if (!isFlightLayer(state.subject?.layerId) || !state.subject?.position)
+    return false;
   if (targetLayer && !isFlightLayer(targetLayer)) return false;
 
-  const flights = targetLayer === 'military'
-    ? []
-    : flightsLayer.getNearby(
-      state.subject.position,
-      AWARENESS_MAX_FLIGHT_SEARCH_RADIUS_M,
-      2,
-      { includeHidden: true },
-    ).filter((item) => aircraftClassMatchesFilter(item, aircraftClass));
+  const flights =
+    targetLayer === 'military'
+      ? []
+      : flightsLayer
+          .getNearby(
+            state.subject.position,
+            AWARENESS_MAX_FLIGHT_SEARCH_RADIUS_M,
+            2,
+            { includeHidden: true },
+          )
+          .filter((item) => aircraftClassMatchesFilter(item, aircraftClass));
 
-  const military = targetLayer === 'flights'
-    ? []
-    : militaryFlightsLayer.getNearby(
-      state.subject.position,
-      AWARENESS_MAX_FLIGHT_SEARCH_RADIUS_M,
-      2,
-      { includeHidden: true },
-    ).filter((item) => aircraftClassMatchesFilter(item, aircraftClass));
+  const military =
+    targetLayer === 'flights'
+      ? []
+      : militaryFlightsLayer
+          .getNearby(
+            state.subject.position,
+            AWARENESS_MAX_FLIGHT_SEARCH_RADIUS_M,
+            2,
+            { includeHidden: true },
+          )
+          .filter((item) => aircraftClassMatchesFilter(item, aircraftClass));
 
   return [
     ['flights', flights],
     ['military', military],
-  ].some(([layerId, items]) => items.some((item) => (
-    `${layerId}:${item.icao24 || item.id}` !== subjectKey(state.subject)
-  )));
+  ].some(([layerId, items]) =>
+    items.some(
+      (item) =>
+        `${layerId}:${item.icao24 || item.id}` !== subjectKey(state.subject),
+    ),
+  );
 }
 
-function closestFlightWithinRadius(radiusM, visitedKeys, excludeVisited, {
-  targetLayer = null,
-  aircraftClass = null,
-} = {}) {
+function closestFlightWithinRadius(
+  radiusM,
+  visitedKeys,
+  excludeVisited,
+  { targetLayer = null, aircraftClass = null } = {},
+) {
   if (!state.subject?.position) return null;
   const visited = new Set(visitedKeys);
   if (targetLayer && !isFlightLayer(targetLayer)) return null;
   const candidates = [
-    ...(targetLayer === 'military' ? [] : flightsLayer.getNearby(
-      state.subject.position,
-      radiusM,
-      25000,
-      { includeHidden: true },
-    )
-      .filter((item) => aircraftClassMatchesFilter(item, aircraftClass))
-      .map((item) => ({ layerId: 'flights', id: String(item.icao24), item }))),
-    ...(targetLayer === 'flights' ? [] : militaryFlightsLayer.getNearby(
-      state.subject.position,
-      radiusM,
-      5000,
-      { includeHidden: true },
-    )
-      .filter((item) => aircraftClassMatchesFilter(item, aircraftClass))
-      .map((item) => ({ layerId: 'military', id: String(item.icao24), item }))),
+    ...(targetLayer === 'military'
+      ? []
+      : flightsLayer
+          .getNearby(state.subject.position, radiusM, 25000, {
+            includeHidden: true,
+          })
+          .filter((item) => aircraftClassMatchesFilter(item, aircraftClass))
+          .map((item) => ({
+            layerId: 'flights',
+            id: String(item.icao24),
+            item,
+          }))),
+    ...(targetLayer === 'flights'
+      ? []
+      : militaryFlightsLayer
+          .getNearby(state.subject.position, radiusM, 5000, {
+            includeHidden: true,
+          })
+          .filter((item) => aircraftClassMatchesFilter(item, aircraftClass))
+          .map((item) => ({
+            layerId: 'military',
+            id: String(item.icao24),
+            item,
+          }))),
   ].filter((target) => {
     const key = `${target.layerId}:${target.id}`;
     if (key === subjectKey(state.subject)) return false;
     return !excludeVisited || !visited.has(key);
   });
-  candidates.sort((a, b) => (
-    (a.item.distanceM ?? a.item.distance ?? Infinity)
-    - (b.item.distanceM ?? b.item.distance ?? Infinity)
-  ));
+  candidates.sort(
+    (a, b) =>
+      (a.item.distanceM ?? a.item.distance ?? Infinity) -
+      (b.item.distanceM ?? b.item.distance ?? Infinity),
+  );
   return candidates[0] || null;
 }
 
 function findExpandedFlightTarget(options = {}) {
   if (!isFlightLayer(state.subject?.layerId)) return null;
   let visitedKeys = [...state.navigationVisited];
-  const search = () => findByDoublingRadius(
-    (radiusM) => closestFlightWithinRadius(radiusM, visitedKeys, true, options),
-    {
-      initialRadiusM: AWARENESS_RADIUS_M,
-      maxRadiusM: AWARENESS_MAX_FLIGHT_SEARCH_RADIUS_M,
-    },
-  );
+  const search = () =>
+    findByDoublingRadius(
+      (radiusM) =>
+        closestFlightWithinRadius(radiusM, visitedKeys, true, options),
+      {
+        initialRadiusM: AWARENESS_RADIUS_M,
+        maxRadiusM: AWARENESS_MAX_FLIGHT_SEARCH_RADIUS_M,
+      },
+    );
   const target = search();
   if (target) return target;
   resetNavigationVisitedCycle();
@@ -774,9 +928,13 @@ function findExpandedFlightTarget(options = {}) {
 }
 
 function subjectCohortFeedUnknown() {
-  const cohort = state.results?.cohorts?.find((item) => item.id === state.subject?.layerId);
-  return cohort?.summary?.relationship === AWARENESS_RELATIONSHIP.UNKNOWN
-    && cohort.summary.count === null;
+  const cohort = state.results?.cohorts?.find(
+    (item) => item.id === state.subject?.layerId,
+  );
+  return (
+    cohort?.summary?.relationship === AWARENESS_RELATIONSHIP.UNKNOWN &&
+    cohort.summary.count === null
+  );
 }
 
 /**
@@ -793,28 +951,27 @@ export function canNavigateAwarenessNext({
   subjectCohortUnknown = false,
 } = {}) {
   return Boolean(
-    hasForwardHistory
-    || (!subjectCohortUnknown && (hasExpandedFlightTarget || hasNearbyTarget))
+    hasForwardHistory ||
+      (!subjectCohortUnknown && (hasExpandedFlightTarget || hasNearbyTarget)),
   );
 }
 
-function canNavigateNext({
-  targetLayer = null,
-  aircraftClass = null,
-} = {}) {
+function canNavigateNext({ targetLayer = null, aircraftClass = null } = {}) {
   return canNavigateAwarenessNext({
-    hasForwardHistory: findCompatibleHistoryIndex(
-      state.navigationHistory,
-      state.navigationIndex,
-      1,
-      { targetLayer, aircraftClass, resolveItem: historySubjectItem },
-    ) !== -1,
-    hasNearbyTarget: selectNavigationTargets(
-      state.results?.cohorts,
-      state.subject,
-      [...state.navigationVisited],
-      { targetLayer, aircraftClass },
-    ).length > 0,
+    hasForwardHistory:
+      findCompatibleHistoryIndex(
+        state.navigationHistory,
+        state.navigationIndex,
+        1,
+        { targetLayer, aircraftClass, resolveItem: historySubjectItem },
+      ) !== -1,
+    hasNearbyTarget:
+      selectNavigationTargets(
+        state.results?.cohorts,
+        state.subject,
+        [...state.navigationVisited],
+        { targetLayer, aircraftClass },
+      ).length > 0,
     hasExpandedFlightTarget: alternativeFlightAvailable({
       targetLayer,
       aircraftClass,
@@ -840,19 +997,22 @@ function canNavigateNext({
  * @param {{targetLayer: string|null, aircraftClass: string|null}} filters Navigation filters.
  * @returns {boolean} Whether a history entry was focused.
  */
-function focusCompatibleHistory(direction, {
-  targetLayer,
-  aircraftClass,
-  aircraftOnly,
-  origin = 'programmatic',
-}) {
+function focusCompatibleHistory(
+  direction,
+  { targetLayer, aircraftClass, aircraftOnly, origin = 'programmatic' },
+) {
   let cursor = state.navigationIndex;
   for (;;) {
     const historyIndex = findCompatibleHistoryIndex(
       state.navigationHistory,
       cursor,
       direction,
-      { targetLayer, aircraftClass, aircraftOnly, resolveItem: historySubjectItem },
+      {
+        targetLayer,
+        aircraftClass,
+        aircraftOnly,
+        resolveItem: historySubjectItem,
+      },
     );
     if (historyIndex === -1) return false;
     if (focusSubject(state.navigationHistory[historyIndex], true, { origin })) {
@@ -865,15 +1025,24 @@ function focusCompatibleHistory(direction, {
   }
 }
 
-function navigateHistory(direction, {
-  targetLayer = null,
-  aircraftClass = null,
-  aircraftOnly = false,
-  origin = 'programmatic',
-} = {}) {
-  if (focusCompatibleHistory(direction, {
-    targetLayer, aircraftClass, aircraftOnly, origin,
-  })) return true;
+function navigateHistory(
+  direction,
+  {
+    targetLayer = null,
+    aircraftClass = null,
+    aircraftOnly = false,
+    origin = 'programmatic',
+  } = {},
+) {
+  if (
+    focusCompatibleHistory(direction, {
+      targetLayer,
+      aircraftClass,
+      aircraftOnly,
+      origin,
+    })
+  )
+    return true;
 
   if (direction < 0) return false;
 
@@ -883,12 +1052,22 @@ function navigateHistory(direction, {
     [...state.navigationVisited],
     { targetLayer, aircraftClass, aircraftOnly },
   );
-  const targetHistoryFullyVisited = targets.length > 0 && targets.every((target) => target.visited);
+  const targetHistoryFullyVisited =
+    targets.length > 0 && targets.every((target) => target.visited);
   const subjectCohortUnknown = subjectCohortFeedUnknown();
-  if (targetHistoryFullyVisited && isFlightLayer(state.subject?.layerId) && !subjectCohortUnknown) {
+  if (
+    targetHistoryFullyVisited &&
+    isFlightLayer(state.subject?.layerId) &&
+    !subjectCohortUnknown
+  ) {
     const expanded = findExpandedFlightTarget({ targetLayer, aircraftClass });
     if (expanded) {
-      return requestFocus(expanded.candidate.layerId, expanded.candidate.id, false, { origin });
+      return requestFocus(
+        expanded.candidate.layerId,
+        expanded.candidate.id,
+        false,
+        { origin },
+      );
     }
   }
   if (targetHistoryFullyVisited) {
@@ -900,11 +1079,22 @@ function navigateHistory(direction, {
       { targetLayer, aircraftClass, aircraftOnly },
     );
   }
-  const hasNearbyFlight = targets.some((target) => isFlightLayer(target.layerId));
-  if (isFlightLayer(state.subject?.layerId) && !hasNearbyFlight && !subjectCohortUnknown) {
+  const hasNearbyFlight = targets.some((target) =>
+    isFlightLayer(target.layerId),
+  );
+  if (
+    isFlightLayer(state.subject?.layerId) &&
+    !hasNearbyFlight &&
+    !subjectCohortUnknown
+  ) {
     const expanded = findExpandedFlightTarget({ targetLayer, aircraftClass });
     if (expanded) {
-      return requestFocus(expanded.candidate.layerId, expanded.candidate.id, false, { origin });
+      return requestFocus(
+        expanded.candidate.layerId,
+        expanded.candidate.id,
+        false,
+        { origin },
+      );
     }
   }
   if (subjectCohortFeedUnknown()) return false;
@@ -915,19 +1105,27 @@ function navigateHistory(direction, {
 
 function historySubjectItem(subject) {
   if (!subject) return null;
-  const cohort = state.results?.cohorts?.find((item) => item.id === subject.layerId);
-  const items = cohort?.summary?.navigationNearest || cohort?.summary?.nearest || [];
-  return items.find((item) => String(item?.icao24 || item?.mmsi || item?.id) === String(subject.id))
-    || subject;
+  const cohort = state.results?.cohorts?.find(
+    (item) => item.id === subject.layerId,
+  );
+  const items =
+    cohort?.summary?.navigationNearest || cohort?.summary?.nearest || [];
+  return (
+    items.find(
+      (item) =>
+        String(item?.icao24 || item?.mmsi || item?.id) === String(subject.id),
+    ) || subject
+  );
 }
 
 /** Retain filter metadata when a production subject enters navigation history. */
 export function historySubjectSnapshot(subject, sourceItem = null) {
-  const aircraftClass = sourceItem?.aircraftClass
-    || sourceItem?.klass
-    || sourceItem?.type
-    || subject?.aircraftClass
-    || null;
+  const aircraftClass =
+    sourceItem?.aircraftClass ||
+    sourceItem?.klass ||
+    sourceItem?.type ||
+    subject?.aircraftClass ||
+    null;
   return aircraftClass ? { ...subject, aircraftClass } : { ...subject };
 }
 
@@ -936,30 +1134,52 @@ function historySourceItem(subject) {
   // The current sweep already holds this contact's record. Reusing it keeps
   // selection O(1) against the cohort instead of paying a fresh full-layer
   // proximity scan per selection — the burst cost when NEXT walks a cohort.
-  const cohort = state.results?.cohorts?.find((item) => item.id === subject.layerId);
-  const items = cohort?.summary?.navigationNearest || cohort?.summary?.nearest || [];
+  const cohort = state.results?.cohorts?.find(
+    (item) => item.id === subject.layerId,
+  );
+  const items =
+    cohort?.summary?.navigationNearest || cohort?.summary?.nearest || [];
   const fromSweep = items.find(
     (item) => String(item?.icao24 || item?.id) === String(subject.id),
   );
   if (fromSweep) return fromSweep;
-  const layer = subject.layerId === 'military' ? militaryFlightsLayer : flightsLayer;
-  return layer.getNearby(subject.position, 1000, 25, { includeHidden: true })
-    .find((item) => String(item?.icao24 || item?.id) === String(subject.id)) || null;
+  const layer =
+    subject.layerId === 'military' ? militaryFlightsLayer : flightsLayer;
+  return (
+    layer
+      .getNearby(subject.position, 1000, 25, { includeHidden: true })
+      .find(
+        (item) => String(item?.icao24 || item?.id) === String(subject.id),
+      ) || null
+  );
 }
 
 /** Find the next history entry compatible with requested navigation filters. */
-export function findCompatibleHistoryIndex(history, startIndex, direction, {
-  targetLayer = null,
-  aircraftClass = null,
-  aircraftOnly = false,
-  resolveItem = (subject) => subject,
-} = {}) {
+export function findCompatibleHistoryIndex(
+  history,
+  startIndex,
+  direction,
+  {
+    targetLayer = null,
+    aircraftClass = null,
+    aircraftOnly = false,
+    resolveItem = (subject) => subject,
+  } = {},
+) {
   const step = direction < 0 ? -1 : 1;
-  for (let index = startIndex + step; index >= 0 && index < history.length; index += step) {
+  for (
+    let index = startIndex + step;
+    index >= 0 && index < history.length;
+    index += step
+  ) {
     const subject = history[index];
     if (aircraftOnly && !isFlightLayer(subject?.layerId)) continue;
     if (targetLayer && subject?.layerId !== targetLayer) continue;
-    if (aircraftClass && !aircraftClassMatchesFilter(resolveItem(subject), aircraftClass)) continue;
+    if (
+      aircraftClass &&
+      !aircraftClassMatchesFilter(resolveItem(subject), aircraftClass)
+    )
+      continue;
     return index;
   }
   return -1;
@@ -988,12 +1208,16 @@ export function awarenessPanelControlKey(element) {
     'button[data-awareness-action], button[data-awareness-layer][data-awareness-id]',
   );
   if (!control) return null;
-  if (control.dataset.awarenessAction) return `action:${control.dataset.awarenessAction}`;
+  if (control.dataset.awarenessAction)
+    return `action:${control.dataset.awarenessAction}`;
   return `target:${control.dataset.awarenessLayer}:${control.dataset.awarenessId}`;
 }
 
 /** Capture stable identity so a live repaint can restore only the same control. */
-export function captureAwarenessPanelFocus(panel, activeElement = document.activeElement) {
+export function captureAwarenessPanelFocus(
+  panel,
+  activeElement = document.activeElement,
+) {
   if (!panel?.contains?.(activeElement)) return null;
   if (activeElement?.matches?.('[data-awareness-focus-continuation]')) {
     return { key: 'continuation' };
@@ -1006,21 +1230,33 @@ export function captureAwarenessPanelFocus(panel, activeElement = document.activ
 /** Restore the same control, or continue beyond the list when it is no longer rendered. */
 export function restoreAwarenessPanelFocus(panel, snapshot) {
   if (!panel || !snapshot) return null;
-  const continuation = panel.querySelector('[data-awareness-focus-continuation]');
-  const controls = [...panel.querySelectorAll(
-    'button[data-awareness-action], button[data-awareness-layer][data-awareness-id]',
-  )].filter((control) => !control.disabled);
-  const retained = snapshot.key === 'continuation'
-    ? continuation
-    : controls.find((control) => awarenessPanelControlKey(control) === snapshot.key);
-  const target = retained
-    || continuation;
+  const continuation = panel.querySelector(
+    '[data-awareness-focus-continuation]',
+  );
+  const controls = [
+    ...panel.querySelectorAll(
+      'button[data-awareness-action], button[data-awareness-layer][data-awareness-id]',
+    ),
+  ].filter((control) => !control.disabled);
+  const retained =
+    snapshot.key === 'continuation'
+      ? continuation
+      : controls.find(
+          (control) => awarenessPanelControlKey(control) === snapshot.key,
+        );
+  const target = retained || continuation;
   target?.focus?.({ preventScroll: true });
   return target || null;
 }
 
 function escapeHtml(value) {
-  return String(value ?? '').replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
+  return String(value ?? '').replace(
+    /[&<>'"]/g,
+    (char) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[
+        char
+      ],
+  );
 }
 
 function renderResults() {
@@ -1044,17 +1280,31 @@ function rotateAwarenessPages() {
   if (!state.enabled || !state.results) return;
   let changed = false;
   for (const cohort of state.results.cohorts) {
-    const pageCount = Math.max(1, Math.ceil(cohort.summary.nearest.length / AWARENESS_PAGE_SIZE));
+    const pageCount = Math.max(
+      1,
+      Math.ceil(cohort.summary.nearest.length / AWARENESS_PAGE_SIZE),
+    );
     if (pageCount <= 1) continue;
     const current = state.cohortPages.get(cohort.id) || 0;
-    state.cohortPages.set(cohort.id, ((Math.floor(current / AWARENESS_PAGE_SIZE) + 1) % pageCount) * AWARENESS_PAGE_SIZE);
+    state.cohortPages.set(
+      cohort.id,
+      ((Math.floor(current / AWARENESS_PAGE_SIZE) + 1) % pageCount) *
+        AWARENESS_PAGE_SIZE,
+    );
     changed = true;
   }
-  if (changed) { renderResults(); scheduleDirectionOverlayUpdate(true); }
+  if (changed) {
+    renderResults();
+    scheduleDirectionOverlayUpdate(true);
+  }
 }
 
 function startAwarenessPageRotation() {
-  if (!state.pageTimer) state.pageTimer = window.setInterval(rotateAwarenessPages, AWARENESS_PAGE_ROTATE_MS);
+  if (!state.pageTimer)
+    state.pageTimer = window.setInterval(
+      rotateAwarenessPages,
+      AWARENESS_PAGE_ROTATE_MS,
+    );
 }
 
 function stopAwarenessPageRotation() {
@@ -1072,7 +1322,10 @@ function ensureDirectionOverlay() {
   const compass = document.createElement('div');
   compass.className = 'military-awareness-compass-ring';
   const cardinals = [
-    ['N', 0], ['E', 90], ['S', 180], ['W', 270],
+    ['N', 0],
+    ['E', 90],
+    ['S', 180],
+    ['W', 270],
   ];
   state.compassLabels = cardinals.map(([label, bearing]) => {
     const element = document.createElement('span');
@@ -1112,7 +1365,12 @@ function ensureDirectionOverlay() {
 function scheduleDirectionOverlayUpdate(force = false) {
   if (state.directionFrame !== null || !state.enabled) return;
   const now = Date.now();
-  if (!force && now - state.lastDirectionUpdateMs < awarenessRefreshIntervalMs(state.cameraMoving)) return;
+  if (
+    !force &&
+    now - state.lastDirectionUpdateMs <
+      awarenessRefreshIntervalMs(state.cameraMoving)
+  )
+    return;
   state.directionFrame = window.requestAnimationFrame(() => {
     state.directionFrame = null;
     state.lastDirectionUpdateMs = Date.now();
@@ -1121,7 +1379,8 @@ function scheduleDirectionOverlayUpdate(force = false) {
 }
 
 function cancelDirectionOverlayUpdate() {
-  if (state.directionFrame !== null) window.cancelAnimationFrame(state.directionFrame);
+  if (state.directionFrame !== null)
+    window.cancelAnimationFrame(state.directionFrame);
   state.directionFrame = null;
   state.lastDirectionUpdateMs = 0;
 }
@@ -1145,15 +1404,22 @@ function updateDirectionOverlay() {
   root.hidden = false;
   // Keep the compass comfortably inside the shader keyhole so its cardinals
   // remain visible around the subject instead of hiding under edge panels.
-  const compassRadius = Math.max(120, Math.min(geometry.radius - 48, geometry.radius * 0.66));
+  const compassRadius = Math.max(
+    120,
+    Math.min(geometry.radius - 48, geometry.radius * 0.66),
+  );
   state.compassRing.style.left = `${geometry.centerX - compassRadius}px`;
   state.compassRing.style.top = `${geometry.centerY - compassRadius}px`;
   state.compassRing.style.width = `${compassRadius * 2}px`;
   state.compassRing.style.height = `${compassRadius * 2}px`;
 
   const cameraHeading = state.viewer.camera.heading || 0;
-  const headingDeg = (Math.round(Cesium.Math.toDegrees(cameraHeading)) + 360) % 360;
-  state.compassRing.style.setProperty('--compass-rotation', `${-headingDeg}deg`);
+  const headingDeg =
+    (Math.round(Cesium.Math.toDegrees(cameraHeading)) + 360) % 360;
+  state.compassRing.style.setProperty(
+    '--compass-rotation',
+    `${-headingDeg}deg`,
+  );
   state.compassHeading.textContent = `HDG ${String(headingDeg).padStart(3, '0')}°`;
   state.compassHeading.style.left = `${geometry.centerX}px`;
   state.compassHeading.style.top = `${geometry.centerY - compassRadius + 39}px`;
@@ -1165,10 +1431,16 @@ function updateDirectionOverlay() {
     label.style.top = `${geometry.centerY + Math.sin(angle) * labelRadius}px`;
   }
 
-  const directionalCohort = state.results.cohorts.find((cohort) => cohort.id === state.subject.layerId)
-    || state.results.cohorts.find((cohort) => cohort.id === 'military');
+  const directionalCohort =
+    state.results.cohorts.find(
+      (cohort) => cohort.id === state.subject.layerId,
+    ) || state.results.cohorts.find((cohort) => cohort.id === 'military');
   const page = state.cohortPages.get(directionalCohort?.id) || 0;
-  const military = directionalCohort?.summary.nearest.slice(page, page + AWARENESS_PAGE_SIZE) || [];
+  const military =
+    directionalCohort?.summary.nearest.slice(
+      page,
+      page + AWARENESS_PAGE_SIZE,
+    ) || [];
   for (let index = 0; index < state.directionMarkers.length; index++) {
     const marker = state.directionMarkers[index];
     const item = military[index];
@@ -1176,7 +1448,11 @@ function updateDirectionOverlay() {
       marker.hidden = true;
       continue;
     }
-    const direction = Cesium.Cartesian3.subtract(item.position, state.subject.position, DIRECTION_SCRATCH[index]);
+    const direction = Cesium.Cartesian3.subtract(
+      item.position,
+      state.subject.position,
+      DIRECTION_SCRATCH[index],
+    );
     if (Cesium.Cartesian3.magnitudeSquared(direction) < 1) {
       marker.hidden = true;
       continue;
@@ -1198,18 +1474,31 @@ function updateDirectionOverlay() {
     marker._arrow.style.transform = `translate(-50%, -50%) rotate(${projection.angle}rad)`;
     marker._label.style.transform = `translate(-50%, -50%) translate(${-Math.cos(projection.angle) * 56}px, ${-Math.sin(projection.angle) * 56}px)`;
     const label = formatAwarenessLabel(item);
-    const subjectCartographic = Cesium.Cartographic.fromCartesian(state.subject.position, undefined, SUBJECT_CARTOGRAPHIC_SCRATCH);
-    const targetCartographic = Cesium.Cartographic.fromCartesian(item.position, undefined, TARGET_CARTOGRAPHIC_SCRATCH[index]);
-    const bearing = subjectCartographic && targetCartographic
-      ? bearingBetweenCoordinates(
-        Cesium.Math.toDegrees(subjectCartographic.latitude),
-        Cesium.Math.toDegrees(subjectCartographic.longitude),
-        Cesium.Math.toDegrees(targetCartographic.latitude),
-        Cesium.Math.toDegrees(targetCartographic.longitude),
-      )
-      : null;
-    const bearingText = Number.isFinite(bearing) ? `BRG ${String(Math.round(bearing)).padStart(3, '0')}°` : 'BRG —';
-    const courseText = Number.isFinite(item.track) ? ` · CRS ${String(Math.round(item.track)).padStart(3, '0')}°` : '';
+    const subjectCartographic = Cesium.Cartographic.fromCartesian(
+      state.subject.position,
+      undefined,
+      SUBJECT_CARTOGRAPHIC_SCRATCH,
+    );
+    const targetCartographic = Cesium.Cartographic.fromCartesian(
+      item.position,
+      undefined,
+      TARGET_CARTOGRAPHIC_SCRATCH[index],
+    );
+    const bearing =
+      subjectCartographic && targetCartographic
+        ? bearingBetweenCoordinates(
+            Cesium.Math.toDegrees(subjectCartographic.latitude),
+            Cesium.Math.toDegrees(subjectCartographic.longitude),
+            Cesium.Math.toDegrees(targetCartographic.latitude),
+            Cesium.Math.toDegrees(targetCartographic.longitude),
+          )
+        : null;
+    const bearingText = Number.isFinite(bearing)
+      ? `BRG ${String(Math.round(bearing)).padStart(3, '0')}°`
+      : 'BRG —';
+    const courseText = Number.isFinite(item.track)
+      ? ` · CRS ${String(Math.round(item.track)).padStart(3, '0')}°`
+      : '';
     marker._label.textContent = `${label} · ${formatAwarenessDistance(item.distanceM)}\n${bearingText}${courseText}`;
     marker.hidden = false;
   }
@@ -1217,7 +1506,8 @@ function updateDirectionOverlay() {
 
 function clearVisual() {
   if (state.visual?.entities && state.viewer) {
-    for (const entity of state.visual.entities) state.viewer.entities.remove(entity);
+    for (const entity of state.visual.entities)
+      state.viewer.entities.remove(entity);
     // Idle mode renders only on request; a removed ring must not linger.
     governorRequestRender('awareness-visual');
   }
@@ -1228,14 +1518,19 @@ function renderVisual(subject) {
   if (!state.viewer || !subject?.position) return;
   const cartographic = Cesium.Cartographic.fromCartesian(subject.position);
   if (!cartographic) return;
-  const groundCenter = Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, 0);
+  const groundCenter = Cesium.Cartesian3.fromRadians(
+    cartographic.longitude,
+    cartographic.latitude,
+    0,
+  );
   const key = `${subject.layerId}:${subject.id}`;
   if (state.visual?.key === key) {
     // Large ellipse geometry is more reliable as a ConstantPositionProperty.
     // Move it only after a meaningful displacement so live tracking does not
     // churn ten large geometries for sub-pixel motion every 750 ms.
     if (Cesium.Cartesian3.distance(state.visual.center, groundCenter) >= 250) {
-      for (const entity of state.visual.entities) entity.position.setValue(groundCenter);
+      for (const entity of state.visual.entities)
+        entity.position.setValue(groundCenter);
       Cesium.Cartesian3.clone(groundCenter, state.visual.center);
       // Content actually changed — buy exactly one frame instead of holding.
       governorRequestRender('awareness-visual');
@@ -1246,19 +1541,26 @@ function renderVisual(subject) {
 
   const entities = [];
 
-  entities.push(state.viewer.entities.add({
-    position: groundCenter,
-    ellipse: {
-      semiMajorAxis: AWARENESS_RADIUS_M,
-      semiMinorAxis: AWARENESS_RADIUS_M,
-      fill: false,
-      outline: true,
-      outlineColor: Cesium.Color.fromCssColorString('#62b5ff').withAlpha(0.72),
-      height: CONTEXT_RIM_HEIGHT_M,
-    },
-  }));
+  entities.push(
+    state.viewer.entities.add({
+      position: groundCenter,
+      ellipse: {
+        semiMajorAxis: AWARENESS_RADIUS_M,
+        semiMinorAxis: AWARENESS_RADIUS_M,
+        fill: false,
+        outline: true,
+        outlineColor:
+          Cesium.Color.fromCssColorString('#62b5ff').withAlpha(0.72),
+        height: CONTEXT_RIM_HEIGHT_M,
+      },
+    }),
+  );
 
-  state.visual = { key, entities, center: Cesium.Cartesian3.clone(groundCenter) };
+  state.visual = {
+    key,
+    entities,
+    center: Cesium.Cartesian3.clone(groundCenter),
+  };
   governorRequestRender('awareness-visual');
 }
 
@@ -1296,7 +1598,10 @@ function selectSubject(subject) {
  * @param {boolean} [options.allowCollectionMaterialization=true] Whether a layer-wide fallback may run.
  * @returns {Cesium.Cartesian3|null} A cloned live position when one is available.
  */
-function resolveSubjectPosition(subject, { allowCollectionMaterialization = true } = {}) {
+function resolveSubjectPosition(
+  subject,
+  { allowCollectionMaterialization = true } = {},
+) {
   if (!subject?.position) return null;
   if (subject.layerId === 'flights' || subject.layerId === 'military') {
     const trackedPosition = state.viewer?.trackedEntity?.gevDisplayPosition?.();
@@ -1305,23 +1610,36 @@ function resolveSubjectPosition(subject, { allowCollectionMaterialization = true
         position: Cesium.Cartesian3.clone(trackedPosition),
         // Only the follow camera's own contact proves presence this way; a
         // different tracked entity says nothing about this subject.
-        presence: String(state.viewer?.trackedEntity?.gevTrackedId || '') === subjectKey(subject)
-          ? SUBJECT_PRESENCE.LIVE
-          : SUBJECT_PRESENCE.UNCHECKED,
+        presence:
+          String(state.viewer?.trackedEntity?.gevTrackedId || '') ===
+          subjectKey(subject)
+            ? SUBJECT_PRESENCE.LIVE
+            : SUBJECT_PRESENCE.UNCHECKED,
       };
     }
     // Cockpit already materializes its tracked position on a fixed 20 Hz loop.
     // If that frame-owned cache is temporarily unavailable, keep the last
     // awareness position instead of allocating/scanning up to 1,000 contacts.
     if (!allowCollectionMaterialization) {
-      return { position: Cesium.Cartesian3.clone(subject.position), presence: SUBJECT_PRESENCE.UNCHECKED };
+      return {
+        position: Cesium.Cartesian3.clone(subject.position),
+        presence: SUBJECT_PRESENCE.UNCHECKED,
+      };
     }
-    const layer = subject.layerId === 'flights' ? flightsLayer : militaryFlightsLayer;
-    return collectionSubjectPosition(subject, layer.getAllPositions(1000), layer);
+    const layer =
+      subject.layerId === 'flights' ? flightsLayer : militaryFlightsLayer;
+    return collectionSubjectPosition(
+      subject,
+      layer.getAllPositions(1000),
+      layer,
+    );
   }
   if (subject.layerId === 'ais-live-vessels') {
     if (!allowCollectionMaterialization) {
-      return { position: Cesium.Cartesian3.clone(subject.position), presence: SUBJECT_PRESENCE.UNCHECKED };
+      return {
+        position: Cesium.Cartesian3.clone(subject.position),
+        presence: SUBJECT_PRESENCE.UNCHECKED,
+      };
     }
     return collectionSubjectPosition(
       subject,
@@ -1331,7 +1649,10 @@ function resolveSubjectPosition(subject, { allowCollectionMaterialization = true
   }
   // Mapped installations come from static geometry, not a live feed: there is
   // nothing to be culled from.
-  return { position: Cesium.Cartesian3.clone(subject.position), presence: SUBJECT_PRESENCE.LIVE };
+  return {
+    position: Cesium.Cartesian3.clone(subject.position),
+    presence: SUBJECT_PRESENCE.LIVE,
+  };
 }
 
 /**
@@ -1350,12 +1671,17 @@ function resolveSubjectPosition(subject, { allowCollectionMaterialization = true
  */
 function collectionSubjectPosition(subject, rows, layer) {
   const collection = Array.isArray(rows) ? rows : [];
-  const current = collection.find((item) => String(item.id) === String(subject.id));
+  const current = collection.find(
+    (item) => String(item.id) === String(subject.id),
+  );
   // null/undefined means the layer cannot answer (disabled or not yet loaded).
   const known = layer?.hasContact?.(subject.id);
-  const presence = known === true
-    ? SUBJECT_PRESENCE.LIVE
-    : (known === false ? SUBJECT_PRESENCE.MISSING : SUBJECT_PRESENCE.UNCHECKED);
+  const presence =
+    known === true
+      ? SUBJECT_PRESENCE.LIVE
+      : known === false
+        ? SUBJECT_PRESENCE.MISSING
+        : SUBJECT_PRESENCE.UNCHECKED;
   return {
     position: current?.position
       ? Cesium.Cartesian3.clone(current.position)
@@ -1382,9 +1708,11 @@ function collectionSubjectPosition(subject, rows, layer) {
  */
 function resolveSubjectLabel(subject) {
   if (!isFlightLayer(subject?.layerId)) return subject?.label;
-  const layer = subject.layerId === 'flights' ? flightsLayer : militaryFlightsLayer;
+  const layer =
+    subject.layerId === 'flights' ? flightsLayer : militaryFlightsLayer;
   const tracked = layer.getTrackedSubject?.();
-  if (tracked?.label && String(tracked.id) === String(subject.id)) return tracked.label;
+  if (tracked?.label && String(tracked.id) === String(subject.id))
+    return tracked.label;
   return subject.label;
 }
 
@@ -1395,7 +1723,9 @@ function refreshSelectedSubject(force = false) {
   const nextSourceRevision = sourceRevision(sources);
   const sourceRevisionChanged = nextSourceRevision !== state.sourceRevision;
   const resolved = resolveSubjectPosition(state.subject, {
-    allowCollectionMaterialization: !document.body?.classList?.contains('cockpit-mode') || sourceRevisionChanged,
+    allowCollectionMaterialization:
+      !document.body?.classList?.contains('cockpit-mode') ||
+      sourceRevisionChanged,
   });
   if (!resolved) return;
   const { position, presence } = resolved;
@@ -1408,12 +1738,14 @@ function refreshSelectedSubject(force = false) {
   const movementM = state.lastEvaluatedPosition
     ? Cesium.Cartesian3.distance(state.lastEvaluatedPosition, position)
     : Infinity;
-  if (!awarenessRefreshRequired({
-    force,
-    hasResults: Boolean(state.results),
-    movementM,
-    sourceRevisionChanged,
-  })) {
+  if (
+    !awarenessRefreshRequired({
+      force,
+      hasResults: Boolean(state.results),
+      movementM,
+      sourceRevisionChanged,
+    })
+  ) {
     state.results.subject = state.subject;
     renderVisual(state.subject);
     // The panel markup embeds `subject.label`, so a label that changed while
@@ -1428,10 +1760,21 @@ function refreshSelectedSubject(force = false) {
   }
   state.results = evaluateSubject(state.subject, sources);
   state.sourceRevision = nextSourceRevision;
-  state.lastEvaluatedPosition = Cesium.Cartesian3.clone(position, state.lastEvaluatedPosition);
+  state.lastEvaluatedPosition = Cesium.Cartesian3.clone(
+    position,
+    state.lastEvaluatedPosition,
+  );
   for (const cohort of state.results.cohorts) {
-    const maxPage = Math.max(0, Math.floor(Math.max(0, cohort.summary.nearest.length - 1) / AWARENESS_PAGE_SIZE) * AWARENESS_PAGE_SIZE);
-    state.cohortPages.set(cohort.id, Math.min(state.cohortPages.get(cohort.id) || 0, maxPage));
+    const maxPage = Math.max(
+      0,
+      Math.floor(
+        Math.max(0, cohort.summary.nearest.length - 1) / AWARENESS_PAGE_SIZE,
+      ) * AWARENESS_PAGE_SIZE,
+    );
+    state.cohortPages.set(
+      cohort.id,
+      Math.min(state.cohortPages.get(cohort.id) || 0, maxPage),
+    );
   }
   renderVisual(state.subject);
   renderResults();
@@ -1439,7 +1782,11 @@ function refreshSelectedSubject(force = false) {
 }
 
 function subjectFromContext(record) {
-  if (!record || !['ais-live-vessels', 'military-installations'].includes(record.layerId)) return null;
+  if (
+    !record ||
+    !['ais-live-vessels', 'military-installations'].includes(record.layerId)
+  )
+    return null;
   const latitude = Number(record.latitude);
   const longitude = Number(record.longitude);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
@@ -1535,16 +1882,23 @@ export function awarenessNeedsContinuousRender({
  * @returns {void}
  */
 function syncAwarenessRenderHold() {
-  if (state.enabled && awarenessNeedsContinuousRender()) holdContinuousRender('military-awareness');
+  if (state.enabled && awarenessNeedsContinuousRender())
+    holdContinuousRender('military-awareness');
   else releaseContinuousRender('military-awareness');
 }
 
 function attachRuntimeListeners() {
   if (state.runtimeListenersAttached || !state.viewer) return;
-  window.addEventListener('gev:awareness-subject-selected', state.subjectListener);
+  window.addEventListener(
+    'gev:awareness-subject-selected',
+    state.subjectListener,
+  );
   window.addEventListener('gev:entity-selected', state.contextListener);
   window.addEventListener('gev:entity-selection-cleared', state.clearListener);
-  window.addEventListener('gev:awareness-subject-cleared', state.subjectClearListener);
+  window.addEventListener(
+    'gev:awareness-subject-cleared',
+    state.subjectClearListener,
+  );
   state.preRenderRemover = state.viewer.scene.preRender.addEventListener(() => {
     if (!state.enabled) return;
     const now = Date.now();
@@ -1567,7 +1921,12 @@ function attachRuntimeListeners() {
     syncAwarenessRenderHold();
     if (!decision.refresh) return;
     state.lastSubjectRefreshMs = now;
-    if (state.subject && ['flights', 'military', 'ais-live-vessels'].includes(state.subject.layerId)) {
+    if (
+      state.subject &&
+      ['flights', 'military', 'ais-live-vessels'].includes(
+        state.subject.layerId,
+      )
+    ) {
       refreshSelectedSubject();
     } else if (!state.passive && state.autoFocusRetryPending) {
       state.autoFocusRetryPending = false;
@@ -1581,10 +1940,19 @@ function attachRuntimeListeners() {
 
 function detachRuntimeListeners() {
   if (state.runtimeListenersAttached) {
-    window.removeEventListener('gev:awareness-subject-selected', state.subjectListener);
+    window.removeEventListener(
+      'gev:awareness-subject-selected',
+      state.subjectListener,
+    );
     window.removeEventListener('gev:entity-selected', state.contextListener);
-    window.removeEventListener('gev:entity-selection-cleared', state.clearListener);
-    window.removeEventListener('gev:awareness-subject-cleared', state.subjectClearListener);
+    window.removeEventListener(
+      'gev:entity-selection-cleared',
+      state.clearListener,
+    );
+    window.removeEventListener(
+      'gev:awareness-subject-cleared',
+      state.subjectClearListener,
+    );
   }
   state.preRenderRemover?.();
   state.preRenderRemover = null;
@@ -1610,7 +1978,8 @@ function releaseAircraftTracking() {
 }
 
 function refreshAfterDeferredDependency(activationId) {
-  if (!state.enabled || state.passive || activationId !== state.activationId) return;
+  if (!state.enabled || state.passive || activationId !== state.activationId)
+    return;
   if (state.subject) {
     refreshSelectedSubject(true);
     return;
@@ -1625,8 +1994,9 @@ async function enableDependencies(activationId = state.activationId) {
   for (const layerId of DEPENDENCIES) {
     if (!state.enabled) return;
     if (!state.dataManager) continue;
-    const alreadyEnabled = state.dataManager.isEffectivelyEnabled?.(layerId)
-      ?? state.dataManager.isEnabled(layerId);
+    const alreadyEnabled =
+      state.dataManager.isEffectivelyEnabled?.(layerId) ??
+      state.dataManager.isEnabled(layerId);
     if (alreadyEnabled) continue;
     state.ownedDependencies.add(layerId);
     // Each layer serializes its own lifecycle internally. Start them together
@@ -1661,13 +2031,14 @@ function releaseOwnedDependencies(releaseActivationId) {
   const owned = [...state.ownedDependencies];
   state.ownedDependencies.clear();
   if (!state.dataManager || !owned.length) return Promise.resolve();
-  return Promise.allSettled(owned.map((layerId) => state.dataManager.setEnabled(layerId, false)))
-    .then(() => {
-      if (state.enabled && state.activationId !== releaseActivationId) {
-        return enableDependencies(state.activationId);
-      }
-      return null;
-    });
+  return Promise.allSettled(
+    owned.map((layerId) => state.dataManager.setEnabled(layerId, false)),
+  ).then(() => {
+    if (state.enabled && state.activationId !== releaseActivationId) {
+      return enableDependencies(state.activationId);
+    }
+    return null;
+  });
 }
 
 function activateOperationalContext() {
@@ -1675,20 +2046,29 @@ function activateOperationalContext() {
   state.autoFocusRetryPending = false;
   const initialTrackedSubject = currentTrackedFlightSubject();
   if (initialTrackedSubject) selectSubject(initialTrackedSubject);
-  return enableDependencies(activationId).then(() => {
-    if (!state.enabled || state.passive || activationId !== state.activationId) return;
-    const trackedSubject = currentTrackedFlightSubject();
-    if (trackedSubject) {
-      selectSubject(trackedSubject);
-      return;
-    }
-    if (state.subject) {
-      selectSubject(state.subject);
-      return;
-    }
-    if (state.autoFocusAttempted) return;
-    state.autoFocusRetryPending = !focusAttentionTarget();
-  }).catch((error) => console.warn('[Global Context] dependency enable failed', error));
+  return enableDependencies(activationId)
+    .then(() => {
+      if (
+        !state.enabled ||
+        state.passive ||
+        activationId !== state.activationId
+      )
+        return;
+      const trackedSubject = currentTrackedFlightSubject();
+      if (trackedSubject) {
+        selectSubject(trackedSubject);
+        return;
+      }
+      if (state.subject) {
+        selectSubject(state.subject);
+        return;
+      }
+      if (state.autoFocusAttempted) return;
+      state.autoFocusRetryPending = !focusAttentionTarget();
+    })
+    .catch((error) =>
+      console.warn('[Global Context] dependency enable failed', error),
+    );
 }
 
 /**
@@ -1700,13 +2080,17 @@ function activateOperationalContext() {
 function closestToCurrentView(candidates) {
   if (!Array.isArray(candidates) || !candidates.length) return null;
   const cameraPosition = state.viewer?.camera?.positionWC;
-  if (!cameraPosition) return candidates.find((candidate) => candidate?.position) || null;
+  if (!cameraPosition)
+    return candidates.find((candidate) => candidate?.position) || null;
 
   let closest = null;
   let closestDistance = Infinity;
   for (const candidate of candidates) {
     if (!candidate?.position) continue;
-    const distance = Cesium.Cartesian3.distance(cameraPosition, candidate.position);
+    const distance = Cesium.Cartesian3.distance(
+      cameraPosition,
+      candidate.position,
+    );
     if (Number.isFinite(distance) && distance < closestDistance) {
       closest = candidate;
       closestDistance = distance;
@@ -1724,23 +2108,36 @@ function closestToCurrentView(candidates) {
  * @returns {boolean} Whether a target was selected and framed.
  */
 function focusAttentionTarget() {
-  if (!state.enabled || state.subject || !state.viewer || state.autoFocusAttempted) return false;
+  if (
+    !state.enabled ||
+    state.subject ||
+    !state.viewer ||
+    state.autoFocusAttempted
+  )
+    return false;
 
   const nearestFlight = closestToCurrentView([
-    ...militaryFlightsLayer.getAllPositions(800)
+    ...militaryFlightsLayer
+      .getAllPositions(800)
       .map((item) => ({ ...item, layerId: 'military' })),
-    ...flightsLayer.getAllPositions(1000)
+    ...flightsLayer
+      .getAllPositions(1000)
       .map((item) => ({ ...item, layerId: 'flights' })),
   ]);
   if (nearestFlight) {
-    const layer = nearestFlight.layerId === 'military' ? militaryFlightsLayer : flightsLayer;
+    const layer =
+      nearestFlight.layerId === 'military'
+        ? militaryFlightsLayer
+        : flightsLayer;
     if (layer.trackById(nearestFlight.id, { origin: 'programmatic' })) {
       state.autoFocusAttempted = true;
       return true;
     }
   }
 
-  const vessel = closestToCurrentView(aisLiveVesselsLayer.getAllPositions(12000));
+  const vessel = closestToCurrentView(
+    aisLiveVesselsLayer.getAllPositions(12000),
+  );
   if (!vessel || !aisLiveVesselsLayer.selectById(vessel.id)) return false;
 
   state.autoFocusAttempted = true;
@@ -1765,12 +2162,15 @@ const militaryAwarenessLayer = {
   showInTogglePanel: false,
   updateInterval: 0,
   statsRefreshInterval: 1000,
-  attachDataManager(dataManager) { state.dataManager = dataManager; },
+  attachDataManager(dataManager) {
+    state.dataManager = dataManager;
+  },
   setParams(params = {}) {
     if (typeof params.passive !== 'boolean') return;
     const wasPassive = state.passive;
     state.passive = params.passive;
-    if (state.enabled && wasPassive && !state.passive) activateOperationalContext();
+    if (state.enabled && wasPassive && !state.passive)
+      activateOperationalContext();
   },
   /** @returns {{ passive: boolean }} Current runtime parameters. */
   getParams() {
@@ -1806,8 +2206,8 @@ const militaryAwarenessLayer = {
       const cleared = event.detail;
       if (state.pendingSelectionKey) return;
       if (
-        awarenessClearMatchesSubject(state.subject, cleared)
-        && String(state.subject?.id) === String(cleared?.id)
+        awarenessClearMatchesSubject(state.subject, cleared) &&
+        String(state.subject?.id) === String(cleared?.id)
       ) {
         if (awarenessClearIsEviction(cleared)) {
           // Deliberately does NOT set autoFocusAttempted: the subject survives,
@@ -1894,20 +2294,30 @@ const militaryAwarenessLayer = {
     state.dataManager = null;
   },
   getStats() {
-    return { count: state.results ? 1 : 0, lastUpdate: state.results?.evaluatedAt || null, stale: false, error: null, status: state.enabled ? 'ready' : 'idle' };
+    return {
+      count: state.results ? 1 : 0,
+      lastUpdate: state.results?.evaluatedAt || null,
+      stale: false,
+      error: null,
+      status: state.enabled ? 'ready' : 'idle',
+    };
   },
   /** Return the latest read-only context result for compact HUD consumers. */
   getContextSnapshot() {
     if (!state.enabled || !state.subject) return null;
     if (!state.results) {
-      return buildAwarenessContextSnapshot({
-        subject: { ...state.subject },
-        evaluatedAt: null,
-        radiusM: AWARENESS_RADIUS_M,
-        cohorts: [],
-      }, navigationState(), {
-        subjectPresent: !state.subjectMissing,
-      });
+      return buildAwarenessContextSnapshot(
+        {
+          subject: { ...state.subject },
+          evaluatedAt: null,
+          radiusM: AWARENESS_RADIUS_M,
+          cohorts: [],
+        },
+        navigationState(),
+        {
+          subjectPresent: !state.subjectMissing,
+        },
+      );
     }
     return buildAwarenessContextSnapshot(state.results, navigationState(), {
       subjectPresent: !state.subjectMissing,
@@ -1920,7 +2330,10 @@ const militaryAwarenessLayer = {
    * cannot silently reclaim the camera after the reset.
    * @returns {boolean} Whether a Contact subject remains selected.
    */
-  releaseCameraOwnership({ preserveVesselSelection = false, origin = 'programmatic' } = {}) {
+  releaseCameraOwnership({
+    preserveVesselSelection = false,
+    origin = 'programmatic',
+  } = {}) {
     ++state.activationId;
     state.autoFocusAttempted = true;
     state.autoFocusRetryPending = false;
@@ -1938,11 +2351,19 @@ const militaryAwarenessLayer = {
     }
     return Boolean(state.subject);
   },
-  navigatePrevious(options = {}) { return navigateHistory(-1, options); },
-  focusCurrent(options = {}) { return focusCurrentSubject(options); },
-  navigateNext(options = {}) { return navigateHistory(1, options); },
+  navigatePrevious(options = {}) {
+    return navigateHistory(-1, options);
+  },
+  focusCurrent(options = {}) {
+    return focusCurrentSubject(options);
+  },
+  navigateNext(options = {}) {
+    return navigateHistory(1, options);
+  },
   /** Select a context target through its owning layer's established tracker. */
-  focusTarget(layerId, id, options = {}) { return requestFocus(layerId, id, false, options); },
+  focusTarget(layerId, id, options = {}) {
+    return requestFocus(layerId, id, false, options);
+  },
 };
 
 export default militaryAwarenessLayer;

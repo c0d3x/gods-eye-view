@@ -49,7 +49,12 @@ const _scratchWorldForward = new Cesium.Cartesian3();
  *   unavailable (off-screen/behind camera/degenerate).
  * @returns {number|null} Rotation in radians, or `previous` when unknown.
  */
-export function screenProjectedRotation(scene, position, courseDeg, previous = null) {
+export function screenProjectedRotation(
+  scene,
+  position,
+  courseDeg,
+  previous = null,
+) {
   const camera = scene?.camera;
   if (!camera?.rightWC || !camera?.upWC || !position) return previous;
 
@@ -58,20 +63,26 @@ export function screenProjectedRotation(scene, position, courseDeg, previous = n
     Math.sin(courseRad) * FORWARD_PROBE_M,
     Math.cos(courseRad) * FORWARD_PROBE_M,
     0,
-    _scratchForward
+    _scratchForward,
   );
-  const enu = Cesium.Transforms.eastNorthUpToFixedFrame(position, Cesium.Ellipsoid.WGS84, _scratchEnu);
-  Cesium.Matrix4.multiplyByPointAsVector(enu, _scratchForward, _scratchWorldForward);
+  const enu = Cesium.Transforms.eastNorthUpToFixedFrame(
+    position,
+    Cesium.Ellipsoid.WGS84,
+    _scratchEnu,
+  );
+  Cesium.Matrix4.multiplyByPointAsVector(
+    enu,
+    _scratchForward,
+    _scratchWorldForward,
+  );
 
   // Screen x follows camera-right. Window y grows downward, the opposite of
   // camera-up. Projecting the vector itself avoids clipping/behind-camera
   // failure modes from the old forward-point worldToWindowCoordinates probe.
   const dx = Cesium.Cartesian3.dot(_scratchWorldForward, camera.rightWC);
   const dy = -Cesium.Cartesian3.dot(_scratchWorldForward, camera.upWC);
-  if (
-    (dx * dx + dy * dy)
-    < MIN_SCREEN_COMPONENT_M * MIN_SCREEN_COMPONENT_M
-  ) return previous;
+  if (dx * dx + dy * dy < MIN_SCREEN_COMPONENT_M * MIN_SCREEN_COMPONENT_M)
+    return previous;
 
   // Window y grows downward; rotation 0 = icon pointing screen-up.
   // Icon direction in window coords after CCW rotation r is (-sin r, -cos r),
@@ -94,13 +105,20 @@ export function stabilizeScreenRotation(
   next,
   deadbandRad = ROTATION_DEADBAND_RAD,
 ) {
-  if (!Number.isFinite(next)) return Number.isFinite(previous) ? previous : null;
+  if (!Number.isFinite(next))
+    return Number.isFinite(previous) ? previous : null;
   if (!Number.isFinite(previous)) return next;
-  const delta = Math.atan2(Math.sin(next - previous), Math.cos(next - previous));
+  const delta = Math.atan2(
+    Math.sin(next - previous),
+    Math.cos(next - previous),
+  );
   return Math.abs(delta) < Math.max(0, deadbandRad) ? previous : next;
 }
 
-const _occluder = new Cesium.EllipsoidalOccluder(Cesium.Ellipsoid.WGS84, new Cesium.Cartesian3());
+const _occluder = new Cesium.EllipsoidalOccluder(
+  Cesium.Ellipsoid.WGS84,
+  new Cesium.Cartesian3(),
+);
 
 /**
  * Half-width of the crossfade band centred on the ellipsoid silhouette, in
@@ -169,7 +187,11 @@ const _wgs84OneOverRadii = Cesium.Ellipsoid.WGS84.oneOverRadii;
  * @param {number} [featherRad=HORIZON_FEATHER_RAD] Half-width of the blend band.
  * @returns {number} 0 (ground behind) … 1 (sky behind).
  */
-export function skyBackdropFactor(cameraPosition, position, featherRad = HORIZON_FEATHER_RAD) {
+export function skyBackdropFactor(
+  cameraPosition,
+  position,
+  featherRad = HORIZON_FEATHER_RAD,
+) {
   if (!cameraPosition || !position) return 0;
 
   const s = _wgs84OneOverRadii;
@@ -236,6 +258,8 @@ export function horizonOccluder(camera) {
  */
 export function cameraPoseSignature(camera) {
   const p = camera.positionWC;
-  return `${Math.round(p.x / 10)}:${Math.round(p.y / 10)}:${Math.round(p.z / 10)}:` +
-    `${camera.heading.toFixed(3)}:${camera.pitch.toFixed(3)}:${camera.roll.toFixed(3)}`;
+  return (
+    `${Math.round(p.x / 10)}:${Math.round(p.y / 10)}:${Math.round(p.z / 10)}:` +
+    `${camera.heading.toFixed(3)}:${camera.pitch.toFixed(3)}:${camera.roll.toFixed(3)}`
+  );
 }

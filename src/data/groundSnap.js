@@ -47,7 +47,11 @@
  */
 
 import * as Cesium from 'cesium';
-import { cachedMeshFloor, meshFloorPreferred, reportValidatedMeshFloorCell } from './groundFloor.js';
+import {
+  cachedMeshFloor,
+  meshFloorPreferred,
+  reportValidatedMeshFloorCell,
+} from './groundFloor.js';
 
 /** Taxi threshold: a cached snap answers directly for moves up to this far from
  *  the sampled spot (m). Past it the value is demoted to a held last-known and a
@@ -147,7 +151,11 @@ function _tilesReady(viewer) {
   if (!prims) return false;
   for (let i = 0; i < prims.length; i++) {
     let p = null;
-    try { p = prims.get(i); } catch { continue; }
+    try {
+      p = prims.get(i);
+    } catch {
+      continue;
+    }
     if (p && p.show !== false && typeof p.tilesLoaded === 'boolean') {
       return p.tilesLoaded === true;
     }
@@ -197,9 +205,12 @@ export function createGroundSnap() {
    * @returns {number|null}
    */
   function heldSnapM(entry, surfacePos) {
-    if (!entry || !entry.held || entry.h == null || !entry.samplePos) return null;
-    if (Cesium.Cartesian3.distanceSquared(surfacePos, entry.samplePos)
-      > HELD_SNAP_MAX_DRIFT_M * HELD_SNAP_MAX_DRIFT_M) {
+    if (!entry || !entry.held || entry.h == null || !entry.samplePos)
+      return null;
+    if (
+      Cesium.Cartesian3.distanceSquared(surfacePos, entry.samplePos) >
+      HELD_SNAP_MAX_DRIFT_M * HELD_SNAP_MAX_DRIFT_M
+    ) {
       return dropHold(entry);
     }
     // Held memory never outranks fresh contradicting evidence. Inside the drift
@@ -246,7 +257,9 @@ export function createGroundSnap() {
    */
   function freshMeasuredFloorAt(surfacePos) {
     const carto = Cesium.Cartographic.fromCartesian(
-      surfacePos, Cesium.Ellipsoid.WGS84, scratchHeldCarto,
+      surfacePos,
+      Cesium.Ellipsoid.WGS84,
+      scratchHeldCarto,
     );
     if (!carto) return null;
     return cachedMeshFloor(
@@ -274,11 +287,17 @@ export function createGroundSnap() {
    * @returns {number|null}
    */
   function heightFor(viewer, icao, pos, getExclusions) {
-    const surfacePos = Cesium.Ellipsoid.WGS84.scaleToGeodeticSurface(pos, scratchSurfacePos);
+    const surfacePos = Cesium.Ellipsoid.WGS84.scaleToGeodeticSurface(
+      pos,
+      scratchSurfacePos,
+    );
     if (!surfacePos) return null;
     const cached = entries.get(icao);
     if (cached && cached.h != null && cached.samplePos && !cached.held) {
-      if (Cesium.Cartesian3.distanceSquared(surfacePos, cached.samplePos) <= MOVE_INVALIDATE_M * MOVE_INVALIDATE_M) {
+      if (
+        Cesium.Cartesian3.distanceSquared(surfacePos, cached.samplePos) <=
+        MOVE_INVALIDATE_M * MOVE_INVALIDATE_M
+      ) {
         return cached.h;
       }
       // Taxied away from the sampled spot. The measurement is DEMOTED to a
@@ -294,12 +313,21 @@ export function createGroundSnap() {
     if (entry && now < entry.nextRetryMs) return heldSnapM(entry, surfacePos); // backoff in force
     // Per-window budget: deny WITHOUT a retry stamp so the overflow simply
     // tries again next tick instead of waiting out a backoff it didn't earn.
-    if (now - windowStartMs > SAMPLE_WINDOW_MS) { windowStartMs = now; windowCount = 0; }
-    if (windowCount >= SAMPLE_BUDGET_PER_WINDOW) return heldSnapM(entry, surfacePos);
+    if (now - windowStartMs > SAMPLE_WINDOW_MS) {
+      windowStartMs = now;
+      windowCount = 0;
+    }
+    if (windowCount >= SAMPLE_BUDGET_PER_WINDOW)
+      return heldSnapM(entry, surfacePos);
     const misses = entry ? entry.misses : 0;
     const miss = () => {
       // A held measurement survives the miss — only the retry schedule moves.
-      const held = !!(entry && entry.held && entry.h != null && entry.samplePos);
+      const held = !!(
+        entry &&
+        entry.held &&
+        entry.h != null &&
+        entry.samplePos
+      );
       const next = {
         h: held ? entry.h : null,
         samplePos: held ? entry.samplePos : null,
@@ -314,9 +342,16 @@ export function createGroundSnap() {
     windowCount += 1;
     let sampled;
     try {
-      const carto = Cesium.Cartographic.fromCartesian(pos, Cesium.Ellipsoid.WGS84, scratchCarto);
+      const carto = Cesium.Cartographic.fromCartesian(
+        pos,
+        Cesium.Ellipsoid.WGS84,
+        scratchCarto,
+      );
       // sampleHeight throws when unsupported (no depth textures) — that's a miss.
-      sampled = viewer.scene.sampleHeight(carto, getExclusions ? getExclusions() : undefined);
+      sampled = viewer.scene.sampleHeight(
+        carto,
+        getExclusions ? getExclusions() : undefined,
+      );
     } catch {
       sampled = undefined;
     }
@@ -343,10 +378,14 @@ export function createGroundSnap() {
   }
 
   /** Drop one aircraft's snap (eviction / ground-flag flip / suppression). */
-  function forget(icao) { entries.delete(icao); }
+  function forget(icao) {
+    entries.delete(icao);
+  }
 
   /** Drop everything (layer destroy). */
-  function clear() { entries.clear(); }
+  function clear() {
+    entries.clear();
+  }
 
   return { heightFor, forget, clear };
 }

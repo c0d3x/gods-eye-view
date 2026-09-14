@@ -42,7 +42,12 @@ const distanceGeodesicScratch = new Cesium.EllipsoidGeodesic();
  * Allocation-free spherical distance used only as a conservative rejection
  * pass before the exact ellipsoidal geodesic calculation.
  */
-export function approximateSurfaceDistanceM(latitudeARad, longitudeARad, latitudeBDeg, longitudeBDeg) {
+export function approximateSurfaceDistanceM(
+  latitudeARad,
+  longitudeARad,
+  latitudeBDeg,
+  longitudeBDeg,
+) {
   const latitudeBRad = Cesium.Math.toRadians(latitudeBDeg);
   const longitudeBRad = Cesium.Math.toRadians(longitudeBDeg);
   const latitudeDelta = latitudeBRad - latitudeARad;
@@ -52,8 +57,12 @@ export function approximateSurfaceDistanceM(latitudeARad, longitudeARad, latitud
   );
   const sinLatitude = Math.sin(latitudeDelta / 2);
   const sinLongitude = Math.sin(longitudeDelta / 2);
-  const haversine = sinLatitude * sinLatitude
-    + Math.cos(latitudeARad) * Math.cos(latitudeBRad) * sinLongitude * sinLongitude;
+  const haversine =
+    sinLatitude * sinLatitude +
+    Math.cos(latitudeARad) *
+      Math.cos(latitudeBRad) *
+      sinLongitude *
+      sinLongitude;
   return 2 * EARTH_MEAN_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(haversine)));
 }
 
@@ -85,7 +94,9 @@ const state = {
 };
 
 function colorFor(record) {
-  return Cesium.Color.fromCssColorString(COLOR_BY_CLASS[record.class] || '#9ca6b0');
+  return Cesium.Color.fromCssColorString(
+    COLOR_BY_CLASS[record.class] || '#9ca6b0',
+  );
 }
 
 /**
@@ -97,10 +108,15 @@ function colorFor(record) {
  * @returns {string|null} Installation class, or null when not authoritative.
  */
 export function classifyGoogleMilitaryPlace(place) {
-  const types = new Set([
-    place?.primaryType,
-    ...(Array.isArray(place?.types) ? place.types : []),
-  ].map((value) => String(value || '').trim().toLowerCase()).filter(Boolean));
+  const types = new Set(
+    [place?.primaryType, ...(Array.isArray(place?.types) ? place.types : [])]
+      .map((value) =>
+        String(value || '')
+          .trim()
+          .toLowerCase(),
+      )
+      .filter(Boolean),
+  );
   return [...types].some((type) => GOOGLE_MILITARY_PLACE_TYPES.has(type))
     ? 'military_land'
     : 'places_candidate';
@@ -108,9 +124,13 @@ export function classifyGoogleMilitaryPlace(place) {
 
 /** @param {object} record @returns {string} Human-readable source attribution. */
 export function installationSourceLabel(record) {
-  const names = [...new Set((Array.isArray(record?.sources) ? record.sources : [])
-    .map((source) => String(source?.name || '').trim())
-    .filter(Boolean))];
+  const names = [
+    ...new Set(
+      (Array.isArray(record?.sources) ? record.sources : [])
+        .map((source) => String(source?.name || '').trim())
+        .filter(Boolean),
+    ),
+  ];
   return names.join(' + ') || 'Unknown mapped source';
 }
 
@@ -120,10 +140,12 @@ export function installationSourceLabel(record) {
  * @returns {number} Ellipsoidal render height in metres.
  */
 export function installationSurfaceHeightM(record) {
-  return floorAltitudeM(
-    null,
-    cachedGroundFloor(record?.latitude, record?.longitude),
-  ) ?? 0;
+  return (
+    floorAltitudeM(
+      null,
+      cachedGroundFloor(record?.latitude, record?.longitude),
+    ) ?? 0
+  );
 }
 
 /**
@@ -154,20 +176,29 @@ export function installationSurfaceHeightM(record) {
 export function installationWithinViewport(record, box) {
   if (!record || !box) return false;
   const { latitude, longitude, footprint } = record;
-  const centreInside = latitude >= box.south && latitude <= box.north
-    && longitude >= box.west && longitude <= box.east;
+  const centreInside =
+    latitude >= box.south &&
+    latitude <= box.north &&
+    longitude >= box.west &&
+    longitude <= box.east;
   if (centreInside) return true;
   if (Array.isArray(footprint) && footprint.length) {
-    let minLat = Infinity; let maxLat = -Infinity;
-    let minLon = Infinity; let maxLon = -Infinity;
+    let minLat = Infinity;
+    let maxLat = -Infinity;
+    let minLon = Infinity;
+    let maxLon = -Infinity;
     for (const [lon, lat] of footprint) {
       if (lat < minLat) minLat = lat;
       if (lat > maxLat) maxLat = lat;
       if (lon < minLon) minLon = lon;
       if (lon > maxLon) maxLon = lon;
     }
-    return maxLat >= box.south && minLat <= box.north
-      && maxLon >= box.west && minLon <= box.east;
+    return (
+      maxLat >= box.south &&
+      minLat <= box.north &&
+      maxLon >= box.west &&
+      minLon <= box.east
+    );
   }
   // Unknown extent: inclusive. Only a point feature may be excluded on centre.
   return record.osmType !== 'node';
@@ -207,14 +238,22 @@ function setInstallationStatus(status, error = null) {
 }
 
 function viewportBox(viewer) {
-  const rectangle = viewer?.camera?.computeViewRectangle(viewer.scene.globe.ellipsoid);
+  const rectangle = viewer?.camera?.computeViewRectangle(
+    viewer.scene.globe.ellipsoid,
+  );
   if (!rectangle) return null;
   const south = Cesium.Math.toDegrees(rectangle.south);
   const north = Cesium.Math.toDegrees(rectangle.north);
   const west = Cesium.Math.toDegrees(rectangle.west);
   const east = Cesium.Math.toDegrees(rectangle.east);
   // Cross-dateline/global views require a zoom before a bounded request.
-  if (!Number.isFinite(south + north + west + east) || east <= west || north - south > MAX_VIEWPORT_DEGREES || east - west > MAX_VIEWPORT_DEGREES) return null;
+  if (
+    !Number.isFinite(south + north + west + east) ||
+    east <= west ||
+    north - south > MAX_VIEWPORT_DEGREES ||
+    east - west > MAX_VIEWPORT_DEGREES
+  )
+    return null;
   return { south, west, north, east };
 }
 
@@ -238,7 +277,8 @@ function clearRendered() {
 function renderableRecords() {
   const rendered = state.records.slice(0, MAX_RENDERED);
   if (!state.selectedId) return rendered;
-  if (rendered.some((record) => record.id === state.selectedId)) return rendered;
+  if (rendered.some((record) => record.id === state.selectedId))
+    return rendered;
   const selected = state.recordById.get(state.selectedId);
   return selected ? [...rendered, selected] : rendered;
 }
@@ -247,7 +287,12 @@ function renderRecords({ claimSelection = false } = {}) {
   // Context navigation can select another layer without a canvas click.
   // A delayed floor/data repaint must not steal that newer selection back.
   const selectedContext = getSelectedEntityContext();
-  if (!claimSelection && state.selectedId && selectedContext && selectedContext.id !== state.selectedId) {
+  if (
+    !claimSelection &&
+    state.selectedId &&
+    selectedContext &&
+    selectedContext.id !== state.selectedId
+  ) {
     state.selectedId = null;
   }
   // Post-moveEnd debounced fetches commit after the camera settles; the
@@ -272,27 +317,38 @@ function renderRecords({ claimSelection = false } = {}) {
         outlineWidth: 1,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
-      polygon: record.footprint ? {
-        hierarchy: new Cesium.PolygonHierarchy(record.footprint.map(([longitude, latitude]) => Cesium.Cartesian3.fromDegrees(longitude, latitude))),
-        material: color.withAlpha(0.12),
-        outline: true,
-        outlineColor: color.withAlpha(0.65),
-        height: surfaceHeightM,
-      } : undefined,
+      polygon: record.footprint
+        ? {
+            hierarchy: new Cesium.PolygonHierarchy(
+              record.footprint.map(([longitude, latitude]) =>
+                Cesium.Cartesian3.fromDegrees(longitude, latitude),
+              ),
+            ),
+            material: color.withAlpha(0.12),
+            outline: true,
+            outlineColor: color.withAlpha(0.65),
+            height: surfaceHeightM,
+          }
+        : undefined,
     });
     entity.gevTrackedId = `installations:${record.id}`;
     entity.gevDisplayPosition = () => displayPosition;
     entity.gevLabelModel = {
       title: record.name || 'MAPPED INSTALLATION',
-      details: [String(record.class || 'installation').replaceAll('_', ' ').toUpperCase()],
+      details: [
+        String(record.class || 'installation')
+          .replaceAll('_', ' ')
+          .toUpperCase(),
+      ],
       accent: COLOR_BY_CLASS[record.class] || '#9ca6b0',
     };
     registerEntityContext(entity, {
       id: record.id,
       layerId: LAYER_ID,
-      layerName: record.kind === 'place_candidate'
-        ? 'Military Site Search Candidates'
-        : 'Mapped Military Installations',
+      layerName:
+        record.kind === 'place_candidate'
+          ? 'Military Site Search Candidates'
+          : 'Mapped Military Installations',
       source: installationSourceLabel(record),
       label: record.name,
       latitude: record.latitude,
@@ -335,12 +391,15 @@ function renderRecords({ claimSelection = false } = {}) {
  */
 function warmInstallationFloors(records) {
   const cold = records
-    .filter((record) => cachedGroundFloor(record.latitude, record.longitude) == null)
+    .filter(
+      (record) => cachedGroundFloor(record.latitude, record.longitude) == null,
+    )
     .map((record) => ({ lat: record.latitude, lon: record.longitude }));
   if (!cold.length) return;
   warmFireAnchorFloors(cold).then(() => {
     if (!state.enabled || !state.dataSource) return;
-    if (!cold.some((point) => cachedGroundFloor(point.lat, point.lon) != null)) return;
+    if (!cold.some((point) => cachedGroundFloor(point.lat, point.lon) != null))
+      return;
     renderRecords();
   });
 }
@@ -419,7 +478,9 @@ function scheduleLoad() {
   // failure, so the backoff step is kept rather than reset.
   clearUnavailableRetry({ resetBackoff: false });
   clearTimeout(state.timer);
-  state.timer = setTimeout(() => { loadInstallations(); }, REQUEST_DEBOUNCE_MS);
+  state.timer = setTimeout(() => {
+    loadInstallations();
+  }, REQUEST_DEBOUNCE_MS);
 }
 
 async function loadInstallations() {
@@ -430,7 +491,10 @@ async function loadInstallations() {
     state.abort = null;
     state.loading = false;
     clearUnavailableRetry();
-    setInstallationStatus('zoom-in', 'Zoom in to load mapped installation context');
+    setInstallationStatus(
+      'zoom-in',
+      'Zoom in to load mapped installation context',
+    );
     return;
   }
   state.abort?.abort();
@@ -442,13 +506,25 @@ async function loadInstallations() {
   setInstallationStatus('loading');
   try {
     const fetchInstallations = async (exact) => {
-      const query = new URLSearchParams(Object.entries(box).map(([key, value]) => [key, value.toFixed(5)]));
+      const query = new URLSearchParams(
+        Object.entries(box).map(([key, value]) => [key, value.toFixed(5)]),
+      );
       if (exact) query.set('exact', '1');
-      const response = await fetch(`/api/military-installations?${query}`, { signal: requestAbort.signal });
-      const body = await response.json();
-      if (!response.ok) throw Object.assign(new Error(body?.error || `Installation feed HTTP ${response.status}`), {
-        failureReason: ['rate_limited', 'timeout', 'query_failed'].includes(body?.reason) ? body.reason : 'unavailable',
+      const response = await fetch(`/api/military-installations?${query}`, {
+        signal: requestAbort.signal,
       });
+      const body = await response.json();
+      if (!response.ok)
+        throw Object.assign(
+          new Error(body?.error || `Installation feed HTTP ${response.status}`),
+          {
+            failureReason: ['rate_limited', 'timeout', 'query_failed'].includes(
+              body?.reason,
+            )
+              ? body.reason
+              : 'unavailable',
+          },
+        );
       return body;
     };
 
@@ -461,26 +537,62 @@ async function loadInstallations() {
       payload = await fetchInstallations(true);
       saturated = installationResponseSaturated(payload);
     }
-    const normalized = normalizeMilitaryInstallations(payload, payload.retrievedAt || new Date().toISOString());
+    const normalized = normalizeMilitaryInstallations(
+      payload,
+      payload.retrievedAt || new Date().toISOString(),
+    );
     // The proxy answers a bbox at least as large as the viewport; keep only what
     // was actually asked for so nothing off-screen reaches the map or the
     // "current viewport only" context claim.
-    const records = normalized.records.filter((record) => installationWithinViewport(record, box));
+    const records = normalized.records.filter((record) =>
+      installationWithinViewport(record, box),
+    );
     let placesError = null;
     if (state.googleSearchRequested) {
       state.googleSearchRequested = false;
       const latitude = (box.south + box.north) / 2;
       const longitude = (box.west + box.east) / 2;
-      const radiusM = Math.min(50000, Math.max(1000, Math.round(Math.max(box.north - box.south, box.east - box.west) * 55_000)));
+      const radiusM = Math.min(
+        50000,
+        Math.max(
+          1000,
+          Math.round(
+            Math.max(box.north - box.south, box.east - box.west) * 55_000,
+          ),
+        ),
+      );
       try {
-        const placesResponse = await fetch(`/api/google/text-search?${new URLSearchParams({
-          q: 'military installation', lat: latitude.toFixed(5), lon: longitude.toFixed(5), radiusM: String(radiusM),
-        })}`, { signal: requestAbort.signal });
+        const placesResponse = await fetch(
+          `/api/google/text-search?${new URLSearchParams({
+            q: 'military installation',
+            lat: latitude.toFixed(5),
+            lon: longitude.toFixed(5),
+            radiusM: String(radiusM),
+          })}`,
+          { signal: requestAbort.signal },
+        );
         const placesPayload = await placesResponse.json();
-        if (!placesResponse.ok) throw new Error(placesPayload?.error || `Google Places HTTP ${placesResponse.status}`);
-        const seen = new Set(records.map((record) => `${record.name.toLowerCase()}|${record.latitude.toFixed(3)}|${record.longitude.toFixed(3)}`));
-        for (const place of Array.isArray(placesPayload?.places) ? placesPayload.places : []) {
-          if (!place?.id || !place?.name || !Number.isFinite(place.latitude) || !Number.isFinite(place.longitude)) continue;
+        if (!placesResponse.ok)
+          throw new Error(
+            placesPayload?.error ||
+              `Google Places HTTP ${placesResponse.status}`,
+          );
+        const seen = new Set(
+          records.map(
+            (record) =>
+              `${record.name.toLowerCase()}|${record.latitude.toFixed(3)}|${record.longitude.toFixed(3)}`,
+          ),
+        );
+        for (const place of Array.isArray(placesPayload?.places)
+          ? placesPayload.places
+          : []) {
+          if (
+            !place?.id ||
+            !place?.name ||
+            !Number.isFinite(place.latitude) ||
+            !Number.isFinite(place.longitude)
+          )
+            continue;
           const placeClass = classifyGoogleMilitaryPlace(place);
           const signature = `${String(place.name).toLowerCase()}|${place.latitude.toFixed(3)}|${place.longitude.toFixed(3)}`;
           if (seen.has(signature)) continue;
@@ -488,7 +600,10 @@ async function loadInstallations() {
           const retrievedAt = new Date().toISOString();
           records.push({
             id: `google:${place.id}`,
-            kind: placeClass === 'military_land' ? 'installation' : 'place_candidate',
+            kind:
+              placeClass === 'military_land'
+                ? 'installation'
+                : 'place_candidate',
             class: placeClass,
             name: String(place.name).trim(),
             latitude: place.latitude,
@@ -496,7 +611,9 @@ async function loadInstallations() {
             footprint: null,
             primaryType: place.primaryType || null,
             placeTypes: Array.isArray(place.types) ? place.types : [],
-            sources: [{ name: 'Google Maps Places', id: place.id, retrievedAt }],
+            sources: [
+              { name: 'Google Maps Places', id: place.id, retrievedAt },
+            ],
             validation: 'unreviewed',
             retrievedAt,
           });
@@ -506,13 +623,22 @@ async function loadInstallations() {
         placesError = 'Google Places search unavailable; showing mapped sites';
       }
     }
-    await resolveGroundFloorCellsBounded(records.map((record) => ({
-      lat: record.latitude,
-      lon: record.longitude,
-    })));
-    if (requestAbort.signal.aborted || state.abort !== requestAbort || !state.enabled) return;
+    await resolveGroundFloorCellsBounded(
+      records.map((record) => ({
+        lat: record.latitude,
+        lon: record.longitude,
+      })),
+    );
+    if (
+      requestAbort.signal.aborted ||
+      state.abort !== requestAbort ||
+      !state.enabled
+    )
+      return;
     state.records = records;
-    state.recordById = new Map(state.records.map((record) => [record.id, record]));
+    state.recordById = new Map(
+      state.records.map((record) => [record.id, record]),
+    );
     state.lastUpdate = Date.now();
     state.stale = payload.status === 'stale';
     // Even the exact-viewport retry can saturate in a dense area. Say so rather
@@ -524,14 +650,19 @@ async function loadInstallations() {
       state.records.length ? (state.stale ? 'stale' : 'ready') : 'empty',
       payload.status === 'stale'
         ? 'Serving cached mapped context'
-        : (saturated ? 'Too many mapped sites in view to list them all' : placesError),
+        : saturated
+          ? 'Too many mapped sites in view to list them all'
+          : placesError,
     );
     renderRecords();
     warmInstallationFloors(state.records);
   } catch (error) {
     if (error?.name === 'AbortError') return;
     state.failureReason = error?.failureReason || 'unavailable';
-    setInstallationStatus('unavailable', error?.message || 'Installation context unavailable');
+    setInstallationStatus(
+      'unavailable',
+      error?.message || 'Installation context unavailable',
+    );
     scheduleUnavailableRetry();
   } finally {
     // An older aborted request must not clear a newer request's busy state.
@@ -577,7 +708,9 @@ const militaryInstallationsLayer = {
     state.failureReason = null;
     setInstallationStatus('idle');
   },
-  update() { return loadInstallations(); },
+  update() {
+    return loadInstallations();
+  },
   /** Request a one-shot Google Maps Places search around the current map view. */
   searchNearby() {
     state.googleSearchRequested = true;
@@ -589,7 +722,8 @@ const militaryInstallationsLayer = {
     state.clickHandler?.destroy();
     state.clickHandler = null;
     clearRendered();
-    if (state.dataSource && viewer) viewer.dataSources.remove(state.dataSource, true);
+    if (state.dataSource && viewer)
+      viewer.dataSources.remove(state.dataSource, true);
     state.dataSource = null;
   },
   getNearby(center, rangeM, maxCount = 50) {
@@ -603,18 +737,26 @@ const militaryInstallationsLayer = {
       : Infinity;
     for (const record of state.records) {
       if (record.kind !== 'installation') continue;
-      if (approximateSurfaceDistanceM(
-        centerCartographic.latitude,
-        centerCartographic.longitude,
-        record.latitude,
-        record.longitude,
-      ) > approximateLimit) continue;
+      if (
+        approximateSurfaceDistanceM(
+          centerCartographic.latitude,
+          centerCartographic.longitude,
+          record.latitude,
+          record.longitude,
+        ) > approximateLimit
+      )
+        continue;
       // The awareness disk is projected onto the ground. Confirm candidates
       // with an exact ellipsoidal surface distance and reusable scratch state.
-      distanceEndpointScratch.longitude = Cesium.Math.toRadians(record.longitude);
+      distanceEndpointScratch.longitude = Cesium.Math.toRadians(
+        record.longitude,
+      );
       distanceEndpointScratch.latitude = Cesium.Math.toRadians(record.latitude);
       distanceEndpointScratch.height = 0;
-      distanceGeodesicScratch.setEndPoints(centerCartographic, distanceEndpointScratch);
+      distanceGeodesicScratch.setEndPoints(
+        centerCartographic,
+        distanceEndpointScratch,
+      );
       const distanceM = distanceGeodesicScratch.surfaceDistance;
       if (!Number.isFinite(distanceM) || distanceM > range) continue;
       nearby.push({
@@ -628,7 +770,10 @@ const militaryInstallationsLayer = {
       });
     }
     nearby.sort((a, b) => a.distanceM - b.distanceM);
-    return nearby.slice(0, Number.isFinite(maxCount) ? Math.max(1, Math.floor(maxCount)) : 50);
+    return nearby.slice(
+      0,
+      Number.isFinite(maxCount) ? Math.max(1, Math.floor(maxCount)) : 50,
+    );
   },
   /**
    * Select and frame a mapped installation from another contextual UI.
@@ -666,7 +811,10 @@ const militaryInstallationsLayer = {
       retryAt: state.retryAt,
       retrying: state.loading && Boolean(state.failureReason),
       failureReason: state.failureReason,
-      statusMessage: installationFeedback({ ...state, retrying: state.loading && Boolean(state.failureReason) }),
+      statusMessage: installationFeedback({
+        ...state,
+        retrying: state.loading && Boolean(state.failureReason),
+      }),
       loadingLabel: state.loading ? 'loading mapped installation context' : '',
     };
   },
