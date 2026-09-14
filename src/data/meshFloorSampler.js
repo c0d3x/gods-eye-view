@@ -20,7 +20,6 @@
 // the mesh legitimately sits ABOVE bare earth, so the window is asymmetric.
 import * as Cesium from 'cesium';
 import {
-  cachedGroundFloor,
   cachedMeshFloor,
   coarseFloorCoord,
   meshFloorPreferred,
@@ -180,5 +179,3 @@ export function sampleMeshFloorCells(
     reportValidatedMeshFloorCell(cell.lat, cell.lon, height);
   }
 }
-
-export { cachedGroundFloor }; // re-export for callers that want one import site

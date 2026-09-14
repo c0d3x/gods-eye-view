@@ -11,7 +11,7 @@
 export const BLOOM_SCALE_VERSION = 2;
 
 /** Maximum bloom intensity on the v2 scale. */
-export const BLOOM_INTENSITY_MAX = 200;
+const BLOOM_INTENSITY_MAX = 200;
 
 /** Default bloom intensity (off). */
 export const BLOOM_INTENSITY_DEFAULT = 0;
@@ -42,7 +42,7 @@ export function clampBloomIntensity(value) {
  * @param {number} value — legacy v1 intensity
  * @returns {number} equivalent v2 intensity
  */
-export function legacyBloomToV2(value) {
+function legacyBloomToV2(value) {
   const legacy = clamp(
     Math.round(Number(value) || 0),
     0,

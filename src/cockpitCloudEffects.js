@@ -186,7 +186,7 @@ export function cockpitWeatherEnabledFromStoredValue(value) {
  * Weather-backed volumetric cloud pass that exists only while cockpit mode is
  * active. It owns no Cesium fog/post-process stages and cannot affect map mode.
  */
-export class CockpitCloudEffectsController {
+class CockpitCloudEffectsController {
   constructor(viewer) {
     this.viewer = viewer;
     this.canvas = document.createElement('canvas');

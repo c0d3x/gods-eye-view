@@ -32,8 +32,8 @@ import {
  *  billboard/waypoint sits ON the surface instead of z-fighting it. */
 export const GROUND_FLOOR_LIFT_M = 1.5;
 /** Accepted rendered-mesh window around a real ellipsoidal DEM prior. */
-export const MESH_FLOOR_BELOW_PRIOR_M = 15;
-export const MESH_FLOOR_ABOVE_PRIOR_M = 80;
+const MESH_FLOOR_BELOW_PRIOR_M = 15;
+const MESH_FLOOR_ABOVE_PRIOR_M = 80;
 
 /**
  * Snaps a coordinate to the coarse (3-decimal, ~111 m) floor grid.
@@ -102,13 +102,13 @@ export function displayFloorHeightM(
 
 /** @constant {number} Pitch of the coarse floor grid in degrees — the spacing
  *  `coarseFloorCoord` rounds to, and therefore the step between adjacent cells. */
-export const FLOOR_CELL_DEG = 0.001;
+const FLOOR_CELL_DEG = 0.001;
 
 /** @constant {number} Resolved neighbours required before one may be borrowed.
  *  A single reading cannot be checked against anything: a hangar roof and an
  *  apron are both "a warm cell 111 m away", and there is no way to tell them
  *  apart from one number. Two readings at least agree or disagree. */
-export const NEIGHBOR_FLOOR_MIN_SAMPLES = 2;
+const NEIGHBOR_FLOOR_MIN_SAMPLES = 2;
 
 /**
  * A floor for `cell` borrowed from the eight cells ADJACENT to it.
@@ -185,7 +185,7 @@ export const CORRIDOR_WALK_STEP_DEG = 0.000125;
  *  to adopt the next one (~22 m). A dead-reckoned position that jitters across
  *  a 0.001° edge would otherwise alternate floors at fleet-tick rate and pop
  *  the sprite between two heights. */
-export const CELL_HYSTERESIS_DEG = 0.0002;
+const CELL_HYSTERESIS_DEG = 0.0002;
 
 /**
  * The floor cell a contact should read, with boundary hysteresis.

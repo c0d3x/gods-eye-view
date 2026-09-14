@@ -35,7 +35,7 @@ function bearingRad(lat1, lon1, lat2, lon2) {
 }
 
 /** Signed cross-track distance (km) of point from the great circle p1→p2. */
-export function crossTrackKm(lat, lon, lat1, lon1, lat2, lon2) {
+function crossTrackKm(lat, lon, lat1, lon1, lat2, lon2) {
   const d13 = greatCircleKm(lat1, lon1, lat, lon) / R_KM;
   const b13 = bearingRad(lat1, lon1, lat, lon);
   const b12 = bearingRad(lat1, lon1, lat2, lon2);

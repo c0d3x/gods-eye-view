@@ -77,7 +77,7 @@ export function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 /** One filter: {field, op:'gt'|'lt'|'gte'|'lte'|'eq'|'neq'|'contains', value}. */
-export function applyFilter(records, filter) {
+function applyFilter(records, filter) {
   const { field, op, value } = filter || {};
   if (!field || !op) return records;
   return records.filter((r) => {

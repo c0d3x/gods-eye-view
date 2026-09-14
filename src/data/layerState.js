@@ -4,7 +4,7 @@ const VALID_DISPOSITIONS = new Set([
   'enabled+mirrored-options',
 ]);
 
-export const LAYER_STATE_VERSION = 2;
+const LAYER_STATE_VERSION = 2;
 /** Re-check cadence while a shared subject waits for its feed row to arrive. */
 const PENDING_TRACKING_POLL_MS = 1_000;
 /**
@@ -25,7 +25,7 @@ const TRACKING_ID_GRAMMAR = /^[0-9a-z~_-]{1,16}$/;
 const MAX_ENABLED_LAYERS_CHARS = 64;
 const MAX_LAYER_OPTIONS_CHARS = 512;
 export const LAYER_STATE_STORAGE_KEY = 'gev:layer-state:v2';
-export const LAYER_RESTORE_ORIGINS = Object.freeze({
+const LAYER_RESTORE_ORIGINS = Object.freeze({
   share: 'share-restore',
   local: 'local-restore',
 });
@@ -485,7 +485,7 @@ export function normalizeLayerState(candidate) {
   };
 }
 
-export function cloneLayerState(state) {
+function cloneLayerState(state) {
   const normalized = normalizeLayerState(state);
   return {
     ...normalized,
@@ -605,7 +605,7 @@ export function parseStoredLayerState(raw) {
 }
 
 /** Return sanitized options to apply to one registered module. */
-export function layerOptionsForRestore(state, layerId) {
+function layerOptionsForRestore(state, layerId) {
   const entry = REGISTRY_BY_ID.get(layerId);
   if (!entry?.optionOwner) return null;
   return { ...normalizeLayerState(state).options[entry.optionOwner] };

@@ -19,7 +19,7 @@ const BODYLESS_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
  * Routes that accept a form-encoded body. The Overpass proxy mirrors the
  * Overpass API, whose clients post `data=<query>` as a form.
  */
-export const FORM_ENCODED_API_PATHS = Object.freeze(['/api/overpass']);
+const FORM_ENCODED_API_PATHS = Object.freeze(['/api/overpass']);
 
 const REFUSAL_LOG_INTERVAL_MS = 60_000;
 const REFUSAL_LOG_MAX_ROUTES = 100;

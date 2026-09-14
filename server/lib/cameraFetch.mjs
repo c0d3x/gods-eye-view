@@ -10,7 +10,7 @@ import { raceAbort } from './fetchWithTimeout.mjs';
 import { requestPinned, resolvePublicAddresses } from './publicAddress.mjs';
 
 /** Redirects followed before giving up. */
-export const CAMERA_MAX_REDIRECTS = 3;
+const CAMERA_MAX_REDIRECTS = 3;
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 

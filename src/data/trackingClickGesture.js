@@ -1,7 +1,7 @@
 import * as Cesium from 'cesium';
 
-export const MAX_TRACKING_CLICK_TRAVEL_PX = 6;
-export const MAX_TRACKING_CLICK_DURATION_MS = 400;
+const MAX_TRACKING_CLICK_TRAVEL_PX = 6;
+const MAX_TRACKING_CLICK_DURATION_MS = 400;
 
 /**
  * Decide whether a completed press stayed spatially click-like. Duration is

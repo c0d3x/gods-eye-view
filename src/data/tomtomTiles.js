@@ -14,9 +14,9 @@
  */
 
 /** @const {number} Min supported TomTom flow-tile zoom (proxy validation). */
-export const MIN_TILE_ZOOM = 8;
+const MIN_TILE_ZOOM = 8;
 /** @const {number} Max supported TomTom flow-tile zoom (proxy validation). */
-export const MAX_TILE_ZOOM = 16;
+const MAX_TILE_ZOOM = 16;
 /** @const {number} Web Mercator latitude limit (degrees). */
 const MERCATOR_LAT_LIMIT = 85.05112878;
 

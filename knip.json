@@ -1,0 +1,20 @@
+{
+  "entry": [
+    "src/**/*.worker.mjs",
+    "scripts/*.mjs",
+    "tools/*.mjs",
+    "pinokio/*.js",
+    "**/*.test.mjs"
+  ],
+  "project": [
+    "*.js",
+    "src/**/*.{js,mjs}",
+    "server/**/*.mjs",
+    "scripts/**/*.mjs",
+    "tools/**/*.mjs",
+    "pinokio/**/*.js"
+  ],
+  "paths": {
+    "/src/*": ["./src/*"]
+  }
+}

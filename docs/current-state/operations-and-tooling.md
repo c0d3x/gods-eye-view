@@ -154,6 +154,9 @@ of staged files.
 `pnpm run typecheck` runs `tsc --noEmit` with `jsconfig.json` over the files
 that opt in with `// @ts-check`: the package boundaries and the shared context
 store. `checkJs` stays off, so other files are parsed but not checked.
+`pnpm run knip` follows the imports from the app entry, the overlay worker,
+the scripts, tools, Pinokio launchers and tests (`knip.json`) and fails on
+files, exports and dependencies nothing uses. CI runs both checks on Linux.
 `pnpm run check:boundaries` checks the browser dependency graph of all current
 package exports; infrastructure owns its three implementation modules and takes
 Cesium from the consumer. CI runs these checks on Linux and Windows. The

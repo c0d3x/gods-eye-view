@@ -10,6 +10,10 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Added
 
+- `pnpm run knip` finds files, exports and dependencies that nothing uses, and
+  CI runs it. Its first pass found 63 exports nothing imported: ten were dead
+  code and are gone, and the rest are now private to their modules.
+
 - `pnpm run typecheck` runs TypeScript over the JSDoc types of the files that
   opt in with `// @ts-check`, for now the package boundaries and the shared
   context store, and CI runs it. The data layer contract and the context store

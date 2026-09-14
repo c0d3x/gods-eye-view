@@ -6,7 +6,7 @@
  */
 
 /** Default deadline for one call, body included. */
-export const DEFAULT_FETCH_TIMEOUT_MS = 15_000;
+const DEFAULT_FETCH_TIMEOUT_MS = 15_000;
 
 /**
  * fetch() with a deadline and an ok check; returns the Response.

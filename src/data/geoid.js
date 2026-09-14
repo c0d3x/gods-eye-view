@@ -103,7 +103,7 @@ export function isGeoidReady() {
  * How long a warm-up waits for an idle moment before loading the grid anyway,
  * so a page that is never idle still gets it.
  */
-export const GEOID_IDLE_TIMEOUT_MS = 5000;
+const GEOID_IDLE_TIMEOUT_MS = 5000;
 
 /**
  * Like ensureGeoidReady(), but starts the 0.9 MB download only once the page

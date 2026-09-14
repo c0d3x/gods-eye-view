@@ -25,7 +25,7 @@ import * as Cesium from 'cesium';
  * follows DATA_SOURCES.md (live sources, then bundled snapshots).
  * @type {{ key: string, html: string }[]}
  */
-export const DATA_CREDITS = [
+const DATA_CREDITS = [
   // ── Live sources ────────────────────────────────────────────────
   {
     key: 'opensky',
