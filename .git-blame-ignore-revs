@@ -10,3 +10,6 @@
 
 # Format pinokio/ and tools/ with Biome
 a5da6e4b8d949ea77db98473a39176af258e4076
+
+# Format src/overlays with Biome
+520ded27710596b04a6585e90a791dec0de6274c

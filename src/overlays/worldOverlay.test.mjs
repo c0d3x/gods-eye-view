@@ -1,6 +1,6 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import test from 'node:test';
 import * as Cesium from 'cesium';
 import {
   getKeyholeGeometry,
@@ -11,11 +11,8 @@ import {
   createCctvThumbnailOverlayEntry,
   createFrameSlot,
 } from '../data/cctvCards.js';
-import { combinedOverlayAlpha } from './worldOverlayDraw.js';
 import {
   AMBIENT_CARD_COLLISION_CAPACITY,
-  WORLD_OVERLAY_OCCLUDER_SELECTORS,
-  WORLD_OVERLAY_PAINT_LANES,
   clearOverlaySource,
   destroyWorldOverlay,
   getOverlayPaintRect,
@@ -31,7 +28,10 @@ import {
   setOverlayEntries,
   setOverlaySourceVisible,
   upsertOverlayEntry,
+  WORLD_OVERLAY_OCCLUDER_SELECTORS,
+  WORLD_OVERLAY_PAINT_LANES,
 } from './worldOverlay.js';
+import { combinedOverlayAlpha } from './worldOverlayDraw.js';
 
 class MockEvent {
   constructor() {
@@ -587,7 +587,7 @@ test('lifecycle is idempotent and teardown removes listeners, observers, and DOM
   );
   assert.match(
     readFileSync(new URL('../../style.css', import.meta.url), 'utf8'),
-    /#world-overlay-detection-surface,\n#world-overlay-canvas \{\n  position: absolute;\n  inset: 0;[\s\S]*?pointer-events: none;/,
+    /#world-overlay-detection-surface,\n#world-overlay-canvas \{\n {2}position: absolute;\n {2}inset: 0;[\s\S]*?pointer-events: none;/,
     'both host surfaces share absolute positioning and pointer passthrough',
   );
 

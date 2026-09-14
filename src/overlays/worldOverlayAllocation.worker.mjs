@@ -1,63 +1,42 @@
 import * as Cesium from 'cesium';
 import {
-  AMBIENT_CARD_COLLISION_CAPACITY,
-  destroyWorldOverlay,
-  getWorldOverlayDiagnostics,
-  initWorldOverlay,
-  setOverlayEntries,
-} from './worldOverlay.js';
-import {
-  LOCAL_OVERLAY_COHORT_LIMIT,
-  createLocalInfrastructureOverlayEntry,
-} from '../data/localGeojson.js';
-import {
-  FIRMS_AMBIENT_COHORT_LIMIT,
-  FIRMS_OVERLAY_SOURCE_ID,
-} from '../data/firmsLabels.js';
-import { applyFirmsOverlayPolicy } from '../data/firmsHeatmap.js';
-import {
-  applyVesselOverlayPolicy,
-  VESSEL_OVERLAY_SOURCE_ID,
-  vesselOverlayCohortLimit,
-} from '../data/vesselLabels.js';
-import {
-  createTrackedOverlayEntry,
-  TRACKED_OVERLAY_SOURCE_ID,
-  TRACKED_OVERLAY_SOURCE_OPTIONS,
-} from '../data/trackedReadout.js';
-import { CCTV_AMBIENT_CARD_MAX } from '../data/cctvLod.js';
-import {
-  CCTV_OVERLAY_SOURCE_ID,
-  createCctvThumbnailOverlayEntry,
-  createFrameSlot,
-} from '../data/cctvCards.js';
-import {
-  EARTHQUAKE_OVERLAY_COHORT_LIMIT,
-  EARTHQUAKE_OVERLAY_COLLISION_CAPACITY,
-  EARTHQUAKE_OVERLAY_SOURCE_ID,
-  createEarthquakeOverlayEntry,
-} from '../data/earthquakes.js';
-import {
   BIKESHARE_SELECTED_OVERLAY_SOURCE_ID,
   BIKESHARE_SELECTED_OVERLAY_SOURCE_OPTIONS,
   createBikeshareSelectedOverlayEntry,
 } from '../data/bikeshare.js';
-import {
-  ISS_OVERLAY_SOURCE_ID,
-  ISS_OVERLAY_SOURCE_OPTIONS,
-  createIssOverlayEntry,
-} from '../data/satellites.js';
 import {
   CCTV_PROJECTION_OVERLAY_SOURCE_ID,
   CCTV_PROJECTION_OVERLAY_SOURCE_OPTIONS,
   createCctvProjectionOverlayEntry,
 } from '../data/cctv.js';
 import {
-  createRocketMissionMarkerOverlayEntry,
-  ROCKET_MISSION_AMBIENT_OVERLAY_COHORT_LIMIT,
-  ROCKET_MISSION_AMBIENT_OVERLAY_COLLISION_CAPACITY,
-  ROCKET_MISSION_AMBIENT_OVERLAY_SOURCE_ID,
-} from '../data/rocketLaunches.js';
+  CCTV_OVERLAY_SOURCE_ID,
+  createCctvThumbnailOverlayEntry,
+  createFrameSlot,
+} from '../data/cctvCards.js';
+import { CCTV_AMBIENT_CARD_MAX } from '../data/cctvLod.js';
+import {
+  destroyDetection,
+  getDetectionDiagnostics,
+  initDetection,
+  setMode as setDetectionMode,
+  setDetectionTuning,
+} from '../data/detection.js';
+import {
+  createEarthquakeOverlayEntry,
+  EARTHQUAKE_OVERLAY_COHORT_LIMIT,
+  EARTHQUAKE_OVERLAY_COLLISION_CAPACITY,
+  EARTHQUAKE_OVERLAY_SOURCE_ID,
+} from '../data/earthquakes.js';
+import { applyFirmsOverlayPolicy } from '../data/firmsHeatmap.js';
+import {
+  FIRMS_AMBIENT_COHORT_LIMIT,
+  FIRMS_OVERLAY_SOURCE_ID,
+} from '../data/firmsLabels.js';
+import {
+  createLocalInfrastructureOverlayEntry,
+  LOCAL_OVERLAY_COHORT_LIMIT,
+} from '../data/localGeojson.js';
 import {
   createRadioClusterOverlayEntry,
   createRadioSelectedOverlayEntry,
@@ -66,18 +45,39 @@ import {
   RADIO_OVERLAY_SOURCE_OPTIONS,
 } from '../data/radio.js';
 import {
+  createRocketMissionMarkerOverlayEntry,
+  ROCKET_MISSION_AMBIENT_OVERLAY_COHORT_LIMIT,
+  ROCKET_MISSION_AMBIENT_OVERLAY_COLLISION_CAPACITY,
+  ROCKET_MISSION_AMBIENT_OVERLAY_SOURCE_ID,
+} from '../data/rocketLaunches.js';
+import {
+  createIssOverlayEntry,
+  ISS_OVERLAY_SOURCE_ID,
+  ISS_OVERLAY_SOURCE_OPTIONS,
+} from '../data/satellites.js';
+import {
   CABLE_OVERLAY_COLLISION_CAPACITY,
   CABLE_OVERLAY_SOURCE_ID,
   CABLE_REFERENCE_LABEL_WINNER_CAP,
   createCableOverlayEntry,
 } from '../data/telegeographySubmarineCables.js';
 import {
-  destroyDetection,
-  getDetectionDiagnostics,
-  initDetection,
-  setDetectionTuning,
-  setMode as setDetectionMode,
-} from '../data/detection.js';
+  createTrackedOverlayEntry,
+  TRACKED_OVERLAY_SOURCE_ID,
+  TRACKED_OVERLAY_SOURCE_OPTIONS,
+} from '../data/trackedReadout.js';
+import {
+  applyVesselOverlayPolicy,
+  VESSEL_OVERLAY_SOURCE_ID,
+  vesselOverlayCohortLimit,
+} from '../data/vesselLabels.js';
+import {
+  AMBIENT_CARD_COLLISION_CAPACITY,
+  destroyWorldOverlay,
+  getWorldOverlayDiagnostics,
+  initWorldOverlay,
+  setOverlayEntries,
+} from './worldOverlay.js';
 
 /**
  * @module worldOverlayAllocation.worker

@@ -1,13 +1,17 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
+import {
+  createCctvThumbnailOverlayEntry,
+  createFrameSlot,
+} from '../data/cctvCards.js';
 import {
   altitudeFade,
   altitudeScale,
   clearWorldOverlayTextMeasureCache,
   combinedOverlayAlpha,
+  destroyWorldOverlayDraw,
   distanceFade,
   distanceScale,
-  destroyWorldOverlayDraw,
   getWorldOverlayTextMeasureCacheSize,
   installWorldOverlayFontInvalidation,
   measureOverlayEntry,
@@ -23,10 +27,6 @@ import {
   placementVariants,
   roundedRectPath,
 } from './worldOverlayDraw.js';
-import {
-  createCctvThumbnailOverlayEntry,
-  createFrameSlot,
-} from '../data/cctvCards.js';
 import {
   CARD_PLATE_ALPHA,
   DETECTION_PLATE_BAND,

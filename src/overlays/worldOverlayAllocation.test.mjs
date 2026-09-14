@@ -1,17 +1,17 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { LOCAL_OVERLAY_COHORT_LIMIT } from '../data/localGeojson.js';
-import { FIRMS_AMBIENT_COHORT_LIMIT } from '../data/firmsLabels.js';
-import { vesselOverlayCohortLimit } from '../data/vesselLabels.js';
-import { CCTV_AMBIENT_CARD_MAX } from '../data/cctvLod.js';
-import { AMBIENT_CARD_COLLISION_CAPACITY } from './worldOverlay.js';
-import { EARTHQUAKE_OVERLAY_COHORT_LIMIT } from '../data/earthquakes.js';
-import { ROCKET_MISSION_AMBIENT_OVERLAY_COHORT_LIMIT } from '../data/rocketLaunches.js';
-import { RADIO_OVERLAY_COHORT_LIMIT } from '../data/radio.js';
-import { CABLE_REFERENCE_LABEL_WINNER_CAP } from '../data/telegeographySubmarineCables.js';
 import { isCalibratedAllocationRuntime } from '../../scripts/run-unit-tests.mjs';
+import { CCTV_AMBIENT_CARD_MAX } from '../data/cctvLod.js';
+import { EARTHQUAKE_OVERLAY_COHORT_LIMIT } from '../data/earthquakes.js';
+import { FIRMS_AMBIENT_COHORT_LIMIT } from '../data/firmsLabels.js';
+import { LOCAL_OVERLAY_COHORT_LIMIT } from '../data/localGeojson.js';
+import { RADIO_OVERLAY_COHORT_LIMIT } from '../data/radio.js';
+import { ROCKET_MISSION_AMBIENT_OVERLAY_COHORT_LIMIT } from '../data/rocketLaunches.js';
+import { CABLE_REFERENCE_LABEL_WINNER_CAP } from '../data/telegeographySubmarineCables.js';
+import { vesselOverlayCohortLimit } from '../data/vesselLabels.js';
+import { AMBIENT_CARD_COLLISION_CAPACITY } from './worldOverlay.js';
 
 /**
  * Phase-2 entry gate: a steady moving-source frame must not allocate in

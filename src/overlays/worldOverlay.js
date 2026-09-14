@@ -5,7 +5,7 @@ import {
   keyholeLabelAlphaFromGeometry,
 } from '../celestialRing.js';
 import { BoundedCohort, stableIdentityHash } from '../data/detectionCohort.js';
-import { LabelArbiter, LABEL_ARBITER_TIMING } from '../data/labelArbiter.js';
+import { LABEL_ARBITER_TIMING, LabelArbiter } from '../data/labelArbiter.js';
 import {
   altitudeFade,
   destroyWorldOverlayDraw,
@@ -336,7 +336,7 @@ function sortPooledRange(items, count, compare) {
 }
 
 /** Map#forEach callback that zeroes a demand tally without clearing the map. */
-function zeroDemandEntry(value, key, map) {
+function zeroDemandEntry(_value, key, map) {
   map.set(key, 0);
 }
 
@@ -589,7 +589,7 @@ export function normalizeOverlayEntry(sourceId, entry) {
   normalized._overlayImageSlot =
     normalized.requireImage &&
     normalized.image &&
-    Object.prototype.hasOwnProperty.call(normalized.image, 'frame')
+    Object.hasOwn(normalized.image, 'frame')
       ? normalized.image
       : null;
   normalized._overlayLayout = {};
@@ -1386,7 +1386,8 @@ function occluderStacksAboveHost(element) {
 /** Append one inflated, canvas-relative exclusion rectangle from the pool. */
 function pushUiOcclusionRect(rect, canvasRect, hard = false) {
   const index = _uiOcclusionRects.length;
-  const out = _uiOcclusionRectPool[index] || (_uiOcclusionRectPool[index] = {});
+  _uiOcclusionRectPool[index] ||= {};
+  const out = _uiOcclusionRectPool[index];
   // `hard` rects veto a placement outright; soft rects are only preferred against.
   out.hard = hard;
   out.x = rect.left - canvasRect.left - OCCLUDER_PADDING_PX;
@@ -2150,8 +2151,8 @@ function collectFrameCandidates(keyhole, viewProjection) {
 
 function addPaintItem(record, placement, temporalAlpha, selected) {
   if (!record || !placement) return;
-  const item =
-    _paintItemPool[_paintCount] || (_paintItemPool[_paintCount] = {});
+  _paintItemPool[_paintCount] ||= {};
+  const item = _paintItemPool[_paintCount];
   item.record = record;
   item.placement = placement;
   item.temporalAlpha = temporalAlpha;
@@ -2238,8 +2239,8 @@ function solveDomains(timestamp) {
 
 function publishPaintRect(item) {
   const { record, placement } = item;
-  const rect =
-    _paintRectPool[_paintRectCount] || (_paintRectPool[_paintRectCount] = {});
+  _paintRectPool[_paintRectCount] ||= {};
+  const rect = _paintRectPool[_paintRectCount];
   _paintRectCount++;
   rect.x = placement.rect.x;
   rect.y = placement.rect.y;

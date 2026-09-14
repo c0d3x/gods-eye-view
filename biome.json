@@ -191,7 +191,14 @@
       "tools/pano-pinhole.mjs",
       "tools/sat-ortho.mjs",
       "tools/streetview-headings.mjs",
-      "tools/streetview-panorama.mjs"
+      "tools/streetview-panorama.mjs",
+      "src/overlays/worldOverlay.js",
+      "src/overlays/worldOverlay.test.mjs",
+      "src/overlays/worldOverlayAllocation.test.mjs",
+      "src/overlays/worldOverlayAllocation.worker.mjs",
+      "src/overlays/worldOverlayDraw.js",
+      "src/overlays/worldOverlayDraw.test.mjs",
+      "src/overlays/worldOverlayTokens.js"
     ]
   },
   "formatter": {
