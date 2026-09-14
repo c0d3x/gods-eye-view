@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+} from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -17,7 +24,9 @@ export function isCalibratedAllocationRuntime(version = process.versions.node) {
 /** Require the runtime on which allocation budgets were calibrated. */
 export function assertNode24AllocationRuntime(version = process.versions.node) {
   if (!isCalibratedAllocationRuntime(version)) {
-    throw new Error(`Allocation budgets require the calibrated Node 24 runtime; received ${version}`);
+    throw new Error(
+      `Allocation budgets require the calibrated Node 24 runtime; received ${version}`,
+    );
   }
   return version;
 }
@@ -67,9 +76,13 @@ export function discoverUnitTestFiles(root = process.cwd()) {
 /** Partition ordinary parallel tests from the two GC-bracketed probes. */
 export function buildUnitTestPlan(files) {
   const known = new Set(files);
-  const missingAllocationTests = ALLOCATION_TEST_FILES.filter((file) => !known.has(file));
+  const missingAllocationTests = ALLOCATION_TEST_FILES.filter(
+    (file) => !known.has(file),
+  );
   if (missingAllocationTests.length) {
-    throw new Error(`Missing allocation microbenchmarks: ${missingAllocationTests.join(', ')}`);
+    throw new Error(
+      `Missing allocation microbenchmarks: ${missingAllocationTests.join(', ')}`,
+    );
   }
   const allocationSet = new Set(ALLOCATION_TEST_FILES);
   return {
@@ -84,13 +97,20 @@ export function allocationTestArgs(file, { summaryFile } = {}) {
     throw new Error(`Not an allocation microbenchmark: ${file}`);
   }
   return [
-    '--expose-gc', '--test', '--test-concurrency=1', ...unitTestFlags(),
-    ...reporterFlags(summaryFile), file,
+    '--expose-gc',
+    '--test',
+    '--test-concurrency=1',
+    ...unitTestFlags(),
+    ...reporterFlags(summaryFile),
+    file,
   ];
 }
 
 /** The reporter that lists queued tests that never finished. */
-export const UNFINISHED_TESTS_REPORTER = new URL('./lib/unfinishedTestsReporter.mjs', import.meta.url).href;
+export const UNFINISHED_TESTS_REPORTER = new URL(
+  './lib/unfinishedTestsReporter.mjs',
+  import.meta.url,
+).href;
 
 /**
  * Runs node with the arguments `buildArgs(summaryFile)` returns, then fails
@@ -98,7 +118,10 @@ export const UNFINISHED_TESTS_REPORTER = new URL('./lib/unfinishedTestsReporter.
  * whose process stopped early as passing, with only the tests it reached.
  * @returns {{ status: number, unfinished: { file: string, name: string }[] }}
  */
-export function runCheckedTests(buildArgs, { stdio = 'inherit', env = process.env, log = console.error } = {}) {
+export function runCheckedTests(
+  buildArgs,
+  { stdio = 'inherit', env = process.env, log = console.error } = {},
+) {
   const directory = mkdtempSync(path.join(tmpdir(), 'gev-unit-'));
   const summaryFile = path.join(directory, 'unfinished.json');
   try {
@@ -110,10 +133,13 @@ export function runCheckedTests(buildArgs, { stdio = 'inherit', env = process.en
     if (result.error) throw result.error;
     const status = result.status ?? 1;
     // No report means the run itself broke off; its status says how.
-    if (!existsSync(summaryFile)) return { status: status || 1, unfinished: [] };
+    if (!existsSync(summaryFile))
+      return { status: status || 1, unfinished: [] };
     const { unfinished } = JSON.parse(readFileSync(summaryFile, 'utf8'));
     if (unfinished.length === 0) return { status, unfinished };
-    log(`[unit] ${unfinished.length} queued tests never finished; their file's process stopped early:`);
+    log(
+      `[unit] ${unfinished.length} queued tests never finished; their file's process stopped early:`,
+    );
     for (const { file, name } of unfinished.slice(0, 20)) {
       log(`  ${path.relative(process.cwd(), file || '')} :: ${name}`);
     }
@@ -142,7 +168,10 @@ export function reporterFlags(summaryFile, { coverage = false } = {}) {
     '--test-reporter=spec',
     '--test-reporter-destination=stdout',
     ...(coverage
-      ? ['--test-reporter=lcov', `--test-reporter-destination=${COVERAGE_DIRECTORY}/lcov.info`]
+      ? [
+          '--test-reporter=lcov',
+          `--test-reporter-destination=${COVERAGE_DIRECTORY}/lcov.info`,
+        ]
       : []),
     `--test-reporter=${UNFINISHED_TESTS_REPORTER}`,
     `--test-reporter-destination=${summaryFile}`,
@@ -150,7 +179,10 @@ export function reporterFlags(summaryFile, { coverage = false } = {}) {
 }
 
 /** The Node invocation for the parallel tests. */
-export function parallelTestArgs(files, { coverage = false, summaryFile } = {}) {
+export function parallelTestArgs(
+  files,
+  { coverage = false, summaryFile } = {},
+) {
   return [
     '--test',
     ...unitTestFlags(),
@@ -171,9 +203,10 @@ export function parseUnitTestArgs(argv = []) {
   const flags = new Set(argv);
   const coverage = flags.delete('--coverage');
   const modes = [...flags];
-  const mode = modes.length === 0
-    ? { parallel: true, allocations: true }
-    : UNIT_TEST_MODES[modes[0]];
+  const mode =
+    modes.length === 0
+      ? { parallel: true, allocations: true }
+      : UNIT_TEST_MODES[modes[0]];
   const repeated = flags.size + Number(coverage) !== argv.length;
   if (!mode || modes.length > 1 || repeated || (coverage && !mode.parallel)) {
     throw new Error(
@@ -183,11 +216,17 @@ export function parseUnitTestArgs(argv = []) {
   return { ...mode, coverage };
 }
 
-export function runUnitTests({ parallel = true, allocations = true, coverage = false } = {}) {
+export function runUnitTests({
+  parallel = true,
+  allocations = true,
+  coverage = false,
+} = {}) {
   const plan = buildUnitTestPlan(discoverUnitTestFiles());
   if (parallel) {
     if (coverage) mkdirSync(COVERAGE_DIRECTORY, { recursive: true });
-    const { status } = runCheckedTests((summaryFile) => parallelTestArgs(plan.parallel, { coverage, summaryFile }));
+    const { status } = runCheckedTests((summaryFile) =>
+      parallelTestArgs(plan.parallel, { coverage, summaryFile }),
+    );
     if (status !== 0 || !allocations) return status;
   }
 
@@ -201,20 +240,24 @@ export function runUnitTests({ parallel = true, allocations = true, coverage = f
       assertNode24AllocationRuntime();
     }
     console.warn(
-      `[unit] SKIPPED ${ALLOCATION_TEST_FILES.length} allocation microbenchmarks: `
-      + `budgets are calibrated for Node 24, running ${process.versions.node}. `
-      + 'Run under Node 24 (or set GEV_REQUIRE_ALLOCATION_GATE=1 to fail instead).',
+      `[unit] SKIPPED ${ALLOCATION_TEST_FILES.length} allocation microbenchmarks: ` +
+        `budgets are calibrated for Node 24, running ${process.versions.node}. ` +
+        'Run under Node 24 (or set GEV_REQUIRE_ALLOCATION_GATE=1 to fail instead).',
     );
     return 0;
   }
   for (const file of plan.serializedAllocations) {
-    const { status } = runCheckedTests((summaryFile) => allocationTestArgs(file, { summaryFile }));
+    const { status } = runCheckedTests((summaryFile) =>
+      allocationTestArgs(file, { summaryFile }),
+    );
     if (status !== 0) return status;
   }
   return 0;
 }
 
-const invokedPath = process.argv[1] ? pathToFileURL(path.resolve(process.argv[1])).href : '';
+const invokedPath = process.argv[1]
+  ? pathToFileURL(path.resolve(process.argv[1])).href
+  : '';
 if (import.meta.url === invokedPath) {
   let options;
   try {

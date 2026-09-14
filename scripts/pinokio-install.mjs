@@ -4,7 +4,11 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyPinokioEnvironment } from './pinokio-environment.mjs';
-import { formatSetupReport, inspectSetup, pnpmProcessSpec } from './setup-doctor.mjs';
+import {
+  formatSetupReport,
+  inspectSetup,
+  pnpmProcessSpec,
+} from './setup-doctor.mjs';
 
 const MODULE_PATH = fileURLToPath(import.meta.url);
 const ROOT = realpathSync(path.resolve(path.dirname(MODULE_PATH), '..'));
@@ -28,7 +32,9 @@ export async function installPinokioDependencies() {
   applyPinokioEnvironment();
   rmSync(READY_FILE, { force: true });
   const pnpm = pnpmProcessSpec();
-  runChecked(pnpm.command, ['install', '--frozen-lockfile'], { shell: pnpm.shell });
+  runChecked(pnpm.command, ['install', '--frozen-lockfile'], {
+    shell: pnpm.shell,
+  });
 
   // Pinokio starts Vite directly and loads only its ENVIRONMENT file plus the
   // normal dotenv ladder. Unlike dev-fresh.sh, it does not import macOS
@@ -43,9 +49,11 @@ export async function installPinokioDependencies() {
     // the QA scripts.
     developerChecks: false,
   });
-  console.log(`\n${formatSetupReport(report, {
-    readyMessage: 'Ready. Return to Pinokio and choose Start.',
-  })}\n`);
+  console.log(
+    `\n${formatSetupReport(report, {
+      readyMessage: 'Ready. Return to Pinokio and choose Start.',
+    })}\n`,
+  );
   if (!report.ready) process.exit(1);
 
   writeFileSync(READY_FILE, `${new Date().toISOString()}\n`, { mode: 0o600 });
@@ -59,7 +67,10 @@ export function isDirectInvocation(
   if (typeof invokedPath !== 'string' || invokedPath.length === 0) return false;
   if (typeof modulePath !== 'string' || modulePath.length === 0) return false;
   try {
-    return realpathSync(path.resolve(invokedPath)) === realpathSync(path.resolve(modulePath));
+    return (
+      realpathSync(path.resolve(invokedPath)) ===
+      realpathSync(path.resolve(modulePath))
+    );
   } catch {
     return path.resolve(invokedPath) === path.resolve(modulePath);
   }

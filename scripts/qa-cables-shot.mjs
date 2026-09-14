@@ -18,8 +18,11 @@ const browser = await puppeteer.launch({
   headless: 'new',
   protocolTimeout: 300_000,
   args: [
-    '--no-sandbox', '--disable-setuid-sandbox', '--window-size=1440,900',
-    '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding',
+    '--no-sandbox',
+    '--disable-setuid-sandbox',
+    '--window-size=1440,900',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
     '--disable-background-timer-throttling',
   ],
 });
@@ -27,14 +30,20 @@ try {
   const page = await browser.newPage();
   await page.setViewport({ width: 1440, height: 860 });
   await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => !!window.__godsEyeView?.viewer, { timeout: 90_000 });
+  await page.waitForFunction(() => !!window.__godsEyeView?.viewer, {
+    timeout: 90_000,
+  });
   await new Promise((r) => setTimeout(r, 12_000));
   await page.evaluate(async (layerId) => {
     const gev = window.__godsEyeView;
     gev.viewer.camera.cancelFlight();
     for (const [id, entry] of gev.dataManager.layers) {
       if (entry.enabled && id !== layerId) {
-        try { await gev.dataManager.setEnabled(id, false, { origin: 'user' }); } catch { /* shot only */ }
+        try {
+          await gev.dataManager.setEnabled(id, false, { origin: 'user' });
+        } catch {
+          /* shot only */
+        }
       }
     }
     await gev.dataManager.setEnabled(layerId, true, { origin: 'user' });
@@ -50,23 +59,32 @@ try {
       const ell = viewer.scene.globe.ellipsoid;
       viewer.camera.setView({
         destination: ell.cartographicToCartesian({
-          longitude: v.lon * Math.PI / 180, latitude: v.lat * Math.PI / 180, height: v.height,
+          longitude: (v.lon * Math.PI) / 180,
+          latitude: (v.lat * Math.PI) / 180,
+          height: v.height,
         }),
         orientation: { heading: 0, pitch: -Math.PI / 2, roll: 0 },
       });
     }, view);
     // Let the sweep + labels settle with frames flowing.
-    await page.evaluate(() => new Promise((resolve) => {
-      const v = window.__godsEyeView.viewer;
-      let ticks = 0;
-      const tick = () => {
-        v.scene.requestRender?.();
-        if (++ticks < 240) requestAnimationFrame(tick); else resolve();
-      };
-      requestAnimationFrame(tick);
-    }));
+    await page.evaluate(
+      () =>
+        new Promise((resolve) => {
+          const v = window.__godsEyeView.viewer;
+          let ticks = 0;
+          const tick = () => {
+            v.scene.requestRender?.();
+            if (++ticks < 240) requestAnimationFrame(tick);
+            else resolve();
+          };
+          requestAnimationFrame(tick);
+        }),
+    );
     await new Promise((r) => setTimeout(r, 1_000));
-    const path = new URL(`../qa-shots/cables-${tag}-${view.name}.png`, import.meta.url).pathname;
+    const path = new URL(
+      `../qa-shots/cables-${tag}-${view.name}.png`,
+      import.meta.url,
+    ).pathname;
     await page.screenshot({ path });
     console.log(`saved ${path}`);
   }
