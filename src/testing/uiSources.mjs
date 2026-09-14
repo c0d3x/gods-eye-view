@@ -16,6 +16,7 @@ export const UI_SOURCE_FILES = Object.freeze([
   'ui/styleConfig.js',
   'ui/visualStyles.js',
   'ui/detectionControls.js',
+  'ui/cockpitControls.js',
 ]);
 
 /**
