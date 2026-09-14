@@ -81,7 +81,7 @@ transition. The hard-crop (FEATHER 0) path honors the same terminus.
 - Draggable panel positions persist at `godsEyeView.v8.panelPos.<panel-id>` (collapsed states at `godsEyeView.v6.panelCollapsed.<panel-id>`).
 - Startup deletes panel positions saved under an older version (`src/panelLayoutStorage.js`), and the first load that finds any shows a one-time "Panel layout updated" toast. Collapsed states are versioned separately and are kept.
 - Flight/military tracked entities cache dead-reckoned positions per frame to avoid callback desync flicker.
-- Aircraft 3D-model and tracking invariants are covered by `pnpm run test:track`; run this before touching `flights.js`, `militaryFlights.js`, `detection.js`, or `trackedReadout.js`.
+- Aircraft 3D-model and tracking invariants are covered by `pnpm run test:track`; run this before touching `aircraftLayerCore.js`, `flights.js`, `militaryFlights.js`, `detection.js`, or `trackedReadout.js`.
 - Annotation resolver behavior is pinned by `src/annotations/annotationResolver.test.mjs`; re-run that suite before changing place-resolution scoring.
 - Layer input handlers (click + keydown) are detached on disable for flights/military/satellites/AIS vessels.
 - Traffic tile cache is capped and traffic layer supports explicit destroy cleanup.

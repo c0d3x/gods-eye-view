@@ -25,7 +25,12 @@ const TESTS = [
   'src/data/renderAltitude.test.mjs',
 ];
 
-const FLIGHTS = 'src/data/flights.js';
+// The flights layer's code lives in the aircraft layer core, inside
+// createAircraftLayer(); FLIGHTS edits below are written at module level and
+// indented to the factory body when applied.
+const FLIGHTS = 'src/data/aircraftLayerCore.js';
+const FACTORY_INDENT = '  ';
+const atFactoryIndent = (text) => text.replace(/^(?=.)/gm, FACTORY_INDENT);
 const FLOOR = 'src/data/groundFloor.js';
 const ALT = 'src/data/renderAltitude.js';
 
@@ -288,7 +293,10 @@ let allRed = true;
 for (const mut of MUTATIONS) {
   const backups = new Map();
   let applied = true;
-  for (const e of mut.edits) {
+  for (const edit of mut.edits) {
+    const e = edit.file === FLIGHTS
+      ? { ...edit, from: atFactoryIndent(edit.from), to: atFactoryIndent(edit.to) }
+      : edit;
     if (!backups.has(e.file)) backups.set(e.file, read(e.file));
     const cur = read(e.file);
     if (!cur.includes(e.from)) {

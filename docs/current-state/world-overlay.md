@@ -259,7 +259,7 @@ Part of the [runtime reference](../CURRENT-STATE.md): the overlay host and its m
   advances dead reckoning from the host frame.
 - **Aircraft label convention (both flight layers, 2026-08-18):** every civil
   and military label surface resolves **callsign → registration → icao24**
-  (`_contactLabel()` in `flights.js`; the same chain inline in
+  (`_contactLabel()` in `aircraftLayerCore.js`; the same chain inline in
   `militaryFlights.js`) — tracked readout, detection card, `getNearby`,
   `getDetectableObjects`, `getAllPositions().label`, `getTrackedSubject`, the
   analyst record, the Context subject/nearest list, the Cockpit signal list,

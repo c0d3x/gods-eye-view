@@ -15,7 +15,8 @@ const SUBJECT = 'abc123';
 const NEXT_SUBJECT = 'def456';
 
 const UI_SOURCE = readFileSync(new URL('../ui.js', import.meta.url), 'utf8');
-const FLIGHTS_SOURCE = readFileSync(new URL('./flights.js', import.meta.url), 'utf8');
+// The flights layer is built by the aircraft layer core.
+const FLIGHTS_SOURCE = readFileSync(new URL('./aircraftLayerCore.js', import.meta.url), 'utf8');
 const MILITARY_SOURCE = readFileSync(new URL('./militaryFlights.js', import.meta.url), 'utf8');
 
 const LAYERS = [
@@ -100,7 +101,7 @@ test('Cockpit lifecycle publishes one normalized aircraft identity to both detec
     ['commercial', FLIGHTS_SOURCE],
     ['military', MILITARY_SOURCE],
   ]) {
-    const consumer = /function _applyCockpitState\(detail = \{\}\) \{[\s\S]*?\n\}/
+    const consumer = /^( *)function _applyCockpitState\(detail = \{\}\) \{[\s\S]*?\n\1\}/m
       .exec(source)?.[0];
     assert.ok(consumer, `${name} Cockpit consumer is defined`);
     assert.match(consumer, /detail\?\.subjectId/);

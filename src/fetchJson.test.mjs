@@ -85,8 +85,8 @@ function closingQuote(text, open) {
 
 const CLIENT_FILES = [
   'locations.js',
+  'data/aircraftLayerCore.js',
   'data/cctv.js',
-  'data/flights.js',
   'data/radio.js',
   'data/rocketLaunches.js',
   'data/traffic.js',

@@ -368,9 +368,9 @@ function layerConstants(sourceFile) {
 
 function normalBillboardScaleByDistance(sourceFile) {
   const src = fs.readFileSync(path.join(ROOT, sourceFile), 'utf8');
-  const fn = src.match(/function _normalBillboardScaleByDistance\(\) \{([\s\S]*?)\n\}/);
+  const fn = src.match(/^( *)function _normalBillboardScaleByDistance\(\) \{([\s\S]*?)\n\1\}/m);
   assert.ok(fn, `${sourceFile}: _normalBillboardScaleByDistance not found`);
-  const scalar = fn[1].match(/NearFarScalar\((\d+), ([\d.]+), (\d+), ([\d.]+)\)/);
+  const scalar = fn[2].match(/NearFarScalar\((\d+), ([\d.]+), (\d+), ([\d.]+)\)/);
   assert.ok(scalar, `${sourceFile}: billboard NearFarScalar not found`);
   return scalar.slice(1).map(Number);
 }
@@ -378,7 +378,8 @@ function normalBillboardScaleByDistance(sourceFile) {
 const LAYERS = [
   {
     name: 'flights',
-    source: 'src/data/flights.js',
+    // The flights layer is built by the aircraft layer core.
+    source: 'src/data/aircraftLayerCore.js',
     // All classes share one GLB today (see CLASS_MODEL_URL) — assert that, so
     // a real per-class asset drop-in forces this test to grow with it.
     asset: (() => {

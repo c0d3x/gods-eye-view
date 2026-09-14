@@ -26,8 +26,10 @@ function sweepLayerParamKeys() {
     if (!entry.endsWith('.js')) continue;
     const source = fs.readFileSync(new URL(entry, dataDir), 'utf8');
     // Every getParams() in this codebase is a plain object return; take the
-    // body up to its closing brace and read the keys it publishes.
-    const body = source.match(/\n {2}getParams\(\)\s*\{[\s\S]*?\n {2}\},/);
+    // body up to the brace that closes it at the method's own indentation
+    // (two spaces at module level, deeper inside a layer factory) and read
+    // the keys it publishes.
+    const body = source.match(/\n( +)getParams\(\)\s*\{[\s\S]*?\n\1\},/);
     if (!body) continue;
     // A key always follows `{` or `,` — which matches both the multi-line
     // returns and the single-line `return { passive: … }` form, while a

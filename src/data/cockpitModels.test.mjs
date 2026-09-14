@@ -13,7 +13,8 @@ import { readFileSync } from 'node:fs';
  */
 
 const LAYERS = [
-  { name: 'flights', path: new URL('./flights.js', import.meta.url) },
+  // The flights layer is built by the aircraft layer core.
+  { name: 'flights', path: new URL('./aircraftLayerCore.js', import.meta.url) },
   { name: 'militaryFlights', path: new URL('./militaryFlights.js', import.meta.url) },
 ];
 
@@ -22,6 +23,14 @@ function numericConstant(source, name) {
   const match = new RegExp(`const ${name}\\s*=\\s*(\\d+(?:\\.\\d+)?)`).exec(source);
   assert.ok(match, `${name} is declared`);
   return Number(match[1]);
+}
+
+/**
+ * The source of `function name(...) { ... }`, through the brace that closes it
+ * at the declaration's own indentation (module level or inside a factory).
+ */
+function functionSource(source, name) {
+  return new RegExp(`^( *)function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\1\\}`, 'm').exec(source)?.[0];
 }
 
 for (const layer of LAYERS) {
@@ -37,7 +46,7 @@ for (const layer of LAYERS) {
   });
 
   test(`${layer.name}: Cockpit 3D obeys the shared Display toggle`, () => {
-    const regime = /function _modelRegimeActive\(\) \{[\s\S]*?\n\}/.exec(source)?.[0];
+    const regime = functionSource(source, '_modelRegimeActive');
     assert.ok(regime, '_modelRegimeActive is defined');
     assert.match(regime, /if \(!_models3dEnabled\) return false;/,
       'OFF must keep Cockpit AIR contacts in 2D');
@@ -51,11 +60,11 @@ for (const layer of LAYERS) {
     // owns. The tracked regime is DEFAULT-ON by camera distance (2026-08-19), so
     // it no longer routes through the toggle-gated `_modelRegimeActive` — the
     // suppression is now an explicit early return.
-    const regime = /function _trackedModelRegimeActive\(\) \{[\s\S]*?\n\}/.exec(source)?.[0];
+    const regime = functionSource(source, '_trackedModelRegimeActive');
     assert.ok(regime, '_trackedModelRegimeActive is defined');
     assert.match(regime, /if \(!_trackedIcao \|\| _cockpitContactMode \|\|[\s\S]*?return false;/,
       '_trackedModelRegimeActive excludes cockpit');
-    const tracked = /function _updateTrackedModel\(\)[\s\S]*?\n  if \(!active\)/.exec(source)?.[0];
+    const tracked = /function _updateTrackedModel\(\)[\s\S]*?\n\s*if \(!active\)/.exec(source)?.[0];
     assert.ok(tracked, '_updateTrackedModel is defined');
     assert.match(tracked, /_trackedModelRegimeActive\(\)/,
       'the tracked-model driver uses the cockpit-aware predicate');
@@ -68,14 +77,14 @@ for (const layer of LAYERS) {
     assert.equal(numericConstant(source, 'MODEL_ALL_KEEP_M'), 450_000);
     assert.equal(numericConstant(source, 'COCKPIT_MODEL_MAX'), 60);
 
-    const add = /function _modelAddDistM\(\) \{[\s\S]*?\n\}/.exec(source)?.[0];
-    const keep = /function _modelKeepDistM\(\) \{[\s\S]*?\n\}/.exec(source)?.[0];
+    const add = functionSource(source, '_modelAddDistM');
+    const keep = functionSource(source, '_modelKeepDistM');
     assert.match(add, /_models3dMode === 'all' \? MODEL_ALL_ADD_M : MODEL_PROX_ADD_M/);
     assert.match(keep, /_models3dMode === 'all' \? MODEL_ALL_KEEP_M : MODEL_PROX_KEEP_M/);
     assert.doesNotMatch(add, /COCKPIT_MODEL_ADD_M/);
     assert.doesNotMatch(keep, /COCKPIT_MODEL_KEEP_M/);
 
-    const cap = /function _modelCap\(\) \{[\s\S]*?\n\}/.exec(source)?.[0];
+    const cap = functionSource(source, '_modelCap');
     assert.match(cap, /Math\.min\(COCKPIT_MODEL_MAX/,
       'Cockpit keeps its 60-model performance ceiling');
   });
@@ -99,7 +108,7 @@ for (const layer of LAYERS) {
   });
 
   test(`${layer.name}: Cockpit exit clears near state before restoring map presentation`, () => {
-    const setMode = /function _setCockpitContactMode\([\s\S]*?\n\}/.exec(source)?.[0];
+    const setMode = functionSource(source, '_setCockpitContactMode');
     assert.match(setMode, /else _cockpitNearContacts = new Set\(\);/);
     assert.match(setMode, /for \(const \[icao24, bb\] of _billboards\) _applyFleetBillboardPresentation\(icao24, bb\);/);
   });

@@ -1352,7 +1352,7 @@ test('hasContact declines while a layer is disabled, whatever its maps still hol
   // disable() hides the collection but keeps the records, so a map lookup
   // alone would report a preserved subject as FRESH from hidden stale data.
   for (const [name, source, guard] of [
-    ['flights', fs.readFileSync(new URL('./flights.js', import.meta.url), 'utf8'),
+    ['flights', fs.readFileSync(new URL('./aircraftLayerCore.js', import.meta.url), 'utf8'),
       /hasContact\(icao24\) \{\s*\n\s*if \(!_billboardCollection \|\| !_billboardCollection\.show \|\| _billboards\.size === 0\) return null;/],
     ['militaryFlights', fs.readFileSync(new URL('./militaryFlights.js', import.meta.url), 'utf8'),
       /hasContact\(icao24\) \{\s*\n\s*if \(!_billboardCollection \|\| !_billboardCollection\.show \|\| _billboards\.size === 0\) return null;/],
@@ -1527,7 +1527,7 @@ test('a deliberate source clear still fully clears the subject', () => {
 test('production eviction sites actually tag their clears', () => {
   // The event contract above is worthless if the real cull paths never set the
   // origin, so pin the three production call sites.
-  const flightsSource = fs.readFileSync(new URL('./flights.js', import.meta.url), 'utf8');
+  const flightsSource = fs.readFileSync(new URL('./aircraftLayerCore.js', import.meta.url), 'utf8');
   const militarySource = fs.readFileSync(new URL('./militaryFlights.js', import.meta.url), 'utf8');
   const vesselsSource = fs.readFileSync(new URL('./aisLiveVessels.js', import.meta.url), 'utf8');
 
