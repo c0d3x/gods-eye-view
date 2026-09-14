@@ -15,7 +15,7 @@ test('Contacts and Space Missions both participate in the ordinary Tab sequence'
     assert.match(button[0], /tabindex="0"/);
   }
 
-  const sync = ui.match(/_syncContextModeButtons\(\) \{([\s\S]*?)\n  \}\n\n  \/\*\* Wire/);
+  const sync = ui.match(/_syncContextModeButtons\(\) \{([\s\S]*?)\n  \}\n/);
   assert.ok(sync, 'Context mode sync is missing');
   assert.match(sync[1], /\[this\._globalContextFlightsBtn, this\._globalContextMissionsBtn\]/);
   assert.match(sync[1], /button\.tabIndex = 0/);
@@ -23,7 +23,7 @@ test('Contacts and Space Missions both participate in the ordinary Tab sequence'
 });
 
 test('Context transition state preserves focus and Tab availability until settle', () => {
-  const sync = ui.match(/_syncContextModeButtons\(\) \{([\s\S]*?)\n  \}\n\n  \/\*\* Wire/);
+  const sync = ui.match(/_syncContextModeButtons\(\) \{([\s\S]*?)\n  \}\n/);
   assert.ok(sync, 'Context mode sync is missing');
 
   const attributes = () => new Map();

@@ -34,6 +34,7 @@ const FILES = {
   vite: path.join(ROOT, 'vite.config.js'),
   main: path.join(ROOT, 'src', 'main.js'),
   ui: path.join(ROOT, 'src', 'ui.js'),
+  radioPanel: path.join(ROOT, 'src', 'ui', 'radioPanel.js'),
   docs: path.join(ROOT, 'docs', 'current-state', 'first-run-and-sharing.md'),
 };
 
@@ -169,12 +170,13 @@ const MUTATIONS = [
     to: '    /* belt removed */',
   },
   {
-    // Anchored past the call so it cannot land on the cockpit disclosure's own
-    // stopImmediatePropagation() a few lines below and prove nothing about this.
+    // Anchored on the line after the call, which only the radio disclosure has,
+    // so it cannot land on the cockpit disclosure's own stopImmediatePropagation()
+    // a few lines below and prove nothing about this.
     defect: 'the radio disclosure returns to stopPropagation, so one ESC does two things',
-    file: 'ui',
-    from: '      event.stopImmediatePropagation();\n      setRadioDisclosure(false, { returnFocus: true });',
-    to: '      event.stopPropagation();\n      setRadioDisclosure(false, { returnFocus: true });',
+    file: 'radioPanel',
+    from: '      event.stopImmediatePropagation();\n      const escapedFromDisclosure = event.target === this._contextRadioToggleBtn',
+    to: '      event.stopPropagation();\n      const escapedFromDisclosure = event.target === this._contextRadioToggleBtn',
   },
   {
     defect: 'the "no timer" decision is deleted, so the next editor re-litigates it blind',

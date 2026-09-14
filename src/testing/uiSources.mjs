@@ -4,7 +4,11 @@
 import { readFileSync } from 'node:fs';
 
 /** src/ui.js, then each module extracted from it, relative to src/. */
-export const UI_SOURCE_FILES = Object.freeze(['ui.js', 'ui/cockpitView.js']);
+export const UI_SOURCE_FILES = Object.freeze([
+  'ui.js',
+  'ui/cockpitView.js',
+  'ui/radioPanel.js',
+]);
 
 /**
  * The files in UI_SOURCE_FILES, read and joined in that order.
