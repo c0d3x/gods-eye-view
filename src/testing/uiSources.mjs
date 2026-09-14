@@ -12,6 +12,7 @@ export const UI_SOURCE_FILES = Object.freeze([
   'ui/panelLayout.js',
   'ui/panelChrome.js',
   'ui/locationBar.js',
+  'ui/globeNavigation.js',
 ]);
 
 /**

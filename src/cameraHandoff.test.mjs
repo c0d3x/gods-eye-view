@@ -180,7 +180,7 @@ test('accepted navigation releases through PR15-aware ownership before flight', 
   ], 'explicit navigation');
   const release = body(
     ui,
-    /_releaseFollowCamera\(\{[\s\S]*?\} = \{\}\) \{([\s\S]*?)\n  \}/,
+    /\n  _releaseFollowCamera\(\{[\s\S]*?\} = \{\}\) \{([\s\S]*?)\n  \}/,
     'follow release',
   );
   ordered(release, [
