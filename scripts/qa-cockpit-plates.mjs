@@ -189,9 +189,9 @@ function installPaintTap(teeth) {
 
   if (teeth) {
     // Stub the painter: no record, no pixels. This is the negative control.
-    proto.roundRect = function () {};
-    proto.fill = function () {};
-    proto.fillText = function () {};
+    proto.roundRect = () => {};
+    proto.fill = () => {};
+    proto.fillText = () => {};
     return;
   }
 
@@ -479,10 +479,9 @@ async function main() {
           // the painter itself just used.
           const canvas = document.getElementById('world-overlay-canvas');
           const ctx = canvas?.getContext('2d', { willReadFrequently: true });
-          const dpr =
-            canvas && canvas.clientWidth
-              ? canvas.width / canvas.clientWidth
-              : 1;
+          const dpr = canvas?.clientWidth
+            ? canvas.width / canvas.clientWidth
+            : 1;
           for (const entry of byId.values()) {
             entry.meanPixelAlpha = null;
             if (

@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 /**
  * qa-infra-lod — browser checks for the local-infrastructure LOD declutter.
  *
@@ -25,12 +28,9 @@
  * FAIL. Commits nothing.
  */
 import puppeteer from 'puppeteer';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
-  INFRA_LOD_ACTIVE_MIN,
   INFRA_LOD_ACTIVE_MAX,
+  INFRA_LOD_ACTIVE_MIN,
 } from '../src/data/localGeojsonLod.js';
 import { qaUrl } from './lib/qaUrl.mjs';
 

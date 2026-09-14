@@ -33,12 +33,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
 import {
-  classifyAircraft,
+  CLASS_MODEL_REAL,
   CLASS_SCALE_2D,
   CLASS_SCALE_3D,
-  CLASS_MODEL_REAL,
+  classifyAircraft,
 } from '../src/data/aircraftClass.js';
 import { qaUrl } from './lib/qaUrl.mjs';
+
 // Hangar fleet (2026-08-16): real per-class GLBs render at scale 1; military
 // heavies (airliner/quadjet/glider) render airplane.glb at 1 x class; only
 // fastjet/unknown keep the per-layer jet/airplane MODEL_SCALE formula.
@@ -51,6 +52,7 @@ const militaryWantScale = (klass) =>
     : MIL_PLANE_CLASSES.has(klass)
       ? MIL_PLANE_MODEL_SCALE * CLASS_SCALE_3D[klass]
       : MIL_MODEL_SCALE * CLASS_SCALE_3D[klass];
+
 import { aircraftIcon } from '../src/data/aircraftIcons.js';
 
 // ---------------------------------------------------------------------------
@@ -446,8 +448,7 @@ async function main() {
         });
 
       window.fetch = (input, init) => {
-        const url =
-          typeof input === 'string' ? input : (input && input.url) || '';
+        const url = typeof input === 'string' ? input : input?.url || '';
         const S = window.__SPR;
         if (url.includes('/api/openai/hud-summary')) {
           return Promise.resolve(
@@ -528,10 +529,7 @@ async function main() {
     console.log('Loading app...');
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForFunction(
-      () =>
-        window.__godsEyeView &&
-        window.__godsEyeView.viewer &&
-        window.__godsEyeView.dataManager,
+      () => window.__godsEyeView?.viewer && window.__godsEyeView.dataManager,
       { timeout: 60000, polling: 200 },
     );
     console.log('  App globals ready.');
@@ -539,7 +537,7 @@ async function main() {
     // ---- In-page probes: billboard walk, model walk, tracked-model finder ---
     await page.evaluate(() => {
       // Every billboard (image + alignedAxis + id) in every collection.
-      window.__collectBillboards = function () {
+      window.__collectBillboards = () => {
         const v = window.__godsEyeView.viewer;
         const out = [];
         const walk = (coll) => {
@@ -570,7 +568,7 @@ async function main() {
         return out;
       };
       // Every glTF model primitive (modelMatrix + ready flag), with id + scale.
-      window.__collectModels = function () {
+      window.__collectModels = () => {
         const v = window.__godsEyeView.viewer;
         const out = [];
         const walk = (coll) => {
@@ -613,7 +611,7 @@ async function main() {
         return out;
       };
       // Displayed (render-delayed) latitude of a synthetic plane right now.
-      window.__displayedState = function (layer, idx, renderDelaySec) {
+      window.__displayedState = (layer, idx, renderDelaySec) => {
         const S = window.__SPR;
         const p = S[layer][idx];
         const tRel = (Date.now() - S.epochMs) / 1000 - renderDelaySec;
@@ -621,7 +619,7 @@ async function main() {
       };
       // Canvas coordinates of every synthetic plane at its displayed position —
       // ground truth for identifying which glyph is which in a screenshot.
-      window.__planeCanvasCoords = function (layer, renderDelaySec, altOf) {
+      window.__planeCanvasCoords = (layer, renderDelaySec, altOf) => {
         const v = window.__godsEyeView.viewer;
         const S = window.__SPR;
         const C3 = v.camera.position.constructor;
@@ -688,8 +686,8 @@ async function main() {
     console.log('\nB2 — per-class billboard glyph + scale');
     const bbs = await page.evaluate(() => window.__collectBillboards());
     const bbById = new Map(bbs.map((b) => [b.id, b]));
-    let glyphBad = [];
-    let scaleBad = [];
+    const glyphBad = [];
+    const scaleBad = [];
     for (const [id, klass] of expectedFlights) {
       const bb = bbById.get(id);
       const wantImg = aircraftIcon(klass);
@@ -1021,7 +1019,7 @@ async function main() {
 main().catch((err) => {
   console.error(
     '\n\x1b[31mQA harness error:\x1b[0m',
-    err && err.stack ? err.stack : err,
+    err?.stack ? err.stack : err,
   );
   process.exit(2);
 });

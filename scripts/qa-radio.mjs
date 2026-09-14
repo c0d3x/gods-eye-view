@@ -133,7 +133,7 @@ async function main() {
         }
         if (window.__qaRadioDelayNextFailure) {
           window.__qaRadioDelayNextFailure = false;
-          return new Promise((resolve, reject) => {
+          return new Promise((_resolve, reject) => {
             window.__qaRejectRadioPlay = () => {
               reject(
                 new DOMException(
@@ -1566,10 +1566,6 @@ async function main() {
       const { getOverlayPaintRect, getWorldOverlayDiagnostics } = await import(
         '/src/overlays/worldOverlay.js'
       );
-      const { distanceFade } = await import(
-        '/src/overlays/worldOverlayDraw.js'
-      );
-      const { radioStationIdFromPick } = await import('/src/data/radio.js');
       const baselineSolveRevision = getWorldOverlayDiagnostics().solveRevision;
       const source = Array.from(
         { length: viewer.dataSources.length },

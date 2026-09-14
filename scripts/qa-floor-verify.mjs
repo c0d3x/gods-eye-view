@@ -5,8 +5,9 @@
 // coarse-LOD poison and the taxiing cold-cell regression on 2026-07-06.
 // Run: node scripts/qa-floor-verify.mjs   (dev server on :4173, real GPU best)
 // with the poison fix + simplified chain live.
-import puppeteer from 'puppeteer';
+
 import fs from 'node:fs';
+import puppeteer from 'puppeteer';
 import { qaUrl } from './lib/qaUrl.mjs';
 
 // GEV_QA_URL matches the sibling harnesses (qa-height-datum / qa-cctv-v2) so a

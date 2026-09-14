@@ -77,10 +77,10 @@
  * Exit 0 = all asserts passed. Non-zero = a hard failure.
  */
 
-import puppeteer from 'puppeteer';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import puppeteer from 'puppeteer';
 import {
   computeFrustumGeometry,
   FRUSTUM_GROUND_CLEARANCE_M,
@@ -296,7 +296,7 @@ function waitForTilesLoaded(page, timeoutMs = 15000) {
         const prims = scene.primitives;
         for (let i = 0; i < prims.length; i++) {
           const p = prims.get(i);
-          if (p && p.constructor && p.constructor.name === 'Cesium3DTileset') {
+          if (p?.constructor && p.constructor.name === 'Cesium3DTileset') {
             return p.tilesLoaded === true;
           }
         }
@@ -407,10 +407,7 @@ async function main() {
     console.log('Loading app...');
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForFunction(
-      () =>
-        window.__godsEyeView &&
-        window.__godsEyeView.viewer &&
-        window.__godsEyeView.dataManager,
+      () => window.__godsEyeView?.viewer && window.__godsEyeView.dataManager,
       { timeout: 60000 },
     );
     // Let the initial fly-to Austin and first tiles settle.
@@ -1084,7 +1081,7 @@ async function main() {
     const materialInfo = await page.evaluate((camId) => {
       const viewer = window.__godsEyeView.viewer;
       const time = viewer.clock.currentTime;
-      const planeEnt = viewer.entities.getById('cctv-' + camId + '-plane');
+      const planeEnt = viewer.entities.getById(`cctv-${camId}-plane`);
       const mat = planeEnt?.plane?.material;
       const image = mat?.image;
       const resolved =
@@ -1539,7 +1536,7 @@ async function main() {
         const prims = window.__godsEyeView.viewer.scene.primitives;
         let n = 0;
         for (let i = 0; i < prims.length; i++) {
-          if (prims.get(i) && prims.get(i)._gevViewshed) n += 1;
+          if (prims.get(i)?._gevViewshed) n += 1;
         }
         return n;
       });
@@ -1599,7 +1596,7 @@ async function main() {
       const prims = window.__godsEyeView.viewer.scene.primitives;
       window.__qaViewshedRefs = [];
       for (let i = 0; i < prims.length; i++) {
-        if (prims.get(i) && prims.get(i)._gevViewshed)
+        if (prims.get(i)?._gevViewshed)
           window.__qaViewshedRefs.push(prims.get(i));
       }
     });
@@ -1608,7 +1605,7 @@ async function main() {
       const prims = window.__godsEyeView.viewer.scene.primitives;
       const now = [];
       for (let i = 0; i < prims.length; i++) {
-        if (prims.get(i) && prims.get(i)._gevViewshed) now.push(prims.get(i));
+        if (prims.get(i)?._gevViewshed) now.push(prims.get(i));
       }
       const before = window.__qaViewshedRefs || [];
       const sameCount = now.length === before.length;
@@ -1660,7 +1657,7 @@ async function main() {
       mod.setParams({ calibrationMode: true });
       const viewer = window.__godsEyeView.viewer;
       return parts.map((p) => {
-        const e = viewer.entities.getById('cctv-gizmo-' + p);
+        const e = viewer.entities.getById(`cctv-gizmo-${p}`);
         return e ? (e.show ? 'shown' : 'hidden') : 'missing';
       });
     }, GIZMO_PARTS);
@@ -1957,7 +1954,7 @@ async function main() {
       mod.setParams({ calibration: { reset: true } });
       const viewer = window.__godsEyeView.viewer;
       return parts.map((p) => {
-        const e = viewer.entities.getById('cctv-gizmo-' + p);
+        const e = viewer.entities.getById(`cctv-gizmo-${p}`);
         return e ? (e.show ? 'shown' : 'hidden') : 'missing';
       });
     }, GIZMO_PARTS);
@@ -1992,14 +1989,14 @@ async function main() {
     await browser.close();
   }
 
-  console.log('\n' + '─'.repeat(60));
+  console.log(`\n${'─'.repeat(60)}`);
   const pass = results.filter((r) => r.ok === true).length;
   const fail = results.filter((r) => r.ok === false).length;
   const inconclusive = results.filter((r) => r.ok === null).length;
   console.log(
     `  RESULT: ${pass} passed, ${fail} failed, ${inconclusive} inconclusive`,
   );
-  console.log('─'.repeat(60) + '\n');
+  console.log(`${'─'.repeat(60)}\n`);
   process.exit(exitCode);
 }
 

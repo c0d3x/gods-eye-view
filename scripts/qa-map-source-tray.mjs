@@ -783,7 +783,7 @@ try {
       probe.activations.push(args[0]);
       return originalSetStyle.apply(this, args);
     };
-    voice.start = async function (options) {
+    voice.start = async (options) => {
       probe.voiceStarts.push({
         options: { ...options },
         focusedStyle: document.activeElement?.dataset.style || null,

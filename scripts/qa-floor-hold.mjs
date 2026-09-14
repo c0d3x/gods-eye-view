@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
 /**
  * scripts/qa-floor-hold.mjs — a grounded contact holds its floor through a
  * terrain-proxy outage (owner incident, 2026-08-21).
@@ -32,8 +34,6 @@
  * real-GPU visual correctness.
  */
 import puppeteer from 'puppeteer';
-import fs from 'node:fs';
-import path from 'node:path';
 import { qaUrl } from './lib/qaUrl.mjs';
 
 const APP_URL = qaUrl();

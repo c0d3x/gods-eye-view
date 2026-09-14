@@ -48,8 +48,8 @@ function segDist(p, a, b) {
   let [x, y] = p;
   const [x1, y1] = a;
   const [x2, y2] = b;
-  let dx = x2 - x1;
-  let dy = y2 - y1;
+  const dx = x2 - x1;
+  const dy = y2 - y1;
   if (dx !== 0 || dy !== 0) {
     const t = ((x - x1) * dx + (y - y1) * dy) / (dx * dx + dy * dy);
     if (t > 1) {
@@ -137,7 +137,7 @@ async function main() {
   let outVerts = 0;
   const features = [];
   for (const f of raw.features) {
-    const name = f.properties && f.properties.nhood;
+    const name = f.properties?.nhood;
     if (!name || !f.geometry)
       throw new Error(
         `feature missing nhood/geometry: ${JSON.stringify(f.properties)}`,

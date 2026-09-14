@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * qa-traffic-baseline.mjs — Traffic Phase 0 causal-chain capture.
  *
@@ -35,8 +36,8 @@
  * the latency plan.
  */
 
-import puppeteer from 'puppeteer';
 import fs from 'node:fs';
+import puppeteer from 'puppeteer';
 import { qaUrl } from './lib/qaUrl.mjs';
 
 const argv = process.argv.slice(2);

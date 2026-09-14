@@ -760,8 +760,7 @@ async function main() {
         });
 
       window.fetch = (input, init) => {
-        const url =
-          typeof input === 'string' ? input : (input && input.url) || '';
+        const url = typeof input === 'string' ? input : input?.url || '';
         const T = window.__TURN;
         if (url.includes('/api/openai/hud-summary')) {
           return Promise.resolve(
@@ -871,10 +870,7 @@ async function main() {
     console.log('Loading app...');
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForFunction(
-      () =>
-        window.__godsEyeView &&
-        window.__godsEyeView.viewer &&
-        window.__godsEyeView.dataManager,
+      () => window.__godsEyeView?.viewer && window.__godsEyeView.dataManager,
       { timeout: 60000, polling: 200 },
     );
     console.log('  App globals ready.');
@@ -888,7 +884,7 @@ async function main() {
       // the tracked display position read null, which injected a one-frame
       // ~90° course spike into the sampled series — a measurement flake, not
       // a product regression.)
-      window.__findTrackedModel = function (icao) {
+      window.__findTrackedModel = (icao) => {
         const v = window.__godsEyeView.viewer;
         const out = [];
         const walk = (coll) => {
@@ -934,7 +930,7 @@ async function main() {
 
       // Invert _modelMatrix (pitch=roll=0): local x in ENU = (cos h, −sin h, 0)
       // → h = atan2(−x·north, x·east); world course = h − headingOffsetDeg.
-      window.__courseFromModelMatrix = function (mm, headingOffsetDeg) {
+      window.__courseFromModelMatrix = (mm, headingOffsetDeg) => {
         const v = window.__godsEyeView.viewer;
         const C3 = v.camera.position.constructor;
         const Carto = v.camera.positionCartographic.constructor;
@@ -961,12 +957,12 @@ async function main() {
       // render loop while sampling instead: it still invokes the production
       // preUpdate/preRender listeners and reads the rendered model matrix, but
       // does not depend on ambient render-loop scheduling for sample count.
-      window.__sampleModelCourse = async function (
+      window.__sampleModelCourse = async (
         icao,
         headingOffsetDeg,
         windowMs,
         stepMs = 100,
-      ) {
+      ) => {
         const v = window.__godsEyeView.viewer;
         const tileset = window.__godsEyeView.tileset;
         const out = [];
@@ -1079,7 +1075,7 @@ async function main() {
       .waitForFunction(
         (icao) => {
           const m = window.__findTrackedModel(icao);
-          return !!(m && m.ready && m.show);
+          return !!(m?.ready && m.show);
         },
         { timeout: 40000, polling: 250 },
         TURN.flights[0].icao,
@@ -1217,7 +1213,7 @@ async function main() {
       .waitForFunction(
         (hex) => {
           const m = window.__findTrackedModel(hex);
-          return !!(m && m.ready && m.show);
+          return !!(m?.ready && m.show);
         },
         { timeout: 40000, polling: 250 },
         TURN.military[0].hex,
@@ -1325,7 +1321,7 @@ async function main() {
         .waitForFunction(
           (id) => {
             const m = window.__findTrackedModel(id);
-            return !!(m && m.ready && m.show);
+            return !!(m?.ready && m.show);
           },
           { timeout: 40000, polling: 250 },
           icao,
@@ -1416,7 +1412,7 @@ async function main() {
       '\nPhase 5 — 65 kt helicopter: tracked↔fleet course handoff (click / click-away)',
     );
     await page.evaluate(() => {
-      window.__findModelByIcao = function (icao) {
+      window.__findModelByIcao = (icao) => {
         const v = window.__godsEyeView.viewer;
         const out = [];
         const walk = (coll) => {
@@ -1548,7 +1544,7 @@ async function main() {
             const remove = v.scene.preRender.addEventListener(() => {
               let rotRad = null;
               const ent = v.trackedEntity;
-              if (ent && ent.billboard && ent.billboard.rotation) {
+              if (ent?.billboard?.rotation) {
                 try {
                   rotRad = ent.billboard.rotation.getValue(v.clock.currentTime);
                 } catch {
@@ -1701,7 +1697,7 @@ async function main() {
 main().catch((err) => {
   console.error(
     '\n\x1b[31mQA harness error:\x1b[0m',
-    err && err.stack ? err.stack : err,
+    err?.stack ? err.stack : err,
   );
   process.exit(2);
 });

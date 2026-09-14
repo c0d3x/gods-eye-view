@@ -93,9 +93,9 @@
 import fs from 'node:fs';
 import puppeteer from 'puppeteer';
 import {
-  classifyAircraft,
-  CLASS_SCALE_3D,
   CLASS_MODEL_REAL,
+  CLASS_SCALE_3D,
+  classifyAircraft,
 } from '../src/data/aircraftClass.js';
 import { ensureGeoidReady, geoidHeight } from '../src/data/geoid.js';
 import { qaUrl } from './lib/qaUrl.mjs';
@@ -537,10 +537,7 @@ async function main() {
 
     // Wait for the app to expose its globals (Cesium viewer + dataManager).
     await page.waitForFunction(
-      () =>
-        window.__godsEyeView &&
-        window.__godsEyeView.viewer &&
-        window.__godsEyeView.dataManager,
+      () => window.__godsEyeView?.viewer && window.__godsEyeView.dataManager,
       { timeout: 60000, polling: 200 },
     );
     console.log('  App globals ready.\n');
@@ -558,7 +555,7 @@ async function main() {
       .waitForFunction(
         () => {
           const dm = window.__godsEyeView.dataManager;
-          return dm && dm.layers && dm.layers.size >= 12;
+          return dm?.layers && dm.layers.size >= 12;
         },
         { timeout: 30000, polling: 200 },
       )
@@ -1623,7 +1620,7 @@ async function main() {
     // PrimitiveCollection under scene.primitives. We locate the shown Model whose
     // matrix translation is nearest the tracked display position.
     await evalPage(() => {
-      window.__findTrackedModel = function () {
+      window.__findTrackedModel = () => {
         const v = window.__godsEyeView.viewer;
         const prims = v.scene.primitives;
         const out = [];
@@ -1707,12 +1704,7 @@ async function main() {
           const found = window.__findTrackedModel
             ? window.__findTrackedModel()
             : null;
-          return !!(
-            found &&
-            found.ready &&
-            found.show &&
-            String(found.id) === icao
-          );
+          return !!(found?.ready && found.show && String(found.id) === icao);
         },
         { timeout: 60000, polling: 250 },
         trackedIcao,
@@ -1745,11 +1737,9 @@ async function main() {
               : null;
           const dets = fl.getDetectableObjects({ maxCount: 1000 });
           const me = dets.find(
-            (d) =>
-              d.id === icao ||
-              d.id === (fl.getTrackedInfo() && fl.getTrackedInfo().callsign),
+            (d) => d.id === icao || d.id === fl.getTrackedInfo()?.callsign,
           );
-          if (!disp || !me || !me.position) return null;
+          if (!disp || !me?.position) return null;
           const dx = disp.x - me.position.x,
             dy = disp.y - me.position.y,
             dz = disp.z - me.position.z;
@@ -1793,9 +1783,9 @@ async function main() {
           const dets = fl.getDetectableObjects({ maxCount: 1000 });
           const me =
             dets.find((d) => d.skipLabel) || // tracked entry is skipLabel:true
-            dets.find((d) => d.id === (ti && ti.callsign)) ||
+            dets.find((d) => d.id === ti?.callsign) ||
             dets.find((d) => d.id === icao);
-          if (!me || !me.position) return null;
+          if (!me?.position) return null;
           const dx = visual.x - me.position.x;
           const dy = visual.y - me.position.y;
           const dz = visual.z - me.position.z;
@@ -2020,12 +2010,7 @@ async function main() {
           const found = window.__findTrackedModel
             ? window.__findTrackedModel()
             : null;
-          return !!(
-            found &&
-            found.ready &&
-            found.show &&
-            String(found.id) === icao
-          );
+          return !!(found?.ready && found.show && String(found.id) === icao);
         },
         { timeout: 60000, polling: 250 },
         h1Icao,
@@ -2079,9 +2064,7 @@ async function main() {
         if (!picked) return null;
         if (picked.id === ent) return 'entity';
         const raw =
-          typeof picked.id === 'string'
-            ? picked.id
-            : picked.primitive && picked.primitive.id;
+          typeof picked.id === 'string' ? picked.id : picked.primitive?.id;
         return raw === ti.icao24 ? 'icao-pick' : null;
       };
       const offsets = [[0, 0]];
@@ -2113,7 +2096,7 @@ async function main() {
       return { x: center.x, y: center.y, via: null };
     });
 
-    if (!h1ClickPoint || !h1ClickPoint.via) {
+    if (!h1ClickPoint?.via) {
       skip(
         'H1: click on tracked plane keeps tracking (no deselect)',
         'scene.pick could not resolve the tracked plane at its screen position (GL backend picking)',
@@ -2412,7 +2395,7 @@ async function main() {
           return [model.title, ...(model.details || [])]
             .filter(Boolean)
             .join('\n');
-        if (!ent.label || !ent.label.text) return null;
+        if (!ent.label?.text) return null;
         const t = ent.label.text;
         return typeof t === 'string'
           ? t
@@ -2443,13 +2426,13 @@ async function main() {
         staleCheck.staleLabel.includes('STALE') &&
         !!staleCheck.freshLabel &&
         !staleCheck.freshLabel.includes('STALE'),
-      `fresh="${staleCheck.freshLabel && staleCheck.freshLabel.split('\n')[0]}" stale="${staleCheck.staleLabel && staleCheck.staleLabel.split('\n')[0]}"`,
+      `fresh="${staleCheck.freshLabel?.split('\n')[0]}" stale="${staleCheck.staleLabel?.split('\n')[0]}"`,
     );
     record(
       'stale-readout: STALE cue clears when the plane reappears',
       !!staleCheck.recoveredLabel &&
         !staleCheck.recoveredLabel.includes('STALE'),
-      `recovered="${staleCheck.recoveredLabel && staleCheck.recoveredLabel.split('\n')[0]}"`,
+      `recovered="${staleCheck.recoveredLabel?.split('\n')[0]}"`,
     );
 
     // ============================================================
@@ -2775,7 +2758,7 @@ async function main() {
             flights: { lat: 30.2668, lon: -97.7445 },
             military: { lat: 30.2685, lon: -97.747 },
           };
-          scene.sampleHeight = function (cartographic) {
+          scene.sampleHeight = (cartographic) => {
             window.__g3dSampleCalls += 1;
             // Attribute each sample to the fixture's distinct ~111 m mesh cell.
             // This prevents one successfully sampled contact from satisfying the
@@ -2953,7 +2936,7 @@ async function main() {
 
         // In-page model finder by pick id (fleet AND tracked standalone models carry it).
         await evalPage(() => {
-          window.__g3dFindModel = function (id) {
+          window.__g3dFindModel = (id) => {
             const v = window.__godsEyeView.viewer;
             let found = null;
             const walk = (coll) => {
@@ -2994,7 +2977,7 @@ async function main() {
             () => {
               const fm = window.__g3dFindModel('aaa077');
               const mm = window.__g3dFindModel('bbb177');
-              return !!(fm && fm.ready && fm.show && mm && mm.ready && mm.show);
+              return !!(fm?.ready && fm.show && mm?.ready && mm.show);
             },
             { timeout: 40000, polling: 250 },
           )
@@ -3154,7 +3137,7 @@ async function main() {
                       seed: 0,
                     }) || [];
                   const object = objects.find((o) => o && o.sourceId === t.id);
-                  if (!object || !object.position || !model || !model.show) {
+                  if (!object?.position || !model?.show) {
                     rec.missing++;
                     continue;
                   }
@@ -3285,9 +3268,9 @@ async function main() {
                 const fl =
                   window.__godsEyeView.dataManager.layers.get('flights').module;
                 const ti = fl.getTrackedInfo();
-                if (!ti || ti.icao24 !== 'aaa077') return false;
+                if (ti?.icao24 !== 'aaa077') return false;
                 const m = window.__g3dFindModel('aaa077');
-                return !!(m && m.ready && m.show);
+                return !!(m?.ready && m.show);
               },
               { timeout: 25000, polling: 250 },
             )
@@ -3617,7 +3600,7 @@ async function main() {
         Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
       const probe = async (id, course) => {
         const bb = findBB(id);
-        if (!bb || !bb.show) return { error: `${id} missing/hidden` };
+        if (!bb?.show) return { error: `${id} missing/hidden` };
         const r0 = bb.rotation; // settled tamper origin; correctness uses a fresh projection below
         // (a) settle pass: tamper, then raise moveEnd with the camera IDLE —
         // the pose signature is unchanged, so only the moveEnd hook can fix
@@ -3655,7 +3638,7 @@ async function main() {
           course,
           null,
         );
-        const hasModel = !!(window.__g3dFindModel && window.__g3dFindModel(id));
+        const hasModel = !!window.__g3dFindModel?.(id);
         return {
           r0,
           dMoveEnd: angDiff(afterMoveEnd, expectedMoveEnd),
@@ -4577,7 +4560,7 @@ async function main() {
           dfTracked.coldModelsShown === 0 &&
           dfColdFloored,
         dfTracked.error ||
-          `cold skin: ${dfTracked.coldModelsRendering} aaa097 model(s) rendering / ${dfTracked.coldModelsShown} shown (placed height ${dfTracked.coldModelH == null ? 'none — never placed' : Number(dfTracked.coldModelH).toFixed(1) + ' m'}), billboard at ${Number(dfTracked.coldEntityH).toFixed(1)} m on a ${Number(dfTracked.coldFloor).toFixed(1)} m floor`,
+          `cold skin: ${dfTracked.coldModelsRendering} aaa097 model(s) rendering / ${dfTracked.coldModelsShown} shown (placed height ${dfTracked.coldModelH == null ? 'none — never placed' : `${Number(dfTracked.coldModelH).toFixed(1)} m`}), billboard at ${Number(dfTracked.coldEntityH).toFixed(1)} m on a ${Number(dfTracked.coldFloor).toFixed(1)} m floor`,
       );
 
       // WARM ground, camera IN: the placement. The model is not merely visible,
@@ -4874,10 +4857,9 @@ async function main() {
         fl.setParams({ models3d: true });
         const fleetDeadline = Date.now() + 20000;
         let fleetModel = null;
-        while (
-          Date.now() < fleetDeadline &&
-          !(fleetModel = findFleetModel('aaa097'))
-        ) {
+        while (Date.now() < fleetDeadline) {
+          fleetModel = findFleetModel('aaa097');
+          if (fleetModel) break;
           await window.__dfSettle(500);
         }
         if (!fleetModel) {
@@ -5320,7 +5302,7 @@ async function main() {
 async function sampleFrames(page, count, sampleFn, ...args) {
   const { values, timedOut } = await page.evaluate(
     async (fnStr, n, extra) => {
-      const fn = new Function('return (' + fnStr + ')')();
+      const fn = new Function(`return (${fnStr})`)();
       const v = window.__godsEyeView.viewer;
       const out = [];
       let timedOut = false;
@@ -5337,7 +5319,7 @@ async function sampleFrames(page, count, sampleFn, ...args) {
         const remove = v.scene.postRender.addEventListener(() => {
           try {
             out.push(fn(...extra));
-          } catch (e) {
+          } catch {
             out.push(null);
           }
           if (++i >= n) {
@@ -5400,7 +5382,7 @@ function waitFor(pred, timeoutMs) {
 main().catch((err) => {
   console.error(
     '\n\x1b[31mHarness error:\x1b[0m',
-    err && err.stack ? err.stack : err,
+    err?.stack ? err.stack : err,
   );
   process.exit(2);
 });

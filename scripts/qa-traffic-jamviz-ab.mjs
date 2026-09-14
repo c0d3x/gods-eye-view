@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * qa-traffic-jamviz-ab.mjs — A/B screenshot capture for the jam-viz
  * congestion prototypes (feat/traffic-jam-viz).
@@ -18,10 +19,10 @@
  * Exits non-zero on harness failure (missing live mode, zero dots, etc.).
  */
 
-import puppeteer from 'puppeteer';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import puppeteer from 'puppeteer';
 import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -98,7 +99,7 @@ function waitForTilesLoaded(page, timeoutMs) {
         const prims = window.__godsEyeView.viewer.scene.primitives;
         for (let i = 0; i < prims.length; i++) {
           const p = prims.get(i);
-          if (p && p.constructor && p.constructor.name === 'Cesium3DTileset') {
+          if (p?.constructor && p.constructor.name === 'Cesium3DTileset') {
             return p.tilesLoaded === true;
           }
         }

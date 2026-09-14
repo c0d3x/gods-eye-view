@@ -19,17 +19,17 @@
  * Pure module-level: no browser, no network, no GPU.
  */
 import * as Cesium from 'cesium';
-import { pickRenderAltitudeM } from '../src/data/renderAltitude.js';
 import {
-  _floorGroundedDisplayPositionForTest,
   _clearDisplayFloorStateForTest,
+  _floorGroundedDisplayPositionForTest,
 } from '../src/data/flights.js';
 import {
-  reportMeshFloorCell,
-  setMeshFloorPreferred,
   _clearMeshFloorCellsForTest,
   GROUND_FLOOR_LIFT_M,
+  reportMeshFloorCell,
+  setMeshFloorPreferred,
 } from '../src/data/groundFloor.js';
+import { pickRenderAltitudeM } from '../src/data/renderAltitude.js';
 
 const LAT = 30.2004,
   LON = -97.6604; // own cell 30.200 / -97.660
@@ -97,7 +97,7 @@ for (const [name, schedule] of SCENARIOS) {
   setMeshFloorPreferred(true);
   const pos = Cesium.Cartesian3.fromDegrees(LON, LAT, START);
   const samples = [];
-  let pending = [...schedule];
+  const pending = [...schedule];
   for (let t = 0; t <= 12000; t += 80) {
     while (pending.length && pending[0][0] <= t) pending.shift()[1]();
     const out = _floorGroundedDisplayPositionForTest(

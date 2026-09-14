@@ -36,11 +36,12 @@
  *
  * Exit codes: 0 = no FAILs · 1 = at least one FAIL · 2 = target unreachable.
  */
-import puppeteer from 'puppeteer';
+
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import puppeteer from 'puppeteer';
 import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -1488,9 +1489,9 @@ check({
       }
       const body = r.text.slice(0, 400000);
       if (/\bsk-[A-Za-z0-9]{20,}/.test(body)) leaked.push(`${p}: sk- key`);
-      if (/AIza[0-9A-Za-z_\-]{30,}/.test(body)) leaked.push(`${p}: Google key`);
+      if (/AIza[0-9A-Za-z_-]{30,}/.test(body)) leaked.push(`${p}: Google key`);
       if (
-        /(client_secret|api_?key|MAP_KEY)["']?\s*[:=]\s*["'][A-Za-z0-9_\-]{16,}/i.test(
+        /(client_secret|api_?key|MAP_KEY)["']?\s*[:=]\s*["'][A-Za-z0-9_-]{16,}/i.test(
           body,
         )
       )
@@ -1899,7 +1900,7 @@ async function runBrowserGroup(record) {
         /Outdated Optimize Dep|504/.test(e),
       );
       bootNote = stale
-        ? 'vite dep re-optimization (504) on attempt ' + attempt
+        ? `vite dep re-optimization (504) on attempt ${attempt}`
         : `attempt ${attempt} timed out`;
       await new Promise((r) => setTimeout(r, 5000));
     }
@@ -2854,12 +2855,12 @@ async function runBrowserGroup(record) {
     const inPage = inPageR.value;
     if (/\bsk-[A-Za-z0-9]{20,}/.test(inPage.storage))
       leaked.push('localStorage holds an sk- key');
-    if (/AIza[0-9A-Za-z_\-]{30,}/.test(inPage.storage))
+    if (/AIza[0-9A-Za-z_-]{30,}/.test(inPage.storage))
       leaked.push('localStorage holds a Google key');
     const keyish = requestUrls.filter(
       (u) =>
         u.startsWith(APP_ORIGIN) &&
-        /[?&](key|api_?key|token|client_secret)=[A-Za-z0-9_\-]{12,}/i.test(u),
+        /[?&](key|api_?key|token|client_secret)=[A-Za-z0-9_-]{12,}/i.test(u),
     );
     if (keyish.length)
       leaked.push(
@@ -3529,7 +3530,7 @@ async function main() {
   const x = byStatus(CRASH).length;
   const s = byStatus(SKIP).length;
 
-  console.log(`\n${C.b('  ── L9 SCOREBOARD ' + '─'.repeat(52))}`);
+  console.log(`\n${C.b(`  ── L9 SCOREBOARD ${'─'.repeat(52)}`)}`);
   for (const g of ['A', 'B', 'C', 'D', 'M']) {
     const rows = results.filter((r) => r.group === g);
     if (!rows.length) continue;
@@ -3649,27 +3650,27 @@ if (import.meta.url === invokedPath) {
 }
 
 export {
+  applyKnownConditions,
+  COCKPIT_RE,
+  CRASH,
+  CREDIT_EXEMPT_LAYERS,
+  CREDIT_EXPECTATIONS,
+  classifyNoScoreboard,
+  FAIL,
+  FLOOR_RE,
+  isCalibratedAllocationRuntime,
+  keyGuard,
+  normalizeVerdict,
+  OUTCOMES,
   PASS,
   PASS_SKIPS,
-  FAIL,
-  CRASH,
-  SKIP,
-  OUTCOMES,
-  normalizeVerdict,
-  classifyNoScoreboard,
-  readResultLine,
-  readCockpit,
-  satisfiesEngines,
-  isCalibratedAllocationRuntime,
-  trafficFlowInconclusive,
-  soleVerdict,
   RESULT_RE,
-  COCKPIT_RE,
-  FLOOR_RE,
+  readCockpit,
   readFloorVerdict,
-  keyGuard,
-  applyKnownConditions,
+  readResultLine,
   requiredCreditFor,
-  CREDIT_EXPECTATIONS,
-  CREDIT_EXEMPT_LAYERS,
+  SKIP,
+  satisfiesEngines,
+  soleVerdict,
+  trafficFlowInconclusive,
 };

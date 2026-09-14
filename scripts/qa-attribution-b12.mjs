@@ -16,10 +16,11 @@
  *
  * Run:  node scripts/qa-attribution-b12.mjs --url <app-url>
  */
-import puppeteer from 'puppeteer';
+
 import { existsSync, mkdirSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import puppeteer from 'puppeteer';
 import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -134,10 +135,7 @@ async function main() {
 
   // Wait for the app + viewer.creditDisplay to be live.
   await page.waitForFunction(
-    () =>
-      window.__godsEyeView &&
-      window.__godsEyeView.viewer &&
-      window.__godsEyeView.viewer.creditDisplay,
+    () => window.__godsEyeView?.viewer?.creditDisplay,
     { timeout: 60000 },
   );
   // Give Cesium a few frames to render the on-screen credit line (logo + link).

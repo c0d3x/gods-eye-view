@@ -86,10 +86,10 @@
  * Exit 0 = no hard failures. Non-zero = at least one hard FAIL (or harness error).
  */
 
-import puppeteer from 'puppeteer';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import puppeteer from 'puppeteer';
 import { ensureGeoidReady, geoidHeight } from '../src/data/geoid.js';
 import { qaUrl } from './lib/qaUrl.mjs';
 
@@ -164,7 +164,7 @@ function waitForTilesLoaded(page, timeoutMs = 15000) {
         const prims = scene.primitives;
         for (let i = 0; i < prims.length; i++) {
           const p = prims.get(i);
-          if (p && p.constructor && p.constructor.name === 'Cesium3DTileset') {
+          if (p?.constructor && p.constructor.name === 'Cesium3DTileset') {
             return p.tilesLoaded === true;
           }
         }
@@ -192,7 +192,7 @@ async function readCameraGround(page, camId) {
     const viewer = window.__godsEyeView.viewer;
     const time = viewer.clock.currentTime;
     const ent = viewer.entities.getById(`cctv-${id}-ray-tl`);
-    if (!ent || !ent.polyline) return null;
+    if (!ent?.polyline) return null;
     const positions = ent.polyline.positions.getValue(time);
     if (!Array.isArray(positions) || positions.length < 1) return null;
     const mount = positions[0];
@@ -294,10 +294,7 @@ async function main() {
     console.log('Loading app...');
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForFunction(
-      () =>
-        window.__godsEyeView &&
-        window.__godsEyeView.viewer &&
-        window.__godsEyeView.dataManager,
+      () => window.__godsEyeView?.viewer && window.__godsEyeView.dataManager,
       { timeout: 60000 },
     );
     await sleep(4000);
@@ -774,7 +771,7 @@ async function main() {
         'no aircraft renders at the 0m sentinel while terrain ground is far from 0m (datum-miss fingerprint)',
         underTerrainChecked > 0 ? sentinelViolations === 0 : null,
         underTerrainChecked > 0
-          ? `${sentinelViolations} violation(s) out of ${underTerrainChecked} checked${underTerrainDetails.length ? ': ' + underTerrainDetails.slice(0, 3).join(' | ') : ''}`
+          ? `${sentinelViolations} violation(s) out of ${underTerrainChecked} checked${underTerrainDetails.length ? `: ${underTerrainDetails.slice(0, 3).join(' | ')}` : ''}`
           : 'Re:Earth proxy unreachable for every sampled point this run — INCONCLUSIVE',
       );
       if (ambiguousUnderTerrain > 0) {
@@ -819,7 +816,7 @@ async function main() {
       await page.waitForFunction(
         () => {
           const p = window.__godsEyeView?.viewer?.terrainProvider;
-          const name = p && p.constructor && p.constructor.name;
+          const name = p?.constructor?.name;
           return !!name && name !== 'EllipsoidTerrainProvider';
         },
         { timeout: 12000, polling: 250 },
@@ -908,14 +905,14 @@ async function main() {
     await browser.close();
   }
 
-  console.log('\n' + '─'.repeat(60));
+  console.log(`\n${'─'.repeat(60)}`);
   const pass = results.filter((r) => r.ok === true).length;
   const fail = results.filter((r) => r.ok === false).length;
   const inconclusive = results.filter((r) => r.ok === null).length;
   console.log(
     `  RESULT: ${pass} passed, ${fail} failed, ${inconclusive} inconclusive`,
   );
-  console.log('─'.repeat(60) + '\n');
+  console.log(`${'─'.repeat(60)}\n`);
   process.exit(exitCode);
 }
 

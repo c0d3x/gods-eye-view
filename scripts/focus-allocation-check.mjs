@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
-import { advanceSpriteFocus } from '../src/data/focusDeemphasis.js';
 import { applyAircraftBillboardTreatment } from '../src/data/aircraftRecession.js';
+import { advanceSpriteFocus } from '../src/data/focusDeemphasis.js';
 
 if (typeof global.gc !== 'function') {
   throw new Error('focus-allocation-check.mjs requires node --expose-gc');

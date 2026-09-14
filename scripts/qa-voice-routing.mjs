@@ -32,8 +32,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import WebSocket from 'ws';
 import puppeteer from 'puppeteer';
+import WebSocket from 'ws';
 import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -451,11 +451,9 @@ async function runRoutingLayer() {
 
   for (let i = 0; i < list.length; i += PHRASES_PER_SESSION) {
     if (turnsUsed >= TURN_BUDGET) {
-      list
-        .slice(i)
-        .forEach((p) =>
-          skipped(`route: "${p.phrase}"`, 'turn budget exhausted'),
-        );
+      list.slice(i).forEach((p) => {
+        skipped(`route: "${p.phrase}"`, 'turn budget exhausted');
+      });
       break;
     }
     const batch = list.slice(i, i + PHRASES_PER_SESSION);
@@ -465,13 +463,13 @@ async function runRoutingLayer() {
       session = new RoutingSession(value, model, evidence);
       await session.connect();
     } catch (e) {
-      batch.forEach((p) =>
+      batch.forEach((p) => {
         report(
           false,
           `route: "${p.phrase}"`,
           `session setup failed: ${e.message}`,
-        ),
-      );
+        );
+      });
       continue;
     }
     for (const p of batch) {
@@ -1051,7 +1049,7 @@ async function runBehaviorLayer() {
     r = await run('move_camera', { motion: 'orbit', mode: 'once' });
     await settle(5000);
     let h1 = await heading();
-    let dOnce = Math.abs(((h1 - h0 + 540) % 360) - 180);
+    const dOnce = Math.abs(((h1 - h0 + 540) % 360) - 180);
     report(
       r?.ok === true && dOnce > 10 && dOnce < 45,
       'behavior: orbit once advances ~30° and self-stops',
@@ -1139,11 +1137,11 @@ async function runBehaviorLayer() {
       await settle(1500);
       if (Math.abs((await camState()).altKm - a) < a * 0.02) break;
     }
-    let altBefore = (await camState()).altKm;
+    const altBefore = (await camState()).altKm;
     r = await run('adjust_camera_zoom', { direction: 'out', amount: 'medium' });
     await settle(2500);
-    let altAfter = (await camState()).altKm;
-    let stillOrbiting =
+    const altAfter = (await camState()).altKm;
+    const stillOrbiting =
       (await run('move_camera', { motion: 'stop' }))?.stopped === true;
     report(
       r?.orbitRadiusAdjusted === true &&
@@ -1504,6 +1502,9 @@ if (LAYER === 'routing' || LAYER === 'all') await runRoutingLayer();
 
 console.log('\n────────────────────────────────────────────────────────────');
 console.log(`  RESULT: ${pass} passed, ${fail} failed, ${skip} skipped`);
-if (failures.length) failures.forEach((f) => console.log(`    ✗ ${f.label}`));
+if (failures.length)
+  failures.forEach((f) => {
+    console.log(`    ✗ ${f.label}`);
+  });
 console.log('────────────────────────────────────────────────────────────\n');
 process.exitCode = fail > 0 ? 1 : 0;

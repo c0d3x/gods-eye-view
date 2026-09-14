@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * qa-traffic-preset-ab.mjs — A/B screenshot capture for preset-aware
  * traffic dot styling (owner field finding 2026-07-23: NVG/FLIR/CRT
@@ -23,10 +24,10 @@
  * param not adopted by the layer).
  */
 
-import puppeteer from 'puppeteer';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import puppeteer from 'puppeteer';
 import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -125,7 +126,7 @@ function waitForTilesLoaded(page, timeoutMs) {
         const prims = window.__godsEyeView.viewer.scene.primitives;
         for (let i = 0; i < prims.length; i++) {
           const p = prims.get(i);
-          if (p && p.constructor && p.constructor.name === 'Cesium3DTileset') {
+          if (p?.constructor && p.constructor.name === 'Cesium3DTileset') {
             return p.tilesLoaded === true;
           }
         }
@@ -245,8 +246,7 @@ async function main() {
       // and must not pass as a live styling capture — and a wait that timed
       // out never rendered this view at all.
       if (
-        !settled ||
-        !settled.renderSettled ||
+        !settled?.renderSettled ||
         settled.count === 0 ||
         settled.mode !== 'live' ||
         settled.error

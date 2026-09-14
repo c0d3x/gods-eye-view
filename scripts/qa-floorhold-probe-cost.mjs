@@ -18,10 +18,10 @@
  *   node scripts/qa-floorhold-probe-cost.mjs
  */
 import {
+  _clearMeshFloorCellsForTest,
   neighborFloorM,
   reportMeshFloorCell,
   setMeshFloorPreferred,
-  _clearMeshFloorCellsForTest,
 } from '../src/data/groundFloor.js';
 
 const CONTACTS = 200; // a dense airport view, every contact probing at once

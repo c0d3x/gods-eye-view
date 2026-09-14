@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 /**
  * qa-failstate-b10.mjs
  *
@@ -31,14 +32,10 @@
  * Exits non-zero if any assertion fails. DOES NOT COMMIT anything.
  */
 
-import puppeteer from 'puppeteer';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import puppeteer from 'puppeteer';
 import { qaUrl } from './lib/qaUrl.mjs';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = path.resolve(__dirname, '..');
 
 const argv = process.argv.slice(2);
 const getOpt = (name, dflt) => {
@@ -255,8 +252,7 @@ async function main() {
     });
     await page.waitForFunction(
       () =>
-        window.__godsEyeView &&
-        window.__godsEyeView.viewer &&
+        window.__godsEyeView?.viewer &&
         window.__godsEyeView.dataManager &&
         window.__godsEyeView.styleManager,
       { timeout: 60000 },
@@ -319,7 +315,7 @@ async function main() {
             refreshing: false,
           });
           entry.module.update = () =>
-            new Promise((resolve, reject) => {
+            new Promise((_resolve, reject) => {
               rejectRefresh = reject;
             });
           const pendingFailure = dm._runPeriodicUpdate(id, entry);
@@ -668,11 +664,11 @@ async function main() {
   const pass = results.filter((r) => r.ok === true).length;
   const fail = results.filter((r) => r.ok === false).length;
   const inconclusive = results.filter((r) => r.ok === null).length;
-  console.log('\n' + '─'.repeat(60));
+  console.log(`\n${'─'.repeat(60)}`);
   console.log(
     `  RESULT: ${pass} passed, ${fail} failed, ${inconclusive} inconclusive`,
   );
-  console.log('─'.repeat(60) + '\n');
+  console.log(`${'─'.repeat(60)}\n`);
   process.exit(exitCode || (fail > 0 ? 1 : 0));
 }
 

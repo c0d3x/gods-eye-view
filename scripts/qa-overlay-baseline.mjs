@@ -463,9 +463,8 @@ async function installPageInstrumentation(page) {
             metric.calls++;
             metric.totalSyncMs += elapsed;
             metric.maxSyncMs = Math.max(metric.maxSyncMs, elapsed);
-            const methodMetric =
-              metric.methods[method] ||
-              (metric.methods[method] = { calls: 0, totalSyncMs: 0 });
+            metric.methods[method] ||= { calls: 0, totalSyncMs: 0 };
+            const methodMetric = metric.methods[method];
             methodMetric.calls++;
             methodMetric.totalSyncMs += elapsed;
           }

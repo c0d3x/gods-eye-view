@@ -215,9 +215,7 @@ async function pick(page, choice, { timeout = 40000, settle = [] } = {}) {
   await page.click(`[data-first-run-choice="${choice}"]`);
   await page
     .waitForFunction(
-      (sel) =>
-        !document.querySelector(sel) ||
-        !document.querySelector(sel).classList.contains('visible'),
+      (sel) => !document.querySelector(sel)?.classList.contains('visible'),
       { timeout },
       LAUNCHER,
     )
@@ -282,7 +280,7 @@ async function runArbitrationSection(page, { shots, consoleErrors }) {
           classVisible: !!node?.classList.contains('visible'),
           // Real visibility: `display:none` yields zero client rects.
           onScreen: !!node && node.getClientRects().length > 0,
-          topmost: !!(hit && node && node.contains(hit)),
+          topmost: !!(hit && node?.contains(hit)),
           session: sessionStorage.getItem('gev:first-run-mission-session:v1'),
         };
       }, LAUNCHER);

@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import path from 'node:path';
-import { parseEnv } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { parseEnv } from 'node:util';
 import { selectMapStartupRoute } from '../src/mapStartup.js';
 import { CREDENTIALS, findKeychainItem } from './lib/credentials.mjs';
 
@@ -541,11 +541,7 @@ export function readDoctorDotenvValue(
 function readSetting(name, { environment, rootDir, authoritativeEnvironment }) {
   const value = String(environment[name] ?? '').trim();
   if (value) return value;
-  if (
-    authoritativeEnvironment &&
-    Object.prototype.hasOwnProperty.call(environment, name)
-  )
-    return '';
+  if (authoritativeEnvironment && Object.hasOwn(environment, name)) return '';
   return readDoctorDotenvValue(name, rootDir).trim();
 }
 
@@ -564,10 +560,7 @@ export function resolveCredential(
     credentialsFile = {},
   } = {},
 ) {
-  const environmentDefinesKey = Object.prototype.hasOwnProperty.call(
-    environment,
-    spec.name,
-  );
+  const environmentDefinesKey = Object.hasOwn(environment, spec.name);
   if (isConfiguredValue(environment[spec.name]))
     return { configured: true, source: 'environment' };
   if (authoritativeEnvironment && environmentDefinesKey)

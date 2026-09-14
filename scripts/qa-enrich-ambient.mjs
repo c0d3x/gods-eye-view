@@ -53,7 +53,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
-import { classifyAircraft, CLASS_SCALE_2D } from '../src/data/aircraftClass.js';
+import { CLASS_SCALE_2D, classifyAircraft } from '../src/data/aircraftClass.js';
 import { aircraftIcon } from '../src/data/aircraftIcons.js';
 import { qaUrl } from './lib/qaUrl.mjs';
 
@@ -242,7 +242,9 @@ async function main() {
       };
       window.__ENRICH_RELEASE = () => {
         window.__ENRICH_LOG.held = false;
-        window.__ENRICH_LOG.holds.splice(0).forEach((fn) => fn());
+        window.__ENRICH_LOG.holds.splice(0).forEach((fn) => {
+          fn();
+        });
       };
 
       // Straight line from (lon0, lat0) along courseDeg at speedMps.
@@ -265,8 +267,7 @@ async function main() {
         });
 
       window.fetch = (input, init) => {
-        const url =
-          typeof input === 'string' ? input : (input && input.url) || '';
+        const url = typeof input === 'string' ? input : input?.url || '';
         const S = window.__ENR;
         const nowSec = Date.now() / 1000 + (S.timeOffsetSec || 0);
         const tRel = nowSec - S.epochMs / 1000;
@@ -345,17 +346,14 @@ async function main() {
     console.log('Loading app...');
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForFunction(
-      () =>
-        window.__godsEyeView &&
-        window.__godsEyeView.viewer &&
-        window.__godsEyeView.dataManager,
+      () => window.__godsEyeView?.viewer && window.__godsEyeView.dataManager,
       { timeout: 60000, polling: 200 },
     );
     console.log('  App globals ready.');
 
     // ---- In-page billboard probe (same walk as qa-sprites-b5.mjs) ----------
     await page.evaluate(() => {
-      window.__collectBillboards = function () {
+      window.__collectBillboards = () => {
         const v = window.__godsEyeView.viewer;
         const out = [];
         const walk = (coll) => {
@@ -780,7 +778,7 @@ async function main() {
 main().catch((err) => {
   console.error(
     '\n\x1b[31mQA harness error:\x1b[0m',
-    err && err.stack ? err.stack : err,
+    err?.stack ? err.stack : err,
   );
   process.exit(2);
 });

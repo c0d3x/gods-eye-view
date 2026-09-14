@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { parseEnv } from 'node:util';
 import { fileURLToPath } from 'node:url';
+import { parseEnv } from 'node:util';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_ENVIRONMENT_FILE = path.join(ROOT, 'pinokio', 'ENVIRONMENT');
@@ -115,7 +115,7 @@ export function ensurePinokioSharingBoundary(
   }
 
   const encoded = Buffer.from(source, 'utf8');
-  if (!original || !original.equals(encoded)) {
+  if (!original?.equals(encoded)) {
     writeFileSync(filepath, source, { mode: 0o600 });
   }
   return configured;

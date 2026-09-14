@@ -89,14 +89,6 @@ function percentile(values, pct) {
   ];
 }
 
-function parseJson(value, fallback) {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return fallback;
-  }
-}
-
 function analyzeMembership(samples) {
   let replacements = 0;
   let exposure = 0;

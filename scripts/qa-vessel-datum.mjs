@@ -115,8 +115,7 @@ function probeVessels({ portLat, portLon, nearDeg, sampleCap }) {
       continue;
     const first = p.get(0);
     if (
-      first &&
-      first.id &&
+      first?.id &&
       typeof first.id === 'object' &&
       'mmsi' in first.id &&
       first.disableDepthTestDistance !== undefined

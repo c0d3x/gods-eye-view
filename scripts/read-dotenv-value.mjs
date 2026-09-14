@@ -19,7 +19,7 @@ export function readDotenvValue(
 ) {
   const key = String(variableName || '').trim();
   if (!/^[A-Z_][A-Z0-9_]*$/i.test(key)) return '';
-  const inherited = Object.prototype.hasOwnProperty.call(process.env, key)
+  const inherited = Object.hasOwn(process.env, key)
     ? process.env[key]
     : undefined;
   if (inherited !== undefined) delete process.env[key];
