@@ -12,7 +12,7 @@
 //  - the right-rail entry ignored the activation result entirely.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readUiSource } from './testing/uiSources.mjs';
+import { memberSource, readUiSource } from './testing/uiSources.mjs';
 
 const src = readUiSource();
 
@@ -271,10 +271,7 @@ test('a lost cross-mode switch says Context is off, and the state agrees', () =>
   // a bare "did not complete" while the operator's Context was silently gone.
   // Text and state are derived from the same verdict so they cannot disagree,
   // and the failed layer ids survive (Manjunath's honesty requirement).
-  const setter = src.slice(
-    src.indexOf('  async setContextMode(mode, {'),
-    src.indexOf('  getCockpitState() {'),
-  );
+  const setter = memberSource(src, '  async setContextMode(mode, {');
   assert.match(setter, /const priorMode = this\._contextMode;/, 'the report knows what was lost');
   assert.match(
     setter,
@@ -313,10 +310,7 @@ test('Context cancellation reaches isolation and restore lifecycle mutations', (
 });
 
 test('Context facade preserves success when cancellation arrives after commit', () => {
-  const setContextMode = src.slice(
-    src.indexOf('async setContextMode('),
-    src.indexOf('getCockpitState()', src.indexOf('async setContextMode(')),
-  );
+  const setContextMode = memberSource(src, '  async setContextMode(mode, {');
   assert.match(
     setContextMode,
     /transitioned === null \|\| \(!requestIsCurrent\(\) && transitioned !== true\)/,
@@ -341,10 +335,7 @@ test('Context production rollback paths merge primary and restore failed-layer i
 });
 
 test('stale Context cancellation preserves rollback failed-layer identities', () => {
-  const setContextMode = src.slice(
-    src.indexOf('async setContextMode('),
-    src.indexOf('getCockpitState()', src.indexOf('async setContextMode(')),
-  );
+  const setContextMode = memberSource(src, '  async setContextMode(mode, {');
   assert.match(
     setContextMode,
     /if \(!requestIsCurrent\(\)\) \{[\s\S]*?\.\.\.cancellationResult\(\),[\s\S]*?failedLayerIds: \[\.\.\.error\.failedLayerIds\]/,

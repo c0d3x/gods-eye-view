@@ -52,7 +52,7 @@ import {
   reduceTrafficSyncFeedback,
   TRAFFIC_SYNC_CONFIRM_MS,
 } from './loadingFeedback.js';
-import { readUiSource } from './testing/uiSources.mjs';
+import { memberSource, readUiSource } from './testing/uiSources.mjs';
 
 test('universal status notices reuse the standard failure dwell', () => {
   const notice = createGlobalStatusNotice('Shared satellite is unavailable', 1000);
@@ -91,9 +91,7 @@ test('deferred terminal notices lose ownership to newer acquisition epochs and d
 
 test('share-follow failures use the universal top-center status instead of the bottom toast', () => {
   const ui = readUiSource();
-  const start = ui.indexOf('  _handleShareTrackingRestoreStatus(result) {');
-  const end = ui.indexOf('\n  _initGlobalContextPanel() {', start);
-  const handler = ui.slice(start, end);
+  const handler = memberSource(ui, '  _handleShareTrackingRestoreStatus(result) {');
   assert.match(handler, /this\._showGlobalStatusNotice\(message\)/);
   assert.match(handler, /this\.initialRestorePromise\.then\(showAfterStartupCover\)/);
   assert.match(handler, /requestAnimationFrame\(\(\) => \{/);

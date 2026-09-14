@@ -17,6 +17,7 @@ export const UI_SOURCE_FILES = Object.freeze([
   'ui/visualStyles.js',
   'ui/detectionControls.js',
   'ui/cockpitControls.js',
+  'ui/contextPanel.js',
 ]);
 
 /**
@@ -27,4 +28,20 @@ export function readUiSource() {
   return UI_SOURCE_FILES.map((file) =>
     readFileSync(new URL(`../${file}`, import.meta.url), 'utf8'),
   ).join('\n');
+}
+
+/**
+ * One class member of \`source\`, from its signature through its closing brace.
+ * Members move between ui.js and the panel modules, so a member ends at its
+ * own brace rather than at whichever member follows it.
+ * @param {string} source - Usually readUiSource().
+ * @param {string} signature - The member's first line as written, indentation
+ *   included, such as '  setOrbit(enabled) {'.
+ * @returns {string} The member's text, or '' when it is missing.
+ */
+export function memberSource(source, signature) {
+  const start = source.indexOf(`\n${signature}`);
+  if (start < 0) return '';
+  const end = source.indexOf('\n  }\n', start + 1 + signature.length);
+  return end < 0 ? '' : source.slice(start + 1, end + '\n  }'.length);
 }

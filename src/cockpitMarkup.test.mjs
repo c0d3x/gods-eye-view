@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { readUiSource } from './testing/uiSources.mjs';
+import { memberSource, readUiSource } from './testing/uiSources.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -438,11 +438,7 @@ test('fresh Cockpit entry temporarily collapses map panels and exit restores the
 });
 
 test('real disclosure changes reconsider only their own temporary panel lane', () => {
-  const collapseStart = ui.indexOf('setPanelCollapsed(panelId, collapsed, {');
-  const collapse = ui.slice(
-    collapseStart,
-    ui.indexOf('toggleCleanView(forceEnabled)', collapseStart),
-  );
+  const collapse = memberSource(ui, '  setPanelCollapsed(panelId, collapsed, {');
   assert.match(collapse, /classList\.contains\('collapsed'\) === nextCollapsed && !wasAutoCollapsed[\s\S]*?return;/);
   assert.match(collapse, /_rightPanelStack\?\.contains\(panelEl\)[\s\S]*?_scheduleRightPanelLayout\(\{ reconsiderAutoCollapse: true \}\)/);
   assert.match(collapse, /_scheduleLeftPanelLayout\(\{[\s\S]*?reconsiderAutoCollapse: this\._leftPanelStack\?\.contains\(panelEl\) === true/);

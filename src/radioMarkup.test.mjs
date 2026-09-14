@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { GEV_REALTIME_TOOLS } from '../server/realtime/tools.mjs';
-import { readUiSource } from './testing/uiSources.mjs';
+import { memberSource, readUiSource } from './testing/uiSources.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const ui = readUiSource();
@@ -267,8 +267,8 @@ test('Radio is nested inside Context with separate disclosure and power controls
 });
 
 test('panel collapse is presentation-only and Radio exposes explicit voice playback controls', () => {
-  const start = ui.lastIndexOf('\n  setPanelCollapsed(panelId');
-  const method = ui.slice(start, ui.indexOf('toggleCleanView(forceEnabled)', start));
+  const method = memberSource(ui, '  setPanelCollapsed(panelId, collapsed, {');
+  assert.ok(method, 'setPanelCollapsed is in the UI source');
   assert.doesNotMatch(method, /stopRadio|stopPlayback|setEnabled\('radio'/);
   const schemaText = JSON.stringify(realtimeTools());
   assert.match(schemaText, /"radio-panel"/);
