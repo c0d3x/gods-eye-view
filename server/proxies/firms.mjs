@@ -261,7 +261,7 @@ export function firmsProxy() {
               })
               .catch((err) => {
                 console.warn(
-                  `[firms-proxy] refresh failed (${err?.message || err}) — serving cache if any`,
+                  `[firms-proxy] refresh failed (${errorMessage(err) || err}) — serving cache if any`,
                 );
                 return null;
               })

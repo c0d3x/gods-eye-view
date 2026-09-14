@@ -1,6 +1,6 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
-import { errorField } from './thrownErrors.mjs';
+import { errorField, errorMessage } from './thrownErrors.mjs';
 
 /**
  * Delete old and excess files from one disk-cache directory.
@@ -97,7 +97,7 @@ export function createCachePruner({
     })
       .catch((error) => {
         log(
-          `[disk cache] Pruning ${path.basename(directory)} failed: ${error?.code || error?.message || error}`,
+          `[disk cache] Pruning ${path.basename(directory)} failed: ${errorField(error, 'code') || errorMessage(error) || error}`,
         );
         return { removed: 0, bytes: 0 };
       })

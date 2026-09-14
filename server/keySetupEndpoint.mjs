@@ -363,14 +363,17 @@ export function keySetupEndpoint() {
               server.restart().catch((error) => {
                 console.warn(
                   '[KeySetup] Dev-server restart failed:',
-                  error?.message || error,
+                  errorMessage(error) || error,
                 );
               });
             }, 250);
           })
           .catch((error) => {
             // The client went away mid-body, or the save failed unexpectedly.
-            console.warn('[KeySetup] Request failed:', error?.message || error);
+            console.warn(
+              '[KeySetup] Request failed:',
+              errorMessage(error) || error,
+            );
             if (!res.headersSent)
               respond(res, 500, { error: 'Provider Settings request failed' });
           });

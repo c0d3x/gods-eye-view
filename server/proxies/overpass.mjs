@@ -256,7 +256,7 @@ function writeOverpassDisk(cacheKey, payload) {
     .catch((err) =>
       console.warn(
         '[Overpass Proxy] disk cache write failed:',
-        err?.message || err,
+        errorMessage(err) || err,
       ),
     );
 }

@@ -507,7 +507,7 @@ export function createAisStreamAdapter(options) {
         }
         handleMessage(owner, generation, socket, data).catch((error) => {
           warn(
-            `[AISStream] message handling failed: ${error?.message || error}`,
+            `[AISStream] message handling failed: ${errorMessage(error) || error}`,
           );
         });
       } catch (error) {

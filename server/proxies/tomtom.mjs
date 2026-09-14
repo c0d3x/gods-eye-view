@@ -290,7 +290,7 @@ export function tomtomProxy({
                 })
                 .catch((err) => {
                   console.warn(
-                    `[tomtom-proxy] ${key} fetch failed (${err?.message || err}) — serving stale if any`,
+                    `[tomtom-proxy] ${key} fetch failed (${errorMessage(err) || err}) — serving stale if any`,
                   );
                   return null;
                 })
