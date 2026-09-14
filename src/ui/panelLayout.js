@@ -8,14 +8,15 @@
 // src/ui/adoptMethods.js); they run on its state. _initLeftPanelAdaptiveLayout()
 // and _initRightPanelAdaptiveLayout() start the layouts, and
 // _disposePanelLayout() stops them.
-import { shouldHideCollapsedRightPanels } from '../rightRailPolicy.js';
+
+import { resolveHudRailLayout } from '../cockpitMath.js';
 import {
   allocatePanelStackHeights,
   panelStackAutoCollapseIndices,
   resolveLeftStackBottomBoundary,
   resolvePanelStackCorridor,
 } from '../panelStackLayout.js';
-import { resolveHudRailLayout } from '../cockpitMath.js';
+import { shouldHideCollapsedRightPanels } from '../rightRailPolicy.js';
 
 const COCKPIT_LAYOUT_SETTLE_MS = 240;
 /**

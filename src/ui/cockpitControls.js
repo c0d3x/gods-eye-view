@@ -8,14 +8,14 @@
 // src/ui/adoptMethods.js); they run on its state.
 // _disposeCockpitDisplayPortal() puts the borrowed controls back.
 import { enterCockpitWithTracking } from '../cockpitTracking.js';
-import flightsLayer from '../data/flights.js';
-import militaryFlightsLayer from '../data/militaryFlights.js';
-import militaryAwarenessLayer from '../data/militaryAwareness.js';
 import {
   applyCockpitVisionStageIntensities,
   captureCockpitVisionBaseline,
   normalizeCockpitVisionMode,
 } from '../cockpitVisionPolicy.js';
+import flightsLayer from '../data/flights.js';
+import militaryAwarenessLayer from '../data/militaryAwareness.js';
+import militaryFlightsLayer from '../data/militaryFlights.js';
 
 export class CockpitControls {
   /** Apply a temporary cockpit-only CRT/NVG/FLIR/NOIR post-process override. */

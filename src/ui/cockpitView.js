@@ -475,13 +475,13 @@ export class CockpitViewController {
     this._listen(this.briefAutoToggle, 'click', () => {
       this.setBriefAutoRotate(!this.briefAutoRotateEnabled);
     });
-    this.briefTabs.forEach((button) =>
+    this.briefTabs.forEach((button) => {
       this._listen(button, 'click', () => {
         this.showBriefPage(Number(button.dataset.cockpitBriefIndex), {
           manual: true,
         });
-      }),
-    );
+      });
+    });
     this._listen(document, 'visibilitychange', () => {
       if (document.hidden) this.stopBriefRotation();
       else if (this.briefAutoRotateEnabled) this.startBriefRotation();
@@ -760,7 +760,8 @@ export class CockpitViewController {
       event.preventDefault();
       event.stopImmediatePropagation();
       if (!this.active && !this.isEntryAllowed()) return;
-      const changed = this.active ? this.exit() : this.enter();
+      if (this.active) this.exit();
+      else this.enter();
       return;
     }
   }
@@ -1314,7 +1315,7 @@ export class CockpitViewController {
       }
     }
     if (this.clock)
-      this.clock.textContent = new Date().toISOString().slice(11, 19) + 'Z';
+      this.clock.textContent = `${new Date().toISOString().slice(11, 19)}Z`;
     if (this.position) {
       const lat = Number.isFinite(info.latitude)
         ? `${Math.abs(info.latitude).toFixed(3)}°${info.latitude >= 0 ? 'N' : 'S'}`
@@ -1541,7 +1542,7 @@ export class CockpitViewController {
     }
     if (this.contextUpdated) {
       this.contextUpdated.textContent = Number.isFinite(snapshot.evaluatedAt)
-        ? new Date(snapshot.evaluatedAt).toISOString().slice(11, 19) + 'Z'
+        ? `${new Date(snapshot.evaluatedAt).toISOString().slice(11, 19)}Z`
         : '--:--:--Z';
     }
     this.context.dataset.state = unknownCount ? 'uncertain' : 'current';
@@ -1857,7 +1858,7 @@ export class CockpitViewController {
       const [heading, copy] = body.children;
       const className = item.target ? `${item.tone} actionable` : item.tone;
       if (entry.className !== className) entry.className = className;
-      setText(time, new Date(item.timestamp).toISOString().slice(11, 19) + 'Z');
+      setText(time, `${new Date(item.timestamp).toISOString().slice(11, 19)}Z`);
       if (item.target) {
         heading.dataset.signalLayer = item.target.layerId;
         heading.dataset.signalId = item.target.id;

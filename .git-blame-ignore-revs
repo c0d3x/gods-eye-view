@@ -16,3 +16,6 @@ a5da6e4b8d949ea77db98473a39176af258e4076
 
 # Format src/voice with Biome
 4c16ab4edf93334c8353b211004664e70040def7
+
+# Format src/ui with Biome
+32862e79b8f97c6a80799f3da2025a33322c711f

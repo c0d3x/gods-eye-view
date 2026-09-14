@@ -7,9 +7,10 @@
 // These are StyleManager methods, kept here and adopted by StyleManager (see
 // src/ui/adoptMethods.js); they run on its state. _initCctvPanel() wires the
 // panel.
+
+import { runCctvLayerEnableTransition } from '../cctvFocusPolicy.js';
 import cctvLayer from '../data/cctv.js';
 import { setSplitFlapText } from '../splitFlap.js';
-import { runCctvLayerEnableTransition } from '../cctvFocusPolicy.js';
 
 /**
  * Central UI orchestrator for the God's Eye View application.
@@ -564,7 +565,7 @@ export class CctvPanel {
    * @returns {Promise<boolean>} True if the layer is now in the requested state.
    */
   async _toggleCctvEnabled(forceState) {
-    if (!this._dataManager || !this._dataManager.layers?.has('cctv')) {
+    if (!this._dataManager?.layers?.has('cctv')) {
       this._showToast('CCTV layer unavailable');
       return false;
     }

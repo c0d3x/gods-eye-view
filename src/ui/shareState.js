@@ -9,9 +9,9 @@ import { BLOOM_SCALE_VERSION } from '../bloom.js';
 import { getDetectionTuning } from '../data/detection.js';
 import { canPresentDeferredStatusNotice } from '../loadingFeedback.js';
 import {
-  isScopeMaskEnabled,
   getScopeMaskFeather,
   getScopeTerminusOverride,
+  isScopeMaskEnabled,
 } from '../scopeMask.js';
 
 const SHARE_PANEL_STATE_SPECS = Object.freeze([

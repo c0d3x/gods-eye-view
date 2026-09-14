@@ -29,7 +29,7 @@ export class PanelChrome {
    */
   _reclampDraggablePanels() {
     const el = this._ppToggles;
-    if (!el || !el.style.top || el.style.top === 'auto') return;
+    if (!el?.style.top || el.style.top === 'auto') return;
     const top = parseInt(el.style.top, 10);
     if (!Number.isFinite(top)) return;
     el.style.top = `${this._clampToViewport(0, top, el).top}px`;

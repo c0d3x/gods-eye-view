@@ -10,9 +10,14 @@ import {
   setKeyholeFadeTuning,
 } from '../celestialRing.js';
 import {
-  getDetectionDiagnostics as readDetectionDiagnostics,
-  getDetectionTuning,
+  applyContactsDetection,
+  shareableDetectionState,
+  shareCacheNeedsHeal,
+} from '../contactsDetectionPolicy.js';
+import {
   getMode as getDetectionMode,
+  getDetectionTuning,
+  getDetectionDiagnostics as readDetectionDiagnostics,
   setMode as setDetectionModeByLabel,
   setDetectionTuning,
 } from '../data/detection.js';
@@ -24,11 +29,6 @@ import {
   normalizeProfile,
   profileForDensity,
 } from '../data/detectionPolicy.js';
-import {
-  applyContactsDetection,
-  shareCacheNeedsHeal,
-  shareableDetectionState,
-} from '../contactsDetectionPolicy.js';
 import {
   MILITARY_DETECTION_PRESET,
   STYLE_PRESET_DEFAULTS,

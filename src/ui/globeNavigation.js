@@ -7,15 +7,15 @@
 // src/ui/adoptMethods.js); they run on its state. _disposeGlobeNavigation()
 // removes the two buttons' listeners.
 import * as Cesium from 'cesium';
-import { GLOBE_VIEW, flyToGlobeView } from '../locations.js';
 import { interruptCameraMotion } from '../cameraVerbs.js';
 import { aircraftTrackingTarget } from '../cockpitTracking.js';
-import flightsLayer from '../data/flights.js';
-import militaryFlightsLayer from '../data/militaryFlights.js';
-import satellitesLayer from '../data/satellites.js';
 import aisLiveVesselsLayer from '../data/aisLiveVessels.js';
+import flightsLayer from '../data/flights.js';
 import militaryAwarenessLayer from '../data/militaryAwareness.js';
+import militaryFlightsLayer from '../data/militaryFlights.js';
 import rocketLaunchesLayer from '../data/rocketLaunches.js';
+import satellitesLayer from '../data/satellites.js';
+import { flyToGlobeView, GLOBE_VIEW } from '../locations.js';
 import {
   beginDeferredNavigation,
   reassertNavigationHandoff,

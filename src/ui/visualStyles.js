@@ -18,17 +18,17 @@ import { isCelestialRingStyleSupported } from '../celestialRing.js';
 import { setDetectionStyle } from '../data/detection.js';
 import { canonicalizeDensity } from '../data/detectionPolicy.js';
 import {
+  governorRequestRender,
   holdContinuousRender,
   releaseContinuousRender,
-  governorRequestRender,
 } from '../renderGovernor.js';
 import {
-  TRANSITION_DURATION_MS,
-  STYLES,
-  STYLE_STATUS_LABELS,
   GLOBAL_POST_DEFAULTS,
-  STYLE_PRESET_DEFAULTS,
   SHARPEN_SHADER,
+  STYLE_PRESET_DEFAULTS,
+  STYLE_STATUS_LABELS,
+  STYLES,
+  TRANSITION_DURATION_MS,
 } from './styleConfig.js';
 
 export class VisualStyles {
@@ -239,7 +239,7 @@ export class VisualStyles {
    */
   _applySharpenIntensity(val) {
     governorRequestRender('sharpen');
-    if (!this._sharpenStage || !this._sharpenStage.uniforms) return;
+    if (!this._sharpenStage?.uniforms) return;
     this._sharpenStage.uniforms.amount = 0.1 + val * 2.0;
   }
 
@@ -584,7 +584,7 @@ export class VisualStyles {
     this._sliderContainer.innerHTML = '';
     const shader = STYLES[styleName];
 
-    if (!shader || !shader.uniforms || styleName === 'normal') {
+    if (!shader?.uniforms || styleName === 'normal') {
       this._sliderPanel.classList.remove('active');
       this._scheduleRightPanelLayout();
       return;
@@ -784,7 +784,7 @@ export class VisualStyles {
         const elapsed = now - transition.start;
         const t = Math.min(elapsed / TRANSITION_DURATION_MS, 1.0);
         // Ease-in-out quadratic: smooth acceleration then deceleration
-        const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        const eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
         const value =
           transition.from + (transition.to - transition.from) * eased;
 

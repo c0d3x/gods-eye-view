@@ -5,15 +5,16 @@
 // These are StyleManager methods, kept here and adopted by StyleManager (see
 // src/ui/adoptMethods.js); they run on its state. _initLocationBar() wires the
 // bar, and _disposeLocationBar() removes its keyboard listener.
+
+import { resumeDetection, suspendDetection } from '../data/detection.js';
+import trafficLayer from '../data/traffic.js';
+import { locationMiniStatus } from '../locationStatus.js';
 import {
   CITY_POIS,
-  flyToPresetLocation,
   flyToPOI,
+  flyToPresetLocation,
   searchAndFlyTo,
 } from '../locations.js';
-import { locationMiniStatus } from '../locationStatus.js';
-import { suspendDetection, resumeDetection } from '../data/detection.js';
-import trafficLayer from '../data/traffic.js';
 
 export class LocationBar {
   /** Settle only the search generation that still owns the shared input UI. */
@@ -302,7 +303,7 @@ export class LocationBar {
     this._poiRow.querySelectorAll('.poi-pill').forEach((pill) => {
       pill.classList.toggle(
         'active',
-        parseInt(pill.dataset.poiIndex) === this._activePoiIndex,
+        parseInt(pill.dataset.poiIndex, 10) === this._activePoiIndex,
       );
     });
   }

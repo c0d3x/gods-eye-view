@@ -5,13 +5,14 @@
 //
 // StyleManager (src/ui.js) and the panel modules import these. They hold no
 // state.
-import { retroShader } from '../styles/retro.js';
+
+import { BLOOM_INTENSITY_DEFAULT } from '../bloom.js';
 import { animeShader } from '../styles/anime.js';
 import { noirShader } from '../styles/noir.js';
+import { retroShader } from '../styles/retro.js';
 import { snowShader } from '../styles/snow.js';
 import { nightVisionShader } from '../styles/surveillance.js';
 import { thermalShader } from '../styles/thermal.js';
-import { BLOOM_INTENSITY_DEFAULT } from '../bloom.js';
 
 /** Duration (ms) for shader intensity crossfade between style presets. */
 export const TRANSITION_DURATION_MS = 500;

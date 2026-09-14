@@ -7,11 +7,11 @@
 // These are StyleManager methods, kept here and adopted by StyleManager (see
 // src/ui/adoptMethods.js); they run on its state. _initGlobalContextPanel()
 // wires the panel.
-import radioLayer from '../data/radio.js';
-import militaryInstallationsLayer from '../data/militaryInstallations.js';
+
 import {
   cockpitEntryAllowed,
   contextAllowedLayerIds,
+  contextModeWord,
   contextRestoreLayerIds,
   contextSnapshotLayerIds,
   isExplicitUserIntentOrigin,
@@ -22,8 +22,9 @@ import {
   settleUserFacingContextAction,
   shouldExitContextForLayerChange,
   spaceMissionEntryCancellationDisposition,
-  contextModeWord,
 } from '../contextModePolicy.js';
+import militaryInstallationsLayer from '../data/militaryInstallations.js';
+import radioLayer from '../data/radio.js';
 import { shouldExpandGlobalContextPanel } from '../rightRailPolicy.js';
 
 export class ContextPanel {
@@ -32,7 +33,7 @@ export class ContextPanel {
       this._globalContextFlightsBtn,
       this._globalContextMissionsBtn,
     ].filter(Boolean);
-    contextTabs.forEach((tab, index) =>
+    contextTabs.forEach((tab, index) => {
       tab.addEventListener('keydown', (event) => {
         let nextIndex = null;
         if (event.key === 'ArrowRight')
@@ -45,8 +46,8 @@ export class ContextPanel {
         event.preventDefault();
         contextTabs[nextIndex].focus({ preventScroll: true });
         contextTabs[nextIndex].click();
-      }),
-    );
+      });
+    });
     this._globalContextFlightsBtn?.addEventListener('click', () => {
       if (this._contextModeChanging || this._clearSelectedLayersPromise) return;
       const nextMode = this._contextMode === 'flights' ? null : 'flights';

@@ -9,15 +9,15 @@
 import * as Cesium from 'cesium';
 import { BLOOM_SCALE_VERSION, decodeBloomIntensity } from '../bloom.js';
 import {
-  getDetectionTuning,
   getMode as getDetectionMode,
+  getDetectionTuning,
 } from '../data/detection.js';
 import { canonicalizeDensity } from '../data/detectionPolicy.js';
 import {
-  setScopeMaskEnabled,
-  isScopeMaskEnabled,
-  setScopeMaskFeather,
   getScopeMaskFeather,
+  isScopeMaskEnabled,
+  setScopeMaskEnabled,
+  setScopeMaskFeather,
 } from '../scopeMask.js';
 import { STYLES } from './styleConfig.js';
 

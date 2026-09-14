@@ -206,7 +206,25 @@
       "src/voice/gevRealtime.js",
       "src/voice/gevRealtime.test.mjs",
       "src/voice/voiceCost.js",
-      "src/voice/voiceCost.test.mjs"
+      "src/voice/voiceCost.test.mjs",
+      "src/ui/cctvPanel.js",
+      "src/ui/cockpitControls.js",
+      "src/ui/cockpitView.js",
+      "src/ui/contextPanel.js",
+      "src/ui/detectionControls.js",
+      "src/ui/globeNavigation.js",
+      "src/ui/hudControls.js",
+      "src/ui/locationBar.js",
+      "src/ui/mapStackControl.js",
+      "src/ui/panelChrome.js",
+      "src/ui/panelLayout.js",
+      "src/ui/radioPanel.js",
+      "src/ui/recordingControls.js",
+      "src/ui/sceneState.js",
+      "src/ui/shareState.js",
+      "src/ui/statusFeedback.js",
+      "src/ui/styleConfig.js",
+      "src/ui/visualStyles.js"
     ]
   },
   "formatter": {
