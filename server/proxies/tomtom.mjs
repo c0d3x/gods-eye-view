@@ -154,9 +154,10 @@ export function tomtomProxy({
   }
 
   async function fetchUpstream(z, x, y) {
+    // The tile route answers 503 before calling this when the key is unset.
     const url =
       'https://api.tomtom.com/traffic/map/4/tile/flow/relative/' +
-      `${z}/${x}/${y}.pbf?key=${encodeURIComponent(process.env.TOMTOM_API_KEY)}`;
+      `${z}/${x}/${y}.pbf?key=${encodeURIComponent(process.env.TOMTOM_API_KEY ?? '')}`;
     recordUpstreamFetch(); // attempts count — upstream bills the request either way
     const res = await fetch(url, {
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
@@ -224,6 +225,7 @@ export function tomtomProxy({
           const key = `${z}/${x}/${y}`;
           const now = Date.now();
 
+          /** @type {{at: number, buf: Buffer}|null|undefined} */
           let entry = mem.get(key);
           if (!entry) {
             entry = await readDiskTile(key);

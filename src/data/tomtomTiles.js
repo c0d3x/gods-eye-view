@@ -138,7 +138,7 @@ export function utcDayKey(epochMs = Date.now()) {
  */
 export function normalizeBudget(state, dayKey) {
   const valid =
-    Boolean(state) &&
+    !!state &&
     state.date === dayKey &&
     Number.isFinite(state.count) &&
     state.count >= 0;

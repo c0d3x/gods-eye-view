@@ -87,9 +87,11 @@ export function normalizeRadioBrowserStation(raw) {
     !RADIO_UUID_RE.test(id) ||
     Number(raw?.lastcheckok) !== 1 ||
     Number(raw?.hls) === 1 ||
+    lat === null ||
     !Number.isFinite(lat) ||
     lat < -90 ||
     lat > 90 ||
+    lon === null ||
     !Number.isFinite(lon) ||
     lon < -180 ||
     lon > 180 ||
@@ -235,14 +237,36 @@ async function mapRadioConcurrent(values, concurrency, mapper) {
   return results;
 }
 
-/** Create the testable Connect middleware backing `/api/radio`. */
+/**
+ * A Radio Browser catalog as the proxy serves it.
+ * @typedef {object} RadioCatalog
+ * @property {number} cachedAt
+ * @property {string} updatedAt
+ * @property {Array<ReturnType<typeof publicRadioStation>>} stations
+ * @property {Set<string>} stationIds
+ * @property {boolean} degraded
+ * @property {string|null} degradedReason
+ * @property {{successfulQueries: number, totalQueries: number, stationCount: number, healthyStationMinimum: number}} coverage
+ * @property {number|null} acceptedGeneration
+ */
+
+/**
+ * Create the testable Connect middleware backing `/api/radio`.
+ * @param {object} [options]
+ * @param {typeof fetch|null} [options.fetchImpl] Makes each request in place of
+ *   the pinned one. For tests.
+ * @param {typeof lookupDns} [options.lookupImpl]
+ * @param {() => number} [options.now]
+ */
 export function createRadioProxyMiddleware({
   fetchImpl = null,
   lookupImpl = lookupDns,
   now = Date.now,
 } = {}) {
   let mirrorCache = { origins: [...RADIO_FALLBACK_MIRRORS], cachedAt: 0 };
+  /** @type {Promise<string[]>|null} */
   let mirrorPromise = null;
+  /** @type {RadioCatalog|null} */
   let catalogCache = null;
   let catalogGeneration = 0;
   // The generation counter is process-local, so it restarts from 1 with the
@@ -251,6 +275,7 @@ export function createRadioProxyMiddleware({
   // repeat ("still generation 1") or a regression ("generation went backward").
   const catalogInstance = randomUUID();
   let servedStationIds = new Set();
+  /** @type {Promise<RadioCatalog>|null} */
   let refreshPromise = null;
 
   async function fetchJson(url, maxBytes = RADIO_RESPONSE_MAX_BYTES) {
@@ -267,7 +292,7 @@ export function createRadioProxyMiddleware({
       const options = {
         headers: { Accept: 'application/json', 'User-Agent': RADIO_USER_AGENT },
         signal: controller.signal,
-        redirect: 'manual',
+        redirect: /** @type {const} */ ('manual'),
       };
       const response = fetchImpl
         ? await fetchImpl(destination.href, options)
@@ -303,7 +328,7 @@ export function createRadioProxyMiddleware({
             ...new Set(
               (Array.isArray(rows) ? rows : [])
                 .map((row) => radioMirrorOrigin(row?.name))
-                .filter(Boolean),
+                .filter((origin) => origin !== null),
             ),
           ];
           if (discovered.length) {
@@ -386,7 +411,7 @@ export function createRadioProxyMiddleware({
             );
           const stations = rows
             .map(normalizeRadioBrowserStation)
-            .filter(Boolean);
+            .filter((station) => station !== null);
           const requestedTag = cleanRadioText(tag, 80)
             .toLocaleLowerCase()
             .replace(/[_-]+/g, ' ')

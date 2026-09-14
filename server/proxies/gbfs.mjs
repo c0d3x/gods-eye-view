@@ -115,6 +115,7 @@ export function gbfsProxy() {
             return;
           }
 
+          /** @type {URL|null} */
           let upstreamUrl = null;
           try {
             upstreamUrl = new URL(decodedTarget);

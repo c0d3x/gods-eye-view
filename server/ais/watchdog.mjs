@@ -73,7 +73,7 @@ export function isLiveAisStatus(status) {
  *
  * @param {string|number|undefined|null} raw
  * @param {(message: string) => void} [warn]
- * @returns {{kind: 'default'|'off'|'timeout', value?: number}}
+ * @returns {{kind: 'default'} | {kind: 'off'} | {kind: 'timeout', value: number}}
  */
 export function parseSilenceTimeoutEnv(raw, warn) {
   if (raw === undefined || raw === null) return { kind: 'default' };
@@ -142,7 +142,7 @@ export function createAisWatchdog(options = {}) {
    * a pre-disposal handler act on its successor's socket.
    */
   let generation = Math.max(0, Number(options.startGeneration) || 0);
-  /** Generation of the socket the machine currently owns; null = slot free. */
+  /** @type {number|null} Generation of the socket the machine currently owns; null = slot free. */
   let owned = null;
   /** Monotonic ms at which the current silence window began (connect or data). */
   let silenceSinceMono = 0;
@@ -152,10 +152,11 @@ export function createAisWatchdog(options = {}) {
   let reconnectAttempt = 0;
   /** Monotonic deadline before which no new connect may be issued. */
   let nextAttemptMono = 0;
+  /** @type {string|null} */
   let error = null;
   /** False for custom subscriptions, where silence can be legitimate. */
   let silenceWatchArmed = true;
-  /** Identifies the credential in use, so a key change can clear auth-failed. */
+  /** @type {string|null} Identifies the credential in use, so a key change can clear auth-failed. */
   let keyFingerprint = null;
 
   function release() {
@@ -401,9 +402,10 @@ export function createAisWatchdog(options = {}) {
    */
   function onFailure(eventGeneration, detail = {}) {
     if (!ownsGeneration(eventGeneration)) return [];
-    const kind = AIS_FAILURE_KINDS.includes(detail.kind)
-      ? detail.kind
-      : 'transport';
+    const kind =
+      detail.kind && AIS_FAILURE_KINDS.includes(detail.kind)
+        ? detail.kind
+        : 'transport';
     // A probe dying of some unrelated fault while the key is refused keeps the
     // credential message — surfacing "ECONNRESET" would send the operator
     // chasing the network instead of the key.

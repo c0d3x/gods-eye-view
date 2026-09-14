@@ -127,8 +127,9 @@ export function createAisRelay({
   const _aisStreamTracks = new Map();
   /** @type {Map<string,{lat:number,lon:number,epochSec:number}>} mmsi -> first fix awaiting second (lazy buffer allocation) */
   const _aisStreamTrackPending = new Map();
-  /** The AIS key last seen, and a count of the distinct keys seen so far. */
+  /** @type {string|null} The AIS key last seen. */
   let _aisKeySeen = null;
+  /** How many distinct keys have been seen so far. */
   let _aisKeyGeneration = 0;
 
   /** The `ws` constructor, loaded once; null when it is unavailable. */

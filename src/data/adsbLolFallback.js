@@ -96,6 +96,6 @@ export function normalizeAdsbLolPointResponse(payload) {
         );
   const states = (Array.isArray(payload?.ac) ? payload.ac : [])
     .map((aircraft) => normalizeAdsbLolAircraftState(aircraft, nowSeconds))
-    .filter(Boolean);
+    .filter((state) => state !== null);
   return { time: nowSeconds, states };
 }

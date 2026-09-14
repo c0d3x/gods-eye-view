@@ -110,7 +110,7 @@ export default defineConfig(({ mode }) => {
     ],
     server: {
       host: env.HOST || 'localhost',
-      port: parseInt(env.PORT, 10) || 4173,
+      port: parseInt(env.PORT ?? '', 10) || 4173,
       // This machine's names plus GEV_ALLOWED_HOSTS, in every mode. LAN mode
       // too: Vite accepts IP addresses anyway, and the Host check is what
       // stops DNS rebinding from reaching the API routes.

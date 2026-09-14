@@ -56,7 +56,7 @@ const OVERPASS_TIMEOUT_MS = 22000;
 /** Max entries in the Overpass response cache (LRU-like, oldest evicted first). */
 const OVERPASS_CACHE_MAX_ENTRIES = 120;
 /**
- * One Overpass answer as the proxy caches and serves it.
+ * One Overpass answer as the proxy serves it.
  * @typedef {object} OverpassPayload
  * @property {number} status
  * @property {string} body
@@ -64,9 +64,12 @@ const OVERPASS_CACHE_MAX_ENTRIES = 120;
  * @property {string} endpoint
  * @property {boolean} [rateLimited]
  * @property {boolean} [runtimeError]
- * @property {number} [cachedAt] When it was cached, for the TTL checks.
  */
-/** @type {Map<string, OverpassPayload>} */
+/**
+ * An Overpass answer in the memory or disk cache, stamped for the TTL checks.
+ * @typedef {OverpassPayload & {cachedAt: number}} CachedOverpassPayload
+ */
+/** @type {Map<string, CachedOverpassPayload>} */
 const _overpassCache = new Map();
 /** @type {Map<string, Promise<OverpassPayload>>} In-flight Overpass requests keyed by normalized query body. */
 const _overpassInFlight = new Map();
@@ -98,7 +101,8 @@ function douglasPeucker(points, toleranceDeg) {
   keep[n - 1] = 1;
   const stack = [[0, n - 1]];
   while (stack.length) {
-    const [a, b] = stack.pop();
+    // The loop test keeps the stack non-empty.
+    const [a, b] = /** @type {number[]} */ (stack.pop());
     if (b - a < 2) continue;
     const ax = points[a].lon;
     const ay = points[a].lat;
@@ -239,13 +243,13 @@ function writeOverpassDisk(cacheKey, payload) {
  *
  * @param {object} options
  * @param {string} options.cacheKey
- * @param {Map<string, OverpassPayload>} options.memoryCache
+ * @param {Map<string, CachedOverpassPayload>} options.memoryCache
  * @param {Map<string, Promise<OverpassPayload>>} options.inFlight
- * @param {()=>Promise<OverpassPayload|null>} options.readDisk
+ * @param {()=>Promise<CachedOverpassPayload|null>} options.readDisk
  * @param {()=>boolean} options.allowUpstream
  * @param {number} [options.now]
  * @param {number} [options.cacheMs]
- * @returns {Promise<{source:'HIT'|'INFLIGHT'|'DISK'|'UPSTREAM'|'RATE_LIMITED', payload:OverpassPayload|null}>}
+ * @returns {Promise<{source: 'HIT'|'DISK', payload: CachedOverpassPayload} | {source: 'INFLIGHT', payload: OverpassPayload} | {source: 'UPSTREAM', payload: null} | {source: 'RATE_LIMITED', payload: null}>}
  */
 export async function resolveOverpassPreflight({
   cacheKey,
@@ -257,14 +261,19 @@ export async function resolveOverpassPreflight({
   cacheMs = OVERPASS_CACHE_MS,
 }) {
   const cached = memoryCache.get(cacheKey);
-  if (overpassPayloadIsData(cached) && now - cached.cachedAt <= cacheMs)
+  if (
+    cached &&
+    overpassPayloadIsData(cached) &&
+    now - cached.cachedAt <= cacheMs
+  )
     return { source: 'HIT', payload: cached };
 
   const pending = inFlight.get(cacheKey);
   if (pending) return { source: 'INFLIGHT', payload: await pending };
 
   const disk = await readDisk();
-  if (overpassPayloadIsData(disk)) return { source: 'DISK', payload: disk };
+  if (disk && overpassPayloadIsData(disk))
+    return { source: 'DISK', payload: disk };
 
   return allowUpstream()
     ? { source: 'UPSTREAM', payload: null }
@@ -274,7 +283,7 @@ export async function resolveOverpassPreflight({
 /** Return only last-good Overpass data, regardless of its age. */
 async function readStaleOverpass(cacheKey) {
   const cached = _overpassCache.get(cacheKey);
-  return overpassPayloadIsData(cached)
+  return cached && overpassPayloadIsData(cached)
     ? cached
     : readOverpassDisk(cacheKey, Infinity);
 }
@@ -419,6 +428,11 @@ function stripOverpassNoise(src) {
   return out;
 }
 
+/**
+ * Validate an Overpass query body, rejecting unbounded queries.
+ * @param {string} rawBody URL-encoded request body.
+ * @returns {{ok: true, body: string} | {ok: false, error: string}}
+ */
 function sanitizeOverpassBody(rawBody) {
   let params;
   try {
@@ -635,8 +649,11 @@ export async function fetchOverpassPayload(
     simplify = simplifyOverpassPayloadBody,
   } = {},
 ) {
+  /** @type {Error|null} */
   let lastError = null;
+  /** @type {OverpassPayload|null} */
   let lastRateLimitPayload = null;
+  /** @type {OverpassPayload|null} */
   let lastRefusalPayload = null;
 
   for (const endpoint of endpoints) {
@@ -730,6 +747,7 @@ export function overpassProxy() {
       server.middlewares.use('/api/overpass', async (req, res) => {
         // Hoisted out of the try so the catch's serve-stale lookup can see it
         // (a body-read failure would otherwise hit an out-of-scope reference).
+        /** @type {string|null} */
         let cacheKey = null;
         try {
           if (req.method !== 'POST') {
@@ -815,6 +833,8 @@ export function overpassProxy() {
             return;
           }
           _overpassConcurrent += 1;
+          // The callbacks below use this copy; cacheKey stays a let for the catch.
+          const requestKey = cacheKey;
           const requestPromise = fetchOverpassPayload(safeBody)
             .then((payload) => {
               // Only a 2xx is data. `< 500` cached every 4xx, so one mirror's
@@ -823,18 +843,18 @@ export function overpassProxy() {
               // outage that caused it.
               if (overpassPayloadIsData(payload)) {
                 const entry = { ...payload, cachedAt: Date.now() };
-                _overpassCache.set(cacheKey, entry);
+                _overpassCache.set(requestKey, entry);
                 trimOverpassCache();
-                writeOverpassDisk(cacheKey, entry);
+                writeOverpassDisk(requestKey, entry);
               }
               return payload;
             })
             .finally(() => {
               _overpassConcurrent -= 1;
-              _overpassInFlight.delete(cacheKey);
+              _overpassInFlight.delete(requestKey);
             });
 
-          _overpassInFlight.set(cacheKey, requestPromise);
+          _overpassInFlight.set(requestKey, requestPromise);
           const payload = await requestPromise;
           // Degraded upstream (rate-limited on every mirror / 5xx / runtime
           // error): last-good roads beat an empty layer — serve stale from
@@ -876,7 +896,7 @@ export function overpassProxy() {
             res.end(JSON.stringify({ ok: false, error: 'rate limited' }));
             return;
           }
-          const url = new URL(req.url, 'http://localhost');
+          const url = new URL(req.url || '', 'http://localhost');
           const raw = (url.searchParams.get('profile') || 'foot').toLowerCase();
           const profile =
             raw === 'car' || raw === 'driving'

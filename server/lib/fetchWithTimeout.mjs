@@ -32,9 +32,9 @@ function clientGoneSignal(response) {
 }
 
 /**
- * fetch() options with the headers as a plain object, the way the proxies
- * build them.
- * @typedef {RequestInit & {headers?: Record<string, string>}} UpstreamInit
+ * fetch() options the way the proxies build them: headers as a plain object,
+ * and a signal that is never null.
+ * @typedef {Omit<RequestInit, 'headers' | 'signal'> & {headers?: Record<string, string>, signal?: AbortSignal}} UpstreamInit
  */
 
 /**

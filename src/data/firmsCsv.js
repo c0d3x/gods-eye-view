@@ -90,6 +90,8 @@ export function parseFirmsCsv(text) {
   const iAcqTime = col.get('acq_time');
   const iSatellite = col.get('satellite');
   const iInstrument = col.get('instrument');
+  // Without coordinates every row would be skipped below.
+  if (iLat === undefined || iLon === undefined) return [];
 
   const records = [];
   for (let i = headerIndex + 1; i < lines.length; i += 1) {
@@ -104,12 +106,12 @@ export function parseFirmsCsv(text) {
     records.push({
       lat,
       lon,
-      frp: finiteOrZero(parts[iFrp]),
+      frp: finiteOrZero(cell(parts, iFrp)),
       // Categorical (l/n/h) or numeric — passed through raw; display
       // normalization happens client-side (normalizeConfidence).
       confidence: cell(parts, iConfidence),
-      brightness: finiteOrZero(parts[iBrightness]),
-      brightnessTi5: finiteOrZero(parts[iBrightnessTi5]),
+      brightness: finiteOrZero(cell(parts, iBrightness)),
+      brightnessTi5: finiteOrZero(cell(parts, iBrightnessTi5)),
       daynight: cell(parts, iDaynight),
       acqDate: cell(parts, iAcqDate),
       acqTime: cell(parts, iAcqTime), // NOT zero-padded — kept verbatim

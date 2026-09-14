@@ -29,6 +29,7 @@ export function rocketLaunchesProxy() {
     '.gev-cache',
     'launch-library-2-v2.3.json',
   );
+  /** @type {{at: number, body: string}|null} */
   let cache = null;
   let diskLoaded = false;
   const inFlight = new Map();

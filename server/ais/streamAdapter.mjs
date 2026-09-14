@@ -297,6 +297,7 @@ export function createAisStreamAdapter(options) {
   const sockets = new Map();
   /** Never reset, including across dispose(). See rule 1 at the top. */
   let generationHighWater = 0;
+  /** @type {ReturnType<typeof createAisWatchdog>|null} */
   let watchdog = null;
 
   /** (Re)build the state machine, preserving the generation namespace. */

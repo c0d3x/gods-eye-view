@@ -112,13 +112,16 @@ export async function fetchTerrainChunkWithRetry(
 ) {
   const pointsParam = points.map(terrainPointKey).join(';');
   const url = `https://terrain.reearth.land/heights.json?points=${encodeURIComponent(pointsParam)}`;
+  /** @type {number|null} */
   let retryStartedAt = null;
   let lastError = null;
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     let timeoutMs = attemptTimeoutMs;
     if (attempt > 0) {
-      const remaining = retryBudgetMs - (now() - retryStartedAt);
+      // The catch below starts the retry clock before any retry runs.
+      const remaining =
+        retryBudgetMs - (now() - /** @type {number} */ (retryStartedAt));
       if (remaining <= 0) break;
       timeoutMs = Math.max(1, Math.min(attemptTimeoutMs, remaining));
     }
@@ -204,6 +207,7 @@ export async function resolveTerrainHeightRequest({
   }
 
   let cacheChanged = false;
+  /** @type {Error|null} */
   let upstreamError = null;
   if (missing.length > 0) {
     try {

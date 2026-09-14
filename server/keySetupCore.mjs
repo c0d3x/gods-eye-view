@@ -132,8 +132,7 @@ export function parseWindowsUserSid(stdout) {
  * @param {Record<string, string|string[]|undefined>} [request.proxyHeaders]
  *   The request headers, checked for reverse-proxy and CDN forwarding.
  * @param {Record<string, string|undefined>} [request.env] e.g. process.env
- * @returns {{ok: boolean, status?: number, error?: string}} A refusal
- *   carries the status and error to answer with.
+ * @returns {{ok: true} | {ok: false, status: number, error: string}}
  */
 export function admitKeySetupRequest({
   method,
@@ -325,6 +324,7 @@ export function keySetupStatus(env = {}) {
  * the writer comments the assignment back out, returning the file to its
  * template state for that key.
  * @param {unknown} body Parsed JSON from the request.
+ * @returns {{ok: true, updates: Record<string, string|null>} | {ok: false, error: string}}
  */
 export function validateKeySetupUpdates(body) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
@@ -342,6 +342,7 @@ export function validateKeySetupUpdates(body) {
     };
   }
   const known = knownKeySetupEnvVars();
+  /** @type {Record<string, string|null>} */
   const updates = {};
   for (const [name, raw] of entries) {
     if (!known.has(name)) return { ok: false, error: `Unknown key: ${name}` };

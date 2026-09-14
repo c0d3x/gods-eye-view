@@ -82,6 +82,7 @@ export function createCachePruner({
   log = (message) => console.warn(message),
 }) {
   let lastRun = Number.NEGATIVE_INFINITY;
+  /** @type {Promise<{removed: number, bytes: number}>|null} */
   let running = null;
 
   const runNow = () => {

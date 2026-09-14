@@ -131,7 +131,7 @@ export function militaryInstallationCacheKey(box, decimals = 3) {
  * @param {() => Promise<?MilitaryInstallationEntry>} options.readDisk
  * @param {number} [options.now]
  * @param {number} [options.cacheMs]
- * @returns {Promise<{source: 'HIT'|'DISK'|'UPSTREAM', entry: ?MilitaryInstallationEntry}>}
+ * @returns {Promise<{source: 'HIT'|'DISK', entry: MilitaryInstallationEntry} | {source: 'UPSTREAM', entry: null}>}
  */
 export async function resolveMilitaryInstallationTier({
   cacheKey,
@@ -262,7 +262,8 @@ export function validMilitaryInstallationBox(params) {
   const west = requiredFiniteQueryNumber(params, 'west');
   const north = requiredFiniteQueryNumber(params, 'north');
   const east = requiredFiniteQueryNumber(params, 'east');
-  if (![south, west, north, east].every(Number.isFinite)) return null;
+  if (south === null || west === null || north === null || east === null)
+    return null;
   if (
     south < -90 ||
     north > 90 ||

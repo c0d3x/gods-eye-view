@@ -141,6 +141,7 @@ export async function getOpenSkyToken() {
         { timeoutMs: OPENSKY_TOKEN_TIMEOUT_MS },
       );
 
+      /** @type {Record<string, any>|null} */
       let data = null;
       try {
         data = await readResponseJsonCapped(res, PROVIDER_JSON_MAX_BYTES);
@@ -196,7 +197,8 @@ export async function getOpenSkyToken() {
 /**
  * Validate and normalize the OPENSKY_AUTH_MODE env value.
  *
- * @param {string} value - Raw env value ('oauth' or 'anon').
+ * @param {string|undefined} value - Raw env value ('oauth' or 'anon'), or
+ *   undefined when it is unset.
  * @returns {string} One of the valid mode strings, or the default ('oauth').
  */
 export function normalizeOpenSkyAuthMode(value) {
@@ -251,9 +253,9 @@ function buildOpenSkyHeaders({
   };
   // Credit-governor extras (field-test fix 2026-07-06): the client can show a
   // STALE cue / countdown without parsing the body.
-  if (Number.isFinite(staleSeconds))
+  if (staleSeconds !== undefined && Number.isFinite(staleSeconds))
     headers['X-OpenSky-Stale-Seconds'] = String(Math.round(staleSeconds));
-  if (Number.isFinite(retryAfterSeconds))
+  if (retryAfterSeconds !== undefined && Number.isFinite(retryAfterSeconds))
     headers['X-OpenSky-Retry-After-Seconds'] = String(
       Math.round(retryAfterSeconds),
     );
@@ -264,10 +266,8 @@ export function adsbLolFallbackAnchor(req) {
   const incoming = new URL(req?.url || '', 'http://localhost');
   const latitude = requiredFiniteQueryNumber(incoming.searchParams, 'lat');
   const longitude = requiredFiniteQueryNumber(incoming.searchParams, 'lon');
-  if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90)
-    return null;
-  if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180)
-    return null;
+  if (latitude === null || latitude < -90 || latitude > 90) return null;
+  if (longitude === null || longitude < -180 || longitude > 180) return null;
   return { latitude, longitude };
 }
 

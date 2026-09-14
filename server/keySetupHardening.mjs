@@ -143,8 +143,7 @@ function resolveWindowsNativeTools(environment, fileSystem, architecture) {
  * Restrict a credential file before any secret is written to it, and say
  * which step failed when that isn't possible. Dependencies are injectable so
  * every fail-closed branch is unit-testable.
- * @returns {{ok: boolean, step?: string, detail?: string}} A failure carries
- *   the step that failed and why.
+ * @returns {{ ok: true } | { ok: false, step: string, detail: string }}
  */
 export function hardenCredentialFileReport(
   filepath,

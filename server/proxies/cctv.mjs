@@ -89,7 +89,7 @@ function escapeXml(text) {
  * Canonicalize a CCTV feed type string to one of:
  * 'image', 'mjpeg', 'mp4', 'webm', 'hls', or pass-through.
  *
- * @param {string} value - Raw feed type (e.g. 'jpeg', 'mjpg', 'video', 'stream').
+ * @param {string|undefined} value - Raw feed type (e.g. 'jpeg', 'mjpg', 'video', 'stream').
  * @returns {string} Normalized feed type.
  */
 function normalizeFeedType(value) {
@@ -1211,7 +1211,7 @@ async function proxyMediaResponse(
  * `lookup` and `timeoutMs` are injectable only to keep these contracts
  * unit-testable. fetchCameraResponse follows and checks redirects.
  *
- * @param {string} url - Server-registered upstream image URL.
+ * @param {string|undefined} url - Server-registered upstream image URL, if any.
  * @param {object} [options]
  * @param {typeof fetch | null} [options.fetchImpl] - Makes each request
  *   (see fetchCameraResponse).

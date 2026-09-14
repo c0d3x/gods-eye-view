@@ -145,7 +145,8 @@ export function terrainHeightsProxy({
       });
       inflight.set(key, request);
     }
-    return inflight.get(key);
+    // Set just above when it was missing.
+    return /** @type {Promise<Array<object>>} */ (inflight.get(key));
   }
 
   return {
