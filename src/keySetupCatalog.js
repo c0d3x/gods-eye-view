@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * The provider keys Provider Settings (the POWER UP panel) offers, and what
  * each one unlocks.

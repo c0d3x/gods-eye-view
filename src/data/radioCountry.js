@@ -1,3 +1,4 @@
+// @ts-check
 const RADIO_COUNTRY_MAX_LENGTH = 80;
 
 const ISO_ALPHA_2_CODES = Object.freeze(

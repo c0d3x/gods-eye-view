@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module worldOverlayTokens
  * @description Visual constants shared by the world-overlay host, painters,

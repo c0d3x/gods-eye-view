@@ -153,8 +153,10 @@ stays out), and a Lefthook pre-commit hook formats, lints and sorts the imports
 of staged files.
 `pnpm run typecheck` runs `tsc --noEmit` on two projects, both in strict
 mode. `jsconfig.json` covers the browser code and checks the files that opt
-in with `// @ts-check`: the package boundaries and the shared context store.
-`checkJs` stays off there, so other files are parsed but not checked.
+in with `// @ts-check`: the package boundaries, the shared context store and
+a growing set of smaller modules. `checkJs` stays off there, so other files
+are parsed but not checked. It leaves out `src/testing/`, the Node code that
+tests share.
 `server/jsconfig.json` checks every server module and `vite.config.js`, with
 the shared `src/` modules they import, against Node's types from
 `@types/node`, pinned to the Node 24 line the app supports.

@@ -1,3 +1,4 @@
+// @ts-check
 /** Cockpit brackets stay legible without dominating the first-person view. */
 export const COCKPIT_BRACKET_OPACITY = 0.45;
 

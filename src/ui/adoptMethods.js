@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * How StyleManager takes on the panels that moved out of src/ui.js (#46).
  *

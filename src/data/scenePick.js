@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Validation for positions that came back from a Cesium screen pick.
  *

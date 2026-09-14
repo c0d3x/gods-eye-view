@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Scene recipes optimized for short social clips.
  * Each recipe is deterministic so repeated runs produce similar footage.

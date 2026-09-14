@@ -1,3 +1,4 @@
+// @ts-check
 // src/ui/styleConfig.js — the visual styles' fixed settings: each style's
 // shader and label, the post-processing defaults for a first load and for
 // each military style, the tactical detection preset they share, the sharpen

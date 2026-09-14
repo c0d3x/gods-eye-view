@@ -1,3 +1,4 @@
+// @ts-check
 const MAX_ARTICLES = 5;
 
 /** @param {unknown} value */

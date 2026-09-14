@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module hudLocality
  * @description The locality half of the HUD summary line — either "NEAR <landmark>"

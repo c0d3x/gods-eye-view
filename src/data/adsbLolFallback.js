@@ -1,3 +1,4 @@
+// @ts-check
 const KNOT_TO_MPS = 0.514444;
 const FOOT_TO_M = 0.3048;
 const FPM_TO_MPS = 0.00508;

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * NASA FIRMS area-CSV parsing — pure functions, no Cesium/DOM/network.
  *

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Snow Style — White overlay + Desaturation + Falling particles
  * Transforms the world into a winter wonderland

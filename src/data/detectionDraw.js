@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module detectionDraw
  * @description Pure, renderer-agnostic helpers for the detection overlay.

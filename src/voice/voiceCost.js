@@ -1,3 +1,4 @@
+// @ts-check
 // src/voice/voiceCost.js
 /**
  * Voice model registry + Realtime session cost estimation.

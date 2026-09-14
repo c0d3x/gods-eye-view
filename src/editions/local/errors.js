@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Extract a human-readable error message from any thrown value.
  * Handles Error objects, strings, and plain objects with message/error fields.

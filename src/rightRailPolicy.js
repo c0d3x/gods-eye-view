@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Tactical HUD gives an expanded right-rail panel the whole control lane.
  * Other HUD layouts keep collapsed launchers visible for quick switching.

@@ -1,3 +1,4 @@
+// @ts-check
 export const HUD_SUMMARY_UNCONFIGURED_CODE = 'OPENAI_NOT_CONFIGURED';
 
 /**

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Derive the AIR-contact near band for Cockpit presentation.
  *

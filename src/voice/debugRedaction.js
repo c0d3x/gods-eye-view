@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Redaction for the voice debug log. The browser applies it before posting a
  * record, and the dev server applies it again before writing one, so a record

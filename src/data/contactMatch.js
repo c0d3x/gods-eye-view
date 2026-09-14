@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Shared identity matching for aircraft contact lookup (`findByQuery`).
  *

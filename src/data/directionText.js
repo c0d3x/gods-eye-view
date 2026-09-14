@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Convert a cardinal/intercardinal direction string to a compass heading.
  *

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * FLIR — Forward Looking Infrared
  * Military-grade thermal imaging with White-Hot/Black-Hot modes,

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @file Pure tile math + budget accounting for the TomTom traffic-flow proxy.
  *

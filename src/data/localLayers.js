@@ -1,3 +1,4 @@
+// @ts-check
 import { createFirmsHeatmapLayer } from './firmsHeatmap.js';
 import { createInfrastructureLayers } from './infrastructure.js';
 import { localGeoJsonServices } from './localGeojson.js';

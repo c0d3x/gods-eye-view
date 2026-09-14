@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Resolve where Cockpit's Display/Radio strip hangs in the right margin.
  *
