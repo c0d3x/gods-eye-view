@@ -1,0 +1,6 @@
+# Commits that only reformat code, so `git blame` can look past them. GitHub
+# applies this file on its own; to use it locally, run
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# Format src/styles and src/scenes with Biome
+09346de203e83ddccdf96a89aa65568a1ec8a73e

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
-
+import { LAYER_STATE_REGISTRY } from '../data/layerState.js';
+import { SCENE_RECIPES } from './recipes.js';
 import {
   SCENE_EXCLUSIVITY_PROBE_LAYER_ID,
   SCENE_KEPT_SELECTION_PARAM_KEYS,
@@ -11,8 +12,6 @@ import {
   sceneRequiresContextModeExit,
   stripSceneTrackingParams,
 } from './scenePolicy.js';
-import { SCENE_RECIPES } from './recipes.js';
-import { LAYER_STATE_REGISTRY } from '../data/layerState.js';
 
 /**
  * Every key each layer publishes from getParams() — the exact surface

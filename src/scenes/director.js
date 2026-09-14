@@ -13,13 +13,13 @@
  */
 
 import * as Cesium from 'cesium';
-import { SCENE_RECIPES } from './recipes.js';
-import { sceneLayerPlan, sceneRequiresContextModeExit } from './scenePolicy.js';
 import {
   BLOOM_INTENSITY_DEFAULT,
   BLOOM_SCALE_VERSION,
   decodeBloomIntensity,
 } from '../bloom.js';
+import { SCENE_RECIPES } from './recipes.js';
+import { sceneLayerPlan, sceneRequiresContextModeExit } from './scenePolicy.js';
 
 /** @constant {string} Key code used to abort a running scene */
 const ESCAPE_KEY = 'Escape';

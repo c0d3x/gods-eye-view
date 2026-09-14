@@ -158,7 +158,18 @@
       "server/proxies/trackBackfill.test.mjs",
       "server/keySetupEndpoint.mjs",
       "server/keySetupEndpoint.test.mjs",
-      "vite.config.js"
+      "vite.config.js",
+      "src/styles/anime.js",
+      "src/styles/noir.js",
+      "src/styles/retro.js",
+      "src/styles/snow.js",
+      "src/styles/surveillance.js",
+      "src/styles/thermal.js",
+      "src/scenes/director.js",
+      "src/scenes/director.test.mjs",
+      "src/scenes/recipes.js",
+      "src/scenes/scenePolicy.js",
+      "src/scenes/scenePolicy.test.mjs"
     ]
   },
   "formatter": {

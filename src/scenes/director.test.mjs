@@ -12,11 +12,10 @@
 // the visual commit. Several of these assert exactly that plumbing.
 import assert from 'node:assert/strict';
 import test from 'node:test';
-
-import { SceneDirector } from './director.js';
-import { SCENE_TRACKING_PARAM_KEYS } from './scenePolicy.js';
-import { SCENE_RECIPES } from './recipes.js';
 import { readUiSource } from '../testing/uiSources.mjs';
+import { SceneDirector } from './director.js';
+import { SCENE_RECIPES } from './recipes.js';
+import { SCENE_TRACKING_PARAM_KEYS } from './scenePolicy.js';
 
 /** The layer registry as main.js builds it (src/main.js dataManager.register calls). */
 const REGISTERED = [
@@ -170,7 +169,7 @@ function fakeStyleManager({ contextMode = null, exitFails = false } = {}) {
     contextExits: [],
     visualStates: [],
     visualCalls: [],
-    runImmediateNavigation: (noun, navigate) => navigate(),
+    runImmediateNavigation: (_noun, navigate) => navigate(),
     applyVisualState: async (visual, options = {}) => {
       manager.visualStates.push(visual);
       manager.visualCalls.push({ visual, isCurrent: options.isCurrent });
