@@ -13,16 +13,18 @@
  *
  * Every touched file is restored on exit, including on failure.
  *
- * NOTE: two mutations edit vite.config.js, and a running dev server watches that
- * file and restarts on every write. Writes are therefore content-guarded below
- * so the file is touched exactly twice per mutation instead of on every
- * iteration — enough that a dev server survives, but expect it to restart. If
- * you are mid-QA on a live server, run this before or after, not during.
+ * NOTE: two mutations edit the Realtime modules in server/realtime, which
+ * vite.config.js imports, and a running dev server restarts on every write to
+ * them. Writes are therefore content-guarded below so each file is touched
+ * exactly twice per mutation instead of on every iteration — enough that a dev
+ * server survives, but expect it to restart. If you are mid-QA on a live
+ * server, run this before or after, not during.
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { looseSourcePattern } from '../src/testing/uiSources.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TESTS = 'src/firstRunExperience.test.mjs';
@@ -31,8 +33,9 @@ const FILES = {
   module: path.join(ROOT, 'src', 'firstRunExperience.js'),
   html: path.join(ROOT, 'index.html'),
   css: path.join(ROOT, 'style.css'),
-  vite: path.join(ROOT, 'vite.config.js'),
-  main: path.join(ROOT, 'src', 'main.js'),
+  realtimeTools: path.join(ROOT, 'server', 'realtime', 'tools.mjs'),
+  realtimeInstructions: path.join(ROOT, 'server', 'realtime', 'openai.mjs'),
+  startup: path.join(ROOT, 'src', 'editions', 'local', 'startupChrome.js'),
   ui: path.join(ROOT, 'src', 'ui.js'),
   radioPanel: path.join(ROOT, 'src', 'ui', 'radioPanel.js'),
   panelChrome: path.join(ROOT, 'src', 'ui', 'panelChrome.js'),
@@ -265,8 +268,8 @@ const MUTATIONS = [
   {
     defect: 'the ledgered global-chip defect loses its pointer to the real fix',
     file: 'module',
-    from: '    // means a KEY REQUIRED terminal state in src/loadingFeedback.js, a state',
-    to: '    // (note removed)',
+    from: '    // rather than LOAD FAILED (the needs-key state in src/loadingFeedback.js).',
+    to: '    // rather than LOAD FAILED.',
   },
   {
     defect: 'the globe missions never pull the camera out',
@@ -440,14 +443,14 @@ const MUTATIONS = [
     to: '<aside id="first-run-launcher"',
   },
   {
-    defect: 'the launcher is revealed before the loading cover yields',
-    file: 'main',
-    from: "      loadingScreen.classList.add('hidden');",
-    to: '      initFirstRunExperience({ styleManager, dataManager });\n      loadingScreen.classList.add(\'hidden\');',
+    defect: 'the launcher reveal is armed before the loading cover yields',
+    file: 'startup',
+    from: "loadingScreen.classList.add('hidden');",
+    to: "loadingScreen.addEventListener('transitionend', revealFirstRun, { once: true });\nloadingScreen.classList.add('hidden');",
   },
   {
     defect: 'the globe missions lose their DataManager and cannot enable layers',
-    file: 'main',
+    file: 'startup',
     from: 'initFirstRunExperience({ styleManager, dataManager });',
     to: 'initFirstRunExperience({ styleManager });',
   },
@@ -455,13 +458,13 @@ const MUTATIONS = [
   // ── Voice: schema must not drift ──────────────────────────────────────────
   {
     defect: 'the voice TOOL SCHEMA is edited (a Realtime prompt-cache bust)',
-    file: 'vite',
+    file: 'realtimeTools',
     from: "            'earthquakes',\n            'satellites',",
     to: "            'earthquakes',\n            'infrastructure-mode',\n            'satellites',",
   },
   {
     defect: 'the instruction mapping is dropped, so voice cannot reach the modes',
-    file: 'vite',
+    file: 'realtimeInstructions',
     from: "            'NAMED VIEWS are shorthand",
     to: "            // 'NAMED VIEWS are shorthand",
   },
@@ -485,12 +488,18 @@ const missed = [];
 console.log(`\nFirst-run launcher pin strength — ${MUTATIONS.length} individual reverts\n`);
 for (const { defect, file, from, to } of MUTATIONS) {
   const original = originals.get(file);
-  if (!original.includes(from)) {
+  // The anchor is found however the formatter wraps or indents it: whitespace
+  // between tokens is free, as is a trailing comma before a closing bracket.
+  const anchor = new RegExp(looseSourcePattern(from.trim()));
+  if (!anchor.test(original)) {
     missed.push(`${defect} (ANCHOR MISSING — the mutation no longer applies)`);
     console.log(`  \x1b[31mSTALE\x1b[0m ${defect}`);
     continue;
   }
-  write(FILES[file], original.replace(from, to));
+  // The match starts after the file's own indentation, so drop the anchor's.
+  const indent = /^\s*/.exec(from)[0];
+  const replacement = to.startsWith(indent) ? to.slice(indent.length) : to;
+  write(FILES[file], original.replace(anchor, () => replacement));
   let red = false;
   let by = '';
   try {
