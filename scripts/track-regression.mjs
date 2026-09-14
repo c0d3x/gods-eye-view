@@ -4269,6 +4269,28 @@ async function main() {
           }
           const bb1 = window.__dfFindBB('aaa097');
           const d1 = bb1 ? window.__dfCarto(bb1.position) : null;
+          // The clamp keeps the cell it read last until the display is
+          // CELL_HYSTERESIS_DEG clear of it (stickyFloorCell), so a sprite
+          // sampled just past a cell edge still rides the cell it is leaving
+          // (#50). Collect every cell the app's own rule could be holding at
+          // this position; away from an edge that is only the cell it rounds to.
+          const spriteCells = [];
+          if (d1) {
+            const own = gf.coarseFloorCoord(d1.lat, d1.lon);
+            for (let dy = -1; dy <= 1; dy++) {
+              for (let dx = -1; dx <= 1; dx++) {
+                const c = {
+                  lat: cell(own.lat + dy * 0.001),
+                  lon: cell(own.lon + dx * 0.001),
+                };
+                if (gf.stickyFloorCell(d1.lat, d1.lon, c) === c)
+                  spriteCells.push({
+                    ...c,
+                    floor: gf.cachedGroundFloor(c.lat, c.lon),
+                  });
+              }
+            }
+          }
           return {
             startCold,
             displayCell,
@@ -4287,7 +4309,7 @@ async function main() {
             aheadCell,
             aheadFloor: gf.cachedGroundFloor(aheadCell.lat, aheadCell.lon),
             spriteH: d1 ? d1.h : null,
-            spriteFloor: d1 ? gf.cachedGroundFloor(d1.lat, d1.lon) : null,
+            spriteCells,
             beforeH: d0.h,
           };
         },
@@ -4334,14 +4356,22 @@ async function main() {
         `control cell floor = ${dfCorridor.controlFloor}`,
       );
 
+      // Near an edge the clamp may still hold the cell the sprite is leaving,
+      // so the sprite must ride at least the lower of the floors it could read.
+      const spriteFloors = (dfCorridor.spriteCells || [])
+        .map((c) => c.floor)
+        .filter(Number.isFinite);
+      const spriteFloorText = spriteFloors.length
+        ? spriteFloors.map((f) => `${f.toFixed(1)} m`).join(' or ')
+        : 'cold';
       record(
         'display-floor/corridor: the sprite rides the corridor-warmed floor',
         Number.isFinite(dfCorridor.spriteH) &&
-          Number.isFinite(dfCorridor.spriteFloor) &&
+          spriteFloors.length > 0 &&
           dfCorridor.spriteH >=
-            dfCorridor.spriteFloor + DISPLAY_FLOOR_LIFT_M - 0.5,
+            Math.min(...spriteFloors) + DISPLAY_FLOOR_LIFT_M - 0.5,
         dfCorridor.error ||
-          `${Number(dfCorridor.beforeH).toFixed(1)} m → ${Number(dfCorridor.spriteH).toFixed(1)} m on a ${Number(dfCorridor.spriteFloor).toFixed(1)} m floor`,
+          `${Number(dfCorridor.beforeH).toFixed(1)} m → ${Number(dfCorridor.spriteH).toFixed(1)} m on a ${spriteFloorText} floor (cells the clamp may hold: ${JSON.stringify(dfCorridor.spriteCells)})`,
       );
 
       // ---- Tracked contact gets the same floor ----------------------------

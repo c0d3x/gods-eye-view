@@ -887,7 +887,16 @@ try {
     );
     await new Promise((resolve) => setTimeout(resolve, 250));
     await page.keyboard.down('Space'); // exercise repeat without resetting the hold deadline
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    // The hold is a 500 ms timer in the page, and a SwiftShader frame can
+    // delay it past any fixed wait here (#50). Wait for the hold to claim
+    // the key, which asks voice to start; a hold that never fires still
+    // fails the checks below.
+    await page
+      .waitForFunction(() => window.__qaStyleKeyProbe.voiceStarts.length > 0, {
+        timeout: 10_000,
+        polling: 50,
+      })
+      .catch(() => {});
     longSpaceHeld = await page.evaluate(() =>
       window.__qaStyleKeyProbe.snapshot(),
     );
