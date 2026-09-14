@@ -1,6 +1,18 @@
 import * as Cesium from 'cesium';
-import { twoline2satrec, propagate, gstime, eciToGeodetic, degreesLong, degreesLat } from 'satellite.js';
-import { registerPickOwner, unregisterPickOwner, isOwnedByOtherLayer, resolvePickId } from './pickRegistry.js';
+import {
+  twoline2satrec,
+  propagate,
+  gstime,
+  eciToGeodetic,
+  degreesLong,
+  degreesLat,
+} from 'satellite.js';
+import {
+  registerPickOwner,
+  unregisterPickOwner,
+  isOwnedByOtherLayer,
+  resolvePickId,
+} from './pickRegistry.js';
 import { findNextIssPass } from './issPass.js';
 import {
   advanceSpriteFocus,
@@ -30,7 +42,10 @@ import {
   refreshTrackedSubjectContext,
   selectTrackedSubjectContext,
 } from './contextStore.js';
-import { holdContinuousRender, releaseContinuousRender } from '../renderGovernor.js';
+import {
+  holdContinuousRender,
+  releaseContinuousRender,
+} from '../renderGovernor.js';
 import { isExplicitLayerStateOrigin } from './layerState.js';
 
 /**
@@ -59,9 +74,9 @@ const DEFAULT_OVERLAY_HOST = Object.freeze({
   clearSource: clearOverlaySource,
 });
 let _overlayHost = DEFAULT_OVERLAY_HOST;
-const ORBIT_PATH_STEPS = 180;  // points per orbital path
+const ORBIT_PATH_STEPS = 180; // points per orbital path
 const POSITION_UPDATE_MS = 1000; // re-propagate every 1s (SGP4 is smooth at this rate)
-const RING_ROTATION_MS = 1000;   // re-align baked orbit rings to current GMST every 1s
+const RING_ROTATION_MS = 1000; // re-align baked orbit rings to current GMST every 1s
 
 /**
  * CelesTrak groups loaded as the core catalog, in dedupe-priority order:
@@ -84,8 +99,8 @@ const CATALOG_GROUPS = [
 // points-only extras — no labels, no detection-overlay participation, and a
 // relaxed propagation budget (round-robin, ~1/5 of core cadence per sat).
 const DENSE_GROUP_PATH = 'starlink';
-const DENSE_REFRESH_FRAMES = 300;  // full dense pass spread over ~300 frames (~5s @ 60fps)
-const DENSE_CREATE_CHUNK = 1500;   // satrec builds per macro-task while loading
+const DENSE_REFRESH_FRAMES = 300; // full dense pass spread over ~300 frames (~5s @ 60fps)
+const DENSE_CREATE_CHUNK = 1500; // satrec builds per macro-task while loading
 
 /**
  * Tracked-entity camera offset, east-north-up meters (Entity.viewFrom).
@@ -110,7 +125,8 @@ const TRACK_VIEW_FROM_HIGH_SCALE = 4; // ≈ 2900 km back for MEO/GEO
  * attribute, so classification costs nothing per frame.
  */
 const POINT_OUTLINE = Cesium.Color.WHITE.withAlpha(0.3);
-const _classColor = (group) => Cesium.Color.fromCssColorString(satelliteClassColor(group));
+const _classColor = (group) =>
+  Cesium.Color.fromCssColorString(satelliteClassColor(group));
 
 const POINT_STYLES = {
   // The ISS keeps its own long-standing red hero styling rather than the
@@ -184,7 +200,7 @@ function _pointStyleFor(noradId, group) {
 // Satellite catalog: { noradId → { name, satrec, group } }
 let _catalog = new Map();
 let _pointCollection = null;
-let _points = new Map();          // noradId → point primitive
+let _points = new Map(); // noradId → point primitive
 /** Stable lightweight records reused by the detection overlay between updates. */
 let _detectionObjects = new Map();
 // noradId → { primitive, gmstAtBake }
@@ -232,8 +248,8 @@ let _trackedEntityChangedRemove = null;
 
 // Runtime params (DataLayerManager.setLayerParams path)
 let _params = { catalog: 'core', showPoints: true, showOrbits: true }; // 'core' | 'dense'
-let _denseIds = [];      // norad ids of dense extras, round-robin order
-let _denseCursor = 0;    // next dense id to re-propagate
+let _denseIds = []; // norad ids of dense extras, round-robin order
+let _denseCursor = 0; // next dense id to re-propagate
 let _denseLoadToken = 0; // invalidates in-flight dense loads on mode flip/reload
 let _denseLoadPromise = null;
 
@@ -269,7 +285,10 @@ function _notifyRowControls() {
  * @returns {Record<string, number>} Class key → count.
  */
 function _classTally() {
-  if (_classTallyCache.counts && _classTallyCache.revision === _catalogRevision) {
+  if (
+    _classTallyCache.counts &&
+    _classTallyCache.revision === _catalogRevision
+  ) {
     return _classTallyCache.counts;
   }
   const entries = [];
@@ -304,8 +323,10 @@ export function satelliteVisualsVisible(layerEnabled, requestedVisible) {
  * @returns {boolean} Whether the catalog mode should change.
  */
 export function satelliteCatalogModeChanged(currentCatalog, requestedCatalog) {
-  return (requestedCatalog === 'core' || requestedCatalog === 'dense')
-    && requestedCatalog !== currentCatalog;
+  return (
+    (requestedCatalog === 'core' || requestedCatalog === 'dense') &&
+    requestedCatalog !== currentCatalog
+  );
 }
 
 /** Build the persistent ISS ambient label from the cached point position. */
@@ -360,7 +381,8 @@ let _lastDockedScanMs = Number.NEGATIVE_INFINITY;
  * @returns {boolean} true when membership changed (callers resync presentation).
  */
 function _refreshDockedCompanions(nowMs) {
-  const trackedPosition = _trackedNorad === null ? null : _trackedDisplayCached();
+  const trackedPosition =
+    _trackedNorad === null ? null : _trackedDisplayCached();
   if (!trackedPosition) {
     if (_dockedCompanions.size === 0) return false;
     _dockedCompanions = new Set();
@@ -401,9 +423,13 @@ function _syncIssOverlay() {
   // Hidden when ISS is the tracked subject, and equally when ISS is DOCKED to
   // whatever is tracked: its ambient label would otherwise sit underneath the
   // tracked card at the same position.
-  const visible = _enabled && _params.showOrbits && _trackedNorad !== ISS_NORAD
-    && !_dockedCompanions.has(ISS_NORAD)
-    && _catalog.has(ISS_NORAD) && _issDisplayCached();
+  const visible =
+    _enabled &&
+    _params.showOrbits &&
+    _trackedNorad !== ISS_NORAD &&
+    !_dockedCompanions.has(ISS_NORAD) &&
+    _catalog.has(ISS_NORAD) &&
+    _issDisplayCached();
   if (!visible) {
     _overlayHost.clearSource(ISS_OVERLAY_SOURCE_ID);
     _overlayHost.setVisible(ISS_OVERLAY_SOURCE_ID, false);
@@ -444,7 +470,10 @@ export function orbitFrameModelMatrix(
   result = new Cesium.Matrix4(),
 ) {
   const deltaGmst = gstime(nowDate) - gmstAtBake;
-  const rotation = Cesium.Matrix3.fromRotationZ(-deltaGmst, _scratchRingRotation);
+  const rotation = Cesium.Matrix3.fromRotationZ(
+    -deltaGmst,
+    _scratchRingRotation,
+  );
   return Cesium.Matrix4.fromRotationTranslation(
     rotation,
     Cesium.Cartesian3.ZERO,
@@ -456,7 +485,11 @@ export function orbitFrameModelMatrix(
  * Parse TLE text into array of { name, line1, line2 } objects.
  */
 function parseTLE(text) {
-  const lines = text.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const lines = text
+    .trim()
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
   const result = [];
   for (let i = 0; i < lines.length - 2; i += 3) {
     const name = lines[i];
@@ -484,9 +517,10 @@ function propagatePosition(satrec, date, result = {}) {
 
     const gmst = gstime(date);
     const geo = eciToGeodetic(posVel.position, gmst);
-    const velocity = posVel.velocity && typeof posVel.velocity !== 'boolean'
-      ? posVel.velocity
-      : null;
+    const velocity =
+      posVel.velocity && typeof posVel.velocity !== 'boolean'
+        ? posVel.velocity
+        : null;
     const speedMps = velocity
       ? Math.hypot(velocity.x, velocity.y, velocity.z) * 1000
       : null;
@@ -505,7 +539,12 @@ function propagatePosition(satrec, date, result = {}) {
  * Per-tick scratch for the fleet loops, which also reuse _scratchCartesian, so
  * they allocate nothing per satellite.
  */
-const _scratchGeodetic = { longitude: 0, latitude: 0, altitude: 0, speedMps: null };
+const _scratchGeodetic = {
+  longitude: 0,
+  latitude: 0,
+  altitude: 0,
+  speedMps: null,
+};
 
 /**
  * Propagate one catalog row for a fleet tick. SGP4 fails for good on a decayed
@@ -550,12 +589,16 @@ function computeOrbitPath(satrec, referenceDate) {
       const posVel = propagate(satrec, t);
       if (!posVel?.position || typeof posVel.position === 'boolean') continue;
       const geo = eciToGeodetic(posVel.position, fixedGmst);
-      positions.push(Cesium.Cartesian3.fromDegrees(
-        degreesLong(geo.longitude),
-        degreesLat(geo.latitude),
-        geo.height * 1000
-      ));
-    } catch { continue; }
+      positions.push(
+        Cesium.Cartesian3.fromDegrees(
+          degreesLong(geo.longitude),
+          degreesLat(geo.latitude),
+          geo.height * 1000,
+        ),
+      );
+    } catch {
+      continue;
+    }
   }
 
   return positions;
@@ -599,12 +642,18 @@ function _showOrbitPath(noradId, color) {
         vertexFormat: Cesium.PolylineColorAppearance.VERTEX_FORMAT,
       }),
       attributes: {
-        color: Cesium.ColorGeometryInstanceAttribute.fromColor(pathColor.withAlpha(0.6)),
-        depthFailColor: Cesium.ColorGeometryInstanceAttribute.fromColor(pathColor.withAlpha(0.35)),
+        color: Cesium.ColorGeometryInstanceAttribute.fromColor(
+          pathColor.withAlpha(0.6),
+        ),
+        depthFailColor: Cesium.ColorGeometryInstanceAttribute.fromColor(
+          pathColor.withAlpha(0.35),
+        ),
       },
     }),
     appearance: new Cesium.PolylineColorAppearance({ translucent: true }),
-    depthFailAppearance: new Cesium.PolylineColorAppearance({ translucent: true }),
+    depthFailAppearance: new Cesium.PolylineColorAppearance({
+      translucent: true,
+    }),
     asynchronous: false, // build this frame — no async-rebuild blink window
     allowPicking: false, // ring clicks fall through to satellites/deselect
   });
@@ -674,14 +723,21 @@ function _normalizeTrackedNorad(candidate) {
 }
 
 function _emitAwarenessEvent(type, detail) {
-  if (typeof window === 'undefined' || !window.dispatchEvent || typeof CustomEvent === 'undefined') return;
+  if (
+    typeof window === 'undefined' ||
+    !window.dispatchEvent ||
+    typeof CustomEvent === 'undefined'
+  )
+    return;
   window.dispatchEvent(new CustomEvent(type, { detail }));
 }
 
 function _applyPendingTrackingRestore() {
   const pending = _pendingTrackingRestore;
-  if (!pending || pending.generation !== _trackingIntentGeneration || !_enabled) return false;
-  if (!_viewer || !_catalog.has(pending.id) || !_points.has(pending.id)) return false;
+  if (!pending || pending.generation !== _trackingIntentGeneration || !_enabled)
+    return false;
+  if (!_viewer || !_catalog.has(pending.id) || !_points.has(pending.id))
+    return false;
   _pendingTrackingRestore = null;
   _trackSatellite(pending.id, { origin: pending.origin });
   return _trackedNorad === pending.id;
@@ -699,7 +755,10 @@ function _cancelPendingTrackingRestore() {
  *   but do NOT clear viewer.trackedEntity — the new owner controls it now,
  *   and clearing it would yank the camera off their target (mirror of flights).
  */
-function _clearTracking(skipViewerUntrack = false, { origin = 'programmatic' } = {}) {
+function _clearTracking(
+  skipViewerUntrack = false,
+  { origin = 'programmatic' } = {},
+) {
   // Untracking dissolves the cluster: every companion returns to its own
   // ambient label on the next collection.
   _dockedCompanions = new Set();
@@ -717,7 +776,10 @@ function _clearTracking(skipViewerUntrack = false, { origin = 'programmatic' } =
   // Re-show the primitive (hidden while the tracked entity rendered the dot)
   // and restore the original group palette from the shared style table (WS-D3)
   if (lastPos) {
-    const style = _pointStyleFor(_trackedNorad, _catalog.get(_trackedNorad)?.group);
+    const style = _pointStyleFor(
+      _trackedNorad,
+      _catalog.get(_trackedNorad)?.group,
+    );
     lastPos.show = true;
     lastPos.pixelSize = style.pixelSize;
     lastPos.color = style.color;
@@ -745,7 +807,9 @@ function _clearTracking(skipViewerUntrack = false, { origin = 'programmatic' } =
   clearTrackedSubjectContext('satellites');
   _contextRefreshedAtMs = 0;
   _emitAwarenessEvent('gev:awareness-subject-cleared', {
-    layerId: 'satellites', id: clearedNorad, origin,
+    layerId: 'satellites',
+    id: clearedNorad,
+    origin,
   });
 }
 
@@ -764,14 +828,26 @@ function _getTrackedFramePosition() {
   if (!sat) return null;
 
   const frameNumber = _viewer?.scene?.frameState?.frameNumber ?? -1;
-  if (frameNumber === -1 || frameNumber !== _trackedFrameNumber || _trackedFrameGeo === null) {
+  if (
+    frameNumber === -1 ||
+    frameNumber !== _trackedFrameNumber ||
+    _trackedFrameGeo === null
+  ) {
     const pos = propagatePosition(
       sat.satrec,
-      _trackedFrameNowForTest ? new Date(_trackedFrameNowForTest()) : new Date(),
+      _trackedFrameNowForTest
+        ? new Date(_trackedFrameNowForTest())
+        : new Date(),
     );
     if (!pos) return _trackedFrameGeo; // propagation hiccup — keep last good sample
     _trackedFrameGeo = pos;
-    Cesium.Cartesian3.fromDegrees(pos.longitude, pos.latitude, pos.altitude, undefined, _trackedFrameCartesian);
+    Cesium.Cartesian3.fromDegrees(
+      pos.longitude,
+      pos.latitude,
+      pos.altitude,
+      undefined,
+      _trackedFrameCartesian,
+    );
     _trackedFrameNumber = frameNumber;
     // Throttled inside; membership changes are rare, so resync the ISS ambient
     // gate only when the cluster actually changed.
@@ -835,7 +911,9 @@ function _contextSubjectMetadata(noradId, position = null) {
   const pos = position || _getTrackedFramePosition();
   if (!pos) return null;
   const name = sat.name?.trim() || `SAT-${noradId}`;
-  const altitudeKm = Number.isFinite(pos.altitude) ? Math.round(pos.altitude / 1000) : null;
+  const altitudeKm = Number.isFinite(pos.altitude)
+    ? Math.round(pos.altitude / 1000)
+    : null;
   return {
     id: String(noradId),
     layerId: 'satellites',
@@ -851,7 +929,8 @@ function _contextSubjectMetadata(noradId, position = null) {
       operator: '',
       noradId: String(noradId),
       class: satelliteClassLabel(sat.group, { isIss: noradId === ISS_NORAD }),
-      altitude: altitudeKm === null ? '' : `${altitudeKm.toLocaleString('en-US')} km`,
+      altitude:
+        altitudeKm === null ? '' : `${altitudeKm.toLocaleString('en-US')} km`,
     },
   };
 }
@@ -882,7 +961,8 @@ async function _reconcileTrackedSubjectContext() {
   // settle called a dense subject missing and deleted its record; the record
   // then stayed gone, because a refresh can update an existing record but
   // cannot recreate one.
-  const denseSettlement = _params.catalog === 'dense' ? _denseLoadPromise : null;
+  const denseSettlement =
+    _params.catalog === 'dense' ? _denseLoadPromise : null;
   if (denseSettlement) {
     try {
       await denseSettlement;
@@ -956,7 +1036,10 @@ function _updateTrackedSatelliteLabelModel(fallbackAltitudeM = null) {
   // Class leads the detail block: it is what tells the operator WHAT they are
   // looking at, and it stays readable under the IR styles that flatten the
   // dot colors to a single channel (the card is painted above post-FX).
-  const details = [satelliteClassLabel(sat?.group, { isIss: _trackedNorad === ISS_NORAD }), detail];
+  const details = [
+    satelliteClassLabel(sat?.group, { isIss: _trackedNorad === ISS_NORAD }),
+    detail,
+  ];
   // Docked companions are consolidated onto the tracked card as SECONDARY info
   // instead of competing with it as separate ambient labels. Identities are
   // preserved: the catalog is untouched and every companion returns to its own
@@ -969,9 +1052,10 @@ function _updateTrackedSatelliteLabelModel(fallbackAltitudeM = null) {
   const current = _trackedEntity.gevLabelModel;
   // Compare the WHOLE detail array: comparing only `details[0]` swallowed any
   // change confined to the companions line, so the card would never republish.
-  const unchanged = current?.title === title
-    && current?.details?.length === details.length
-    && details.every((line, index) => current.details[index] === line);
+  const unchanged =
+    current?.title === title &&
+    current?.details?.length === details.length &&
+    details.every((line, index) => current.details[index] === line);
   if (unchanged) return;
   _trackedEntity.gevLabelModel = { title, details, accent: '#ffd84d' };
   refreshTrackedReadout(_trackedEntity);
@@ -1013,11 +1097,14 @@ function _trackSatellite(noradId, { origin = 'programmatic' } = {}) {
   // "slightly zoomed out" framing — no stutter, label reads cleanly), scaled
   // up for MEO/GEO so the camera doesn't land on top of a high-orbit dot.
   const initialPos = propagatePosition(sat.satrec, new Date());
-  const viewScale = initialPos && initialPos.altitude > HIGH_ORBIT_ALTITUDE_M
-    ? TRACK_VIEW_FROM_HIGH_SCALE
-    : 1;
+  const viewScale =
+    initialPos && initialPos.altitude > HIGH_ORBIT_ALTITUDE_M
+      ? TRACK_VIEW_FROM_HIGH_SCALE
+      : 1;
   const viewFrom = Cesium.Cartesian3.multiplyByScalar(
-    TRACK_VIEW_FROM_LEO, viewScale, new Cesium.Cartesian3()
+    TRACK_VIEW_FROM_LEO,
+    viewScale,
+    new Cesium.Cartesian3(),
   );
 
   _trackedEntity = _viewer.entities.add({
@@ -1067,7 +1154,11 @@ function _propagateAll(now = new Date()) {
     if (point) {
       // The point primitive copies the position, so one scratch serves the loop.
       point.position = Cesium.Cartesian3.fromDegrees(
-        pos.longitude, pos.latitude, pos.altitude, undefined, _scratchCartesian,
+        pos.longitude,
+        pos.latitude,
+        pos.altitude,
+        undefined,
+        _scratchCartesian,
       );
       updated++;
     }
@@ -1086,7 +1177,10 @@ function _propagateAll(now = new Date()) {
  */
 function _propagateDenseChunk() {
   if (_denseIds.length === 0) return;
-  const perFrame = Math.max(1, Math.ceil(_denseIds.length / DENSE_REFRESH_FRAMES));
+  const perFrame = Math.max(
+    1,
+    Math.ceil(_denseIds.length / DENSE_REFRESH_FRAMES),
+  );
   const now = new Date();
   for (let i = 0; i < perFrame; i++) {
     if (_denseCursor >= _denseIds.length) _denseCursor = 0;
@@ -1098,7 +1192,11 @@ function _propagateDenseChunk() {
     const pos = propagateCatalogRecord(sat, now, _scratchGeodetic);
     if (pos) {
       point.position = Cesium.Cartesian3.fromDegrees(
-        pos.longitude, pos.latitude, pos.altitude, undefined, _scratchCartesian,
+        pos.longitude,
+        pos.latitude,
+        pos.altitude,
+        undefined,
+        _scratchCartesian,
       );
     }
   }
@@ -1110,7 +1208,8 @@ function _propagateDenseChunk() {
  * frame; a token guards against mode flips / catalog rebuilds mid-load.
  */
 async function _loadDenseCatalog({ signal = null } = {}) {
-  if (!_viewer || !_pointCollection) return { status: 'source-unavailable', reason: 'layer-unavailable' };
+  if (!_viewer || !_pointCollection)
+    return { status: 'source-unavailable', reason: 'layer-unavailable' };
   _denseLoadController?.abort();
   const resourceController = new AbortController();
   _denseLoadController = resourceController;
@@ -1123,11 +1222,18 @@ async function _loadDenseCatalog({ signal = null } = {}) {
   _notifyRowControls();
   try {
     loadSignal.throwIfAborted();
-    const res = await fetch(`/api/celestrak/${DENSE_GROUP_PATH}`, { signal: loadSignal });
+    const res = await fetch(`/api/celestrak/${DENSE_GROUP_PATH}`, {
+      signal: loadSignal,
+    });
     if (!res.ok) {
-      console.warn(`[Data:Satellites] Dense group '${DENSE_GROUP_PATH}' fetch failed (${res.status})`);
+      console.warn(
+        `[Data:Satellites] Dense group '${DENSE_GROUP_PATH}' fetch failed (${res.status})`,
+      );
       _denseLoadFailed(token, `feed unavailable (${res.status})`);
-      return { status: 'source-unavailable', reason: `feed unavailable (${res.status})` };
+      return {
+        status: 'source-unavailable',
+        reason: `feed unavailable (${res.status})`,
+      };
     }
     const text = await res.text();
     loadSignal.throwIfAborted();
@@ -1142,7 +1248,11 @@ async function _loadDenseCatalog({ signal = null } = {}) {
 
     for (let start = 0; start < entries.length; start += DENSE_CREATE_CHUNK) {
       loadSignal.throwIfAborted();
-      if (token !== _denseLoadToken || _params.catalog !== 'dense' || !_pointCollection) {
+      if (
+        token !== _denseLoadToken ||
+        _params.catalog !== 'dense' ||
+        !_pointCollection
+      ) {
         return { status: 'superseded', reason: 'dense-load-superseded' };
       }
       const end = Math.min(start + DENSE_CREATE_CHUNK, entries.length);
@@ -1157,7 +1267,11 @@ async function _loadDenseCatalog({ signal = null } = {}) {
 
         _catalog.set(noradId, { name: entry.name, satrec, group: 'dense' });
         const point = _pointCollection.add({
-          position: Cesium.Cartesian3.fromDegrees(pos.longitude, pos.latitude, pos.altitude),
+          position: Cesium.Cartesian3.fromDegrees(
+            pos.longitude,
+            pos.latitude,
+            pos.altitude,
+          ),
           pixelSize: style.pixelSize,
           color: style.color,
           outlineColor: style.outlineColor,
@@ -1170,7 +1284,7 @@ async function _loadDenseCatalog({ signal = null } = {}) {
         added++;
       }
       // Yield to the event loop between chunks.
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
       loadSignal.throwIfAborted();
     }
 
@@ -1179,15 +1293,22 @@ async function _loadDenseCatalog({ signal = null } = {}) {
     // catalog already owns. Treating it as success is the same lie as treating
     // a 502 as success, just through a different door.
     if (added === 0) {
-      console.warn(`[Data:Satellites] Dense group '${DENSE_GROUP_PATH}' returned no usable satellites`);
+      console.warn(
+        `[Data:Satellites] Dense group '${DENSE_GROUP_PATH}' returned no usable satellites`,
+      );
       _denseLoadFailed(token, 'feed returned no satellites');
-      return { status: 'source-unavailable', reason: 'feed returned no satellites' };
+      return {
+        status: 'source-unavailable',
+        reason: 'feed returned no satellites',
+      };
     }
 
     _count = _points.size;
     _catalogRevision++;
     _denseStatus = 'ready';
-    console.log(`[Data:Satellites] Dense catalog: +${added} ${DENSE_GROUP_PATH} (points only)`);
+    console.log(
+      `[Data:Satellites] Dense catalog: +${added} ${DENSE_GROUP_PATH} (points only)`,
+    );
     // The panel would otherwise keep the pre-load count and legend until the
     // next natural refresh — up to the 5-minute catalog interval.
     _notifyRowControls();
@@ -1195,13 +1316,17 @@ async function _loadDenseCatalog({ signal = null } = {}) {
     return { status: 'ready', added };
   } catch (e) {
     if (loadSignal.aborted || e?.name === 'AbortError') {
-      return { status: 'cancelled', reason: String(loadSignal.reason || 'aborted') };
+      return {
+        status: 'cancelled',
+        reason: String(loadSignal.reason || 'aborted'),
+      };
     }
     console.warn('[Data:Satellites] Dense catalog load failed:', e);
     _denseLoadFailed(token, 'feed unreachable');
     return { status: 'source-unavailable', reason: 'feed unreachable' };
   } finally {
-    if (_denseLoadController === resourceController) _denseLoadController = null;
+    if (_denseLoadController === resourceController)
+      _denseLoadController = null;
   }
 }
 
@@ -1227,7 +1352,10 @@ function _removeDenseCatalog() {
   _denseLoadController?.abort();
   _denseLoadController = null;
   _denseLoadToken++; // cancel any in-flight dense load
-  if (_trackedNorad !== null && _catalog.get(_trackedNorad)?.group === 'dense') {
+  if (
+    _trackedNorad !== null &&
+    _catalog.get(_trackedNorad)?.group === 'dense'
+  ) {
     _clearTracking();
   }
   for (const noradId of _denseIds) {
@@ -1249,8 +1377,9 @@ function _removeDenseCatalog() {
  * TLEs, and must not keep the render loop from idling.
  */
 function _syncContinuousRenderHold() {
-  const animating = _enabled
-    && (_params.showPoints || _params.showOrbits || _trackedNorad !== null);
+  const animating =
+    _enabled &&
+    (_params.showPoints || _params.showOrbits || _trackedNorad !== null);
   if (animating) holdContinuousRender('satellites');
   else releaseContinuousRender('satellites');
 }
@@ -1352,9 +1481,14 @@ export function _setSatelliteTrackingRefreshOutcomeForTest({
   densePromise = null,
 } = {}) {
   const epoch = ++_trackingRefreshEpoch;
-  _lastTrackingRefreshOutcome = { epoch, status, failedGroups: [...failedGroups] };
+  _lastTrackingRefreshOutcome = {
+    epoch,
+    status,
+    failedGroups: [...failedGroups],
+  };
   _params.catalog = catalog;
-  _denseLoadPromise = densePromise || Promise.resolve({ status: 'not-requested' });
+  _denseLoadPromise =
+    densePromise || Promise.resolve({ status: 'not-requested' });
 }
 
 /** The tracked satellite's current ECEF sample — the value the docked-cluster
@@ -1374,7 +1508,10 @@ export function _runSatellitePreRenderForTest() {
  * drives) without constructing a WebGL viewer.
  * @param {{ catalog?: 'core'|'dense', showPoints?: boolean }} [options]
  */
-export function _setDenseCatalogStateForTest({ catalog = 'core', showPoints = true } = {}) {
+export function _setDenseCatalogStateForTest({
+  catalog = 'core',
+  showPoints = true,
+} = {}) {
   _viewer = { scene: { primitives: { add: (p) => p, remove() {} } } };
   // Neutralize the shared world-overlay host: these tests exercise catalog and
   // row-control logic, not the ISS callout.
@@ -1433,7 +1570,11 @@ export function _seedCatalogForTest(rows) {
   _catalog = new Map();
   _points = new Map();
   for (const row of rows) {
-    _catalog.set(row.noradId, { name: row.name, satrec: row.satrec, group: row.group || 'stations' });
+    _catalog.set(row.noradId, {
+      name: row.name,
+      satrec: row.satrec,
+      group: row.group || 'stations',
+    });
     _points.set(row.noradId, row.point || {});
   }
   return { records: _catalog, points: _points };
@@ -1453,12 +1594,19 @@ export function _setSatelliteLabelLifecycleStateForTest({
   preservePending = false,
 }) {
   _viewer = viewer;
-  _catalog = new Map([[ISS_NORAD, { name: 'ISS (ZARYA)', satrec, group: 'stations' }]]);
+  _catalog = new Map([
+    [ISS_NORAD, { name: 'ISS (ZARYA)', satrec, group: 'stations' }],
+  ]);
   _points = new Map([[ISS_NORAD, point]]);
-  _orbitPaths = new Map([[
-    ISS_NORAD,
-    { primitive: { show: true, modelMatrix: new Cesium.Matrix4() }, gmstAtBake: 0 },
-  ]]);
+  _orbitPaths = new Map([
+    [
+      ISS_NORAD,
+      {
+        primitive: { show: true, modelMatrix: new Cesium.Matrix4() },
+        gmstAtBake: 0,
+      },
+    ],
+  ]);
   _trackedNorad = null;
   _trackedEntity = null;
   if (!preservePending) _cancelPendingTrackingRestore();
@@ -1505,7 +1653,8 @@ export function _clearSatelliteLabelLifecycleForTest() {
 /** Focus alpha for satellite points, inside the existing shared preRender tick. */
 function _updatePointFocus(nowMs) {
   const target = getFocusTarget();
-  if (!_params.showPoints || !focusPassIsNeeded(target, _activeFocusCount)) return;
+  if (!_params.showPoints || !focusPassIsNeeded(target, _activeFocusCount))
+    return;
   if (nowMs - _lastFocusUpdate < 80) return;
   _lastFocusUpdate = nowMs;
   const scene = _viewer.scene;
@@ -1516,11 +1665,16 @@ function _updatePointFocus(nowMs) {
     target,
     previousActiveCount: _activeFocusCount,
     nowMs,
-    screenPositionFor: (position) => (
-      Cesium.SceneTransforms.worldToWindowCoordinates(scene, position, _scratchFocusScreen)
-    ),
-    cameraDistanceFor: (position) => Cesium.Cartesian3.distance(camera.positionWC, position),
-    baseColorFor: (noradId) => _pointStyleFor(noradId, _catalog.get(noradId)?.group).color,
+    screenPositionFor: (position) =>
+      Cesium.SceneTransforms.worldToWindowCoordinates(
+        scene,
+        position,
+        _scratchFocusScreen,
+      ),
+    cameraDistanceFor: (position) =>
+      Cesium.Cartesian3.distance(camera.positionWC, position),
+    baseColorFor: (noradId) =>
+      _pointStyleFor(noradId, _catalog.get(noradId)?.group).color,
   });
   _activeFocusCount = result.activeCount;
 }
@@ -1550,12 +1704,16 @@ export function applySatellitePointFocusDeemphasis({
   for (const [noradId, point] of points || []) {
     if (noradId === trackedId || !point?.position) continue;
     const cameraDistance = cameraDistanceFor(point.position);
-    const distanceScale = nearFarScalarValueAtDistance(point.scaleByDistance, cameraDistance);
+    const distanceScale = nearFarScalarValueAtDistance(
+      point.scaleByDistance,
+      cameraDistance,
+    );
     const halfExtentPx = (point.pixelSize || 5) * distanceScale * 0.5;
     const focus = advanceSpriteFocus(point, {
       // Hidden points still release toward identity, preventing stale dim
       // alpha if a catalog/presentation toggle later makes them visible.
-      screenPosition: point.show === false ? null : screenPositionFor(point.position),
+      screenPosition:
+        point.show === false ? null : screenPositionFor(point.position),
       cameraDistance,
       nowMs,
       target,
@@ -1576,7 +1734,6 @@ export function applySatellitePointFocusDeemphasis({
   }
   return { writes, transitioning, activeCount, ran: true };
 }
-
 
 const satellitesLayer = {
   id: 'satellites',
@@ -1625,7 +1782,8 @@ const satellitesLayer = {
 
     // Pre-render listener for real-time position updates
     // (fleet propagation + tracked per-frame dot + orbit ring GMST rotation)
-    _preRenderListener = viewer.scene.preRender.addEventListener(_preRenderTick);
+    _preRenderListener =
+      viewer.scene.preRender.addEventListener(_preRenderTick);
 
     console.log('[Data:Satellites] Initialized');
   },
@@ -1634,9 +1792,17 @@ const satellitesLayer = {
     _enabled = true;
     // Per-frame animator (perf wave 2), held only while something moves.
     _syncContinuousRenderHold();
-    if (_pointCollection) _pointCollection.show = satelliteVisualsVisible(_enabled, _params.showPoints);
+    if (_pointCollection)
+      _pointCollection.show = satelliteVisualsVisible(
+        _enabled,
+        _params.showPoints,
+      );
     // Orbit ring primitives + persistent ISS host label — show them
-    for (const path of _orbitPaths.values()) path.primitive.show = satelliteVisualsVisible(_enabled, _params.showOrbits);
+    for (const path of _orbitPaths.values())
+      path.primitive.show = satelliteVisualsVisible(
+        _enabled,
+        _params.showOrbits,
+      );
     _syncIssOverlay();
     // Re-attach input handlers and preRender propagation
     _installClickHandler(viewer);
@@ -1647,7 +1813,8 @@ const satellitesLayer = {
       return Number.isFinite(norad) && _points.has(norad);
     });
     if (!_preRenderListener && viewer) {
-      _preRenderListener = viewer.scene.preRender.addEventListener(_preRenderTick);
+      _preRenderListener =
+        viewer.scene.preRender.addEventListener(_preRenderTick);
     }
     _applyPendingTrackingRestore();
   },
@@ -1694,33 +1861,44 @@ const satellitesLayer = {
       updateSignal.throwIfAborted();
       // Load all core groups in parallel; a failed/empty group degrades
       // gracefully (parseTLE of an upstream error body yields []).
-      const results = await Promise.all(CATALOG_GROUPS.map(async (groupDef) => {
-        try {
-          const res = await fetch(`/api/celestrak/${groupDef.path}`, { signal: updateSignal });
-          if (!res.ok) return { ...groupDef, entries: [], ok: false };
-          const entries = parseTLE(await res.text());
-          updateSignal.throwIfAborted();
-          return { ...groupDef, entries, ok: entries.length > 0 };
-        } catch (error) {
-          if (updateSignal.aborted || error?.name === 'AbortError') throw error;
-          return { ...groupDef, entries: [], ok: false };
-        }
-      }));
+      const results = await Promise.all(
+        CATALOG_GROUPS.map(async (groupDef) => {
+          try {
+            const res = await fetch(`/api/celestrak/${groupDef.path}`, {
+              signal: updateSignal,
+            });
+            if (!res.ok) return { ...groupDef, entries: [], ok: false };
+            const entries = parseTLE(await res.text());
+            updateSignal.throwIfAborted();
+            return { ...groupDef, entries, ok: entries.length > 0 };
+          } catch (error) {
+            if (updateSignal.aborted || error?.name === 'AbortError')
+              throw error;
+            return { ...groupDef, entries: [], ok: false };
+          }
+        }),
+      );
       updateSignal.throwIfAborted();
 
-      const failed = results.filter(r => !r.ok).map(r => r.path);
+      const failed = results.filter((r) => !r.ok).map((r) => r.path);
       if (failed.length > 0) {
-        console.warn(`[Data:Satellites] Groups failed or empty: ${failed.join(', ')}`);
+        console.warn(
+          `[Data:Satellites] Groups failed or empty: ${failed.join(', ')}`,
+        );
       }
-      console.log(`[Data:Satellites] Loaded ${results.map(r => `${r.tag}:${r.entries.length}`).join(' ')}`);
+      console.log(
+        `[Data:Satellites] Loaded ${results.map((r) => `${r.tag}:${r.entries.length}`).join(' ')}`,
+      );
 
       // CelesTrak outage guard (H3): if EVERY group failed, bail BEFORE clearing.
       // Wiping the collection + catalog here would blank all 838 satellites while
       // the chip still read "just now". Keep the existing (stale) catalog on
       // screen and surface the outage instead — do NOT stamp _lastUpdate.
-      if (results.every(r => !r.ok)) {
+      if (results.every((r) => !r.ok)) {
         _lastError = 'CelesTrak unreachable';
-        console.warn('[Data:Satellites] All CelesTrak groups failed — keeping existing catalog, surfacing outage');
+        console.warn(
+          '[Data:Satellites] All CelesTrak groups failed — keeping existing catalog, surfacing outage',
+        );
         // Re-apply dense mode is skipped (no fresh core catalog); tracking untouched.
         return;
       }
@@ -1735,7 +1913,8 @@ const satellitesLayer = {
       // Clear existing
       _pointCollection.removeAll();
       _points.clear();
-      for (const path of _orbitPaths.values()) viewer.scene.primitives.remove(path.primitive);
+      for (const path of _orbitPaths.values())
+        viewer.scene.primitives.remove(path.primitive);
       _orbitPaths.clear();
       _catalog.clear();
       // The detection overlay caches one record per satellite and stamps its
@@ -1780,7 +1959,11 @@ const satellitesLayer = {
         const pos = propagatePosition(satrec, now);
         if (!pos) continue;
 
-        const cartesian = Cesium.Cartesian3.fromDegrees(pos.longitude, pos.latitude, pos.altitude);
+        const cartesian = Cesium.Cartesian3.fromDegrees(
+          pos.longitude,
+          pos.latitude,
+          pos.altitude,
+        );
 
         // Add point primitive (styling from the shared table, WS-D3)
         const style = _pointStyleFor(noradId, entry.group);
@@ -1815,20 +1998,22 @@ const satellitesLayer = {
         status: failed.length ? 'partial' : 'accepted',
         failedGroups: [...failed],
       };
-      console.log(`[Data:Satellites] ${_count} satellites active, ISS path shown`);
+      console.log(
+        `[Data:Satellites] ${_count} satellites active, ISS path shown`,
+      );
 
       // Re-apply dense mode after a full catalog rebuild (fire-and-forget —
       // _loadDenseCatalog handles its own errors and token invalidation).
-      _denseLoadPromise = _params.catalog === 'dense'
-        ? _loadDenseCatalog({ signal: updateSignal })
-        : Promise.resolve({ status: 'not-requested' });
+      _denseLoadPromise =
+        _params.catalog === 'dense'
+          ? _loadDenseCatalog({ signal: updateSignal })
+          : Promise.resolve({ status: 'not-requested' });
       // The catalog the published voice subject was resolved against is gone.
       // Re-resolve it, or release the slot if the subject provably did not
       // survive. Deliberately not awaited: it waits on dense settlement, and
       // the rebuild must not block on that.
       void _reconcileTrackedSubjectContext();
       _applyPendingTrackingRestore();
-
     } catch (e) {
       if (updateSignal.aborted || e?.name === 'AbortError') {
         throw new DOMException('Satellite update aborted', 'AbortError');
@@ -1908,8 +2093,9 @@ const satellitesLayer = {
     const result = [];
     let idx = 0;
     for (const [noradId, point] of _points) {
-      if (_denseIds.length > 0 && _catalog.get(noradId)?.group === 'dense') continue;
-      const shouldTake = ((idx - start) % stride) === 0;
+      if (_denseIds.length > 0 && _catalog.get(noradId)?.group === 'dense')
+        continue;
+      const shouldTake = (idx - start) % stride === 0;
       idx++;
       if (!shouldTake) continue;
       if (!point.position) continue;
@@ -1929,7 +2115,9 @@ const satellitesLayer = {
           // Human class ("NAV · GPS"), not the raw CelesTrak tag ("GPS-OPS").
           // The detection canvas composites ABOVE the post-FX chain, so this
           // is how class survives NVG/FLIR once the dot colors are collapsed.
-          klass: satelliteClassLabel(cat?.group, { isIss: noradId === ISS_NORAD }),
+          klass: satelliteClassLabel(cat?.group, {
+            isIss: noradId === ISS_NORAD,
+          }),
         };
         _detectionObjects.set(noradId, object);
       }
@@ -1948,7 +2136,13 @@ const satellitesLayer = {
    * @returns {{ noradId: number, name: string, position: Cesium.Cartesian3, latitude: number, longitude: number, altitudeM: number }|null}
    */
   findByQuery(query) {
-    if (query === null || query === undefined || !_catalog || _catalog.size === 0) return null;
+    if (
+      query === null ||
+      query === undefined ||
+      !_catalog ||
+      _catalog.size === 0
+    )
+      return null;
     const q = String(query).trim();
     if (!q) return null;
 
@@ -1973,7 +2167,11 @@ const satellitesLayer = {
     return {
       noradId,
       name: sat.name.trim(),
-      position: Cesium.Cartesian3.fromDegrees(pos.longitude, pos.latitude, pos.altitude),
+      position: Cesium.Cartesian3.fromDegrees(
+        pos.longitude,
+        pos.latitude,
+        pos.altitude,
+      ),
       latitude: pos.latitude,
       longitude: pos.longitude,
       altitudeM: pos.altitude,
@@ -1989,13 +2187,15 @@ const satellitesLayer = {
   getAllPositions(maxCount = 300) {
     const result = [];
     if (!_points || _points.size === 0) return result;
-    const cap = Number.isFinite(maxCount) && maxCount > 0 ? Math.floor(maxCount) : 300;
+    const cap =
+      Number.isFinite(maxCount) && maxCount > 0 ? Math.floor(maxCount) : 300;
 
     for (const [noradId, point] of _points) {
       if (result.length >= cap) break;
       if (!point.position) continue;
       // Dense extras are points-only — keep voice/framing lists to the core catalog.
-      if (_denseIds.length > 0 && _catalog.get(noradId)?.group === 'dense') continue;
+      if (_denseIds.length > 0 && _catalog.get(noradId)?.group === 'dense')
+        continue;
       const carto = Cesium.Cartographic.fromCartesian(point.position);
       if (!carto) continue;
       const sat = _catalog.get(noradId);
@@ -2019,7 +2219,13 @@ const satellitesLayer = {
    */
   trackById(noradId, { origin = 'programmatic' } = {}) {
     const id = Number(noradId);
-    if (!Number.isFinite(id) || !_viewer || !_catalog.has(id) || !_points.has(id)) return false;
+    if (
+      !Number.isFinite(id) ||
+      !_viewer ||
+      !_catalog.has(id) ||
+      !_points.has(id)
+    )
+      return false;
     _cancelPendingTrackingRestore();
     _trackSatellite(id, { origin });
     return _trackedNorad === id;
@@ -2029,20 +2235,32 @@ const satellitesLayer = {
    * Resolve a shared Follow target only after the applicable CelesTrak
    * catalog has settled. A partial catalog can prove presence, never absence.
    */
-  async resolveTrackingRestoreTarget(noradId, {
-    signal = null,
-    origin = 'share-restore',
-  } = {}) {
-    if (signal?.aborted) return { status: 'cancelled', reason: String(signal.reason || 'aborted') };
+  async resolveTrackingRestoreTarget(
+    noradId,
+    { signal = null, origin = 'share-restore' } = {},
+  ) {
+    if (signal?.aborted)
+      return {
+        status: 'cancelled',
+        reason: String(signal.reason || 'aborted'),
+      };
     const id = _normalizeTrackedNorad(noradId);
     if (id === null) return { status: 'missing', reason: 'invalid-target' };
     const outcome = _lastTrackingRefreshOutcome;
     const found = () => _catalog.has(id) && _points.has(id);
     const follow = () => {
-      if (signal?.aborted) return { status: 'cancelled', reason: String(signal.reason || 'aborted') };
+      if (signal?.aborted)
+        return {
+          status: 'cancelled',
+          reason: String(signal.reason || 'aborted'),
+        };
       return this.trackById(id, { origin })
         ? { status: 'found', refreshEpoch: outcome.epoch }
-        : { status: 'source-unavailable', reason: 'target-not-renderable', refreshEpoch: outcome.epoch };
+        : {
+            status: 'source-unavailable',
+            reason: 'target-not-renderable',
+            refreshEpoch: outcome.epoch,
+          };
     };
 
     if (found()) return follow();
@@ -2055,8 +2273,13 @@ const satellitesLayer = {
     }
 
     if (_params.catalog === 'dense') {
-      const dense = await (_denseLoadPromise || Promise.resolve({ status: 'source-unavailable' }));
-      if (signal?.aborted) return { status: 'cancelled', reason: String(signal.reason || 'aborted') };
+      const dense = await (_denseLoadPromise ||
+        Promise.resolve({ status: 'source-unavailable' }));
+      if (signal?.aborted)
+        return {
+          status: 'cancelled',
+          reason: String(signal.reason || 'aborted'),
+        };
       if (_lastTrackingRefreshOutcome.epoch !== outcome.epoch) {
         return { status: 'superseded', reason: 'newer-catalog-refresh' };
       }
@@ -2125,23 +2348,37 @@ const satellitesLayer = {
    * @param {{ catalog?: 'core'|'dense', showPoints?: boolean, showOrbits?: boolean, selectedSatTrackingId?: number|null }} [params]
    */
   setParams(params = {}, { origin = 'programmatic' } = {}) {
-    if (isExplicitLayerStateOrigin(origin)
-        && !Object.hasOwn(params, 'selectedSatTrackingId')) {
+    if (
+      isExplicitLayerStateOrigin(origin) &&
+      !Object.hasOwn(params, 'selectedSatTrackingId')
+    ) {
       _cancelPendingTrackingRestore();
     }
     const catalog = params.catalog;
-    if (catalog !== undefined && catalog !== 'core' && catalog !== 'dense') return false;
-    const catalogChanged = satelliteCatalogModeChanged(_params.catalog, catalog);
+    if (catalog !== undefined && catalog !== 'core' && catalog !== 'dense')
+      return false;
+    const catalogChanged = satelliteCatalogModeChanged(
+      _params.catalog,
+      catalog,
+    );
     if (catalogChanged) {
       _params.catalog = catalog;
     }
     if (params.showPoints !== undefined) {
       _params.showPoints = params.showPoints !== false;
-      if (_pointCollection) _pointCollection.show = satelliteVisualsVisible(_enabled, _params.showPoints);
+      if (_pointCollection)
+        _pointCollection.show = satelliteVisualsVisible(
+          _enabled,
+          _params.showPoints,
+        );
     }
     if (params.showOrbits !== undefined) {
       _params.showOrbits = params.showOrbits !== false;
-      for (const path of _orbitPaths.values()) path.primitive.show = satelliteVisualsVisible(_enabled, _params.showOrbits);
+      for (const path of _orbitPaths.values())
+        path.primitive.show = satelliteVisualsVisible(
+          _enabled,
+          _params.showOrbits,
+        );
       _syncIssOverlay();
     }
     _syncContinuousRenderHold();
@@ -2156,7 +2393,8 @@ const satellitesLayer = {
       _denseStatus = 'idle';
       _denseError = null;
     }
-    if (catalogChanged) console.log(`[Data:Satellites] Catalog mode: ${catalog}`);
+    if (catalogChanged)
+      console.log(`[Data:Satellites] Catalog mode: ${catalog}`);
     if (Object.hasOwn(params, 'selectedSatTrackingId')) {
       const requested = _normalizeTrackedNorad(params.selectedSatTrackingId);
       if (requested === _trackedNorad) {
@@ -2210,21 +2448,33 @@ const satellitesLayer = {
     const loading = _denseStatus === 'loading';
     const failed = _denseStatus === 'failed';
     const active = _params.catalog === 'dense' && _denseStatus === 'ready';
-    let title = 'Add the full Starlink broadband shell (thousands of extra points)';
+    let title =
+      'Add the full Starlink broadband shell (thousands of extra points)';
     if (loading) title = 'Loading the Starlink shell…';
-    else if (failed) title = `Starlink ${_denseError || 'load failed'} — click to retry`;
-    else if (active) title = 'Showing the full Starlink shell — click for the core catalog only';
+    else if (failed)
+      title = `Starlink ${_denseError || 'load failed'} — click to retry`;
+    else if (active)
+      title =
+        'Showing the full Starlink shell — click for the core catalog only';
     return {
-      chips: [{
-        id: 'catalog',
-        label: loading ? 'DENSE ···' : (failed ? 'DENSE ✕' : 'DENSE'),
-        active,
-        busy: loading,
-        disabled: loading,
-        state: loading ? 'loading' : (failed ? 'error' : (active ? 'active' : 'idle')),
-        title,
-        params: { catalog: active ? 'core' : 'dense' },
-      }],
+      chips: [
+        {
+          id: 'catalog',
+          label: loading ? 'DENSE ···' : failed ? 'DENSE ✕' : 'DENSE',
+          active,
+          busy: loading,
+          disabled: loading,
+          state: loading
+            ? 'loading'
+            : failed
+              ? 'error'
+              : active
+                ? 'active'
+                : 'idle',
+          title,
+          params: { catalog: active ? 'core' : 'dense' },
+        },
+      ],
       legend: satelliteClassLegend(_classTally()),
     };
   },
@@ -2249,9 +2499,12 @@ const satellitesLayer = {
       failed,
       lastUpdate: _lastUpdate,
       stale: false,
-      status: _lastError === 'CelesTrak unreachable'
-        ? 'unavailable'
-        : (_lastError ? 'degraded' : 'nominal'),
+      status:
+        _lastError === 'CelesTrak unreachable'
+          ? 'unavailable'
+          : _lastError
+            ? 'degraded'
+            : 'nominal',
       error: _lastError,
     };
   },
@@ -2273,14 +2526,21 @@ function _installClickHandler(viewer) {
   // new owner controls it). Guarded so our OWN switch (viewer.trackedEntity
   // briefly undefined mid-_trackSatellite) doesn't self-clear.
   if (!_trackedEntityChangedRemove) {
-    _trackedEntityChangedRemove = viewer.trackedEntityChanged.addEventListener(() => {
-      if (!_enabled) return;
-      if (_trackedNorad && _viewer && _viewer.trackedEntity && _viewer.trackedEntity !== _trackedEntity) {
-        _clearTracking(true, {
-          origin: _viewer.trackedEntity?.gevSelectionOrigin || 'programmatic',
-        });
-      }
-    });
+    _trackedEntityChangedRemove = viewer.trackedEntityChanged.addEventListener(
+      () => {
+        if (!_enabled) return;
+        if (
+          _trackedNorad &&
+          _viewer &&
+          _viewer.trackedEntity &&
+          _viewer.trackedEntity !== _trackedEntity
+        ) {
+          _clearTracking(true, {
+            origin: _viewer.trackedEntity?.gevSelectionOrigin || 'programmatic',
+          });
+        }
+      },
+    );
   }
 
   _clickHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
@@ -2331,7 +2591,11 @@ export function getNextIssPass({ latDeg, lonDeg, minElevDeg = 10 }) {
   const sat = _catalog.get(ISS_NORAD);
   if (!sat || !sat.satrec) return { status: 'no-tle' };
   const pass = findNextIssPass({
-    satrec: sat.satrec, latDeg, lonDeg, fromMs: Date.now(), minElevDeg,
+    satrec: sat.satrec,
+    latDeg,
+    lonDeg,
+    fromMs: Date.now(),
+    minElevDeg,
   });
   return pass ? { status: 'ok', pass } : { status: 'none' };
 }
@@ -2346,22 +2610,38 @@ export function getNextIssPass({ latDeg, lonDeg, minElevDeg = 10 }) {
  * @returns {number} Match score; 0 means no useful relationship.
  */
 export function scoreSatelliteNameMatch(query, catalogName) {
-  const q = String(query || '').trim().toLowerCase();
-  const name = String(catalogName || '').trim().toLowerCase();
+  const q = String(query || '')
+    .trim()
+    .toLowerCase();
+  const name = String(catalogName || '')
+    .trim()
+    .toLowerCase();
   if (!q || !name) return 0;
   const qCompact = q.replace(/[^a-z0-9]/g, '');
   const nameCompact = name.replace(/[^a-z0-9]/g, '');
   if (qCompact === nameCompact) return 1000;
   let score = 0;
   if (
-    Math.min(qCompact.length, nameCompact.length) >= 5
-    && (qCompact.includes(nameCompact) || nameCompact.includes(qCompact))
+    Math.min(qCompact.length, nameCompact.length) >= 5 &&
+    (qCompact.includes(nameCompact) || nameCompact.includes(qCompact))
   ) {
     score += 200 + Math.min(qCompact.length, nameCompact.length);
   }
-  const ignored = new Set(['group', 'block', 'mission', 'launch', 'falcon', 'rocket']);
-  const tokens = q.split(/[^a-z0-9]+/).filter((token) => token.length >= 4 && !ignored.has(token));
-  score += tokens.reduce((total, token) => total + (name.includes(token) ? token.length : 0), 0);
+  const ignored = new Set([
+    'group',
+    'block',
+    'mission',
+    'launch',
+    'falcon',
+    'rocket',
+  ]);
+  const tokens = q
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 4 && !ignored.has(token));
+  score += tokens.reduce(
+    (total, token) => total + (name.includes(token) ? token.length : 0),
+    0,
+  );
   return score;
 }
 
@@ -2422,7 +2702,12 @@ export function findSatelliteOrbitTrackInTle(tleText, query, options = {}) {
   const catalogText = String(tleText || '');
   for (const entry of lookupTleEntries(catalogText)) {
     const designatorYear = tleLineLaunchYear(entry.line1);
-    if (launchYear !== null && designatorYear !== null && designatorYear !== launchYear) continue;
+    if (
+      launchYear !== null &&
+      designatorYear !== null &&
+      designatorYear !== launchYear
+    )
+      continue;
     const score = scoreSatelliteNameMatch(query, entry.name);
     if (score > bestScore) {
       bestEntry = entry;
@@ -2453,9 +2738,17 @@ export function getSatelliteOrbitTrack(query, options = {}) {
     let bestScore = 0;
     for (const [id, sat] of _catalog) {
       const designatorYear = internationalDesignatorYear(sat.satrec);
-      if (launchYear !== null && designatorYear !== null && designatorYear !== launchYear) continue;
+      if (
+        launchYear !== null &&
+        designatorYear !== null &&
+        designatorYear !== launchYear
+      )
+        continue;
       const score = scoreSatelliteNameMatch(q, sat.name);
-      if (score > bestScore) { bestScore = score; noradId = id; }
+      if (score > bestScore) {
+        bestScore = score;
+        noradId = id;
+      }
     }
     if (bestScore < 12) noradId = null;
   }

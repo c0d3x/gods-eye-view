@@ -10,14 +10,18 @@ import {
   setOverlayEntries,
   setOverlaySourceVisible,
 } from '../overlays/worldOverlay.js';
-import { holdContinuousRender, releaseContinuousRender } from '../renderGovernor.js';
+import {
+  holdContinuousRender,
+  releaseContinuousRender,
+} from '../renderGovernor.js';
 import { fetchChecked, fetchJson } from '../fetchJson.js';
 
 const WINDOW_DAYS = 30;
 const API_URL = '/api/launches';
 
 export const ROCKET_MISSION_AMBIENT_OVERLAY_SOURCE_ID = 'rocket-missions';
-export const ROCKET_MISSION_SELECTED_OVERLAY_SOURCE_ID = 'rocket-mission-selected';
+export const ROCKET_MISSION_SELECTED_OVERLAY_SOURCE_ID =
+  'rocket-mission-selected';
 export const ROCKET_MISSION_AMBIENT_OVERLAY_COHORT_LIMIT = 48;
 export const ROCKET_MISSION_AMBIENT_OVERLAY_COLLISION_CAPACITY = 24;
 export const ROCKET_MISSION_SELECTED_OVERLAY_SOURCE_OPTIONS = Object.freeze({
@@ -178,19 +182,25 @@ export function launchStatusAllowsOrbit(status) {
  * @returns {{orbit: string|null, ascent: string, replayAvailable: boolean}}
  */
 export function missionPathPresentation(launch, replayAvailable = false) {
-  const orbitName = launch?.orbit?.name || (typeof launch?.orbit === 'string' ? launch.orbit : null);
+  const orbitName =
+    launch?.orbit?.name ||
+    (typeof launch?.orbit === 'string' ? launch.orbit : null);
   const orbitAllowed = launchStatusAllowsOrbit(launch?.status);
   const suppliedTrajectoryPoints = Array.isArray(launch?.trajectory)
-    ? launch.trajectory.filter((point) => (
-      Number.isFinite(Number(point?.latitude))
-      && Number.isFinite(Number(point?.longitude))
-    )).length
+    ? launch.trajectory.filter(
+        (point) =>
+          Number.isFinite(Number(point?.latitude)) &&
+          Number.isFinite(Number(point?.longitude)),
+      ).length
     : 0;
   return {
     orbit: orbitName ? `${orbitAllowed ? '' : 'PLANNED · '}${orbitName}` : null,
-    ascent: suppliedTrajectoryPoints > 1
-      ? 'SUPPLIED TRAJECTORY POINTS'
-      : replayAvailable ? 'RECONSTRUCTED ESTIMATE' : 'UNAVAILABLE',
+    ascent:
+      suppliedTrajectoryPoints > 1
+        ? 'SUPPLIED TRAJECTORY POINTS'
+        : replayAvailable
+          ? 'RECONSTRUCTED ESTIMATE'
+          : 'UNAVAILABLE',
     replayAvailable: Boolean(replayAvailable),
   };
 }
@@ -211,10 +221,10 @@ export function shouldRetryAfterActiveTle({
   renderedTleText,
 }) {
   return Boolean(
-    enabled
-    && activeTleText
-    && activeTleText !== renderedTleText
-    && retryCount < MAX_POST_TLE_RETRIES,
+    enabled &&
+      activeTleText &&
+      activeTleText !== renderedTleText &&
+      retryCount < MAX_POST_TLE_RETRIES,
   );
 }
 
@@ -241,7 +251,12 @@ const LAUNCH_PAD_ZONE_MAX_CAMERA_HEIGHT_M = 120000;
 const LAUNCH_PAD_ZONE_MAX_CAMERA_DISTANCE_M = 180000;
 
 const TRAJECTORY_STAGE_COLORS = [
-  '#ff9f43', '#ff66c4', '#a78bfa', '#7bed9f', '#ffd166', '#60a5fa',
+  '#ff9f43',
+  '#ff66c4',
+  '#a78bfa',
+  '#7bed9f',
+  '#ffd166',
+  '#60a5fa',
 ];
 
 let _missionOrbitPatternRegistered = false;
@@ -299,15 +314,16 @@ function createMissionOrbitPatternMaterial(color) {
 
 function missionOrbitPrimitiveVisible(launchId) {
   return Boolean(
-    _enabled
-    && _dataSource?.show
-    && (!_selectedLaunchId || _selectedLaunchId === launchId),
+    _enabled &&
+      _dataSource?.show &&
+      (!_selectedLaunchId || _selectedLaunchId === launchId),
   );
 }
 
 function syncMissionOrbitPrimitiveVisibility() {
   for (const [launchId, path] of _missionOrbitPrimitives) {
-    if (path.primitive) path.primitive.show = missionOrbitPrimitiveVisible(launchId);
+    if (path.primitive)
+      path.primitive.show = missionOrbitPrimitiveVisible(launchId);
   }
 }
 
@@ -335,7 +351,12 @@ function updateMissionOrbitPrimitiveFrames(nowDate) {
 }
 
 function addMissionOrbitPrimitive(launch, orbitPath, satelliteTrack) {
-  if (!_viewer || !satelliteTrack || !Number.isFinite(satelliteTrack.gmstAtBake)) return false;
+  if (
+    !_viewer ||
+    !satelliteTrack ||
+    !Number.isFinite(satelliteTrack.gmstAtBake)
+  )
+    return false;
   const collection = new Cesium.PolylineCollection();
   collection.add({
     positions: orbitPath,
@@ -345,7 +366,11 @@ function addMissionOrbitPrimitive(launch, orbitPath, satelliteTrack) {
     ),
   });
   collection.show = missionOrbitPrimitiveVisible(launch.id);
-  orbitFrameModelMatrix(satelliteTrack.gmstAtBake, new Date(), collection.modelMatrix);
+  orbitFrameModelMatrix(
+    satelliteTrack.gmstAtBake,
+    new Date(),
+    collection.modelMatrix,
+  );
   _viewer.scene.primitives.add(collection);
   _missionOrbitPrimitives.set(launch.id, {
     primitive: collection,
@@ -361,15 +386,26 @@ function MissionOrbitPatternMaterialProperty(color) {
 }
 
 Object.defineProperties(MissionOrbitPatternMaterialProperty.prototype, {
-  isConstant: { get() { return true; } },
-  definitionChanged: { get() { return this._definitionChanged; } },
+  isConstant: {
+    get() {
+      return true;
+    },
+  },
+  definitionChanged: {
+    get() {
+      return this._definitionChanged;
+    },
+  },
 });
 
 MissionOrbitPatternMaterialProperty.prototype.getType = function getType() {
   return 'GevMissionOrbitTactical';
 };
 
-MissionOrbitPatternMaterialProperty.prototype.getValue = function getValue(time, result) {
+MissionOrbitPatternMaterialProperty.prototype.getValue = function getValue(
+  time,
+  result,
+) {
   if (!Cesium.defined(result)) result = {};
   result.color = this._color;
   result.groupCount = MISSION_ORBIT_PATTERN_GROUPS;
@@ -401,13 +437,13 @@ export function launchPadZoneVisible({
   cameraDistanceM,
 }) {
   return Boolean(
-    layerActive
-    && selectedLaunchId
-    && selectedLaunchId === launchId
-    && Number.isFinite(cameraHeightM)
-    && cameraHeightM <= LAUNCH_PAD_ZONE_MAX_CAMERA_HEIGHT_M
-    && Number.isFinite(cameraDistanceM)
-    && cameraDistanceM <= LAUNCH_PAD_ZONE_MAX_CAMERA_DISTANCE_M,
+    layerActive &&
+      selectedLaunchId &&
+      selectedLaunchId === launchId &&
+      Number.isFinite(cameraHeightM) &&
+      cameraHeightM <= LAUNCH_PAD_ZONE_MAX_CAMERA_HEIGHT_M &&
+      Number.isFinite(cameraDistanceM) &&
+      cameraDistanceM <= LAUNCH_PAD_ZONE_MAX_CAMERA_DISTANCE_M,
   );
 }
 
@@ -420,10 +456,17 @@ export function launchPadZoneVisible({
  * @param {number} [limbMargin] Additional normalized horizon clearance.
  * @returns {boolean} Whether the marker belongs on the visible hemisphere.
  */
-export function missionAnchorHorizonVisible(cameraPosition, markerPosition, limbMargin = 0.012) {
+export function missionAnchorHorizonVisible(
+  cameraPosition,
+  markerPosition,
+  limbMargin = 0.012,
+) {
   if (!cameraPosition || !markerPosition) return false;
   const cameraMagnitude = Cesium.Cartesian3.magnitude(cameraPosition);
-  if (!Number.isFinite(cameraMagnitude) || cameraMagnitude <= Cesium.Ellipsoid.WGS84.maximumRadius) {
+  if (
+    !Number.isFinite(cameraMagnitude) ||
+    cameraMagnitude <= Cesium.Ellipsoid.WGS84.maximumRadius
+  ) {
     return false;
   }
   const cameraDirection = Cesium.Cartesian3.normalize(
@@ -435,8 +478,10 @@ export function missionAnchorHorizonVisible(cameraPosition, markerPosition, limb
     new Cesium.Cartesian3(),
   );
   const limbThreshold = Cesium.Ellipsoid.WGS84.maximumRadius / cameraMagnitude;
-  return Cesium.Cartesian3.dot(cameraDirection, markerDirection)
-    > limbThreshold + limbMargin;
+  return (
+    Cesium.Cartesian3.dot(cameraDirection, markerDirection) >
+    limbThreshold + limbMargin
+  );
 }
 
 /**
@@ -463,25 +508,48 @@ function focusFullGlobe(viewer, duration = 2.4) {
   const width = canvas?.clientWidth || canvas?.width;
   const cartographic = viewer?.camera?.positionCartographic;
   const fovy = viewer?.camera?.frustum?.fovy;
-  if (!(width > 0) || !(height > 0) || !cartographic || !Number.isFinite(fovy) || fovy <= 0 || fovy >= Math.PI) return;
+  if (
+    !(width > 0) ||
+    !(height > 0) ||
+    !cartographic ||
+    !Number.isFinite(fovy) ||
+    fovy <= 0 ||
+    fovy >= Math.PI
+  )
+    return;
   const earthRadius = Cesium.Ellipsoid.WGS84.maximumRadius;
   const keyholeRadius = getKeyholeGeometry(width, height).radius;
   const targetScreenRadius = keyholeRadius * 0.61;
-  const angularRadius = Math.atan((targetScreenRadius / (height * 0.5)) * Math.tan(fovy * 0.5));
+  const angularRadius = Math.atan(
+    (targetScreenRadius / (height * 0.5)) * Math.tan(fovy * 0.5),
+  );
   const distance = earthRadius / Math.max(Math.sin(angularRadius), 1e-4);
   const altitude = Math.max(earthRadius * 1.55, distance - earthRadius);
   viewer.camera.flyTo({
-    destination: Cesium.Cartesian3.fromRadians(cartographic.longitude, cartographic.latitude, altitude),
-    orientation: { heading: viewer.camera.heading, pitch: -Cesium.Math.PI_OVER_TWO, roll: 0 },
+    destination: Cesium.Cartesian3.fromRadians(
+      cartographic.longitude,
+      cartographic.latitude,
+      altitude,
+    ),
+    orientation: {
+      heading: viewer.camera.heading,
+      pitch: -Cesium.Math.PI_OVER_TWO,
+      roll: 0,
+    },
     duration,
     easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT,
   });
 }
 
 function shortMissionLabel(name, maxLength = 24) {
-  const text = String(name || 'Unnamed mission').replace(/\s+/g, ' ').trim().split(' | ')[0];
+  const text = String(name || 'Unnamed mission')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' | ')[0];
   const compact = text.split(' — ')[0].trim();
-  return compact.length > maxLength ? `${compact.slice(0, maxLength - 1).trimEnd()}…` : compact;
+  return compact.length > maxLength
+    ? `${compact.slice(0, maxLength - 1).trimEnd()}…`
+    : compact;
 }
 
 /**
@@ -490,9 +558,12 @@ function shortMissionLabel(name, maxLength = 24) {
  * @returns {string|null} Compact launch-site identifier.
  */
 export function compactLaunchSiteName(launchSite) {
-  const text = String(launchSite || '').replace(/\s+/g, ' ').trim();
+  const text = String(launchSite || '')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!text || /^(unknown|unavailable|n\/a)$/i.test(text)) return null;
-  const genericPrefix = /^(?:orbital\s+launch\s+pad|space\s+launch\s+complex|launch\s+(?:area|complex|pad|site))\s*[-·:]?\s*/i;
+  const genericPrefix =
+    /^(?:orbital\s+launch\s+pad|space\s+launch\s+complex|launch\s+(?:area|complex|pad|site))\s*[-·:]?\s*/i;
   const compact = text.replace(genericPrefix, '').trim();
   return compact || null;
 }
@@ -506,14 +577,20 @@ export function compactLaunchSiteName(launchSite) {
  * @param {boolean} [selected=false] Whether the mission owns the selected view.
  * @returns {object}
  */
-export function createRocketMissionMarkerOverlayEntry(launch, position, selected = false) {
+export function createRocketMissionMarkerOverlayEntry(
+  launch,
+  position,
+  selected = false,
+) {
   const mission = shortMissionLabel(launch?.name, 26).toUpperCase();
   const siteName = compactLaunchSiteName(launch?.launchSite);
   const launchTimeMs = Date.parse(launch?.launchTime);
   const details = selected
-    ? [siteName
-      ? `LAUNCH SITE · ${shortMissionLabel(siteName, 20).toUpperCase()}`
-      : 'LAUNCH SITE']
+    ? [
+        siteName
+          ? `LAUNCH SITE · ${shortMissionLabel(siteName, 20).toUpperCase()}`
+          : 'LAUNCH SITE',
+      ]
     : [];
   return {
     id: `launch:${launch?.id}`,
@@ -524,7 +601,9 @@ export function createRocketMissionMarkerOverlayEntry(launch, position, selected
     accent: '#22e6e6',
     priority: selected
       ? Number.MAX_SAFE_INTEGER
-      : Number.isFinite(launchTimeMs) ? Math.floor(launchTimeMs / 1000) : 0,
+      : Number.isFinite(launchTimeMs)
+        ? Math.floor(launchTimeMs / 1000)
+        : 0,
     selected,
     protected: selected,
     paintLane: selected ? 'selected' : 'ambient-label',
@@ -594,14 +673,21 @@ export function selectRocketMissionMarkerOverlayCohort(
   entries,
   limit = ROCKET_MISSION_AMBIENT_OVERLAY_COHORT_LIMIT,
 ) {
-  const cap = Math.max(0, Math.min(
-    ROCKET_MISSION_AMBIENT_OVERLAY_COHORT_LIMIT,
-    Math.floor(Number(limit) || 0),
-  ));
+  const cap = Math.max(
+    0,
+    Math.min(
+      ROCKET_MISSION_AMBIENT_OVERLAY_COHORT_LIMIT,
+      Math.floor(Number(limit) || 0),
+    ),
+  );
   if (!Array.isArray(entries) || cap === 0) return [];
-  return entries.slice().sort((a, b) => (
-    b.priority - a.priority || String(a.id).localeCompare(String(b.id))
-  )).slice(0, cap);
+  return entries
+    .slice()
+    .sort(
+      (a, b) =>
+        b.priority - a.priority || String(a.id).localeCompare(String(b.id)),
+    )
+    .slice(0, cap);
 }
 
 function missionHoverReticleImage() {
@@ -665,7 +751,8 @@ export function replayOverlayMode({
 export function replayVehicleScreenRotation(from, to) {
   const dx = Number(to?.x) - Number(from?.x);
   const dy = Number(to?.y) - Number(from?.y);
-  if (!Number.isFinite(dx) || !Number.isFinite(dy) || Math.hypot(dx, dy) < 0.01) return 0;
+  if (!Number.isFinite(dx) || !Number.isFinite(dy) || Math.hypot(dx, dy) < 0.01)
+    return 0;
   return Math.atan2(dx, -dy);
 }
 
@@ -743,15 +830,24 @@ function destroyReplayVehicleOverlay() {
  */
 export function missionDataCompleteness(launch = {}) {
   let score = 0;
-  const present = (value) => value !== null && value !== undefined && value !== '';
+  const present = (value) =>
+    value !== null && value !== undefined && value !== '';
   score += present(launch.provider) ? 1 : 0;
   score += present(launch.mission) ? 2 : 0;
   score += present(launch.missionName) ? 1 : 0;
   score += present(launch.orbit?.name || launch.orbit) ? 2 : 0;
-  score += Array.isArray(launch.payloads) ? Math.min(launch.payloads.length, 5) * 2 : 0;
-  score += Array.isArray(launch.recoveryStages) ? Math.min(launch.recoveryStages.length, 4) * 2 : 0;
-  score += Array.isArray(launch.trajectory) ? Math.min(launch.trajectory.length, 12) : 0;
-  score += Array.isArray(launch.timeline) ? Math.min(launch.timeline.length, 6) : 0;
+  score += Array.isArray(launch.payloads)
+    ? Math.min(launch.payloads.length, 5) * 2
+    : 0;
+  score += Array.isArray(launch.recoveryStages)
+    ? Math.min(launch.recoveryStages.length, 4) * 2
+    : 0;
+  score += Array.isArray(launch.trajectory)
+    ? Math.min(launch.trajectory.length, 12)
+    : 0;
+  score += Array.isArray(launch.timeline)
+    ? Math.min(launch.timeline.length, 6)
+    : 0;
   return score;
 }
 
@@ -765,11 +861,13 @@ export function missionRosterEntries(launches) {
   return (launches || [])
     .map((launch, index) => ({ launch, index }))
     .sort((a, b) => {
-      const completeness = missionDataCompleteness(b.launch) - missionDataCompleteness(a.launch);
+      const completeness =
+        missionDataCompleteness(b.launch) - missionDataCompleteness(a.launch);
       if (completeness !== 0) return completeness;
       const aTime = Date.parse(a.launch?.launchTime);
       const bTime = Date.parse(b.launch?.launchTime);
-      if (Number.isFinite(aTime) && Number.isFinite(bTime) && aTime !== bTime) return bTime - aTime;
+      if (Number.isFinite(aTime) && Number.isFinite(bTime) && aTime !== bTime)
+        return bTime - aTime;
       return b.index - a.index;
     });
 }
@@ -805,9 +903,10 @@ export function createMissionRosterPreviewOwnership({ preview, clear }) {
   let activeIndex = null;
 
   const sync = () => {
-    const nextIndex = latestOwner === 'pointer'
-      ? pointerIndex ?? focusIndex
-      : focusIndex ?? pointerIndex;
+    const nextIndex =
+      latestOwner === 'pointer'
+        ? (pointerIndex ?? focusIndex)
+        : (focusIndex ?? pointerIndex);
     if (nextIndex === activeIndex) return;
     activeIndex = nextIndex;
     if (Number.isInteger(nextIndex)) preview(nextIndex);
@@ -822,7 +921,8 @@ export function createMissionRosterPreviewOwnership({ preview, clear }) {
     },
     pointerLeave() {
       pointerIndex = null;
-      if (latestOwner === 'pointer') latestOwner = focusIndex === null ? null : 'focus';
+      if (latestOwner === 'pointer')
+        latestOwner = focusIndex === null ? null : 'focus';
       sync();
     },
     focus(index) {
@@ -832,9 +932,13 @@ export function createMissionRosterPreviewOwnership({ preview, clear }) {
     },
     blur(nextIndex = null) {
       focusIndex = Number.isInteger(nextIndex) ? nextIndex : null;
-      if (latestOwner === 'focus') latestOwner = focusIndex === null
-        ? (pointerIndex === null ? null : 'pointer')
-        : 'focus';
+      if (latestOwner === 'focus')
+        latestOwner =
+          focusIndex === null
+            ? pointerIndex === null
+              ? null
+              : 'pointer'
+            : 'focus';
       sync();
     },
     reset() {
@@ -855,21 +959,32 @@ export function createMissionRosterPreviewOwnership({ preview, clear }) {
  *   focus: (index: number) => void, blur: (nextIndex?: number|null) => void}} ownership
  * @param {Element} roster Roster root used to reject focus targets outside the list.
  */
-export function bindMissionRosterItemKeyboardPreview(button, index, ownership, roster) {
+export function bindMissionRosterItemKeyboardPreview(
+  button,
+  index,
+  ownership,
+  roster,
+) {
   button.addEventListener('mouseenter', () => ownership.pointerEnter(index));
   button.addEventListener('mouseleave', () => ownership.pointerLeave());
   button.addEventListener('focus', () => ownership.focus(index));
   button.addEventListener('blur', (event) => {
-    const nextButton = event.relatedTarget?.closest?.('[data-mission-roster-index]');
-    const nextIndex = nextButton && roster.contains(nextButton)
-      ? Number(nextButton.dataset.missionRosterIndex)
-      : null;
+    const nextButton = event.relatedTarget?.closest?.(
+      '[data-mission-roster-index]',
+    );
+    const nextIndex =
+      nextButton && roster.contains(nextButton)
+        ? Number(nextButton.dataset.missionRosterIndex)
+        : null;
     ownership.blur(nextIndex);
   });
 }
 
 /** Capture the exact mission identity owned by keyboard focus before a refresh. */
-export function captureMissionRosterFocus(list, activeElement = globalThis.document?.activeElement) {
+export function captureMissionRosterFocus(
+  list,
+  activeElement = globalThis.document?.activeElement,
+) {
   const button = activeElement?.closest?.('[data-mission-roster-id]');
   if (!button || !list?.contains(button)) return null;
   const launchId = button.dataset.missionRosterId;
@@ -879,8 +994,11 @@ export function captureMissionRosterFocus(list, activeElement = globalThis.docum
 /** Restore focus by mission identity, or continue after the list if it departed. */
 export function restoreMissionRosterFocus(list, snapshot, continuation) {
   if (!snapshot?.launchId) return 'none';
-  const button = Array.from(list?.querySelectorAll?.('[data-mission-roster-id]') || [])
-    .find((candidate) => candidate.dataset.missionRosterId === snapshot.launchId);
+  const button = Array.from(
+    list?.querySelectorAll?.('[data-mission-roster-id]') || [],
+  ).find(
+    (candidate) => candidate.dataset.missionRosterId === snapshot.launchId,
+  );
   if (button) {
     button.focus({ preventScroll: true });
     return 'restored';
@@ -894,7 +1012,9 @@ export function restoreMissionRosterFocus(list, snapshot, continuation) {
 
 /** Resolve a pending preview against the current refresh, never a stale object. */
 export function resolveMissionRosterPreviewLaunch(launches, launchId) {
-  return (launches || []).find((candidate) => candidate.id === launchId) || null;
+  return (
+    (launches || []).find((candidate) => candidate.id === launchId) || null
+  );
 }
 
 /**
@@ -914,31 +1034,48 @@ export function formatMissionEventTime(launchTime) {
  * @returns {number|null} Signed duration in seconds.
  */
 export function parseMissionDurationSeconds(value) {
-  const match = String(value || '').trim().match(
-    /^(-)?P(?:(\d+(?:\.\d+)?)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$/,
-  );
+  const match = String(value || '')
+    .trim()
+    .match(
+      /^(-)?P(?:(\d+(?:\.\d+)?)D)?(?:T(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?)?$/,
+    );
   if (!match) return null;
-  const seconds = (Number(match[2] || 0) * 86400)
-    + (Number(match[3] || 0) * 3600)
-    + (Number(match[4] || 0) * 60)
-    + Number(match[5] || 0);
+  const seconds =
+    Number(match[2] || 0) * 86400 +
+    Number(match[3] || 0) * 3600 +
+    Number(match[4] || 0) * 60 +
+    Number(match[5] || 0);
   return match[1] ? -seconds : seconds;
 }
 
 function orbitInsertionOffsetSeconds(launch) {
-  const events = (launch.timeline || []).filter((event) => Number.isFinite(event.offsetSeconds) && event.offsetSeconds >= 0);
+  const events = (launch.timeline || []).filter(
+    (event) => Number.isFinite(event.offsetSeconds) && event.offsetSeconds >= 0,
+  );
   if (!events.length) return null;
-  const deployment = events.filter((event) => /deploy|payload separation|spacecraft separation|orbit insertion|injection/i.test(event.name));
-  if (deployment.length) return Math.max(...deployment.map((event) => event.offsetSeconds));
-  const engineCutoff = events.filter((event) => /seco|second engine cutoff/i.test(event.name));
-  if (engineCutoff.length) return Math.max(...engineCutoff.map((event) => event.offsetSeconds));
+  const deployment = events.filter((event) =>
+    /deploy|payload separation|spacecraft separation|orbit insertion|injection/i.test(
+      event.name,
+    ),
+  );
+  if (deployment.length)
+    return Math.max(...deployment.map((event) => event.offsetSeconds));
+  const engineCutoff = events.filter((event) =>
+    /seco|second engine cutoff/i.test(event.name),
+  );
+  if (engineCutoff.length)
+    return Math.max(...engineCutoff.map((event) => event.offsetSeconds));
   return Math.max(...events.map((event) => event.offsetSeconds));
 }
 
 function estimatedOrbitPeriodSeconds(orbitPath) {
   if (!orbitPath?.length) return 5400;
-  const meanRadius = orbitPath.reduce((total, point) => total + Cesium.Cartesian3.magnitude(point), 0) / orbitPath.length;
-  return 2 * Math.PI * Math.sqrt((meanRadius ** 3) / 3.986004418e14);
+  const meanRadius =
+    orbitPath.reduce(
+      (total, point) => total + Cesium.Cartesian3.magnitude(point),
+      0,
+    ) / orbitPath.length;
+  return 2 * Math.PI * Math.sqrt(meanRadius ** 3 / 3.986004418e14);
 }
 
 /**
@@ -954,10 +1091,13 @@ export function replayAscentDurationSeconds(launch, ascentPath = []) {
   const disclosedSeconds = orbitInsertionOffsetSeconds(launch);
   let realAscentSeconds = disclosedSeconds > 0 ? disclosedSeconds : null;
   if (!realAscentSeconds && ascentPath.length > 1) {
-    const pathLength = ascentPath.slice(1).reduce(
-      (total, point, index) => total + Cesium.Cartesian3.distance(ascentPath[index], point),
-      0,
-    );
+    const pathLength = ascentPath
+      .slice(1)
+      .reduce(
+        (total, point, index) =>
+          total + Cesium.Cartesian3.distance(ascentPath[index], point),
+        0,
+      );
     realAscentSeconds = Math.max(180, pathLength / 9000);
   }
   if (!realAscentSeconds) realAscentSeconds = REPLAY_ASCENT_FALLBACK_SEC * 50;
@@ -976,7 +1116,11 @@ export function replayAscentDurationSeconds(launch, ascentPath = []) {
 export function normalizeReplaySpeed(value) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) return 1;
-  const clamped = Cesium.Math.clamp(numeric, REPLAY_SPEED_MIN, REPLAY_SPEED_MAX);
+  const clamped = Cesium.Math.clamp(
+    numeric,
+    REPLAY_SPEED_MIN,
+    REPLAY_SPEED_MAX,
+  );
   return Math.round(clamped / REPLAY_SPEED_STEP) * REPLAY_SPEED_STEP;
 }
 
@@ -988,7 +1132,8 @@ export function normalizeReplaySpeed(value) {
  * @returns {number} Shifted start epoch.
  */
 export function replayStartAfterPause(startedAt, pausedAt, resumedAt) {
-  if (![startedAt, pausedAt, resumedAt].every(Number.isFinite)) return startedAt;
+  if (![startedAt, pausedAt, resumedAt].every(Number.isFinite))
+    return startedAt;
   return startedAt + Math.max(0, resumedAt - pausedAt);
 }
 
@@ -1005,12 +1150,20 @@ export function replayState(
 ) {
   const animationDurationSec = ascentDurationSec + orbitDurationSec;
   const realSecondsSinceStart = (nowMs - startedAt) / 1000;
-  const preCountdownDuration = Math.max(0, Number(preCountdownDurationSec) || 0);
-  const preCountdownActive = preCountdownDuration > 0
-    && realSecondsSinceStart < -preCountdownDuration;
+  const preCountdownDuration = Math.max(
+    0,
+    Number(preCountdownDurationSec) || 0,
+  );
+  const preCountdownActive =
+    preCountdownDuration > 0 && realSecondsSinceStart < -preCountdownDuration;
   const countdownActive = realSecondsSinceStart < 0 && !preCountdownActive;
-  const countdownSeconds = countdownActive ? Math.ceil(-realSecondsSinceStart) : 0;
-  const elapsedSinceStart = Math.max(0, realSecondsSinceStart * normalizeReplaySpeed(speed));
+  const countdownSeconds = countdownActive
+    ? Math.ceil(-realSecondsSinceStart)
+    : 0;
+  const elapsedSinceStart = Math.max(
+    0,
+    realSecondsSinceStart * normalizeReplaySpeed(speed),
+  );
   const elapsed = loop
     ? elapsedSinceStart % animationDurationSec
     : Math.min(elapsedSinceStart, Math.max(0, animationDurationSec - 1e-6));
@@ -1019,15 +1172,17 @@ export function replayState(
   const phaseProgress = ascending
     ? elapsed / ascentDurationSec
     : (elapsed - ascentDurationSec) / orbitDurationSec;
-  const missionOffsetSec = insertionOffsetSec === null
-    ? null
-    : ascending
-      ? phaseProgress * insertionOffsetSec
-      : insertionOffsetSec + phaseProgress * orbitPeriodSec;
+  const missionOffsetSec =
+    insertionOffsetSec === null
+      ? null
+      : ascending
+        ? phaseProgress * insertionOffsetSec
+        : insertionOffsetSec + phaseProgress * orbitPeriodSec;
   const launchEpoch = Date.parse(launch.launchTime);
-  const eventTime = Number.isFinite(launchEpoch) && missionOffsetSec !== null
-    ? new Date(launchEpoch + missionOffsetSec * 1000)
-    : null;
+  const eventTime =
+    Number.isFinite(launchEpoch) && missionOffsetSec !== null
+      ? new Date(launchEpoch + missionOffsetSec * 1000)
+      : null;
   return {
     ascending,
     phaseProgress,
@@ -1040,10 +1195,19 @@ export function replayState(
 }
 
 export function approximateOrbitPath(launch) {
-  if (!launch.orbit?.name || !Number.isFinite(launch.lat) || !Number.isFinite(launch.lon)) return null;
+  if (
+    !launch.orbit?.name ||
+    !Number.isFinite(launch.lat) ||
+    !Number.isFinite(launch.lon)
+  )
+    return null;
   const orbitName = launch.orbit.name.toLowerCase();
-  const altitude = orbitName.includes('geostationary') || orbitName.includes('transfer') ? 35786000
-    : orbitName.includes('medium') ? 20200000 : 550000;
+  const altitude =
+    orbitName.includes('geostationary') || orbitName.includes('transfer')
+      ? 35786000
+      : orbitName.includes('medium')
+        ? 20200000
+        : 550000;
   const radius = Cesium.Ellipsoid.WGS84.maximumRadius + altitude;
   const longitude = Cesium.Math.toRadians(launch.lon);
   const latitude = Cesium.Math.toRadians(launch.lat);
@@ -1063,16 +1227,31 @@ export function approximateOrbitPath(launch) {
     Math.cos(latitude),
   );
   const isPolar = orbitName.includes('polar') || orbitName.includes('sun');
-  const isWesternNorthAmerica = launch.lat > 20 && launch.lat < 60
-    && launch.lon > -140 && launch.lon < -105;
+  const isWesternNorthAmerica =
+    launch.lat > 20 &&
+    launch.lat < 60 &&
+    launch.lon > -140 &&
+    launch.lon < -105;
   const launchAzimuthDeg = isPolar
-    ? (launch.lat >= 0 ? 180 : 0)
-    : isWesternNorthAmerica ? 190 : 90;
+    ? launch.lat >= 0
+      ? 180
+      : 0
+    : isWesternNorthAmerica
+      ? 190
+      : 90;
   const launchAzimuth = Cesium.Math.toRadians(launchAzimuthDeg);
   const forward = Cesium.Cartesian3.normalize(
     Cesium.Cartesian3.add(
-      Cesium.Cartesian3.multiplyByScalar(north, Math.cos(launchAzimuth), new Cesium.Cartesian3()),
-      Cesium.Cartesian3.multiplyByScalar(east, Math.sin(launchAzimuth), new Cesium.Cartesian3()),
+      Cesium.Cartesian3.multiplyByScalar(
+        north,
+        Math.cos(launchAzimuth),
+        new Cesium.Cartesian3(),
+      ),
+      Cesium.Cartesian3.multiplyByScalar(
+        east,
+        Math.sin(launchAzimuth),
+        new Cesium.Cartesian3(),
+      ),
       new Cesium.Cartesian3(),
     ),
     new Cesium.Cartesian3(),
@@ -1085,8 +1264,16 @@ export function approximateOrbitPath(launch) {
   const insertionArc = Cesium.Math.toRadians(isPolar ? 8 : 12);
   const orbitAnchor = Cesium.Cartesian3.normalize(
     Cesium.Cartesian3.add(
-      Cesium.Cartesian3.multiplyByScalar(up, Math.cos(insertionArc), new Cesium.Cartesian3()),
-      Cesium.Cartesian3.multiplyByScalar(forward, Math.sin(insertionArc), new Cesium.Cartesian3()),
+      Cesium.Cartesian3.multiplyByScalar(
+        up,
+        Math.cos(insertionArc),
+        new Cesium.Cartesian3(),
+      ),
+      Cesium.Cartesian3.multiplyByScalar(
+        forward,
+        Math.sin(insertionArc),
+        new Cesium.Cartesian3(),
+      ),
       new Cesium.Cartesian3(),
     ),
     new Cesium.Cartesian3(),
@@ -1102,9 +1289,12 @@ export function approximateOrbitPath(launch) {
   return Array.from({ length: 97 }, (_, index) => {
     const angle = (index / 96) * Math.PI * 2;
     return new Cesium.Cartesian3(
-      radius * (Math.cos(angle) * orbitAnchor.x + Math.sin(angle) * crossTrack.x),
-      radius * (Math.cos(angle) * orbitAnchor.y + Math.sin(angle) * crossTrack.y),
-      radius * (Math.cos(angle) * orbitAnchor.z + Math.sin(angle) * crossTrack.z),
+      radius *
+        (Math.cos(angle) * orbitAnchor.x + Math.sin(angle) * crossTrack.x),
+      radius *
+        (Math.cos(angle) * orbitAnchor.y + Math.sin(angle) * crossTrack.y),
+      radius *
+        (Math.cos(angle) * orbitAnchor.z + Math.sin(angle) * crossTrack.z),
     );
   });
 }
@@ -1118,9 +1308,15 @@ function entityLaunchId(entity) {
 function clearMissionOverlaySources() {
   _selectedMissionOverlayTimeText = null;
   _missionOverlayHost.clearSource(ROCKET_MISSION_AMBIENT_OVERLAY_SOURCE_ID);
-  _missionOverlayHost.setVisible(ROCKET_MISSION_AMBIENT_OVERLAY_SOURCE_ID, false);
+  _missionOverlayHost.setVisible(
+    ROCKET_MISSION_AMBIENT_OVERLAY_SOURCE_ID,
+    false,
+  );
   _missionOverlayHost.clearSource(ROCKET_MISSION_SELECTED_OVERLAY_SOURCE_ID);
-  _missionOverlayHost.setVisible(ROCKET_MISSION_SELECTED_OVERLAY_SOURCE_ID, false);
+  _missionOverlayHost.setVisible(
+    ROCKET_MISSION_SELECTED_OVERLAY_SOURCE_ID,
+    false,
+  );
 }
 
 function syncMissionOverlayEntries() {
@@ -1133,21 +1329,31 @@ function syncMissionOverlayEntries() {
     : null;
   if (selectedRecord) {
     _missionOverlayHost.clearSource(ROCKET_MISSION_AMBIENT_OVERLAY_SOURCE_ID);
-    _missionOverlayHost.setVisible(ROCKET_MISSION_AMBIENT_OVERLAY_SOURCE_ID, false);
-    const entries = selectedRecord.elementEntryFactories.map((createEntry) => createEntry());
+    _missionOverlayHost.setVisible(
+      ROCKET_MISSION_AMBIENT_OVERLAY_SOURCE_ID,
+      false,
+    );
+    const entries = selectedRecord.elementEntryFactories.map((createEntry) =>
+      createEntry(),
+    );
     if (_replayCameraLaunchId !== selectedRecord.launch.id) {
-      entries.unshift(createRocketMissionMarkerOverlayEntry(
-        selectedRecord.launch,
-        selectedRecord.anchorPosition,
-        true,
-      ));
+      entries.unshift(
+        createRocketMissionMarkerOverlayEntry(
+          selectedRecord.launch,
+          selectedRecord.anchorPosition,
+          true,
+        ),
+      );
     }
     _missionOverlayHost.setEntries(
       ROCKET_MISSION_SELECTED_OVERLAY_SOURCE_ID,
       entries,
       ROCKET_MISSION_SELECTED_OVERLAY_SOURCE_OPTIONS,
     );
-    _missionOverlayHost.setVisible(ROCKET_MISSION_SELECTED_OVERLAY_SOURCE_ID, true);
+    _missionOverlayHost.setVisible(
+      ROCKET_MISSION_SELECTED_OVERLAY_SOURCE_ID,
+      true,
+    );
     _selectedMissionOverlayTimeText = selectedRecord.liveEventTime
       ? formatMissionEventTime(selectedRecord.liveEventTime())
       : null;
@@ -1155,7 +1361,10 @@ function syncMissionOverlayEntries() {
   }
 
   _missionOverlayHost.clearSource(ROCKET_MISSION_SELECTED_OVERLAY_SOURCE_ID);
-  _missionOverlayHost.setVisible(ROCKET_MISSION_SELECTED_OVERLAY_SOURCE_ID, false);
+  _missionOverlayHost.setVisible(
+    ROCKET_MISSION_SELECTED_OVERLAY_SOURCE_ID,
+    false,
+  );
   _selectedMissionOverlayTimeText = null;
   const entries = selectRocketMissionMarkerOverlayCohort(
     Array.from(_missionOverlayRecords.values(), (record) => {
@@ -1175,7 +1384,10 @@ function syncMissionOverlayEntries() {
     entries,
     ROCKET_MISSION_AMBIENT_OVERLAY_SOURCE_OPTIONS,
   );
-  _missionOverlayHost.setVisible(ROCKET_MISSION_AMBIENT_OVERLAY_SOURCE_ID, true);
+  _missionOverlayHost.setVisible(
+    ROCKET_MISSION_AMBIENT_OVERLAY_SOURCE_ID,
+    true,
+  );
 }
 
 function refreshSelectedMissionOverlayText() {
@@ -1189,8 +1401,10 @@ function refreshSelectedMissionOverlayText() {
 
 function setSelectedMission(launchId, isolate = true) {
   if (launchId) clearMissionRosterHover();
-  if (_replayCameraLaunchId && _replayCameraLaunchId !== launchId) stopMissionReplay();
-  if (_missionZoomAnchorId && _missionZoomAnchorId !== launchId) stopMissionZoomAnchor();
+  if (_replayCameraLaunchId && _replayCameraLaunchId !== launchId)
+    stopMissionReplay();
+  if (_missionZoomAnchorId && _missionZoomAnchorId !== launchId)
+    stopMissionZoomAnchor();
   _selectedLaunchId = launchId;
   _explicitSelection = Boolean(launchId && isolate);
   if (launchId) _animationStarts.set(launchId, Date.now());
@@ -1251,40 +1465,43 @@ function createLaunchPadZonePrimitive(launch) {
     semiMajorAxis: LAUNCH_PAD_ZONE_RADIUS_M,
     semiMinorAxis: LAUNCH_PAD_ZONE_RADIUS_M,
     granularity: Cesium.Math.toRadians(0.08),
-    vertexFormat: Cesium.MaterialAppearance.MaterialSupport.TEXTURED.vertexFormat,
+    vertexFormat:
+      Cesium.MaterialAppearance.MaterialSupport.TEXTURED.vertexFormat,
   });
-  _launchPadZonePrimitive = _viewer.scene.primitives.add(new Cesium.GroundPrimitive({
-    geometryInstances: new Cesium.GeometryInstance({
-      geometry,
-      id: `rocket-pad-zone:${launch.id}`,
-    }),
-    appearance: new Cesium.MaterialAppearance({
-      material,
-      translucent: true,
-      closed: false,
-      faceForward: true,
-      flat: true,
-      // Keep the zone classified onto the photoreal surface, but bias only its
-      // rasterized depth toward the camera. This avoids coplanar fragments
-      // being intermittently buried by the launch-pad mesh at oblique angles
-      // without adding a world-space height that would make the ring float.
-      renderState: {
-        depthTest: {
-          enabled: true,
+  _launchPadZonePrimitive = _viewer.scene.primitives.add(
+    new Cesium.GroundPrimitive({
+      geometryInstances: new Cesium.GeometryInstance({
+        geometry,
+        id: `rocket-pad-zone:${launch.id}`,
+      }),
+      appearance: new Cesium.MaterialAppearance({
+        material,
+        translucent: true,
+        closed: false,
+        faceForward: true,
+        flat: true,
+        // Keep the zone classified onto the photoreal surface, but bias only its
+        // rasterized depth toward the camera. This avoids coplanar fragments
+        // being intermittently buried by the launch-pad mesh at oblique angles
+        // without adding a world-space height that would make the ring float.
+        renderState: {
+          depthTest: {
+            enabled: true,
+          },
+          depthMask: false,
+          polygonOffset: {
+            enabled: true,
+            factor: -1,
+            units: -4,
+          },
+          blending: Cesium.BlendingState.ALPHA_BLEND,
         },
-        depthMask: false,
-        polygonOffset: {
-          enabled: true,
-          factor: -1,
-          units: -4,
-        },
-        blending: Cesium.BlendingState.ALPHA_BLEND,
-      },
+      }),
+      classificationType: Cesium.ClassificationType.BOTH,
+      asynchronous: true,
+      show: true,
     }),
-    classificationType: Cesium.ClassificationType.BOTH,
-    asynchronous: true,
-    show: true,
-  }));
+  );
   _launchPadZoneLaunchId = launch.id;
 }
 
@@ -1307,19 +1524,26 @@ function initLaunchPadZonePrimitive() {
       hideLaunchPadZone();
       return;
     }
-    const launchPosition = Cesium.Cartesian3.fromDegrees(launch.lon, launch.lat);
+    const launchPosition = Cesium.Cartesian3.fromDegrees(
+      launch.lon,
+      launch.lat,
+    );
     const visible = launchPadZoneVisible({
       layerActive: Boolean(_dataSource?.show),
       selectedLaunchId: _selectedLaunchId,
       launchId: launch.id,
       cameraHeightM: camera.positionCartographic?.height,
-      cameraDistanceM: Cesium.Cartesian3.distance(camera.positionWC, launchPosition),
+      cameraDistanceM: Cesium.Cartesian3.distance(
+        camera.positionWC,
+        launchPosition,
+      ),
     });
     if (!visible) {
       hideLaunchPadZone();
       return;
     }
-    if (_launchPadZoneLaunchId !== launch.id) createLaunchPadZonePrimitive(launch);
+    if (_launchPadZoneLaunchId !== launch.id)
+      createLaunchPadZonePrimitive(launch);
     _launchPadZonePrimitive.show = true;
   });
 }
@@ -1334,18 +1558,21 @@ export function samplePath(path, progress, result) {
   if (!path?.length) return undefined;
   // Degenerate returns clone into `result` when provided — handing back a
   // path vertex would let an in-place caller mutate the path geometry.
-  if (path.length === 1) return result ? Cesium.Cartesian3.clone(path[0], result) : path[0];
+  if (path.length === 1)
+    return result ? Cesium.Cartesian3.clone(path[0], result) : path[0];
   let distances = _pathDistanceCache.get(path);
   if (!distances) {
     distances = new Float64Array(path.length);
     for (let index = 1; index < path.length; index++) {
-      distances[index] = distances[index - 1]
-        + Cesium.Cartesian3.distance(path[index - 1], path[index]);
+      distances[index] =
+        distances[index - 1] +
+        Cesium.Cartesian3.distance(path[index - 1], path[index]);
     }
     _pathDistanceCache.set(path, distances);
   }
   const totalDistance = distances.at(-1);
-  if (!(totalDistance > 0)) return result ? Cesium.Cartesian3.clone(path[0], result) : path[0];
+  if (!(totalDistance > 0))
+    return result ? Cesium.Cartesian3.clone(path[0], result) : path[0];
   const targetDistance = Cesium.Math.clamp(progress, 0, 1) * totalDistance;
   let low = 1;
   let high = distances.length - 1;
@@ -1356,9 +1583,10 @@ export function samplePath(path, progress, result) {
   }
   const index = Math.max(0, low - 1);
   const segmentDistance = distances[index + 1] - distances[index];
-  const segmentProgress = segmentDistance > 0
-    ? (targetDistance - distances[index]) / segmentDistance
-    : 0;
+  const segmentProgress =
+    segmentDistance > 0
+      ? (targetDistance - distances[index]) / segmentDistance
+      : 0;
   return Cesium.Cartesian3.lerp(
     path[index],
     path[index + 1],
@@ -1389,7 +1617,11 @@ export function orbitProgressAtTime(nowMs, periodSec) {
  * @param {number} [samples] Number of curve intervals.
  * @returns {Cesium.Cartesian3[]}
  */
-export function reconstructedAscentPath(launchPosition, insertionPosition, samples = 512) {
+export function reconstructedAscentPath(
+  launchPosition,
+  insertionPosition,
+  samples = 512,
+) {
   const ellipsoid = Cesium.Ellipsoid.WGS84;
   const origin = ellipsoid.cartesianToCartographic(launchPosition);
   const insertion = ellipsoid.cartesianToCartographic(insertionPosition);
@@ -1411,9 +1643,10 @@ export function reconstructedAscentPath(launchPosition, insertionPosition, sampl
     // Approximate the inertial eastward lead accumulated during a ten-minute
     // ascent. The p³ envelope keeps liftoff nearly vertical, peaks during the
     // upper climb, and returns to the fixed insertion endpoint.
-    const rotationalLead = EARTH_ROTATION_RAD_PER_SEC
-      * PROJECTED_ASCENT_ROTATION_SEC
-      * Math.sin(Math.PI * progress ** 3);
+    const rotationalLead =
+      EARTH_ROTATION_RAD_PER_SEC *
+      PROJECTED_ASCENT_ROTATION_SEC *
+      Math.sin(Math.PI * progress ** 3);
     cartographic.longitude = Cesium.Math.negativePiToPi(
       cartographic.longitude + rotationalLead,
     );
@@ -1428,11 +1661,17 @@ export function reconstructedAscentPath(launchPosition, insertionPosition, sampl
 
 function nearestOrbitIndex(orbitPath, referencePosition) {
   if (!orbitPath?.length || !referencePosition) return 0;
-  const referenceDirection = Cesium.Cartesian3.normalize(referencePosition, new Cesium.Cartesian3());
+  const referenceDirection = Cesium.Cartesian3.normalize(
+    referencePosition,
+    new Cesium.Cartesian3(),
+  );
   let bestIndex = 0;
   let bestDot = -Number.MAX_VALUE;
   orbitPath.forEach((candidate, index) => {
-    const direction = Cesium.Cartesian3.normalize(candidate, new Cesium.Cartesian3());
+    const direction = Cesium.Cartesian3.normalize(
+      candidate,
+      new Cesium.Cartesian3(),
+    );
     const dot = Cesium.Cartesian3.dot(referenceDirection, direction);
     if (dot > bestDot) {
       bestDot = dot;
@@ -1446,7 +1685,8 @@ function orbitPathFromInsertion(orbitPath, insertionIndex) {
   if (!orbitPath?.length) return [];
   const first = orbitPath[0];
   const last = orbitPath.at(-1);
-  const isClosed = orbitPath.length > 2 && Cesium.Cartesian3.distance(first, last) < 1000;
+  const isClosed =
+    orbitPath.length > 2 && Cesium.Cartesian3.distance(first, last) < 1000;
   const core = isClosed ? orbitPath.slice(0, -1) : orbitPath.slice();
   if (!core.length) return orbitPath.slice();
   const index = Cesium.Math.mod(insertionIndex, core.length);
@@ -1468,12 +1708,19 @@ function surfaceSafeSegment(startPosition, endPosition) {
   // Replay advances in real time across this path. Keep the geometry
   // surface-safe, but give the animated marker and chase camera enough
   // samples that they do not visibly pause at long segment boundaries.
-  const steps = Cesium.Math.clamp(Math.ceil(geodesic.surfaceDistance / 75000), 2, 256);
+  const steps = Cesium.Math.clamp(
+    Math.ceil(geodesic.surfaceDistance / 75000),
+    2,
+    256,
+  );
   const positions = [];
   for (let index = 0; index <= steps; index++) {
     const fraction = index / steps;
     const eased = fraction * fraction * (3 - 2 * fraction);
-    const cartographic = geodesic.interpolateUsingFraction(fraction, new Cesium.Cartographic());
+    const cartographic = geodesic.interpolateUsingFraction(
+      fraction,
+      new Cesium.Cartographic(),
+    );
     cartographic.height = Cesium.Math.lerp(start.height, end.height, eased);
     positions.push(ellipsoid.cartographicToCartesian(cartographic));
   }
@@ -1487,14 +1734,18 @@ function surfaceSafePath(controlPositions) {
   if (controlPositions.length === 1) return controlPositions.slice();
   const path = [];
   for (let index = 0; index < controlPositions.length - 1; index++) {
-    const segment = surfaceSafeSegment(controlPositions[index], controlPositions[index + 1]);
+    const segment = surfaceSafeSegment(
+      controlPositions[index],
+      controlPositions[index + 1],
+    );
     path.push(...(index === 0 ? segment : segment.slice(1)));
   }
   return path;
 }
 
 function blendAscentIntoOrbitTangent(ascentPath, orbitPath, insertionIndex) {
-  if (!ascentPath?.length || ascentPath.length < 4 || !orbitPath?.length) return ascentPath;
+  if (!ascentPath?.length || ascentPath.length < 4 || !orbitPath?.length)
+    return ascentPath;
   const ellipsoid = Cesium.Ellipsoid.WGS84;
   const transferEnd = orbitPath[insertionIndex];
   const nextOrbit = orbitPath[(insertionIndex + 1) % orbitPath.length];
@@ -1502,7 +1753,10 @@ function blendAscentIntoOrbitTangent(ascentPath, orbitPath, insertionIndex) {
     Cesium.Cartesian3.subtract(nextOrbit, transferEnd, new Cesium.Cartesian3()),
     new Cesium.Cartesian3(),
   );
-  if (Cesium.Cartesian3.equalsEpsilon(orbitTangent, Cesium.Cartesian3.ZERO, 1e-8)) return ascentPath;
+  if (
+    Cesium.Cartesian3.equalsEpsilon(orbitTangent, Cesium.Cartesian3.ZERO, 1e-8)
+  )
+    return ascentPath;
 
   // Replace a substantial final section with one cubic Bézier transition.
   // Matching both endpoint tangents avoids the short corrective hook produced
@@ -1511,24 +1765,36 @@ function blendAscentIntoOrbitTangent(ascentPath, orbitPath, insertionIndex) {
   const blendStart = ascentPath.length - 1 - blendCount;
   const start = ascentPath[blendStart];
   const previous = ascentPath[Math.max(0, blendStart - 1)];
-  const altitudeEnvelope = ascentPath.slice(blendStart).map((position) => Math.max(
-    0,
-    ellipsoid.cartesianToCartographic(position)?.height || 0,
-  ));
+  const altitudeEnvelope = ascentPath
+    .slice(blendStart)
+    .map((position) =>
+      Math.max(0, ellipsoid.cartesianToCartographic(position)?.height || 0),
+    );
   const ascentTangent = Cesium.Cartesian3.normalize(
     Cesium.Cartesian3.subtract(start, previous, new Cesium.Cartesian3()),
     new Cesium.Cartesian3(),
   );
-  const chordLength = Math.max(Cesium.Cartesian3.distance(start, transferEnd), 1000);
+  const chordLength = Math.max(
+    Cesium.Cartesian3.distance(start, transferEnd),
+    1000,
+  );
   const handleLength = chordLength * 0.28;
   const controlA = Cesium.Cartesian3.add(
     start,
-    Cesium.Cartesian3.multiplyByScalar(ascentTangent, handleLength, new Cesium.Cartesian3()),
+    Cesium.Cartesian3.multiplyByScalar(
+      ascentTangent,
+      handleLength,
+      new Cesium.Cartesian3(),
+    ),
     new Cesium.Cartesian3(),
   );
   const controlB = Cesium.Cartesian3.add(
     transferEnd,
-    Cesium.Cartesian3.multiplyByScalar(orbitTangent, -handleLength, new Cesium.Cartesian3()),
+    Cesium.Cartesian3.multiplyByScalar(
+      orbitTangent,
+      -handleLength,
+      new Cesium.Cartesian3(),
+    ),
     new Cesium.Cartesian3(),
   );
   for (let index = 0; index <= blendCount; index++) {
@@ -1538,17 +1804,29 @@ function blendAscentIntoOrbitTangent(ascentPath, orbitPath, insertionIndex) {
     Cesium.Cartesian3.multiplyByScalar(start, inverse ** 3, point);
     Cesium.Cartesian3.add(
       point,
-      Cesium.Cartesian3.multiplyByScalar(controlA, 3 * inverse ** 2 * progress, new Cesium.Cartesian3()),
+      Cesium.Cartesian3.multiplyByScalar(
+        controlA,
+        3 * inverse ** 2 * progress,
+        new Cesium.Cartesian3(),
+      ),
       point,
     );
     Cesium.Cartesian3.add(
       point,
-      Cesium.Cartesian3.multiplyByScalar(controlB, 3 * inverse * progress ** 2, new Cesium.Cartesian3()),
+      Cesium.Cartesian3.multiplyByScalar(
+        controlB,
+        3 * inverse * progress ** 2,
+        new Cesium.Cartesian3(),
+      ),
       point,
     );
     Cesium.Cartesian3.add(
       point,
-      Cesium.Cartesian3.multiplyByScalar(transferEnd, progress ** 3, new Cesium.Cartesian3()),
+      Cesium.Cartesian3.multiplyByScalar(
+        transferEnd,
+        progress ** 3,
+        new Cesium.Cartesian3(),
+      ),
       point,
     );
     // A Cartesian Bézier is a chord in world space and can pass through the
@@ -1559,7 +1837,8 @@ function blendAscentIntoOrbitTangent(ascentPath, orbitPath, insertionIndex) {
     const minimumHeight = altitudeEnvelope[index] ?? 0;
     if (cartographic && cartographic.height < minimumHeight) {
       cartographic.height = minimumHeight;
-      ascentPath[blendStart + index] = ellipsoid.cartographicToCartesian(cartographic);
+      ascentPath[blendStart + index] =
+        ellipsoid.cartographicToCartesian(cartographic);
     } else {
       ascentPath[blendStart + index] = point;
     }
@@ -1605,14 +1884,22 @@ export function buildMissionPaths(
 export function cameraHeadingForPath(path, progress, fallback = Math.PI) {
   if (!path?.length) return fallback;
   const current = samplePath(path, progress);
-  const currentCartographic = Cesium.Ellipsoid.WGS84.cartesianToCartographic(current);
+  const currentCartographic =
+    Cesium.Ellipsoid.WGS84.cartesianToCartographic(current);
   if (!currentCartographic) return fallback;
   for (const step of [0.01, 0.025, 0.05, 0.1, 0.2]) {
     const next = samplePath(path, Math.min(1, progress + step));
-    const nextCartographic = Cesium.Ellipsoid.WGS84.cartesianToCartographic(next);
+    const nextCartographic =
+      Cesium.Ellipsoid.WGS84.cartesianToCartographic(next);
     if (!nextCartographic) continue;
-    const geodesic = new Cesium.EllipsoidGeodesic(currentCartographic, nextCartographic);
-    if (geodesic.surfaceDistance > 10 && Number.isFinite(geodesic.startHeading)) {
+    const geodesic = new Cesium.EllipsoidGeodesic(
+      currentCartographic,
+      nextCartographic,
+    );
+    if (
+      geodesic.surfaceDistance > 10 &&
+      Number.isFinite(geodesic.startHeading)
+    ) {
       // HeadingPitchRange positions the camera opposite its heading vector.
       // Passing the forward path heading therefore keeps the camera behind
       // the vehicle, with the remaining ascent receding into the scene.
@@ -1643,11 +1930,12 @@ export function replayInitialCameraHeading(path) {
 export function replayChaseCameraHeading(pathHeading, orbitBlend = 0) {
   const blend = Cesium.Math.clamp(Number(orbitBlend) || 0, 0, 1);
   return Cesium.Math.zeroToTwoPi(
-    pathHeading + Cesium.Math.lerp(
-      REPLAY_ASCENT_CAMERA_OFFSET_RAD,
-      REPLAY_ORBIT_CAMERA_OFFSET_RAD,
-      blend,
-    ),
+    pathHeading +
+      Cesium.Math.lerp(
+        REPLAY_ASCENT_CAMERA_OFFSET_RAD,
+        REPLAY_ORBIT_CAMERA_OFFSET_RAD,
+        blend,
+      ),
   );
 }
 
@@ -1667,7 +1955,11 @@ export function smoothReplayCameraHeading(
   if (!Number.isFinite(previous)) return Cesium.Math.zeroToTwoPi(desired);
   if (!Number.isFinite(desired)) return Cesium.Math.zeroToTwoPi(previous);
   const delta = Cesium.Math.negativePiToPi(desired - previous);
-  const step = Cesium.Math.clamp(delta, -Math.abs(maxStepRad), Math.abs(maxStepRad));
+  const step = Cesium.Math.clamp(
+    delta,
+    -Math.abs(maxStepRad),
+    Math.abs(maxStepRad),
+  );
   return Cesium.Math.zeroToTwoPi(previous + step);
 }
 
@@ -1680,12 +1972,18 @@ export function smoothReplayCameraHeading(
 export function missionZoomPitch(rangeM) {
   const range = Math.max(0, Number(rangeM) || 0);
   const blend = Cesium.Math.clamp(
-    (Math.log(Math.max(range, MISSION_CLOSE_VIEW_RANGE_M)) - Math.log(MISSION_CLOSE_VIEW_RANGE_M))
-      / (Math.log(MISSION_GLOBE_VIEW_RANGE_M) - Math.log(MISSION_CLOSE_VIEW_RANGE_M)),
+    (Math.log(Math.max(range, MISSION_CLOSE_VIEW_RANGE_M)) -
+      Math.log(MISSION_CLOSE_VIEW_RANGE_M)) /
+      (Math.log(MISSION_GLOBE_VIEW_RANGE_M) -
+        Math.log(MISSION_CLOSE_VIEW_RANGE_M)),
     0,
     1,
   );
-  return Cesium.Math.lerp(Cesium.Math.toRadians(-42), -Cesium.Math.PI_OVER_TWO, blend);
+  return Cesium.Math.lerp(
+    Cesium.Math.toRadians(-42),
+    -Cesium.Math.PI_OVER_TWO,
+    blend,
+  );
 }
 
 /**
@@ -1703,12 +2001,12 @@ export function replayCameraView(state, altitudeM) {
     REPLAY_LOCAL_MAX_RANGE_M,
   );
   const rawContextBlend = Cesium.Math.clamp(
-    (altitude - 20000)
-      / (REPLAY_CONTEXT_ALTITUDE_END_M - 20000),
+    (altitude - 20000) / (REPLAY_CONTEXT_ALTITUDE_END_M - 20000),
     0,
     1,
   );
-  const contextBlend = rawContextBlend * rawContextBlend * (3 - 2 * rawContextBlend);
+  const contextBlend =
+    rawContextBlend * rawContextBlend * (3 - 2 * rawContextBlend);
   const contextRange = Cesium.Math.clamp(
     180000 + altitude * 3.8,
     MISSION_CLOSE_VIEW_RANGE_M,
@@ -1771,11 +2069,16 @@ export function replayOrbitGlobeAnchor(position, orbitBlend = 0) {
  * @param {number} orbitBlend Normalized orbit-camera transition.
  * @returns {Cesium.Cartesian3} Stable camera look-at target.
  */
-export function replayOrbitCameraTarget(vehicleAnchor, frameCenter, orbitBlend = 0) {
+export function replayOrbitCameraTarget(
+  vehicleAnchor,
+  frameCenter,
+  orbitBlend = 0,
+) {
   if (!vehicleAnchor) return vehicleAnchor;
   if (!frameCenter) return Cesium.Cartesian3.clone(vehicleAnchor);
-  const blend = Cesium.Math.clamp(Number(orbitBlend) || 0, 0, 1)
-    * REPLAY_ORBIT_FRAME_CENTER_BLEND;
+  const blend =
+    Cesium.Math.clamp(Number(orbitBlend) || 0, 0, 1) *
+    REPLAY_ORBIT_FRAME_CENTER_BLEND;
   return Cesium.Cartesian3.lerp(
     vehicleAnchor,
     frameCenter,
@@ -1855,7 +2158,11 @@ export function replayOrbitCameraPose(
     new Cesium.Cartesian3(),
   );
   const up = Cesium.Cartesian3.normalize(
-    Cesium.Cartesian3.subtract(radial, radialAlongView, new Cesium.Cartesian3()),
+    Cesium.Cartesian3.subtract(
+      radial,
+      radialAlongView,
+      new Cesium.Cartesian3(),
+    ),
     new Cesium.Cartesian3(),
   );
   return { destination, direction, up };
@@ -1918,7 +2225,10 @@ function startMissionZoomAnchor(launch, initialRange) {
   if (!_viewer || !launch || _replayCameraLaunchId) return;
   stopMissionZoomAnchor();
   const target = Cesium.Cartesian3.fromDegrees(launch.lon, launch.lat);
-  const range = Math.max(2000, Number(initialRange) || MISSION_GLOBE_VIEW_RANGE_M);
+  const range = Math.max(
+    2000,
+    Number(initialRange) || MISSION_GLOBE_VIEW_RANGE_M,
+  );
   _missionZoomAnchorId = launch.id;
   _viewer.camera.lookAt(
     target,
@@ -1928,11 +2238,19 @@ function startMissionZoomAnchor(launch, initialRange) {
 
 function syncReplayButton() {
   const button = _missionPanel?.querySelector('[data-mission-replay]');
-  const transport = _missionPanel?.querySelector('[data-mission-replay-transport]');
-  const speedControl = _missionPanel?.querySelector('.mission-replay-speed-control');
+  const transport = _missionPanel?.querySelector(
+    '[data-mission-replay-transport]',
+  );
+  const speedControl = _missionPanel?.querySelector(
+    '.mission-replay-speed-control',
+  );
   if (!button) return;
-  const active = Boolean(_replayCameraLaunchId && _replayCameraLaunchId === _selectedLaunchId);
-  const replayAvailable = Boolean(_selectedLaunchId && _replayTracks.has(_selectedLaunchId));
+  const active = Boolean(
+    _replayCameraLaunchId && _replayCameraLaunchId === _selectedLaunchId,
+  );
+  const replayAvailable = Boolean(
+    _selectedLaunchId && _replayTracks.has(_selectedLaunchId),
+  );
   if (speedControl) speedControl.hidden = !replayAvailable;
   button.hidden = active || !replayAvailable;
   button.disabled = !replayAvailable;
@@ -1943,38 +2261,56 @@ function syncReplayButton() {
   if (transport) {
     transport.hidden = !active;
     transport.classList.toggle('is-paused', active && _replayPaused);
-    const toggleButton = transport.querySelector('[data-mission-replay-toggle]');
+    const toggleButton = transport.querySelector(
+      '[data-mission-replay-toggle]',
+    );
     if (toggleButton) {
       toggleButton.disabled = !active;
       toggleButton.textContent = _replayPaused ? '▶' : 'Ⅱ';
-      toggleButton.setAttribute('aria-label', _replayPaused ? 'Resume replay' : 'Pause replay');
+      toggleButton.setAttribute(
+        'aria-label',
+        _replayPaused ? 'Resume replay' : 'Pause replay',
+      );
       toggleButton.title = _replayPaused ? 'Resume replay' : 'Pause replay';
     }
   }
 }
 
 function syncReplayCountdownButton(state) {
-  const transport = _missionPanel?.querySelector('[data-mission-replay-transport]');
+  const transport = _missionPanel?.querySelector(
+    '[data-mission-replay-transport]',
+  );
   if (!transport || !_replayCameraLaunchId) return;
   const phase = state.countdownActive
     ? `T minus ${state.countdownSeconds}`
     : state.preCountdownActive
       ? 'Preparing launch site'
-    : state.elapsedSinceStart < 1
-      ? 'Liftoff'
-      : state.ascending ? 'Ascent replay' : 'Orbit replay';
-  transport.setAttribute('aria-label', `${phase}${_replayPaused ? ', paused' : ''}`);
+      : state.elapsedSinceStart < 1
+        ? 'Liftoff'
+        : state.ascending
+          ? 'Ascent replay'
+          : 'Orbit replay';
+  transport.setAttribute(
+    'aria-label',
+    `${phase}${_replayPaused ? ', paused' : ''}`,
+  );
 }
 
 function syncReplaySpeedControl() {
   const input = _missionPanel?.querySelector('[data-mission-replay-speed]');
-  const output = _missionPanel?.querySelector('[data-mission-replay-speed-output]');
+  const output = _missionPanel?.querySelector(
+    '[data-mission-replay-speed-output]',
+  );
   if (input) {
     input.value = String(_replaySpeed);
-    const progress = ((_replaySpeed - REPLAY_SPEED_MIN) / (REPLAY_SPEED_MAX - REPLAY_SPEED_MIN)) * 100;
+    const progress =
+      ((_replaySpeed - REPLAY_SPEED_MIN) /
+        (REPLAY_SPEED_MAX - REPLAY_SPEED_MIN)) *
+      100;
     input.style.setProperty('--replay-speed-progress', `${progress}%`);
   }
-  if (output) output.textContent = `${_replaySpeed.toFixed(_replaySpeed % 1 ? 2 : 0)}×`;
+  if (output)
+    output.textContent = `${_replaySpeed.toFixed(_replaySpeed % 1 ? 2 : 0)}×`;
 }
 
 function setReplaySpeed(value) {
@@ -1984,9 +2320,10 @@ function setReplaySpeed(value) {
     syncReplaySpeedControl();
     return;
   }
-  const now = _replayPaused && Number.isFinite(_replayPausedAtMs)
-    ? _replayPausedAtMs
-    : Date.now();
+  const now =
+    _replayPaused && Number.isFinite(_replayPausedAtMs)
+      ? _replayPausedAtMs
+      : Date.now();
   for (const [launchId, startedAt] of _animationStarts) {
     if (!Number.isFinite(startedAt)) continue;
     const elapsedMissionMs = (now - startedAt) * previousSpeed;
@@ -1998,9 +2335,9 @@ function setReplaySpeed(value) {
 
 function replayClockNow(launchId) {
   if (
-    _replayPaused
-    && _replayCameraLaunchId === launchId
-    && Number.isFinite(_replayPausedAtMs)
+    _replayPaused &&
+    _replayCameraLaunchId === launchId &&
+    Number.isFinite(_replayPausedAtMs)
   ) {
     return _replayPausedAtMs;
   }
@@ -2016,7 +2353,11 @@ function pauseMissionReplay() {
 }
 
 function resumeMissionReplay() {
-  if (!_replayCameraLaunchId || !_replayPaused || !Number.isFinite(_replayPausedAtMs)) {
+  if (
+    !_replayCameraLaunchId ||
+    !_replayPaused ||
+    !Number.isFinite(_replayPausedAtMs)
+  ) {
     return false;
   }
   const resumedAt = Date.now();
@@ -2076,7 +2417,8 @@ function startMissionReplay(launchId) {
   _viewer.camera.cancelFlight();
   _animationStarts.set(
     launchId,
-    Date.now() + (REPLAY_TILE_SETTLE_DELAY_SEC + REPLAY_COUNTDOWN_DURATION_SEC) * 1000,
+    Date.now() +
+      (REPLAY_TILE_SETTLE_DELAY_SEC + REPLAY_COUNTDOWN_DURATION_SEC) * 1000,
   );
   let cameraReady = false;
   let lastCameraUpdateMs = null;
@@ -2085,13 +2427,12 @@ function startMissionReplay(launchId) {
   // makes Cesium discover a new view after 3D-tile refinement, which can cause
   // a self-sustaining refinement loop and visible stutter during slow replay.
   _replayCameraRemover = _viewer.scene.preUpdate.addEventListener(() => {
-    if (token !== _replayCameraToken || _replayCameraLaunchId !== launchId) return;
+    if (token !== _replayCameraToken || _replayCameraLaunchId !== launchId)
+      return;
     const state = track.beginReplayFrame();
     syncReplayCountdownButton(state);
     if (!cameraReady) return;
-    const path = state.ascending
-      ? track.ascentPath
-      : track.animatedOrbitPath;
+    const path = state.ascending ? track.ascentPath : track.animatedOrbitPath;
     const position = samplePath(path, state.phaseProgress);
     if (!position) return;
     const pathHeading = cameraHeadingForPath(
@@ -2101,10 +2442,10 @@ function startMissionReplay(launchId) {
     );
     const orbitBlend = !state.ascending
       ? Cesium.Math.clamp(
-        (Number(state.phaseProgress) || 0) / REPLAY_ORBIT_PULLBACK_FRACTION,
-        0,
-        1,
-      )
+          (Number(state.phaseProgress) || 0) / REPLAY_ORBIT_PULLBACK_FRACTION,
+          0,
+          1,
+        )
       : 0;
     const desiredHeading = replayChaseCameraHeading(pathHeading, orbitBlend);
     if (state.ascending) track.orbitCameraWorldFrame = false;
@@ -2116,9 +2457,10 @@ function startMissionReplay(launchId) {
     track.lastCameraHeading = smoothReplayCameraHeading(
       track.lastCameraHeading,
       desiredHeading,
-      Cesium.Math.toRadians(2) * frameDurationMs / (1000 / 60),
+      (Cesium.Math.toRadians(2) * frameDurationMs) / (1000 / 60),
     );
-    const cartographic = Cesium.Ellipsoid.WGS84.cartesianToCartographic(position);
+    const cartographic =
+      Cesium.Ellipsoid.WGS84.cartesianToCartographic(position);
     const altitude = Math.max(0, cartographic?.height || 0);
     const cameraView = replayCameraView(state, altitude);
     const defaultOrbitTarget = !state.ascending
@@ -2126,18 +2468,18 @@ function startMissionReplay(launchId) {
       : position;
     const cameraTarget = !state.ascending
       ? replayOrbitCameraTarget(
-        defaultOrbitTarget,
-        track.orbitFrameSphere?.center,
-        orbitBlend,
-      )
+          defaultOrbitTarget,
+          track.orbitFrameSphere?.center,
+          orbitBlend,
+        )
       : defaultOrbitTarget;
     const cameraRange = !state.ascending
       ? replayOrbitGlobeRange(
-        cameraView.range,
-        altitude,
-        orbitBlend,
-        track.orbitFrameSphere?.radius,
-      )
+          cameraView.range,
+          altitude,
+          orbitBlend,
+          track.orbitFrameSphere?.radius,
+        )
       : cameraView.range;
     if (state.ascending) {
       _viewer.camera.lookAt(
@@ -2178,8 +2520,10 @@ function startMissionReplay(launchId) {
         });
       }
     }
-    if (state.elapsedSinceStart >= ascentDurationSec
-      + REPLAY_ORBIT_DURATION_SEC) {
+    if (
+      state.elapsedSinceStart >=
+      ascentDurationSec + REPLAY_ORBIT_DURATION_SEC
+    ) {
       stopMissionReplay();
     }
   });
@@ -2198,7 +2542,8 @@ function startMissionReplay(launchId) {
         cameraReady = true;
       },
       cancel: () => {
-        if (token === _replayCameraToken && _replayCameraLaunchId === launchId) stopMissionReplay();
+        if (token === _replayCameraToken && _replayCameraLaunchId === launchId)
+          stopMissionReplay();
       },
     },
   );
@@ -2211,7 +2556,11 @@ function finiteCoordinate(value) {
 }
 
 function normalizePayloadFlights(launch) {
-  const flights = launch.rocket?.payloads || launch.payloads || launch.mission?.payloads || [];
+  const flights =
+    launch.rocket?.payloads ||
+    launch.payloads ||
+    launch.mission?.payloads ||
+    [];
   if (!Array.isArray(flights)) return [];
   return flights.map((flight, index) => {
     const payload = flight.payload || flight;
@@ -2222,10 +2571,16 @@ function normalizePayloadFlights(launch) {
       manufacturer: payload.manufacturer?.name || null,
       operator: payload.operator?.name || null,
       destination: flight.destination || payload.destination || null,
-      amount: Number.isFinite(Number(flight.amount)) ? Number(flight.amount) : 1,
-      massKg: (typeof payload.mass === 'number' || (typeof payload.mass === 'string' && payload.mass.trim() !== ''))
-        && Number.isFinite(Number(payload.mass)) && Number(payload.mass) >= 0
-        ? Number(payload.mass) : null,
+      amount: Number.isFinite(Number(flight.amount))
+        ? Number(flight.amount)
+        : 1,
+      massKg:
+        (typeof payload.mass === 'number' ||
+          (typeof payload.mass === 'string' && payload.mass.trim() !== '')) &&
+        Number.isFinite(Number(payload.mass)) &&
+        Number(payload.mass) >= 0
+          ? Number(payload.mass)
+          : null,
     };
   });
 }
@@ -2240,12 +2595,18 @@ function normalizeLanding(stage, fallbackName, category, index) {
   const success = landing?.success;
   const recoveryType = landing?.type?.name || null;
   const launcherStatus = launcher.status?.name || null;
-  const status = success === true ? 'RECOVERED'
-    : success === false ? 'LOST'
-      : attempted ? 'RECOVERY ATTEMPT'
-        : recoveryType ? recoveryType.toUpperCase()
-          : launcherStatus ? launcherStatus.toUpperCase()
-            : 'NO RECOVERY DATA';
+  const status =
+    success === true
+      ? 'RECOVERED'
+      : success === false
+        ? 'LOST'
+        : attempted
+          ? 'RECOVERY ATTEMPT'
+          : recoveryType
+            ? recoveryType.toUpperCase()
+            : launcherStatus
+              ? launcherStatus.toUpperCase()
+              : 'NO RECOVERY DATA';
   return {
     id: String(stage?.id || landing?.id || `${category}-${index}`),
     category,
@@ -2257,7 +2618,8 @@ function normalizeLanding(stage, fallbackName, category, index) {
     attempted,
     success: success === true ? true : success === false ? false : null,
     recoveryType,
-    destination: location.name || landing?.destination || landing?.type?.name || null,
+    destination:
+      location.name || landing?.destination || landing?.type?.name || null,
     description: landing?.description || null,
     downrangeKm: finiteCoordinate(landing?.downrange_distance),
     lat: finiteCoordinate(location.latitude ?? landing?.latitude),
@@ -2267,22 +2629,41 @@ function normalizeLanding(stage, fallbackName, category, index) {
 
 function normalizeRecoveryStages(launch, payloads) {
   const rocket = launch.rocket || {};
-  const launcherStages = Array.isArray(rocket.launcher_stage) ? rocket.launcher_stage : [];
-  const spacecraftStages = Array.isArray(rocket.spacecraft_stage) ? rocket.spacecraft_stage : [];
+  const launcherStages = Array.isArray(rocket.launcher_stage)
+    ? rocket.launcher_stage
+    : [];
+  const spacecraftStages = Array.isArray(rocket.spacecraft_stage)
+    ? rocket.spacecraft_stage
+    : [];
   const stages = [
-    ...launcherStages.map((stage, index) => normalizeLanding(stage, `Launcher stage ${index + 1}`, 'LAUNCHER', index)),
-    ...spacecraftStages.map((stage, index) => normalizeLanding(stage, `Spacecraft stage ${index + 1}`, 'SPACECRAFT', index)),
+    ...launcherStages.map((stage, index) =>
+      normalizeLanding(stage, `Launcher stage ${index + 1}`, 'LAUNCHER', index),
+    ),
+    ...spacecraftStages.map((stage, index) =>
+      normalizeLanding(
+        stage,
+        `Spacecraft stage ${index + 1}`,
+        'SPACECRAFT',
+        index,
+      ),
+    ),
   ];
   const payloadFlights = rocket.payloads || launch.payloads || [];
   if (Array.isArray(payloadFlights)) {
     payloadFlights.forEach((flight, index) => {
       if (!flight?.landing) return;
-      stages.push(normalizeLanding(
-        { ...flight, type: payloads[index]?.type || 'Payload', serial_number: payloads[index]?.name },
-        payloads[index]?.name || `Payload ${index + 1}`,
-        'PAYLOAD',
-        index,
-      ));
+      stages.push(
+        normalizeLanding(
+          {
+            ...flight,
+            type: payloads[index]?.type || 'Payload',
+            serial_number: payloads[index]?.name,
+          },
+          payloads[index]?.name || `Payload ${index + 1}`,
+          'PAYLOAD',
+          index,
+        ),
+      );
     });
   }
   return stages;
@@ -2292,8 +2673,11 @@ function landingEndpoint(stage, launch, insertionPosition) {
   if (Number.isFinite(stage.lat) && Number.isFinite(stage.lon)) {
     return { lat: stage.lat, lon: stage.lon, accuracy: 'CONFIRMED' };
   }
-  const recoveryIdentity = `${stage.recoveryType || ''} ${stage.destination || ''}`.toLowerCase();
-  if (/return to launch site|rtls|launch site|landing zone/.test(recoveryIdentity)) {
+  const recoveryIdentity =
+    `${stage.recoveryType || ''} ${stage.destination || ''}`.toLowerCase();
+  if (
+    /return to launch site|rtls|launch site|landing zone/.test(recoveryIdentity)
+  ) {
     return { lat: launch.lat, lon: launch.lon, accuracy: 'PAD / RTLS' };
   }
   if (!(stage.downrangeKm > 0) || !insertionPosition) return null;
@@ -2307,13 +2691,15 @@ function landingEndpoint(stage, launch, insertionPosition) {
   const lat1 = start.latitude;
   const lon1 = start.longitude;
   const lat = Math.asin(
-    Math.sin(lat1) * Math.cos(angularDistance)
-      + Math.cos(lat1) * Math.sin(angularDistance) * Math.cos(bearing),
+    Math.sin(lat1) * Math.cos(angularDistance) +
+      Math.cos(lat1) * Math.sin(angularDistance) * Math.cos(bearing),
   );
-  const lon = lon1 + Math.atan2(
-    Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat1),
-    Math.cos(angularDistance) - Math.sin(lat1) * Math.sin(lat),
-  );
+  const lon =
+    lon1 +
+    Math.atan2(
+      Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat1),
+      Math.cos(angularDistance) - Math.sin(lat1) * Math.sin(lat),
+    );
   return {
     lat: Cesium.Math.toDegrees(lat),
     lon: Cesium.Math.toDegrees(Cesium.Math.negativePiToPi(lon)),
@@ -2321,11 +2707,24 @@ function landingEndpoint(stage, launch, insertionPosition) {
   };
 }
 
-function stageReentryRecoveryPath(ascentPath, endpoint, stageIndex, stageCount) {
+function stageReentryRecoveryPath(
+  ascentPath,
+  endpoint,
+  stageIndex,
+  stageCount,
+) {
   if (!ascentPath?.length || !endpoint) return [];
-  const progress = Cesium.Math.clamp(0.28 + (stageIndex / Math.max(stageCount, 1)) * 0.34, 0.28, 0.68);
+  const progress = Cesium.Math.clamp(
+    0.28 + (stageIndex / Math.max(stageCount, 1)) * 0.34,
+    0.28,
+    0.68,
+  );
   const separation = samplePath(ascentPath, progress);
-  const destination = Cesium.Cartesian3.fromDegrees(endpoint.lon, endpoint.lat, 12);
+  const destination = Cesium.Cartesian3.fromDegrees(
+    endpoint.lon,
+    endpoint.lat,
+    12,
+  );
   return surfaceSafeSegment(separation, destination);
 }
 
@@ -2333,13 +2732,15 @@ function atmosphericReentryIndex(path) {
   if (!path?.length) return 0;
   const ellipsoid = Cesium.Ellipsoid.WGS84;
   for (let index = 1; index < path.length; index++) {
-    const previousHeight = ellipsoid.cartesianToCartographic(path[index - 1])?.height;
+    const previousHeight = ellipsoid.cartesianToCartographic(
+      path[index - 1],
+    )?.height;
     const height = ellipsoid.cartesianToCartographic(path[index])?.height;
     if (
-      Number.isFinite(previousHeight)
-      && Number.isFinite(height)
-      && previousHeight > STAGE_REENTRY_ALTITUDE_M
-      && height <= STAGE_REENTRY_ALTITUDE_M
+      Number.isFinite(previousHeight) &&
+      Number.isFinite(height) &&
+      previousHeight > STAGE_REENTRY_ALTITUDE_M &&
+      height <= STAGE_REENTRY_ALTITUDE_M
     ) {
       return index;
     }
@@ -2348,7 +2749,8 @@ function atmosphericReentryIndex(path) {
 }
 
 function missionTableRows(items, columns, emptyText) {
-  if (!items.length) return `<tr><td colspan="${columns}" class="mission-table-empty">${emptyText}</td></tr>`;
+  if (!items.length)
+    return `<tr><td colspan="${columns}" class="mission-table-empty">${emptyText}</td></tr>`;
   return items.map((item) => item).join('');
 }
 
@@ -2356,7 +2758,8 @@ function setMissionPanelField(selector, value, title = '') {
   const output = _missionPanel?.querySelector(selector);
   if (!output) return;
   const row = output.closest('[data-mission-field]');
-  const available = value !== null && value !== undefined && String(value).trim() !== '';
+  const available =
+    value !== null && value !== undefined && String(value).trim() !== '';
   if (row) row.hidden = !available;
   if (!available) {
     output.textContent = '';
@@ -2374,59 +2777,80 @@ function renderMissionPanel() {
   const index = launch ? _launches.indexOf(launch) : -1;
   _missionPanel.hidden = !launch;
   if (!launch) return;
-  _missionPanel.querySelector('[data-mission-title]').textContent = shortMissionLabel(launch.name, 32).toUpperCase();
+  _missionPanel.querySelector('[data-mission-title]').textContent =
+    shortMissionLabel(launch.name, 32).toUpperCase();
   setMissionPanelField('[data-mission-provider]', launch.provider);
   setMissionPanelField('[data-mission-status]', launch.status);
   setMissionPanelField(
     '[data-mission-site]',
-    launch.launchSite && launch.launchSite !== 'Unknown launch site' ? launch.launchSite : null,
+    launch.launchSite && launch.launchSite !== 'Unknown launch site'
+      ? launch.launchSite
+      : null,
   );
   setMissionPanelField('[data-mission-time]', launch.launchTime);
-  const pathPresentation = missionPathPresentation(launch, _replayTracks.has(launch.id));
+  const pathPresentation = missionPathPresentation(
+    launch,
+    _replayTracks.has(launch.id),
+  );
   setMissionPanelField('[data-mission-orbit]', pathPresentation.orbit);
-  _missionPanel.querySelector('[data-mission-ascent-source]').textContent = pathPresentation.ascent;
+  _missionPanel.querySelector('[data-mission-ascent-source]').textContent =
+    pathPresentation.ascent;
   const payloadRows = launch.payloads.length
     ? launch.payloads.slice(0, 5).map((payload) => {
-      const detail = [
-        payload.manufacturer,
-        payload.operator && payload.operator !== payload.manufacturer ? payload.operator : null,
-        Number.isFinite(payload.massKg) ? `${payload.massKg.toLocaleString()} KG` : null,
-      ].filter(Boolean).join(' · ');
-      return `<tr><td>${escapeMissionText(payload.name)}${payload.amount > 1 ? ` ×${payload.amount}` : ''}${detail ? `<small>${escapeMissionText(detail)}</small>` : ''}</td><td>${escapeMissionText(payload.type || 'UNSPECIFIED')}</td><td>${escapeMissionText(payload.destination || launch.orbit?.name || 'UNAVAILABLE')}</td></tr>`;
-    })
+        const detail = [
+          payload.manufacturer,
+          payload.operator && payload.operator !== payload.manufacturer
+            ? payload.operator
+            : null,
+          Number.isFinite(payload.massKg)
+            ? `${payload.massKg.toLocaleString()} KG`
+            : null,
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        return `<tr><td>${escapeMissionText(payload.name)}${payload.amount > 1 ? ` ×${payload.amount}` : ''}${detail ? `<small>${escapeMissionText(detail)}</small>` : ''}</td><td>${escapeMissionText(payload.type || 'UNSPECIFIED')}</td><td>${escapeMissionText(payload.destination || launch.orbit?.name || 'UNAVAILABLE')}</td></tr>`;
+      })
     : [];
   if (launch.payloads.length > 5) {
-    payloadRows.push(`<tr><td colspan="3" class="mission-table-empty">+${launch.payloads.length - 5} additional payload records</td></tr>`);
+    payloadRows.push(
+      `<tr><td colspan="3" class="mission-table-empty">+${launch.payloads.length - 5} additional payload records</td></tr>`,
+    );
   }
-  _missionPanel.querySelector('[data-mission-payloads]').innerHTML = missionTableRows(
-    payloadRows,
-    3,
-    'PAYLOAD DATA UNAVAILABLE',
-  );
+  _missionPanel.querySelector('[data-mission-payloads]').innerHTML =
+    missionTableRows(payloadRows, 3, 'PAYLOAD DATA UNAVAILABLE');
   const stageRows = launch.recoveryStages.map((stage) => {
     const endpoint = stage.endpoint;
-    const destination = stage.destination || (endpoint?.accuracy === 'PAD / RTLS' ? launch.launchSite : 'UNAVAILABLE');
+    const destination =
+      stage.destination ||
+      (endpoint?.accuracy === 'PAD / RTLS' ? launch.launchSite : 'UNAVAILABLE');
     const position = endpoint
       ? `${endpoint.lat.toFixed(2)}, ${endpoint.lon.toFixed(2)} · ${endpoint.accuracy}`
-      : stage.downrangeKm > 0 ? `${stage.downrangeKm.toLocaleString()} KM DOWNRANGE` : 'POSITION UNAVAILABLE';
+      : stage.downrangeKm > 0
+        ? `${stage.downrangeKm.toLocaleString()} KM DOWNRANGE`
+        : 'POSITION UNAVAILABLE';
     const stageDetail = [
-      Number.isFinite(stage.flightNumber) ? `FLIGHT ${stage.flightNumber}` : null,
+      Number.isFinite(stage.flightNumber)
+        ? `FLIGHT ${stage.flightNumber}`
+        : null,
       stage.reused ? 'REUSED' : null,
       stage.recoveryType,
-    ].filter(Boolean).join(' · ');
+    ]
+      .filter(Boolean)
+      .join(' · ');
     return `<tr><td>${escapeMissionText(stage.name)}${stageDetail ? `<small>${escapeMissionText(stageDetail)}</small>` : ''}</td><td>${escapeMissionText(stage.status)}</td><td>${escapeMissionText(destination)}<small>${escapeMissionText(position)}</small></td></tr>`;
   });
-  _missionPanel.querySelector('[data-mission-stages]').innerHTML = missionTableRows(
-    stageRows,
-    3,
-    'NO STAGE RE-ENTRY / RECOVERY DATA',
+  _missionPanel.querySelector('[data-mission-stages]').innerHTML =
+    missionTableRows(stageRows, 3, 'NO STAGE RE-ENTRY / RECOVERY DATA');
+  const stageSection = _missionPanel.querySelector(
+    '[data-mission-stages-section]',
   );
-  const stageSection = _missionPanel.querySelector('[data-mission-stages-section]');
   if (stageSection) stageSection.hidden = stageRows.length === 0;
   updateMissionTelemetry(true);
-  _missionPanel.querySelector('[data-mission-index]').textContent = `${index + 1} / ${_launches.length}`;
+  _missionPanel.querySelector('[data-mission-index]').textContent =
+    `${index + 1} / ${_launches.length}`;
   _missionPanel.querySelector('[data-mission-prev]').disabled = index <= 0;
-  _missionPanel.querySelector('[data-mission-next]').disabled = index < 0 || index >= _launches.length - 1;
+  _missionPanel.querySelector('[data-mission-next]').disabled =
+    index < 0 || index >= _launches.length - 1;
   syncReplayButton();
   const panelScroller = _missionPanel.closest('.global-context-panel-inner');
   if (panelScroller) panelScroller.scrollTop = 0;
@@ -2442,7 +2866,8 @@ function renderMissionRoster() {
   _missionRosterPreviewOwnership?.reset();
   const entries = missionRosterEntries(_launches);
   if (!entries.length) {
-    list.innerHTML = '<div class="space-mission-roster-empty">NO MISSIONS AVAILABLE IN THE CURRENT 30-DAY WINDOW</div>';
+    list.innerHTML =
+      '<div class="space-mission-roster-empty">NO MISSIONS AVAILABLE IN THE CURRENT 30-DAY WINDOW</div>';
     restoreMissionRosterFocus(
       list,
       focusSnapshot,
@@ -2450,13 +2875,15 @@ function renderMissionRoster() {
     );
     return;
   }
-  list.innerHTML = entries.map(({ launch, index }) => {
-    const color = missionMarkerColor(launch).toCssColorString();
-    const date = launch.launchTime?.slice(0, 10) || 'DATE UNAVAILABLE';
-    const provider = launch.provider || 'UNSPECIFIED OPERATOR';
-    const label = shortMissionLabel(launch.name, 27).toUpperCase();
-    return `<button type="button" class="space-mission-roster-item" data-mission-roster-index="${index}" data-mission-roster-id="${escapeMissionText(launch.id)}" aria-label="Select ${escapeMissionText(label)}"><span class="space-mission-roster-marker" style="--mission-roster-color:${color}" aria-hidden="true"></span><span class="space-mission-roster-copy"><strong>${escapeMissionText(label)}</strong><small>${escapeMissionText(provider)} · ${escapeMissionText(date)}</small></span><span class="space-mission-roster-chevron" aria-hidden="true">›</span></button>`;
-  }).join('');
+  list.innerHTML = entries
+    .map(({ launch, index }) => {
+      const color = missionMarkerColor(launch).toCssColorString();
+      const date = launch.launchTime?.slice(0, 10) || 'DATE UNAVAILABLE';
+      const provider = launch.provider || 'UNSPECIFIED OPERATOR';
+      const label = shortMissionLabel(launch.name, 27).toUpperCase();
+      return `<button type="button" class="space-mission-roster-item" data-mission-roster-index="${index}" data-mission-roster-id="${escapeMissionText(launch.id)}" aria-label="Select ${escapeMissionText(label)}"><span class="space-mission-roster-marker" style="--mission-roster-color:${color}" aria-hidden="true"></span><span class="space-mission-roster-copy"><strong>${escapeMissionText(label)}</strong><small>${escapeMissionText(provider)} · ${escapeMissionText(date)}</small></span><span class="space-mission-roster-chevron" aria-hidden="true">›</span></button>`;
+    })
+    .join('');
   list.querySelectorAll('[data-mission-roster-index]').forEach((button) => {
     const index = Number(button.dataset.missionRosterIndex);
     bindMissionRosterItemKeyboardPreview(
@@ -2474,13 +2901,17 @@ function renderMissionRoster() {
 }
 
 function escapeMissionText(value) {
-  return String(value ?? '').replace(/[&<>"']/g, (character) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  })[character]);
+  return String(value ?? '').replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      })[character],
+  );
 }
 
 function updateMissionTelemetry(force = false) {
@@ -2488,9 +2919,15 @@ function updateMissionTelemetry(force = false) {
   const now = performance.now();
   if (!force && now - _lastPanelTelemetryMs < 250) return;
   _lastPanelTelemetryMs = now;
-  const satellite = _dataSource.entities.getById(`rocket-satellite:${_selectedLaunchId}`);
-  const position = satellite?.position?.getValue(Cesium.JulianDate.now(_declutterTime));
-  const altitudeM = position ? Cesium.Cartographic.fromCartesian(position)?.height : null;
+  const satellite = _dataSource.entities.getById(
+    `rocket-satellite:${_selectedLaunchId}`,
+  );
+  const position = satellite?.position?.getValue(
+    Cesium.JulianDate.now(_declutterTime),
+  );
+  const altitudeM = position
+    ? Cesium.Cartographic.fromCartesian(position)?.height
+    : null;
   setMissionPanelField(
     '[data-mission-distance]',
     Number.isFinite(altitudeM)
@@ -2531,16 +2968,15 @@ function clearMissionRosterHover() {
 
 function previewMissionFromRoster(launch) {
   if (!_viewer || !launch || _selectedLaunchId) return;
-  const range = missionHoverPreviewRange(_viewer.camera.positionCartographic?.height);
-  const position = Cesium.Cartesian3.fromDegrees(launch.lon, launch.lat);
-  _viewer.camera.flyToBoundingSphere(
-    new Cesium.BoundingSphere(position, 0),
-    {
-      offset: new Cesium.HeadingPitchRange(0, -Cesium.Math.PI_OVER_TWO, range),
-      duration: 0.8,
-      easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT,
-    },
+  const range = missionHoverPreviewRange(
+    _viewer.camera.positionCartographic?.height,
   );
+  const position = Cesium.Cartesian3.fromDegrees(launch.lon, launch.lat);
+  _viewer.camera.flyToBoundingSphere(new Cesium.BoundingSphere(position, 0), {
+    offset: new Cesium.HeadingPitchRange(0, -Cesium.Math.PI_OVER_TWO, range),
+    duration: 0.8,
+    easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT,
+  });
 }
 
 function scheduleMissionRosterPreview(index) {
@@ -2552,7 +2988,10 @@ function scheduleMissionRosterPreview(index) {
   _missionRosterHoverTimer = setTimeout(() => {
     _missionRosterHoverTimer = null;
     if (_hoveredRosterLaunchId !== launch.id) return;
-    const currentLaunch = resolveMissionRosterPreviewLaunch(_launches, launch.id);
+    const currentLaunch = resolveMissionRosterPreviewLaunch(
+      _launches,
+      launch.id,
+    );
     if (currentLaunch) previewMissionFromRoster(currentLaunch);
   }, 140);
 }
@@ -2560,19 +2999,28 @@ function scheduleMissionRosterPreview(index) {
 function focusMission(launch) {
   if (!_viewer || !launch) return;
   stopMissionZoomAnchor();
-  _viewer.selectedEntity = _dataSource.entities.getById(`rocket-launch:${launch.id}`);
+  _viewer.selectedEntity = _dataSource.entities.getById(
+    `rocket-launch:${launch.id}`,
+  );
   const orbitEntity = _dataSource.entities.getById(`rocket-orbit:${launch.id}`);
-  const orbitPositions = orbitEntity?.polyline?.positions?.getValue(Cesium.JulianDate.now());
+  const orbitPositions = orbitEntity?.polyline?.positions?.getValue(
+    Cesium.JulianDate.now(),
+  );
   const launchPosition = Cesium.Cartesian3.fromDegrees(launch.lon, launch.lat);
   let range = 18000000;
   if (orbitPositions?.length > 1) {
     const canvas = _viewer.scene.canvas;
     const fovy = _viewer.camera.frustum?.fovy || Cesium.Math.toRadians(60);
-    const aspect = Math.max(0.1, (canvas.clientWidth || canvas.width) / Math.max(1, canvas.clientHeight || canvas.height));
+    const aspect = Math.max(
+      0.1,
+      (canvas.clientWidth || canvas.width) /
+        Math.max(1, canvas.clientHeight || canvas.height),
+    );
     const fovx = 2 * Math.atan(Math.tan(fovy * 0.5) * aspect);
     const paddedHalfAngle = Math.min(fovy, fovx) * 0.5 * 0.62;
     const orbitExtent = orbitPositions.reduce(
-      (largest, point) => Math.max(largest, Cesium.Cartesian3.distance(launchPosition, point)),
+      (largest, point) =>
+        Math.max(largest, Cesium.Cartesian3.distance(launchPosition, point)),
       0,
     );
     range = Math.max(
@@ -2580,14 +3028,28 @@ function focusMission(launch) {
       18000000,
     );
   }
-  const targetNormal = Cesium.Cartesian3.normalize(launchPosition, new Cesium.Cartesian3());
-  const destination = Cesium.Cartesian3.add(
+  const targetNormal = Cesium.Cartesian3.normalize(
     launchPosition,
-    Cesium.Cartesian3.multiplyByScalar(targetNormal, range, new Cesium.Cartesian3()),
     new Cesium.Cartesian3(),
   );
-  const direction = Cesium.Cartesian3.negate(targetNormal, new Cesium.Cartesian3());
-  let right = Cesium.Cartesian3.cross(direction, Cesium.Cartesian3.UNIT_Z, new Cesium.Cartesian3());
+  const destination = Cesium.Cartesian3.add(
+    launchPosition,
+    Cesium.Cartesian3.multiplyByScalar(
+      targetNormal,
+      range,
+      new Cesium.Cartesian3(),
+    ),
+    new Cesium.Cartesian3(),
+  );
+  const direction = Cesium.Cartesian3.negate(
+    targetNormal,
+    new Cesium.Cartesian3(),
+  );
+  let right = Cesium.Cartesian3.cross(
+    direction,
+    Cesium.Cartesian3.UNIT_Z,
+    new Cesium.Cartesian3(),
+  );
   if (Cesium.Cartesian3.magnitudeSquared(right) < 1e-8) {
     right = Cesium.Cartesian3.cross(direction, Cesium.Cartesian3.UNIT_Y, right);
   }
@@ -2601,7 +3063,8 @@ function focusMission(launch) {
     orientation: { direction, up },
     duration: 1.1,
     complete: () => {
-      if (_selectedLaunchId === launch.id) startMissionZoomAnchor(launch, range);
+      if (_selectedLaunchId === launch.id)
+        startMissionZoomAnchor(launch, range);
     },
   });
 }
@@ -2611,7 +3074,9 @@ function focusLaunchSite(launch) {
   stopMissionReplay();
   stopMissionZoomAnchor();
   const launchPosition = Cesium.Cartesian3.fromDegrees(launch.lon, launch.lat);
-  _viewer.selectedEntity = _dataSource.entities.getById(`rocket-launch:${launch.id}`);
+  _viewer.selectedEntity = _dataSource.entities.getById(
+    `rocket-launch:${launch.id}`,
+  );
   _viewer.camera.flyToBoundingSphere(
     new Cesium.BoundingSphere(launchPosition, 0),
     {
@@ -2633,8 +3098,9 @@ function focusLaunchSite(launch) {
 
 function createMissionPanel() {
   if (_missionPanel || typeof document === 'undefined') return;
-  const host = document.getElementById('space-mission-panel-host')
-    || document.getElementById('right-context-rail');
+  const host =
+    document.getElementById('space-mission-panel-host') ||
+    document.getElementById('right-context-rail');
   if (!host) return;
   _missionRoster = document.getElementById('space-mission-roster');
   if (_missionRoster) {
@@ -2643,9 +3109,10 @@ function createMissionPanel() {
       clear: clearMissionRosterPreviewState,
     });
     _missionRoster.onclick = (event) => {
-      const button = event.target instanceof Element
-        ? event.target.closest('[data-mission-roster-index]')
-        : null;
+      const button =
+        event.target instanceof Element
+          ? event.target.closest('[data-mission-roster-index]')
+          : null;
       if (!button) return;
       selectMissionAt(Number(button.dataset.missionRosterIndex));
     };
@@ -2663,25 +3130,51 @@ function createMissionPanel() {
     </div>`,
   );
   host.appendChild(_missionPanel);
-  _missionPanel.querySelector('[data-mission-prev]').addEventListener('click', () => selectMissionAt(_launches.findIndex((item) => item.id === _selectedLaunchId) - 1));
-  _missionPanel.querySelector('[data-mission-next]').addEventListener('click', () => selectMissionAt(_launches.findIndex((item) => item.id === _selectedLaunchId) + 1));
-  _missionPanel.querySelector('[data-mission-close]').addEventListener('click', () => setSelectedMission(null));
-  _missionPanel.querySelector('[data-mission-show-all]').addEventListener('click', () => setSelectedMission(null));
-  _missionPanel.querySelector('[data-mission-focus]').addEventListener('click', () => {
-    const launch = _launches.find((item) => item.id === _selectedLaunchId);
-    if (launch) focusLaunchSite(launch);
-  });
-  _missionPanel.querySelector('[data-mission-replay]').addEventListener('click', () => {
-    if (_selectedLaunchId) startMissionReplay(_selectedLaunchId);
-  });
-  _missionPanel.querySelector('[data-mission-replay-toggle]').addEventListener('click', () => {
-    if (_replayPaused) resumeMissionReplay();
-    else pauseMissionReplay();
-  });
-  _missionPanel.querySelector('[data-mission-replay-cancel]').addEventListener('click', stopMissionReplay);
-  _missionPanel.querySelector('[data-mission-replay-speed]').addEventListener('input', (event) => {
-    setReplaySpeed(event.currentTarget.value);
-  });
+  _missionPanel
+    .querySelector('[data-mission-prev]')
+    .addEventListener('click', () =>
+      selectMissionAt(
+        _launches.findIndex((item) => item.id === _selectedLaunchId) - 1,
+      ),
+    );
+  _missionPanel
+    .querySelector('[data-mission-next]')
+    .addEventListener('click', () =>
+      selectMissionAt(
+        _launches.findIndex((item) => item.id === _selectedLaunchId) + 1,
+      ),
+    );
+  _missionPanel
+    .querySelector('[data-mission-close]')
+    .addEventListener('click', () => setSelectedMission(null));
+  _missionPanel
+    .querySelector('[data-mission-show-all]')
+    .addEventListener('click', () => setSelectedMission(null));
+  _missionPanel
+    .querySelector('[data-mission-focus]')
+    .addEventListener('click', () => {
+      const launch = _launches.find((item) => item.id === _selectedLaunchId);
+      if (launch) focusLaunchSite(launch);
+    });
+  _missionPanel
+    .querySelector('[data-mission-replay]')
+    .addEventListener('click', () => {
+      if (_selectedLaunchId) startMissionReplay(_selectedLaunchId);
+    });
+  _missionPanel
+    .querySelector('[data-mission-replay-toggle]')
+    .addEventListener('click', () => {
+      if (_replayPaused) resumeMissionReplay();
+      else pauseMissionReplay();
+    });
+  _missionPanel
+    .querySelector('[data-mission-replay-cancel]')
+    .addEventListener('click', stopMissionReplay);
+  _missionPanel
+    .querySelector('[data-mission-replay-speed]')
+    .addEventListener('input', (event) => {
+      setReplaySpeed(event.currentTarget.value);
+    });
   syncReplaySpeedControl();
 }
 
@@ -2710,9 +3203,7 @@ function updateReplayVehicleOverlay(occluder) {
     hideReplayVehicleOverlay();
     return null;
   }
-  const path = state.ascending
-    ? track.ascentPath
-    : track.animatedOrbitPath;
+  const path = state.ascending ? track.ascentPath : track.animatedOrbitPath;
   // Do not call scene.sampleHeight() from this post-render path. A selected
   // mission can remain visible from globe range, and a periodic remote height
   // probe forces Google Photorealistic 3D Tiles to reconsider its refinement
@@ -2734,10 +3225,10 @@ function updateReplayVehicleOverlay(occluder) {
   }
   const canvas = _viewer.scene.canvas;
   if (
-    windowPosition.x < -80
-    || windowPosition.y < -100
-    || windowPosition.x > canvas.clientWidth + 80
-    || windowPosition.y > canvas.clientHeight + 100
+    windowPosition.x < -80 ||
+    windowPosition.y < -100 ||
+    windowPosition.x > canvas.clientWidth + 80 ||
+    windowPosition.y > canvas.clientHeight + 100
   ) {
     hideReplayVehicleOverlay();
     return null;
@@ -2747,9 +3238,13 @@ function updateReplayVehicleOverlay(occluder) {
   // camera until the snap threshold was crossed, producing a repeating
   // forward/back jump. Keep smoothing only for the non-tracked close-up pad
   // marker, where the user can move the camera independently.
-  const renderedWindowPosition = !replayActive && track.lastOverlayMode === mode
-    ? smoothReplayWindowPosition(track.lastOverlayWindowPosition, windowPosition)
-    : windowPosition;
+  const renderedWindowPosition =
+    !replayActive && track.lastOverlayMode === mode
+      ? smoothReplayWindowPosition(
+          track.lastOverlayWindowPosition,
+          windowPosition,
+        )
+      : windowPosition;
   track.lastOverlayWindowPosition = renderedWindowPosition;
   track.lastOverlayMode = mode;
   _replayVehicleOverlay.hidden = false;
@@ -2758,7 +3253,10 @@ function updateReplayVehicleOverlay(occluder) {
     'is-thrusting',
     replayActive && state.ascending && !state.countdownActive,
   );
-  _replayVehicleOverlay.classList.toggle('is-paused', replayActive && _replayPaused);
+  _replayVehicleOverlay.classList.toggle(
+    'is-paused',
+    replayActive && _replayPaused,
+  );
   _replayVehicleOverlay.style.transform = `translate3d(${renderedWindowPosition.x}px, ${renderedWindowPosition.y}px, 0) translate(-50%, -50%)`;
   let vehicleRotation = 0;
   if (replayActive && !state.countdownActive) {
@@ -2771,7 +3269,10 @@ function updateReplayVehicleOverlay(occluder) {
       useForward ? forwardProgress : backwardProgress,
     );
     const tangentWindowPosition = tangentPosition
-      ? Cesium.SceneTransforms.worldToWindowCoordinates(_viewer.scene, tangentPosition)
+      ? Cesium.SceneTransforms.worldToWindowCoordinates(
+          _viewer.scene,
+          tangentPosition,
+        )
       : null;
     if (tangentWindowPosition) {
       const screenDelta = Math.hypot(
@@ -2808,9 +3309,10 @@ function updateReplayVehicleOverlay(occluder) {
     title = `T−${String(state.countdownSeconds).padStart(2, '0')} · ${mission}`;
     detail = `LAUNCH STANDBY\n${siteCallout}`;
   } else if (mode === 'ascent') {
-    title = state.elapsedSinceStart < 1
-      ? `LIFTOFF · ${mission}`
-      : `${launch.trajectory.length > 1 ? 'ASCENT REPLAY' : 'ASCENT ESTIMATE'} · ${mission}`;
+    title =
+      state.elapsedSinceStart < 1
+        ? `LIFTOFF · ${mission}`
+        : `${launch.trajectory.length > 1 ? 'ASCENT REPLAY' : 'ASCENT ESTIMATE'} · ${mission}`;
     detail = formatMissionEventTime(state.eventTime);
   } else if (mode === 'recovery') {
     title = `STAGE RE-ENTRY / RECOVERY · ${mission}`;
@@ -2823,8 +3325,12 @@ function updateReplayVehicleOverlay(occluder) {
   const nextText = `${title}\n${detail}`;
   if (nextText !== _replayVehicleOverlayText) {
     _replayVehicleOverlayText = nextText;
-    _replayVehicleOverlay.querySelector('[data-replay-overlay-title]').textContent = title;
-    _replayVehicleOverlay.querySelector('[data-replay-overlay-detail]').textContent = detail;
+    _replayVehicleOverlay.querySelector(
+      '[data-replay-overlay-title]',
+    ).textContent = title;
+    _replayVehicleOverlay.querySelector(
+      '[data-replay-overlay-detail]',
+    ).textContent = detail;
   }
   return mode;
 }
@@ -2852,7 +3358,9 @@ function updateMissionFrame() {
     const id = entityLaunchId(entity);
     if (!id) continue;
     const position = entity.position.getValue(time);
-    let horizonVisible = Boolean(position && _declutterOccluder.isPointVisible(position));
+    let horizonVisible = Boolean(
+      position && _declutterOccluder.isPointVisible(position),
+    );
     const launchAnchor = entity.id.startsWith('rocket-launch:');
     if (launchAnchor) {
       horizonVisible = missionAnchorVisible(
@@ -2885,15 +3393,24 @@ function updateMissionFrame() {
  * @returns {Cesium.Color}
  */
 export function missionMarkerColor(launch) {
-  const identity = `${launch.provider || ''} ${launch.name || ''} ${launch.missionName || ''}`.toLowerCase();
-  if (/nasa|national aeronautics/.test(identity)) return Cesium.Color.fromCssColorString('#ff9f43');
-  if (/starlink|spacex|space exploration/.test(identity)) return Cesium.Color.fromCssColorString('#4cc9f0');
-  if (/rocket lab/.test(identity)) return Cesium.Color.fromCssColorString('#7bed9f');
-  if (/isro|indian space/.test(identity)) return Cesium.Color.fromCssColorString('#ff66c4');
-  if (/cnsa|china national|long march/.test(identity)) return Cesium.Color.fromCssColorString('#ffd166');
-  if (/blue origin/.test(identity)) return Cesium.Color.fromCssColorString('#a78bfa');
-  if (/ula|united launch alliance/.test(identity)) return Cesium.Color.fromCssColorString('#f97316');
-  if (/arianespace|esa|european space/.test(identity)) return Cesium.Color.fromCssColorString('#60a5fa');
+  const identity =
+    `${launch.provider || ''} ${launch.name || ''} ${launch.missionName || ''}`.toLowerCase();
+  if (/nasa|national aeronautics/.test(identity))
+    return Cesium.Color.fromCssColorString('#ff9f43');
+  if (/starlink|spacex|space exploration/.test(identity))
+    return Cesium.Color.fromCssColorString('#4cc9f0');
+  if (/rocket lab/.test(identity))
+    return Cesium.Color.fromCssColorString('#7bed9f');
+  if (/isro|indian space/.test(identity))
+    return Cesium.Color.fromCssColorString('#ff66c4');
+  if (/cnsa|china national|long march/.test(identity))
+    return Cesium.Color.fromCssColorString('#ffd166');
+  if (/blue origin/.test(identity))
+    return Cesium.Color.fromCssColorString('#a78bfa');
+  if (/ula|united launch alliance/.test(identity))
+    return Cesium.Color.fromCssColorString('#f97316');
+  if (/arianespace|esa|european space/.test(identity))
+    return Cesium.Color.fromCssColorString('#60a5fa');
   if (launch.provider) return Cesium.Color.fromCssColorString('#c084fc');
   return Cesium.Color.fromCssColorString('#22e6e6');
 }
@@ -2910,43 +3427,61 @@ export function normalizeRocketLaunches(payload, now = new Date()) {
   const launches = Array.isArray(payload) ? payload : payload?.results;
   if (!Array.isArray(launches)) return [];
   const cutoff = now.getTime() - WINDOW_DAYS * 86400000;
-  return launches.map((launch) => {
-    const launchTime = launch.net || launch.window_start || launch.pad?.location?.name;
-    const date = Date.parse(launchTime);
-    const pad = launch.pad || {};
-    const location = pad.location || {};
-    const coordinates = location.coordinates || '';
-    const [coordinateLon, coordinateLat] = String(coordinates).split(',').map(Number);
-    const lat = Number.isFinite(Number(pad.latitude)) ? Number(pad.latitude) : coordinateLat;
-    const lon = Number.isFinite(Number(pad.longitude)) ? Number(pad.longitude) : coordinateLon;
-    const payloads = normalizePayloadFlights(launch);
-    return {
-      id: String(launch.id || launch.slug || launch.name || `launch-${date}`),
-      name: launch.name || 'Unnamed launch',
-      status: launch.status?.name || 'Unknown',
-      launchTime: Number.isFinite(date) ? new Date(date).toISOString() : null,
-      launchSite: pad.name || location.name || 'Unknown launch site',
-      lat: Number.isFinite(lat) ? lat : null,
-      lon: Number.isFinite(lon) ? lon : null,
-      provider: launch.launch_service_provider?.name || null,
-      mission: launch.mission?.description || null,
-      missionName: launch.mission?.name || null,
-      satelliteQuery: launch.mission?.name || launch.name || null,
-      payloads,
-      recoveryStages: normalizeRecoveryStages(launch, payloads),
-      trajectory: Array.isArray(launch.trajectory) ? launch.trajectory : [],
-      timeline: Array.isArray(launch.timeline)
-        ? launch.timeline.map((event) => ({
-          name: event.type?.abbrev || event.type?.name || event.name || 'Mission event',
-          relativeTime: event.relative_time || event.relativeTime || null,
-          offsetSeconds: parseMissionDurationSeconds(event.relative_time || event.relativeTime),
-        }))
-        : [],
-      orbit: launch.mission?.orbit || launch.orbit || null,
-      source: 'Launch Library 2',
-      inWindow: Number.isFinite(date) && date >= cutoff && date <= now.getTime(),
-    };
-  }).filter((launch) => launch.inWindow && launch.lat !== null && launch.lon !== null);
+  return launches
+    .map((launch) => {
+      const launchTime =
+        launch.net || launch.window_start || launch.pad?.location?.name;
+      const date = Date.parse(launchTime);
+      const pad = launch.pad || {};
+      const location = pad.location || {};
+      const coordinates = location.coordinates || '';
+      const [coordinateLon, coordinateLat] = String(coordinates)
+        .split(',')
+        .map(Number);
+      const lat = Number.isFinite(Number(pad.latitude))
+        ? Number(pad.latitude)
+        : coordinateLat;
+      const lon = Number.isFinite(Number(pad.longitude))
+        ? Number(pad.longitude)
+        : coordinateLon;
+      const payloads = normalizePayloadFlights(launch);
+      return {
+        id: String(launch.id || launch.slug || launch.name || `launch-${date}`),
+        name: launch.name || 'Unnamed launch',
+        status: launch.status?.name || 'Unknown',
+        launchTime: Number.isFinite(date) ? new Date(date).toISOString() : null,
+        launchSite: pad.name || location.name || 'Unknown launch site',
+        lat: Number.isFinite(lat) ? lat : null,
+        lon: Number.isFinite(lon) ? lon : null,
+        provider: launch.launch_service_provider?.name || null,
+        mission: launch.mission?.description || null,
+        missionName: launch.mission?.name || null,
+        satelliteQuery: launch.mission?.name || launch.name || null,
+        payloads,
+        recoveryStages: normalizeRecoveryStages(launch, payloads),
+        trajectory: Array.isArray(launch.trajectory) ? launch.trajectory : [],
+        timeline: Array.isArray(launch.timeline)
+          ? launch.timeline.map((event) => ({
+              name:
+                event.type?.abbrev ||
+                event.type?.name ||
+                event.name ||
+                'Mission event',
+              relativeTime: event.relative_time || event.relativeTime || null,
+              offsetSeconds: parseMissionDurationSeconds(
+                event.relative_time || event.relativeTime,
+              ),
+            }))
+          : [],
+        orbit: launch.mission?.orbit || launch.orbit || null,
+        source: 'Launch Library 2',
+        inWindow:
+          Number.isFinite(date) && date >= cutoff && date <= now.getTime(),
+      };
+    })
+    .filter(
+      (launch) => launch.inWindow && launch.lat !== null && launch.lon !== null,
+    );
 }
 
 function addLaunchEntity(launch, activeTleText = _activeTleText) {
@@ -2959,16 +3494,19 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
   };
   _missionOverlayRecords.set(launch.id, overlayRecord);
   const orbitAllowed = launchStatusAllowsOrbit(launch.status);
-  const coreTrack = orbitAllowed && launch.satelliteQuery
-    ? getSatelliteOrbitTrack(launch.satelliteQuery, { launchTime: launch.launchTime })
-    : null;
-  const satelliteTrack = coreTrack || (orbitAllowed && activeTleText && launch.satelliteQuery
-    ? findSatelliteOrbitTrackInTle(
-      activeTleText,
-      launch.satelliteQuery,
-      { launchTime: launch.launchTime },
-    )
-    : null);
+  const coreTrack =
+    orbitAllowed && launch.satelliteQuery
+      ? getSatelliteOrbitTrack(launch.satelliteQuery, {
+          launchTime: launch.launchTime,
+        })
+      : null;
+  const satelliteTrack =
+    coreTrack ||
+    (orbitAllowed && activeTleText && launch.satelliteQuery
+      ? findSatelliteOrbitTrackInTle(activeTleText, launch.satelliteQuery, {
+          launchTime: launch.launchTime,
+        })
+      : null);
   const orbitPath = !orbitAllowed
     ? null
     : satelliteTrack?.orbitPath?.length > 1
@@ -3012,16 +3550,31 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
     },
   });
   const points = launch.trajectory
-    .filter((point) => Number.isFinite(Number(point.latitude)) && Number.isFinite(Number(point.longitude)))
+    .filter(
+      (point) =>
+        Number.isFinite(Number(point.latitude)) &&
+        Number.isFinite(Number(point.longitude)),
+    )
     .map((point) => ({
-      stage: String(point.stage || point.stage_name || point.phase || point.stageName || 'trajectory'),
-      position: Cesium.Cartesian3.fromDegrees(Number(point.longitude), Number(point.latitude), Number(point.altitude || 0)),
+      stage: String(
+        point.stage ||
+          point.stage_name ||
+          point.phase ||
+          point.stageName ||
+          'trajectory',
+      ),
+      position: Cesium.Cartesian3.fromDegrees(
+        Number(point.longitude),
+        Number(point.latitude),
+        Number(point.altitude || 0),
+      ),
     }));
   if (points.length > 1) {
     const segments = [];
     points.forEach((point) => {
       const previous = segments.at(-1);
-      if (!previous || previous.stage !== point.stage) segments.push({ stage: point.stage, positions: [] });
+      if (!previous || previous.stage !== point.stage)
+        segments.push({ stage: point.stage, positions: [] });
       segments.at(-1).positions.push(point.position);
     });
     segments.forEach((segment, index) => {
@@ -3031,17 +3584,28 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
         polyline: {
           positions: surfaceSafePath(segment.positions),
           width: 2,
-          material: Cesium.Color.fromCssColorString(TRAJECTORY_STAGE_COLORS[index % TRAJECTORY_STAGE_COLORS.length]).withAlpha(0.8),
+          material: Cesium.Color.fromCssColorString(
+            TRAJECTORY_STAGE_COLORS[index % TRAJECTORY_STAGE_COLORS.length],
+          ).withAlpha(0.8),
           clampToGround: false,
           arcType: Cesium.ArcType.NONE,
         },
-        properties: { launchId: launch.id, stage: segment.stage, source: launch.source },
+        properties: {
+          launchId: launch.id,
+          stage: segment.stage,
+          source: launch.source,
+        },
       });
     });
   }
   if (orbitPath?.length > 1) {
-    const orbitCurrent = satelliteTrack?.current || { longitude: launch.lon, latitude: launch.lat, altitude: 0 };
-    const orbitPeriodSec = satelliteTrack?.periodSec || estimatedOrbitPeriodSeconds(orbitPath);
+    const orbitCurrent = satelliteTrack?.current || {
+      longitude: launch.lon,
+      latitude: launch.lat,
+      altitude: 0,
+    };
+    const orbitPeriodSec =
+      satelliteTrack?.periodSec || estimatedOrbitPeriodSeconds(orbitPath);
     const launchEpochMs = Date.parse(launch.launchTime);
     const disclosedInsertionOffsetSec = orbitInsertionOffsetSeconds(launch);
     const insertionDurationSec = Number.isFinite(disclosedInsertionOffsetSec)
@@ -3051,8 +3615,14 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
       ? launchEpochMs + insertionDurationSec * 1000
       : Number.NaN;
     let insertionReference = points.at(-1)?.position || null;
-    if (!insertionReference && satelliteTrack?.positionAt && Number.isFinite(insertionEpochMs)) {
-      const propagatedInsertion = satelliteTrack.positionAt(new Date(insertionEpochMs));
+    if (
+      !insertionReference &&
+      satelliteTrack?.positionAt &&
+      Number.isFinite(insertionEpochMs)
+    ) {
+      const propagatedInsertion = satelliteTrack.positionAt(
+        new Date(insertionEpochMs),
+      );
       if (propagatedInsertion) {
         insertionReference = Cesium.Cartesian3.fromDegrees(
           propagatedInsertion.longitude,
@@ -3087,17 +3657,18 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
     // independently made the vehicle advance relative to the camera and then
     // snap back on the next frame.
     let replayStateForFrame = null;
-    const sampleReplayState = () => replayState(
-      launch,
-      _animationStarts.get(launch.id) || Date.now(),
-      ascentDurationSec,
-      REPLAY_ORBIT_DURATION_SEC,
-      orbitPeriodSec,
-      _replaySpeed,
-      replayClockNow(launch.id),
-      REPLAY_TILE_SETTLE_DELAY_SEC,
-      _replayCameraLaunchId !== launch.id,
-    );
+    const sampleReplayState = () =>
+      replayState(
+        launch,
+        _animationStarts.get(launch.id) || Date.now(),
+        ascentDurationSec,
+        REPLAY_ORBIT_DURATION_SEC,
+        orbitPeriodSec,
+        _replaySpeed,
+        replayClockNow(launch.id),
+        REPLAY_TILE_SETTLE_DELAY_SEC,
+        _replayCameraLaunchId !== launch.id,
+      );
     // preUpdate runs before Cesium evaluates entity CallbackProperties. Seed
     // one state there and retain it through postRender so every consumer in
     // that traversal sees the same timestamp. scene.frameState.frameNumber is
@@ -3114,12 +3685,19 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
     };
     launch.recoveryStages.forEach((stage, stageIndex) => {
       stage.endpoint = landingEndpoint(stage, launch, ascentPath.at(-1));
-      const path = stageReentryRecoveryPath(ascentPath, stage.endpoint, stageIndex, launch.recoveryStages.length);
+      const path = stageReentryRecoveryPath(
+        ascentPath,
+        stage.endpoint,
+        stageIndex,
+        launch.recoveryStages.length,
+      );
       if (path.length < 2) return;
       const reentryIndex = atmosphericReentryIndex(path);
       const reentryPath = path.slice(reentryIndex);
       const color = Cesium.Color.fromCssColorString(
-        TRAJECTORY_STAGE_COLORS[(stageIndex + 1) % TRAJECTORY_STAGE_COLORS.length],
+        TRAJECTORY_STAGE_COLORS[
+          (stageIndex + 1) % TRAJECTORY_STAGE_COLORS.length
+        ],
       );
       _dataSource.entities.add({
         id: `rocket-reentry-recovery:${launch.id}:${stageIndex}`,
@@ -3129,7 +3707,7 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
           material: new Cesium.PolylineDashMaterialProperty({
             color: color.withAlpha(0.82),
             dashLength: 12,
-            dashPattern: 0xAAAA,
+            dashPattern: 0xaaaa,
           }),
           arcType: Cesium.ArcType.NONE,
         },
@@ -3150,7 +3728,7 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
             material: new Cesium.PolylineDashMaterialProperty({
               color: Cesium.Color.fromCssColorString('#ffd166').withAlpha(0.9),
               dashLength: 8,
-              dashPattern: 0xF0F0,
+              dashPattern: 0xf0f0,
             }),
             arcType: Cesium.ArcType.NONE,
           },
@@ -3163,7 +3741,7 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
           },
         });
         const reentryPosition = path[reentryIndex];
-        overlayRecord.elementEntryFactories.push(() => (
+        overlayRecord.elementEntryFactories.push(() =>
           createRocketMissionElementOverlayEntry({
             id: `reentry:${launch.id}:${stageIndex}`,
             position: reentryPosition,
@@ -3171,8 +3749,8 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
             accent: '#ffd166',
             priority: 700_000 - stageIndex,
             gapPx: 8,
-          })
-        ));
+          }),
+        );
       }
       _dataSource.entities.add({
         id: `rocket-recovery-end:${launch.id}:${stageIndex}`,
@@ -3221,7 +3799,8 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
       const nowMs = Date.now();
       liveTime.setTime(nowMs);
       if (satelliteTrack) {
-        const propagated = satelliteTrack.positionAt?.(liveTime) || satelliteTrack.current;
+        const propagated =
+          satelliteTrack.positionAt?.(liveTime) || satelliteTrack.current;
         if (propagated) {
           Cesium.Cartesian3.fromDegrees(
             propagated.longitude,
@@ -3237,11 +3816,12 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
       } else {
         // In-place write keeps one Cartesian3 for the mission's lifetime —
         // the estimated branch previously reallocated per propagation.
-        livePosition = samplePath(
-          orbitPath,
-          orbitProgressAtTime(nowMs, fallbackPeriodSec),
-          livePosition,
-        ) || livePosition;
+        livePosition =
+          samplePath(
+            orbitPath,
+            orbitProgressAtTime(nowMs, fallbackPeriodSec),
+            livePosition,
+          ) || livePosition;
       }
     };
     _dataSource.entities.add({
@@ -3252,15 +3832,21 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
       }, false),
       point: {
         pixelSize: 6,
-        color: Cesium.Color.fromCssColorString(satelliteTrack ? '#7bed9f' : '#ffd166'),
+        color: Cesium.Color.fromCssColorString(
+          satelliteTrack ? '#7bed9f' : '#ffd166',
+        ),
         outlineWidth: 0,
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
       },
       properties: {
         launchId: launch.id,
         noradId: satelliteTrack?.noradId || '',
-        phase: satelliteTrack ? 'CURRENT_SATELLITE_POSITION' : 'ESTIMATED_ORBIT_POSITION',
-        source: satelliteTrack ? 'Satellites layer' : 'Approximate mission orbit',
+        phase: satelliteTrack
+          ? 'CURRENT_SATELLITE_POSITION'
+          : 'ESTIMATED_ORBIT_POSITION',
+        source: satelliteTrack
+          ? 'Satellites layer'
+          : 'Approximate mission orbit',
       },
     });
     overlayRecord.liveEventTime = () => liveTime;
@@ -3280,7 +3866,11 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
     // Live satellite rings use a primitive collection so the core Satellite
     // GMST transform can rotate their baked ECEF geometry without rebuilding
     // it. Estimated launch-site-relative rings remain ordinary entities.
-    const primitiveOrbitAdded = addMissionOrbitPrimitive(launch, orbitPath, satelliteTrack);
+    const primitiveOrbitAdded = addMissionOrbitPrimitive(
+      launch,
+      orbitPath,
+      satelliteTrack,
+    );
     if (!primitiveOrbitAdded) {
       _dataSource.entities.add({
         id: `rocket-orbit:${launch.id}`,
@@ -3314,7 +3904,7 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
       );
       orbitLabelPosition = () => primitivePath.labelPosition;
     }
-    overlayRecord.elementEntryFactories.push(() => (
+    overlayRecord.elementEntryFactories.push(() =>
       createRocketMissionElementOverlayEntry({
         id: `orbit:${launch.id}`,
         position: orbitLabelPosition,
@@ -3322,8 +3912,8 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
         accent: satelliteTrack ? '#22e6e6' : '#c084fc',
         priority: 800_000,
         gapPx: 8,
-      })
-    ));
+      }),
+    );
     const replayPosition = new Cesium.CallbackProperty(() => {
       const state = getReplayState();
       return state.ascending
@@ -3333,7 +3923,14 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
     _dataSource.entities.add({
       id: `rocket-vehicle:${launch.id}`,
       position: replayPosition,
-      properties: { launchId: launch.id, noradId: satelliteTrack?.noradId || '', phase: 'ASCENT_THEN_ORBIT', source: satelliteTrack ? 'Satellite trajectory animation' : 'Approximate trajectory animation' },
+      properties: {
+        launchId: launch.id,
+        noradId: satelliteTrack?.noradId || '',
+        phase: 'ASCENT_THEN_ORBIT',
+        source: satelliteTrack
+          ? 'Satellite trajectory animation'
+          : 'Approximate trajectory animation',
+      },
     });
     _dataSource.entities.add({
       id: `rocket-transfer:${launch.id}`,
@@ -3347,7 +3944,7 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
         material: new Cesium.PolylineDashMaterialProperty({
           color: Cesium.Color.fromCssColorString('#7bed9f').withAlpha(0.8),
           dashLength: 24,
-          dashPattern: 0xF0F0,
+          dashPattern: 0xf0f0,
         }),
       },
       properties: {
@@ -3367,12 +3964,17 @@ function clearPostTleRetry() {
 }
 
 function schedulePostTleRetry(token) {
-  if (_retryTimer || token !== _lifecycleToken || !shouldRetryAfterActiveTle({
-    enabled: _enabled,
-    retryCount: _postTleRetryCount,
-    activeTleText: _activeTleText,
-    renderedTleText: _renderedTleText,
-  })) return;
+  if (
+    _retryTimer ||
+    token !== _lifecycleToken ||
+    !shouldRetryAfterActiveTle({
+      enabled: _enabled,
+      retryCount: _postTleRetryCount,
+      activeTleText: _activeTleText,
+      renderedTleText: _renderedTleText,
+    })
+  )
+    return;
   _postTleRetryCount++;
   _retryTimer = setTimeout(() => {
     _retryTimer = null;
@@ -3382,7 +3984,8 @@ function schedulePostTleRetry(token) {
 
 function ensureActiveTleLookup(token) {
   if (_activeTleText) return Promise.resolve(_activeTleText);
-  if (_activeTlePromise && _activeTlePromiseToken === token) return _activeTlePromise;
+  if (_activeTlePromise && _activeTlePromiseToken === token)
+    return _activeTlePromise;
   // The whole active catalog: a couple of MB of TLE text.
   const request = fetchChecked('/api/celestrak/active', { timeoutMs: 30_000 })
     .then((activeResponse) => activeResponse.text())
@@ -3395,7 +3998,10 @@ function ensureActiveTleLookup(token) {
     })
     .catch((error) => {
       if (_enabled && token === _lifecycleToken) {
-        console.warn('[Data:RocketLaunches] Active satellite lookup unavailable:', error.message);
+        console.warn(
+          '[Data:RocketLaunches] Active satellite lookup unavailable:',
+          error.message,
+        );
       }
       return null;
     })
@@ -3415,8 +4021,9 @@ async function captureSatelliteDependency() {
   _satelliteStateBeforeMission = {
     // Effective visibility: a user enable still mid-activation is intent ON —
     // capturing settled false would restore the user's enable away on exit.
-    enabled: _dataManager.isEffectivelyEnabled?.('satellites')
-      ?? _dataManager.isEnabled('satellites'),
+    enabled:
+      _dataManager.isEffectivelyEnabled?.('satellites') ??
+      _dataManager.isEnabled('satellites'),
     params: satelliteParamsAfterSpaceMissions(
       _dataManager.getLayerParams('satellites'),
     ),
@@ -3426,7 +4033,9 @@ async function captureSatelliteDependency() {
     satelliteParamsForSpaceMissions(_satelliteStateBeforeMission.params),
   );
   const token = _lifecycleToken;
-  const activation = Promise.resolve(_dataManager.setEnabled('satellites', true));
+  const activation = Promise.resolve(
+    _dataManager.setEnabled('satellites', true),
+  );
   _satelliteActivationPromise = activation;
   try {
     const activated = await activation;
@@ -3434,14 +4043,19 @@ async function captureSatelliteDependency() {
     // surface; fail the mission enable so the manager's fail-closed path and
     // the Context rollback see an honest failure instead of a silent success.
     if (
-      token === _lifecycleToken
-      && _enabled
-      && (activated === false || !_dataManager.isEnabled('satellites'))
+      token === _lifecycleToken &&
+      _enabled &&
+      (activated === false || !_dataManager.isEnabled('satellites'))
     ) {
-      throw new Error('Space Missions requires the satellites layer, which failed to start');
+      throw new Error(
+        'Space Missions requires the satellites layer, which failed to start',
+      );
     }
   } finally {
-    if (token === _lifecycleToken && _satelliteActivationPromise === activation) {
+    if (
+      token === _lifecycleToken &&
+      _satelliteActivationPromise === activation
+    ) {
       _satelliteActivationPromise = null;
     }
   }
@@ -3456,10 +4070,13 @@ async function restoreSatelliteDependency() {
     'satellites',
     satelliteParamsAfterSpaceMissions(snapshot.params),
   );
-  const restored = await _dataManager.setEnabled('satellites', snapshot.enabled);
+  const restored = await _dataManager.setEnabled(
+    'satellites',
+    snapshot.enabled,
+  );
   if (
-    restored === false
-    || _dataManager.isEnabled('satellites') !== snapshot.enabled
+    restored === false ||
+    _dataManager.isEnabled('satellites') !== snapshot.enabled
   ) {
     throw new Error('Space Missions could not restore the satellites layer');
   }
@@ -3468,7 +4085,9 @@ async function restoreSatelliteDependency() {
 async function performMissionUpdate(token) {
   try {
     ensureActiveTleLookup(token);
-    const launches = normalizeRocketLaunches(await fetchJson(API_URL, { timeoutMs: 20_000 }));
+    const launches = normalizeRocketLaunches(
+      await fetchJson(API_URL, { timeoutMs: 20_000 }),
+    );
     if (!_enabled || token !== _lifecycleToken || !_dataSource) return;
     const activeTleText = _activeTleText;
     if (_replayCameraLaunchId) stopMissionReplay();
@@ -3484,12 +4103,17 @@ async function performMissionUpdate(token) {
     if (_renderedTleText === _activeTleText) clearPostTleRetry();
     _count = launches.length;
     renderMissionRoster();
-    if (!_selectedLaunchId || !launches.some((launch) => launch.id === _selectedLaunchId)) {
+    if (
+      !_selectedLaunchId ||
+      !launches.some((launch) => launch.id === _selectedLaunchId)
+    ) {
       setSelectedMission(null, false);
     } else {
       setSelectedMission(_selectedLaunchId, true);
       if (_focusAfterActiveLookup) {
-        focusMission(launches.find((launch) => launch.id === _selectedLaunchId));
+        focusMission(
+          launches.find((launch) => launch.id === _selectedLaunchId),
+        );
       }
     }
     _focusAfterActiveLookup = false;
@@ -3549,7 +4173,8 @@ const rocketLaunchesLayer = {
     _clickHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
     _clickHandler.setInputAction((movement) => {
       if (!_enabled || !_dataSource?.show) return;
-      const entity = viewer.scene.drillPick(movement.position, 12)
+      const entity = viewer.scene
+        .drillPick(movement.position, 12)
         .map((picked) => picked?.id)
         .find((candidate) => entityLaunchId(candidate));
       const launchId = entityLaunchId(entity);
@@ -3560,7 +4185,8 @@ const rocketLaunchesLayer = {
     _moveHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
     _moveHandler.setInputAction((movement) => {
       if (!_enabled || !_dataSource?.show) return;
-      const missionEntity = viewer.scene.drillPick(movement.endPosition, 12)
+      const missionEntity = viewer.scene
+        .drillPick(movement.endPosition, 12)
         .map((picked) => picked?.id)
         .find((candidate) => entityLaunchId(candidate));
       viewer.scene.canvas.style.cursor = missionEntity ? 'pointer' : '';
@@ -3568,7 +4194,8 @@ const rocketLaunchesLayer = {
     // Apply horizon visibility before Cesium traverses and picks the scene.
     // A postRender write is one frame late and can remain visibly stale when
     // request-on-demand rendering stops after a globe camera move.
-    _declutterHandler = viewer.scene.preRender.addEventListener(updateMissionFrame);
+    _declutterHandler =
+      viewer.scene.preRender.addEventListener(updateMissionFrame);
     initLaunchPadZonePrimitive();
   },
 
@@ -3597,7 +4224,8 @@ const rocketLaunchesLayer = {
     syncMissionOrbitPrimitiveVisibility();
     focusFullGlobe(_viewer);
     document.getElementById('cockpit-context')?.setAttribute('hidden', '');
-    if (_selectedLaunchId) setSelectedMission(_selectedLaunchId, _explicitSelection);
+    if (_selectedLaunchId)
+      setSelectedMission(_selectedLaunchId, _explicitSelection);
     else setSelectedMission(null, false);
     await captureSatelliteDependency();
   },
@@ -3680,13 +4308,24 @@ const rocketLaunchesLayer = {
     _dataManager = null;
   },
 
-  getStats() { return { count: _count, orbitMatches: _orbitMatches, lastUpdate: _lastUpdate, error: _lastError }; },
-  attachDataManager(dataManager) { _dataManager = dataManager; },
+  getStats() {
+    return {
+      count: _count,
+      orbitMatches: _orbitMatches,
+      lastUpdate: _lastUpdate,
+      error: _lastError,
+    };
+  },
+  attachDataManager(dataManager) {
+    _dataManager = dataManager;
+  },
 };
 
 /** Test seam for real layer lifecycle coverage with a recording host. */
 export function _setRocketMissionOverlayHostForTest(host = null) {
-  _missionOverlayHost = host ? { ...DEFAULT_OVERLAY_HOST, ...host } : DEFAULT_OVERLAY_HOST;
+  _missionOverlayHost = host
+    ? { ...DEFAULT_OVERLAY_HOST, ...host }
+    : DEFAULT_OVERLAY_HOST;
 }
 
 /** Test seam that exercises the real selection/deselection path. */

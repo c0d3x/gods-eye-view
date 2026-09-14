@@ -1,8 +1,16 @@
 import * as Cesium from 'cesium';
 import { deriveFetchCenter, clampBoundsAroundCenter } from './trafficBounds.js';
-import { fetchFlowForBounds, getFlowSessionStats, resetFlowTileCache } from './flowTiles.js';
+import {
+  fetchFlowForBounds,
+  getFlowSessionStats,
+  resetFlowTileCache,
+} from './flowTiles.js';
 import { matchFlowToRoads } from './flowMatch.js';
-import { flowBucket, flowSpeedScale, flowDensityMult } from './trafficFlowStyle.js';
+import {
+  flowBucket,
+  flowSpeedScale,
+  flowDensityMult,
+} from './trafficFlowStyle.js';
 import {
   trafficStyleProfile,
   presetDotRgba,
@@ -12,7 +20,10 @@ import {
 } from './trafficPresetStyle.js';
 import { queuePlatoons, locateAlongRoad } from './trafficQueue.js';
 import { registerDynamicCredit, TOMTOM_CREDIT } from './dataCredits.js';
-import { holdContinuousRender, releaseContinuousRender } from '../renderGovernor.js';
+import {
+  holdContinuousRender,
+  releaseContinuousRender,
+} from '../renderGovernor.js';
 import { fetchJson } from '../fetchJson.js';
 
 /**
@@ -74,31 +85,42 @@ const MAX_LOOKAT_PULL_KM = 12;
  * selectors point directly at the original functions: no marks, listeners,
  * observers, timers, counters, or per-road timing checks are installed.
  */
-const TRAFFIC_TIMING_ENABLED = import.meta.env?.DEV
-  && typeof window !== 'undefined'
-  && new URLSearchParams(window.location.search).get('trafficDebug') === '1';
+const TRAFFIC_TIMING_ENABLED =
+  import.meta.env?.DEV &&
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).get('trafficDebug') === '1';
 
 /** @const {Object<string,number>} Speed in meters per second by highway tag (approximate real-world values) */
 const SPEED_MPS = {
-  motorway:     25,   // ~90 km/h
-  trunk:        20,   // ~72 km/h
-  primary:      14,   // ~50 km/h
-  secondary:    11,   // ~40 km/h
-  tertiary:     8,    // ~30 km/h
-  residential:  5,    // ~18 km/h
+  motorway: 25, // ~90 km/h
+  trunk: 20, // ~72 km/h
+  primary: 14, // ~50 km/h
+  secondary: 11, // ~40 km/h
+  tertiary: 8, // ~30 km/h
+  residential: 5, // ~18 km/h
   unclassified: 5,
 };
 
 /** @const {Object<string,number>} Density multiplier — higher values spawn more dots on important roads */
 const DENSITY_MULT = {
-  motorway: 3.0, trunk: 2.5, primary: 2.0, secondary: 1.5,
-  tertiary: 1.0, residential: 0.5, unclassified: 0.4,
+  motorway: 3.0,
+  trunk: 2.5,
+  primary: 2.0,
+  secondary: 1.5,
+  tertiary: 1.0,
+  residential: 0.5,
+  unclassified: 0.4,
 };
 
 /** @const {Object<string,number>} Pixel size per road type (scaled up 25% for screen-recording visibility) */
 const SIZE_BY_TYPE = {
-  motorway: 6, trunk: 6, primary: 5, secondary: 5,
-  tertiary: 4, residential: 4, unclassified: 4,
+  motorway: 6,
+  trunk: 6,
+  primary: 5,
+  secondary: 5,
+  tertiary: 4,
+  residential: 4,
+  unclassified: 4,
 };
 
 /**
@@ -127,7 +149,8 @@ const HEAT_JAM_PULSE_ALPHA = 0.2;
 /** @const {Cesium.Color} Jam corridor color (bucket red, alpha pulsed live). */
 const HEAT_JAM_COLOR = Cesium.Color.fromCssColorString('#e05252');
 /** @const {Cesium.Color} Slow corridor color (bucket amber, faint + static). */
-const HEAT_SLOW_COLOR = Cesium.Color.fromCssColorString('#f0b23e').withAlpha(0.2);
+const HEAT_SLOW_COLOR =
+  Cesium.Color.fromCssColorString('#f0b23e').withAlpha(0.2);
 /**
  * @const {number} Meters — jam dots depth-test-punch through the 3D tiles out
  * to this camera distance so queues stay visible at city scale. The single
@@ -300,13 +323,16 @@ function activeSizeDelta(bucket) {
  */
 function baseDotSize(roadType, bucket) {
   const base = SIZE_BY_TYPE[roadType] || 4;
-  return (bucket && presetProfileActive()) ? Math.max(base, STYLED_MIN_BASE_PX) : base;
+  return bucket && presetProfileActive()
+    ? Math.max(base, STYLED_MIN_BASE_PX)
+    : base;
 }
 
 /** Recompute `_activeBucketColors` from the active style + kill switch. */
 function refreshBucketColors() {
   for (const bucket of ['free', 'slow', 'jam']) {
-    const rgba = _presetDots === 'on' ? presetDotRgba(_stylePreset, bucket) : null;
+    const rgba =
+      _presetDots === 'on' ? presetDotRgba(_stylePreset, bucket) : null;
     _activeBucketColors[bucket] = rgba
       ? new Cesium.Color(rgba[0] / 255, rgba[1] / 255, rgba[2] / 255, rgba[3])
       : FLOW_BUCKET_COLORS[bucket];
@@ -322,10 +348,14 @@ function refreshBucketColors() {
  * @param {'free'|'slow'|'jam'|null} bucket - Flow bucket (null = sim).
  */
 function applyOutline(point, bucket) {
-  const spec = _presetDots === 'on' ? presetDotOutline(_stylePreset, bucket) : null;
+  const spec =
+    _presetDots === 'on' ? presetDotOutline(_stylePreset, bucket) : null;
   if (spec) {
     point.outlineColor = new Cesium.Color(
-      spec.rgba[0] / 255, spec.rgba[1] / 255, spec.rgba[2] / 255, spec.rgba[3],
+      spec.rgba[0] / 255,
+      spec.rgba[1] / 255,
+      spec.rgba[2] / 255,
+      spec.rgba[3],
     );
     point.outlineWidth = spec.width;
   } else {
@@ -346,9 +376,10 @@ function restyleDotsInPlace() {
     const bucket = dot.bucket;
     if (!bucket) continue; // sim/uncovered dots stay byte-identical
     dot.point.color = _activeBucketColors[bucket];
-    dot.point.pixelSize = baseDotSize(dot.road?.type, bucket)
-      + (bucket === 'jam' ? 1 : 0)
-      + activeSizeDelta(bucket);
+    dot.point.pixelSize =
+      baseDotSize(dot.road?.type, bucket) +
+      (bucket === 'jam' ? 1 : 0) +
+      activeSizeDelta(bucket);
     applyOutline(dot.point, bucket);
   }
   rebuildHeatLines(visibleRoadsForAltitude(_roads, _lastRenderAltitude));
@@ -360,7 +391,7 @@ function restyleDotsInPlace() {
  * @param {string|null|undefined} name - StyleManager preset name.
  */
 function setStylePreset(name) {
-  const next = (typeof name === 'string' && name) ? name : 'normal';
+  const next = typeof name === 'string' && name ? name : 'normal';
   if (next === _stylePreset) return;
   _stylePreset = next;
   restyleDotsInPlace();
@@ -445,7 +476,13 @@ const _scratchLerp = new Cesium.Cartesian3();
  * @param {number}  [opts.timeoutSec=25]   - Overpass server-side timeout.
  * @returns {string} Overpass QL query body.
  */
-function buildOverpassQuery(south, west, north, east, { majorOnly = false, timeoutSec = 25 } = {}) {
+function buildOverpassQuery(
+  south,
+  west,
+  north,
+  east,
+  { majorOnly = false, timeoutSec = 25 } = {},
+) {
   // Regex matches the OSM `highway` tag value against allowed road types
   const regex = majorOnly
     ? '^(motorway|trunk|primary|secondary)$'
@@ -480,15 +517,22 @@ async function fetchRoads(
   { majorOnly = false, timeoutSec = 25, signal } = {},
   trace = null,
 ) {
-  const query = buildOverpassQuery(south, west, north, east, { majorOnly, timeoutSec });
-  const state = TRAFFIC_TIMING_ENABLED && trace
-    ? trafficTimingPass(trace, majorOnly ? 'major' : 'full', 'proxy')
-    : null;
+  const query = buildOverpassQuery(south, west, north, east, {
+    majorOnly,
+    timeoutSec,
+  });
+  const state =
+    TRAFFIC_TIMING_ENABLED && trace
+      ? trafficTimingPass(trace, majorOnly ? 'major' : 'full', 'proxy')
+      : null;
   if (state) trace.currentPass = state.pass;
   const fetchStart = state ? trafficTimingMark(state, 'fetch-start') : null;
   if (state) {
     trafficTimingMeasure(
-      'last-camera-change-to-fetch-start', state, trace.cameraChangeMark, fetchStart,
+      'last-camera-change-to-fetch-start',
+      state,
+      trace.cameraChangeMark,
+      fetchStart,
     );
   }
   const response = await fetch(OVERPASS_URL, {
@@ -508,13 +552,21 @@ async function fetchRoads(
     state.proxyCache = response.headers.get('x-overpass-cache');
     state.proxyUpstream = response.headers.get('x-overpass-upstream');
   }
-  const responseStart = state ? trafficTimingMark(state, 'response-json-start', {
-    responseStatus: response.status,
-  }) : null;
+  const responseStart = state
+    ? trafficTimingMark(state, 'response-json-start', {
+        responseStatus: response.status,
+      })
+    : null;
   if (state) {
-    trafficTimingMeasure('fetch-to-response', state, fetchStart, responseStart, {
-      responseStatus: response.status,
-    });
+    trafficTimingMeasure(
+      'fetch-to-response',
+      state,
+      fetchStart,
+      responseStart,
+      {
+        responseStatus: response.status,
+      },
+    );
   }
   const data = await response.json();
   if (state) {
@@ -552,12 +604,13 @@ function parseRoads(overpassData) {
   for (const el of overpassData.elements) {
     if (el.type !== 'way' || !el.geometry || el.geometry.length < 2) continue;
 
-    const rawCoords = el.geometry.map(g => [g.lon, g.lat]);
+    const rawCoords = el.geometry.map((g) => [g.lon, g.lat]);
 
     // Sub-sample long polylines: keep every Nth vertex to stay within budget
-    const simplifyStep = rawCoords.length > MAX_WAYPOINTS_PER_ROAD
-      ? Math.ceil(rawCoords.length / MAX_WAYPOINTS_PER_ROAD)
-      : 1;
+    const simplifyStep =
+      rawCoords.length > MAX_WAYPOINTS_PER_ROAD
+        ? Math.ceil(rawCoords.length / MAX_WAYPOINTS_PER_ROAD)
+        : 1;
     const coords = [];
     for (let i = 0; i < rawCoords.length; i += simplifyStep) {
       coords.push(rawCoords[i]);
@@ -578,15 +631,24 @@ function parseRoads(overpassData) {
     // OSM: oneway=yes/1/true → digitization order; '-1' → reversed;
     // roundabouts are one-way by definition. 0 = two-way (alternate).
     const onewayTag = el.tags?.oneway;
-    const oneway = (onewayTag === 'yes' || onewayTag === '1' || onewayTag === 'true' || el.tags?.junction === 'roundabout')
-      ? 1
-      : (onewayTag === '-1' ? -1 : 0);
+    const oneway =
+      onewayTag === 'yes' ||
+      onewayTag === '1' ||
+      onewayTag === 'true' ||
+      el.tags?.junction === 'roundabout'
+        ? 1
+        : onewayTag === '-1'
+          ? -1
+          : 0;
 
     // Sample terrain height once at the road start to avoid per-vertex cost
     let baseHeight = 0;
     const firstCoord = coords[0];
     if (_viewer?.scene?.sampleHeightSupported && firstCoord) {
-      const carto = Cesium.Cartographic.fromDegrees(firstCoord[0], firstCoord[1]);
+      const carto = Cesium.Cartographic.fromDegrees(
+        firstCoord[0],
+        firstCoord[1],
+      );
       const sampled = _viewer.scene.sampleHeight(carto);
       if (Number.isFinite(sampled)) baseHeight = sampled;
     }
@@ -600,7 +662,9 @@ function parseRoads(overpassData) {
     // Pre-compute segment distances in meters for speed-to-t conversion
     const segmentDist = [];
     for (let i = 0; i < waypoints.length - 1; i++) {
-      segmentDist.push(Cesium.Cartesian3.distance(waypoints[i], waypoints[i + 1]));
+      segmentDist.push(
+        Cesium.Cartesian3.distance(waypoints[i], waypoints[i + 1]),
+      );
     }
 
     roads.push({ coords, type, oneway, waypoints, segmentDist });
@@ -658,14 +722,15 @@ function computeDotCount(road, altitude) {
 
   // Altitude-adaptive spacing: closer camera = denser dots
   let spacing;
-  if (altitude < 1000)      spacing = 30;
+  if (altitude < 1000) spacing = 30;
   else if (altitude < 3000) spacing = 80;
   else if (altitude < 5000) spacing = 150;
-  else                      spacing = 250;
+  else spacing = 250;
 
-  const mult = (DENSITY_MULT[road.type] || 1)
-    * _densityScale
-    * (flow ? flowDensityMult(flow.level, { jamBoost: jamDensityOn() }) : 1);
+  const mult =
+    (DENSITY_MULT[road.type] || 1) *
+    _densityScale *
+    (flow ? flowDensityMult(flow.level, { jamBoost: jamDensityOn() }) : 1);
   return Math.max(1, Math.floor((lengthM / spacing) * mult));
 }
 
@@ -776,14 +841,23 @@ function spawnDotsForRoad(road, altitude, budgetCount = null) {
   // Jam dots get +1px: a red queue should read as a queue at a glance.
   // Preset-aware styling adds its own size delta and floors the base (0 /
   // no floor under the normal profile) so NVG/FLIR/CRT dots stay PRESENT.
-  const pixelSize = baseDotSize(road.type, bucket)
-    + (bucket === 'jam' ? 1 : 0)
-    + activeSizeDelta(bucket);
+  const pixelSize =
+    baseDotSize(road.type, bucket) +
+    (bucket === 'jam' ? 1 : 0) +
+    activeSizeDelta(bucket);
   const flowColor = bucket ? _activeBucketColors[bucket] : null;
   // Dark-halo outline under styled presets (null = shipped no-outline).
-  const outlineSpec = (bucket && _presetDots === 'on') ? presetDotOutline(_stylePreset, bucket) : null;
+  const outlineSpec =
+    bucket && _presetDots === 'on'
+      ? presetDotOutline(_stylePreset, bucket)
+      : null;
   const outlineColor = outlineSpec
-    ? new Cesium.Color(outlineSpec.rgba[0] / 255, outlineSpec.rgba[1] / 255, outlineSpec.rgba[2] / 255, outlineSpec.rgba[3])
+    ? new Cesium.Color(
+        outlineSpec.rgba[0] / 255,
+        outlineSpec.rgba[1] / 255,
+        outlineSpec.rgba[2] / 255,
+        outlineSpec.rgba[3],
+      )
     : null;
   const flowSpeed = flow ? flowSpeedScale(flow.level) : 1;
   const now = Date.now();
@@ -799,7 +873,7 @@ function spawnDotsForRoad(road, altitude, budgetCount = null) {
     if (platoons.length) {
       placements = [];
       for (let p = 0; p < platoons.length; p++) {
-        const dir = road.oneway ? road.oneway : ((p % 2 === 0) ? 1 : -1);
+        const dir = road.oneway ? road.oneway : p % 2 === 0 ? 1 : -1;
         for (const s of platoons[p]) {
           const { segIdx, t } = locateAlongRoad(road.segmentDist, s);
           placements.push({ segIdx, t, direction: dir });
@@ -813,7 +887,9 @@ function spawnDotsForRoad(road, altitude, budgetCount = null) {
 
     // Random start position: pick a random segment and offset within it —
     // unless this is a queued jam dot with a platoon placement.
-    const segIdx = placements ? placements[i].segIdx : Math.floor(Math.random() * numSegments);
+    const segIdx = placements
+      ? placements[i].segIdx
+      : Math.floor(Math.random() * numSegments);
     const t = placements ? placements[i].t : Math.random();
 
     // Speed noise: base speed +/-30% for organic variation. baseMps (noise
@@ -826,10 +902,19 @@ function spawnDotsForRoad(road, altitude, budgetCount = null) {
     // (per platoon in queue mode — a queue moves as one).
     const direction = placements
       ? placements[i].direction
-      : (road.oneway ? road.oneway : ((i % 2 === 0) ? 1 : -1));
+      : road.oneway
+        ? road.oneway
+        : i % 2 === 0
+          ? 1
+          : -1;
 
     // Compute initial Cartesian3 position via linear interpolation
-    Cesium.Cartesian3.lerp(road.waypoints[segIdx], road.waypoints[segIdx + 1], t, _scratchLerp);
+    Cesium.Cartesian3.lerp(
+      road.waypoints[segIdx],
+      road.waypoints[segIdx + 1],
+      t,
+      _scratchLerp,
+    );
 
     // Jam-viz density prototype: jam dots stay visible at city scale — a
     // longer depth-test punch-through (single-sample road heights sit under
@@ -841,8 +926,18 @@ function spawnDotsForRoad(road, altitude, budgetCount = null) {
       pixelSize,
       // No flow data → today's exact simulated white.
       color: flowColor || Cesium.Color.WHITE.withAlpha(0.85),
-      scaleByDistance: new Cesium.NearFarScalar(100, 1.5, _fadeScaleFar, jamProminent ? JAM_DOT_FAR_SCALE : 0.3),
-      translucencyByDistance: new Cesium.NearFarScalar(100, 1.0, _fadeTransFar, 0.0),
+      scaleByDistance: new Cesium.NearFarScalar(
+        100,
+        1.5,
+        _fadeScaleFar,
+        jamProminent ? JAM_DOT_FAR_SCALE : 0.3,
+      ),
+      translucencyByDistance: new Cesium.NearFarScalar(
+        100,
+        1.0,
+        _fadeTransFar,
+        0.0,
+      ),
       // visible through tiles only when very close (jam: city-scale punch)
       disableDepthTestDistance: jamProminent ? JAM_DOT_DEPTH_PUNCH : 2000,
       // Preset dark halo (spread only when present — the keyless/normal
@@ -860,15 +955,16 @@ function spawnDotsForRoad(road, altitude, budgetCount = null) {
       numSegments,
       segIdx,
       t,
-      mps,          // meters per second (flow-scaled)
+      mps, // meters per second (flow-scaled)
       baseMps: noisedMps, // pre-flow speed, for in-place flow rescale
       direction,
       stoppedUntil: 0,
       // Stop-and-go creep state (jam-viz density prototype): jam dots
       // alternate move-bursts and stops. Null in sim mode and for non-jam.
-      creep: (bucket === 'jam' && jamDensityOn())
-        ? { moving: Math.random() < 0.4, until: now + Math.random() * 2000 }
-        : null,
+      creep:
+        bucket === 'jam' && jamDensityOn()
+          ? { moving: Math.random() < 0.4, until: now + Math.random() * 2000 }
+          : null,
     });
   }
 }
@@ -897,7 +993,9 @@ let _animFrame = 0;
 function animate() {
   const now = Date.now();
   // Delta time in seconds, capped to avoid jumps when returning from background tab
-  const dt = _lastAnimTime ? Math.min((now - _lastAnimTime) / 1000, 0.1) : 0.016;
+  const dt = _lastAnimTime
+    ? Math.min((now - _lastAnimTime) / 1000, 0.1)
+    : 0.016;
   _lastAnimTime = now;
 
   for (let i = 0; i < _dots.length; i++) {
@@ -1043,7 +1141,7 @@ function getFetchCenter() {
   if (width > 0 && height > 0) {
     const hit = _viewer.camera.pickEllipsoid(
       new Cesium.Cartesian2(width / 2, height / 2),
-      Cesium.Ellipsoid.WGS84
+      Cesium.Ellipsoid.WGS84,
     );
     if (hit) {
       const hitCarto = Cesium.Cartographic.fromCartesian(hit);
@@ -1053,7 +1151,11 @@ function getFetchCenter() {
   }
 
   return deriveFetchCenter({
-    nadirLat, nadirLon, hitLat, hitLon, maxPullKm: MAX_LOOKAT_PULL_KM,
+    nadirLat,
+    nadirLon,
+    hitLat,
+    hitLon,
+    maxPullKm: MAX_LOOKAT_PULL_KM,
   });
 }
 
@@ -1084,7 +1186,7 @@ function distanceKm(a, b) {
   const dLat = (a.lat - b.lat) * 111;
   const avgLat = ((a.lat + b.lat) / 2) * (Math.PI / 180);
   const dLon = (a.lon - b.lon) * 111 * Math.cos(avgLat);
-  return Math.sqrt((dLat * dLat) + (dLon * dLon));
+  return Math.sqrt(dLat * dLat + dLon * dLon);
 }
 
 /**
@@ -1110,7 +1212,7 @@ function boundsOverlap(a, b, threshold) {
   const overlapArea = (overlapN - overlapS) * (overlapE - overlapW);
   const aArea = (a.north - a.south) * (a.east - a.west);
 
-  return aArea > 0 && (overlapArea / aArea) >= threshold;
+  return aArea > 0 && overlapArea / aArea >= threshold;
 }
 
 /**
@@ -1172,10 +1274,10 @@ function onCameraChanged() {
 
   // Skip re-fetch when viewport overlap is high and center shift is negligible
   if (
-    _lastBounds
-    && _lastViewCenter
-    && boundsOverlap(clamped, _lastBounds, OVERLAP_THRESHOLD)
-    && distanceKm(center, _lastViewCenter) < MIN_CENTER_SHIFT_KM
+    _lastBounds &&
+    _lastViewCenter &&
+    boundsOverlap(clamped, _lastBounds, OVERLAP_THRESHOLD) &&
+    distanceKm(center, _lastViewCenter) < MIN_CENTER_SHIFT_KM
   ) {
     return;
   }
@@ -1183,7 +1285,9 @@ function onCameraChanged() {
   // Debounce: wait for camera to settle before triggering a fetch. In debug
   // captures the final changed event that arms this exact timeout is its
   // causal anchor; Cesium's later moveEnd notification is diagnostic only.
-  const interactionAnchor = TRAFFIC_TIMING_ENABLED ? markTrafficTimingCameraChange() : null;
+  const interactionAnchor = TRAFFIC_TIMING_ENABLED
+    ? markTrafficTimingCameraChange()
+    : null;
   clearTimeout(_fetchTimeout);
   _fetchTimeout = setTimeout(
     () => _loadRoadsForBounds(clamped, alt, interactionAnchor),
@@ -1305,7 +1409,10 @@ function ensureFlowStatus() {
         // "server says no key" — getStats() distinguishes the two.
         _liveMode = false;
         _flowStatusUnavailable = true;
-        console.warn('[Data:Traffic] TomTom status unreachable — simulated traffic:', e?.message || e);
+        console.warn(
+          '[Data:Traffic] TomTom status unreachable — simulated traffic:',
+          e?.message || e,
+        );
       });
   }
   return _flowStatusPromise;
@@ -1342,15 +1449,21 @@ async function applyFlowToRoads(roads, clamped, generation) {
       // Cached paths reach here without a live controller; the fetch paths
       // reuse theirs so one cancel covers both roads and flow.
       if (!_activeFetchAbort) _activeFetchAbort = new AbortController();
-      const segments = await fetchFlowForBounds(clamped, { signal: _activeFetchAbort.signal });
+      const segments = await fetchFlowForBounds(clamped, {
+        signal: _activeFetchAbort.signal,
+      });
       if (generation !== _loadGeneration) return;
-      const { matches, matchedCount, candidateCount } = matchFlowToRoads(roads, segments);
+      const { matches, matchedCount, candidateCount } = matchFlowToRoads(
+        roads,
+        segments,
+      );
       for (let i = 0; i < roads.length; i++) {
         roads[i].flow = matches[i];
       }
-      _flowCoveragePct = candidateCount > 0
-        ? Math.round((matchedCount / candidateCount) * 100)
-        : 0;
+      _flowCoveragePct =
+        candidateCount > 0
+          ? Math.round((matchedCount / candidateCount) * 100)
+          : 0;
       _flowError = null;
     } catch (e) {
       if (e?.name === 'AbortError') return;
@@ -1362,7 +1475,10 @@ async function applyFlowToRoads(roads, clamped, generation) {
       // now-false coverage number and surface the reason through getStats().
       _flowError = deriveTrafficFlowError(e);
       _flowCoveragePct = 0;
-      console.warn('[Data:Traffic] Flow fetch failed (sim colors remain):', e?.message || e);
+      console.warn(
+        '[Data:Traffic] Flow fetch failed (sim colors remain):',
+        e?.message || e,
+      );
     }
   } finally {
     _flowPending -= 1;
@@ -1389,35 +1505,57 @@ const FLOW_RENDER_RACE_MS = 250;
  * @param {Object|null} [trace=null] - Development-only correlated load trace.
  * @returns {Promise<boolean>} True if this generation rendered.
  */
-async function applyFlowThenRender(roads, clamped, generation, altitude, label, trace = null) {
-  const state = TRAFFIC_TIMING_ENABLED && trace
-    ? trafficTimingRenderState(trace, label)
+async function applyFlowThenRender(
+  roads,
+  clamped,
+  generation,
+  altitude,
+  label,
+  trace = null,
+) {
+  const state =
+    TRAFFIC_TIMING_ENABLED && trace
+      ? trafficTimingRenderState(trace, label)
+      : null;
+  const flowRaceStart = state
+    ? trafficTimingMark(state, 'flow-render-race-start', {
+        deadlineMs: FLOW_RENDER_RACE_MS,
+      })
     : null;
-  const flowRaceStart = state ? trafficTimingMark(state, 'flow-render-race-start', {
-    deadlineMs: FLOW_RENDER_RACE_MS,
-  }) : null;
   const flowJob = applyFlowToRoads(roads, clamped, generation);
   const outcome = await Promise.race([
     flowJob.then(() => 'flow'),
-    new Promise((resolve) => setTimeout(() => resolve('timeout'), FLOW_RENDER_RACE_MS)),
+    new Promise((resolve) =>
+      setTimeout(() => resolve('timeout'), FLOW_RENDER_RACE_MS),
+    ),
   ]);
   if (state) {
     const flowRaceEnd = trafficTimingMark(state, 'flow-render-race-end', {
       deadlineMs: FLOW_RENDER_RACE_MS,
       outcome,
     });
-    trafficTimingMeasure('flow-render-race', state, flowRaceStart, flowRaceEnd, {
-      deadlineMs: FLOW_RENDER_RACE_MS,
-      outcome,
-    });
+    trafficTimingMeasure(
+      'flow-render-race',
+      state,
+      flowRaceStart,
+      flowRaceEnd,
+      {
+        deadlineMs: FLOW_RENDER_RACE_MS,
+        outcome,
+      },
+    );
   }
   if (generation !== _loadGeneration) return false;
   renderRoadsForAltitude(roads, altitude, label, trace);
   if (outcome === 'timeout') {
-    flowJob.then(() => {
-      if (generation !== _loadGeneration) return;
-      recolorDotsInPlace(label);
-    }).catch(() => { /* applyFlowToRoads settles its own failures */ });
+    flowJob
+      .then(() => {
+        if (generation !== _loadGeneration) return;
+        recolorDotsInPlace(label);
+      })
+      .catch(() => {
+        /* applyFlowToRoads settles its own failures */
+      });
   }
   return true;
 }
@@ -1443,13 +1581,17 @@ function recolorDotsInPlace(label) {
     }
     const bucket = flow ? flowBucket(flow.level) : null;
     dot.bucket = bucket;
-    dot.point.color = bucket ? _activeBucketColors[bucket] : Cesium.Color.WHITE.withAlpha(0.85);
+    dot.point.color = bucket
+      ? _activeBucketColors[bucket]
+      : Cesium.Color.WHITE.withAlpha(0.85);
     if (bucket === 'jam') {
-      dot.point.pixelSize = baseDotSize(dot.road?.type, bucket) + 1 + activeSizeDelta('jam');
+      dot.point.pixelSize =
+        baseDotSize(dot.road?.type, bucket) + 1 + activeSizeDelta('jam');
     } else if (bucket && presetProfileActive()) {
       // Preset profiles size-floor every bucket; the shipped normal path
       // keeps its jam-only size touch (byte-identical behavior).
-      dot.point.pixelSize = baseDotSize(dot.road?.type, bucket) + activeSizeDelta(bucket);
+      dot.point.pixelSize =
+        baseDotSize(dot.road?.type, bucket) + activeSizeDelta(bucket);
     }
     // Late flow can move a dot between buckets — keep the preset halo in
     // step (no-op writes under the normal profile, whose dots have none).
@@ -1459,8 +1601,17 @@ function recolorDotsInPlace(label) {
     // same way it rescales speed. Queue *positions* wait for the next
     // natural re-render, like density bunching.
     if (bucket === 'jam' && jamDensityOn()) {
-      if (!dot.creep) dot.creep = { moving: Math.random() < 0.4, until: now + Math.random() * 2000 };
-      dot.point.scaleByDistance = new Cesium.NearFarScalar(100, 1.5, _fadeScaleFar, JAM_DOT_FAR_SCALE);
+      if (!dot.creep)
+        dot.creep = {
+          moving: Math.random() < 0.4,
+          until: now + Math.random() * 2000,
+        };
+      dot.point.scaleByDistance = new Cesium.NearFarScalar(
+        100,
+        1.5,
+        _fadeScaleFar,
+        JAM_DOT_FAR_SCALE,
+      );
       dot.point.disableDepthTestDistance = JAM_DOT_DEPTH_PUNCH;
     } else {
       dot.creep = null;
@@ -1469,7 +1620,9 @@ function recolorDotsInPlace(label) {
   }
   _closedRoads = _roads.reduce((n, r) => n + (r.flow?.closure ? 1 : 0), 0);
   rebuildHeatLines(visibleRoadsForAltitude(_roads, _lastRenderAltitude));
-  console.log(`[Data:Traffic] Flow recolor (${label}): ${_dots.length} dots, closedDots=${closedDots}`);
+  console.log(
+    `[Data:Traffic] Flow recolor (${label}): ${_dots.length} dots, closedDots=${closedDots}`,
+  );
 }
 
 /**
@@ -1481,7 +1634,10 @@ function recolorDotsInPlace(label) {
  */
 function visibleRoadsForAltitude(roads, altitude) {
   return altitude > 5000
-    ? roads.filter(r => r.type === 'motorway' || r.type === 'trunk' || r.type === 'primary')
+    ? roads.filter(
+        (r) =>
+          r.type === 'motorway' || r.type === 'trunk' || r.type === 'primary',
+      )
     : roads;
 }
 
@@ -1514,7 +1670,10 @@ function rebuildHeatLines(roads) {
   if (!_viewer || !_liveMode || !heatlineOn()) return;
   if (_heatSupported === null) {
     _heatSupported = Cesium.GroundPolylinePrimitive.isSupported(_viewer.scene);
-    if (!_heatSupported) console.warn('[Data:Traffic] GroundPolylinePrimitive unsupported — heat-lines disabled');
+    if (!_heatSupported)
+      console.warn(
+        '[Data:Traffic] GroundPolylinePrimitive unsupported — heat-lines disabled',
+      );
   }
   if (!_heatSupported) return;
 
@@ -1528,20 +1687,28 @@ function rebuildHeatLines(roads) {
     for (const d of road.segmentDist) len += d;
     candidates.push({ road, bucket, len });
   }
-  candidates.sort((a, b) => (a.bucket === b.bucket
-    ? b.len - a.len
-    : (a.bucket === 'jam' ? -1 : 1)));
+  candidates.sort((a, b) =>
+    a.bucket === b.bucket ? b.len - a.len : a.bucket === 'jam' ? -1 : 1,
+  );
   const kept = candidates.slice(0, HEAT_LINE_CAP);
 
-  const instancesFor = (bucket, width) => kept
-    .filter((c) => c.bucket === bucket)
-    .map((c) => new Cesium.GeometryInstance({
-      geometry: new Cesium.GroundPolylineGeometry({ positions: c.road.waypoints, width }),
-    }));
+  const instancesFor = (bucket, width) =>
+    kept
+      .filter((c) => c.bucket === bucket)
+      .map(
+        (c) =>
+          new Cesium.GeometryInstance({
+            geometry: new Cesium.GroundPolylineGeometry({
+              positions: c.road.waypoints,
+              width,
+            }),
+          }),
+      );
 
   // Mono presets (NVG/FLIR/noir) discard hue — heat-lines re-encode in
   // luminance like the dots: jam = white glow, slow = faint gray.
-  const monoHeat = _presetDots === 'on' && trafficStyleProfile(_stylePreset) === 'mono';
+  const monoHeat =
+    _presetDots === 'on' && trafficStyleProfile(_stylePreset) === 'mono';
   const jamLineColor = monoHeat ? Cesium.Color.WHITE : HEAT_JAM_COLOR;
   const slowLineColor = monoHeat
     ? new Cesium.Color(0.7, 0.7, 0.7, HEAT_SLOW_COLOR.alpha)
@@ -1549,31 +1716,37 @@ function rebuildHeatLines(roads) {
 
   const jamInstances = instancesFor('jam', HEAT_LINE_JAM_WIDTH);
   if (jamInstances.length) {
-    _heatJamPrim = _viewer.scene.groundPrimitives.add(new Cesium.GroundPolylinePrimitive({
-      geometryInstances: jamInstances,
-      classificationType: Cesium.ClassificationType.CESIUM_3D_TILE,
-      appearance: new Cesium.PolylineMaterialAppearance({
-        material: Cesium.Material.fromType('PolylineGlow', {
-          color: jamLineColor.withAlpha(HEAT_JAM_BASE_ALPHA),
-          glowPower: 0.25,
+    _heatJamPrim = _viewer.scene.groundPrimitives.add(
+      new Cesium.GroundPolylinePrimitive({
+        geometryInstances: jamInstances,
+        classificationType: Cesium.ClassificationType.CESIUM_3D_TILE,
+        appearance: new Cesium.PolylineMaterialAppearance({
+          material: Cesium.Material.fromType('PolylineGlow', {
+            color: jamLineColor.withAlpha(HEAT_JAM_BASE_ALPHA),
+            glowPower: 0.25,
+          }),
         }),
       }),
-    }));
+    );
   }
   const slowInstances = instancesFor('slow', HEAT_LINE_SLOW_WIDTH);
   if (slowInstances.length) {
-    _heatSlowPrim = _viewer.scene.groundPrimitives.add(new Cesium.GroundPolylinePrimitive({
-      geometryInstances: slowInstances,
-      classificationType: Cesium.ClassificationType.CESIUM_3D_TILE,
-      appearance: new Cesium.PolylineMaterialAppearance({
-        material: Cesium.Material.fromType('Color', { color: slowLineColor }),
+    _heatSlowPrim = _viewer.scene.groundPrimitives.add(
+      new Cesium.GroundPolylinePrimitive({
+        geometryInstances: slowInstances,
+        classificationType: Cesium.ClassificationType.CESIUM_3D_TILE,
+        appearance: new Cesium.PolylineMaterialAppearance({
+          material: Cesium.Material.fromType('Color', { color: slowLineColor }),
+        }),
       }),
-    }));
+    );
   }
 
   _heatLineCount = kept.length;
   if (candidates.length > kept.length) {
-    console.log(`[Data:Traffic] Heat-lines capped at ${HEAT_LINE_CAP} (${candidates.length} congested roads in view)`);
+    console.log(
+      `[Data:Traffic] Heat-lines capped at ${HEAT_LINE_CAP} (${candidates.length} congested roads in view)`,
+    );
   }
 }
 
@@ -1589,9 +1762,10 @@ function rebuildHeatLines(roads) {
  * @param {Object|null} [trace=null] - Development-only correlated load trace.
  */
 function renderRoadsForAltitude(roads, altitude, label, trace = null) {
-  const state = TRAFFIC_TIMING_ENABLED && trace
-    ? trafficTimingRenderState(trace, label)
-    : null;
+  const state =
+    TRAFFIC_TIMING_ENABLED && trace
+      ? trafficTimingRenderState(trace, label)
+      : null;
   const renderId = state ? ++trace.renderSequence : null;
   clearDots();
   _roads = roads;
@@ -1618,18 +1792,24 @@ function renderRoadsForAltitude(roads, altitude, label, trace = null) {
     ];
     for (const probe of probes) {
       const wp = probe?.waypoints?.[0];
-      if (wp) areaDist = Math.max(areaDist, Cesium.Cartesian3.distance(_viewer.camera.positionWC, wp));
+      if (wp)
+        areaDist = Math.max(
+          areaDist,
+          Cesium.Cartesian3.distance(_viewer.camera.positionWC, wp),
+        );
     }
   }
   _fadeScaleFar = Math.max(8000, areaDist * 1.5);
   _fadeTransFar = Math.max(10000, areaDist * 1.8);
 
-  const dotStart = state ? trafficTimingMark(state, 'dot-construction-start', {
-    renderId,
-    renderLabel: label,
-    roadCount: roads.length,
-    visibleRoadCount: filteredRoads.length,
-  }) : null;
+  const dotStart = state
+    ? trafficTimingMark(state, 'dot-construction-start', {
+        renderId,
+        renderLabel: label,
+        roadCount: roads.length,
+        visibleRoadCount: filteredRoads.length,
+      })
+    : null;
   const roadBudgets = allocateRoadDotBudgets(filteredRoads, altitude, MAX_DOTS);
   for (let i = 0; i < filteredRoads.length; i++) {
     const road = filteredRoads[i];
@@ -1639,19 +1819,33 @@ function renderRoadsForAltitude(roads, altitude, label, trace = null) {
     if (_dots.length >= MAX_DOTS) break;
   }
 
-  const renderMetrics = state ? {
-    renderId,
-    renderLabel: label,
-    roadCount: roads.length,
-    visibleRoadCount: filteredRoads.length,
-    dotCount: _dots.length,
-  } : null;
+  const renderMetrics = state
+    ? {
+        renderId,
+        renderLabel: label,
+        roadCount: roads.length,
+        visibleRoadCount: filteredRoads.length,
+        dotCount: _dots.length,
+      }
+    : null;
   if (state) {
-    const dotEnd = trafficTimingMark(state, 'dot-construction-end', renderMetrics);
-    trafficTimingMeasure('dot-construction', state, dotStart, dotEnd, renderMetrics);
+    const dotEnd = trafficTimingMark(
+      state,
+      'dot-construction-end',
+      renderMetrics,
+    );
+    trafficTimingMeasure(
+      'dot-construction',
+      state,
+      dotStart,
+      dotEnd,
+      renderMetrics,
+    );
   }
 
-  const heatStart = state ? trafficTimingMark(state, 'rebuild-heat-lines-start', renderMetrics) : null;
+  const heatStart = state
+    ? trafficTimingMark(state, 'rebuild-heat-lines-start', renderMetrics)
+    : null;
   rebuildHeatLines(filteredRoads);
   if (state) {
     const heatEnd = trafficTimingMark(state, 'rebuild-heat-lines-end', {
@@ -1666,7 +1860,9 @@ function renderRoadsForAltitude(roads, altitude, label, trace = null) {
 
   _count = _dots.length;
   _lastUpdate = Date.now();
-  console.log(`[Data:Traffic] ${label}: ${_count} dots (roads=${roads.length}, alt=${Math.round(altitude)}m)`);
+  console.log(
+    `[Data:Traffic] ${label}: ${_count} dots (roads=${roads.length}, alt=${Math.round(altitude)}m)`,
+  );
   if (state) {
     const renderEnd = trafficTimingMark(state, 'render-return', renderMetrics);
     scheduleTrafficTimingPostRender(state, renderEnd, renderId, renderMetrics);
@@ -1741,21 +1937,42 @@ function trafficTimingMeasure(segment, state, start, end, extra = {}) {
 }
 
 /** Emit an aggregate-duration measure without pretending its work was contiguous. */
-function trafficTimingAggregate(segment, state, anchorTime, duration, extra = {}) {
-  const start = trafficTimingMark(state, `${segment}-aggregate-start`, extra, anchorTime);
-  const end = trafficTimingMark(state, `${segment}-aggregate-end`, extra, anchorTime + duration);
-  trafficTimingMeasure(segment, state, start, end, { aggregate: true, ...extra });
+function trafficTimingAggregate(
+  segment,
+  state,
+  anchorTime,
+  duration,
+  extra = {},
+) {
+  const start = trafficTimingMark(
+    state,
+    `${segment}-aggregate-start`,
+    extra,
+    anchorTime,
+  );
+  const end = trafficTimingMark(
+    state,
+    `${segment}-aggregate-end`,
+    extra,
+    anchorTime + duration,
+  );
+  trafficTimingMeasure(segment, state, start, end, {
+    aggregate: true,
+    ...extra,
+  });
 }
 
 /** Clear only this module's stale User Timing entries before a new debug run. */
 function clearTrafficTimingEntries() {
   const markNames = new Set(
-    performance.getEntriesByType('mark')
+    performance
+      .getEntriesByType('mark')
       .filter((entry) => entry.name.startsWith('traffic:'))
       .map((entry) => entry.name),
   );
   const measureNames = new Set(
-    performance.getEntriesByType('measure')
+    performance
+      .getEntriesByType('measure')
       .filter((entry) => entry.name.startsWith('traffic:'))
       .map((entry) => entry.name),
   );
@@ -1815,30 +2032,50 @@ function markTrafficTimingMoveEnd() {
  */
 function parseRoadsTimed(overpassData, trace) {
   /* TRACE_ONLY_BEGIN */
-  const _trafficTimingState = trafficTimingPass(trace, trace?.currentPass || 'full');
+  const _trafficTimingState = trafficTimingPass(
+    trace,
+    trace?.currentPass || 'full',
+  );
   const _trafficTimingParseStartTime = performance.now();
   const _trafficTimingParseStart = trafficTimingMark(
-    _trafficTimingState, 'road-parse-start', {}, _trafficTimingParseStartTime
+    _trafficTimingState,
+    'road-parse-start',
+    {},
+    _trafficTimingParseStartTime,
   );
   /* TRACE_ONLY_END */
   if (!overpassData || !overpassData.elements) {
     /* TRACE_ONLY_BEGIN */
     const _trafficTimingParseEnd = trafficTimingMark(
-      _trafficTimingState, 'road-parse-end', { roadCount: 0 }
+      _trafficTimingState,
+      'road-parse-end',
+      { roadCount: 0 },
     );
     trafficTimingMeasure(
-      'road-parse-total', _trafficTimingState,
-      _trafficTimingParseStart, _trafficTimingParseEnd, { roadCount: 0 }
+      'road-parse-total',
+      _trafficTimingState,
+      _trafficTimingParseStart,
+      _trafficTimingParseEnd,
+      { roadCount: 0 },
     );
-    trafficTimingAggregate('sample-height-total', _trafficTimingState, _trafficTimingParseStartTime, 0, {
-      sampleHeightCalls: 0,
-      sampleHeightMeanMs: 0,
-      distinctCells: 0,
-      roadCount: 0,
-    });
     trafficTimingAggregate(
-      'waypoint-materialization', _trafficTimingState, _trafficTimingParseStartTime, 0,
-      { roadCount: 0 }
+      'sample-height-total',
+      _trafficTimingState,
+      _trafficTimingParseStartTime,
+      0,
+      {
+        sampleHeightCalls: 0,
+        sampleHeightMeanMs: 0,
+        distinctCells: 0,
+        roadCount: 0,
+      },
+    );
+    trafficTimingAggregate(
+      'waypoint-materialization',
+      _trafficTimingState,
+      _trafficTimingParseStartTime,
+      0,
+      { roadCount: 0 },
     );
     /* TRACE_ONLY_END */
     return [];
@@ -1854,10 +2091,11 @@ function parseRoadsTimed(overpassData, trace) {
   for (const el of overpassData.elements) {
     if (el.type !== 'way' || !el.geometry || el.geometry.length < 2) continue;
 
-    const rawCoords = el.geometry.map(g => [g.lon, g.lat]);
-    const simplifyStep = rawCoords.length > MAX_WAYPOINTS_PER_ROAD
-      ? Math.ceil(rawCoords.length / MAX_WAYPOINTS_PER_ROAD)
-      : 1;
+    const rawCoords = el.geometry.map((g) => [g.lon, g.lat]);
+    const simplifyStep =
+      rawCoords.length > MAX_WAYPOINTS_PER_ROAD
+        ? Math.ceil(rawCoords.length / MAX_WAYPOINTS_PER_ROAD)
+        : 1;
     const coords = [];
     for (let i = 0; i < rawCoords.length; i += simplifyStep) {
       coords.push(rawCoords[i]);
@@ -1872,24 +2110,36 @@ function parseRoadsTimed(overpassData, trace) {
 
     const type = el.tags?.highway || 'unclassified';
     const onewayTag = el.tags?.oneway;
-    const oneway = (onewayTag === 'yes' || onewayTag === '1' || onewayTag === 'true' || el.tags?.junction === 'roundabout')
-      ? 1
-      : (onewayTag === '-1' ? -1 : 0);
+    const oneway =
+      onewayTag === 'yes' ||
+      onewayTag === '1' ||
+      onewayTag === 'true' ||
+      el.tags?.junction === 'roundabout'
+        ? 1
+        : onewayTag === '-1'
+          ? -1
+          : 0;
 
     let baseHeight = 0;
     const firstCoord = coords[0];
     if (_viewer?.scene?.sampleHeightSupported && firstCoord) {
       /* TRACE_ONLY_BEGIN */
       _trafficTimingSampleHeightCalls += 1;
-      _trafficTimingSampledCells.add(`${firstCoord[1].toFixed(3)},${firstCoord[0].toFixed(3)}`);
+      _trafficTimingSampledCells.add(
+        `${firstCoord[1].toFixed(3)},${firstCoord[0].toFixed(3)}`,
+      );
       /* TRACE_ONLY_END */
-      const carto = Cesium.Cartographic.fromDegrees(firstCoord[0], firstCoord[1]);
+      const carto = Cesium.Cartographic.fromDegrees(
+        firstCoord[0],
+        firstCoord[1],
+      );
       /* TRACE_ONLY_BEGIN */
       const _trafficTimingSampleStart = performance.now();
       /* TRACE_ONLY_END */
       const sampled = _viewer.scene.sampleHeight(carto);
       /* TRACE_ONLY_BEGIN */
-      _trafficTimingSampleHeightMs += performance.now() - _trafficTimingSampleStart;
+      _trafficTimingSampleHeightMs +=
+        performance.now() - _trafficTimingSampleStart;
       /* TRACE_ONLY_END */
       if (Number.isFinite(sampled)) baseHeight = sampled;
     }
@@ -1903,10 +2153,13 @@ function parseRoadsTimed(overpassData, trace) {
     });
     const segmentDist = [];
     for (let i = 0; i < waypoints.length - 1; i++) {
-      segmentDist.push(Cesium.Cartesian3.distance(waypoints[i], waypoints[i + 1]));
+      segmentDist.push(
+        Cesium.Cartesian3.distance(waypoints[i], waypoints[i + 1]),
+      );
     }
     /* TRACE_ONLY_BEGIN */
-    _trafficTimingWaypointMaterializationMs += performance.now() - _trafficTimingMaterializeStart;
+    _trafficTimingWaypointMaterializationMs +=
+      performance.now() - _trafficTimingMaterializeStart;
     /* TRACE_ONLY_END */
 
     roads.push({ coords, type, oneway, waypoints, segmentDist });
@@ -1922,19 +2175,30 @@ function parseRoadsTimed(overpassData, trace) {
     distinctCells: _trafficTimingSampledCells.size,
   };
   trafficTimingAggregate(
-    'sample-height-total', _trafficTimingState, _trafficTimingParseStartTime,
-    _trafficTimingSampleHeightMs, _trafficTimingMetrics
+    'sample-height-total',
+    _trafficTimingState,
+    _trafficTimingParseStartTime,
+    _trafficTimingSampleHeightMs,
+    _trafficTimingMetrics,
   );
   trafficTimingAggregate(
-    'waypoint-materialization', _trafficTimingState, _trafficTimingParseStartTime,
-    _trafficTimingWaypointMaterializationMs, _trafficTimingMetrics
+    'waypoint-materialization',
+    _trafficTimingState,
+    _trafficTimingParseStartTime,
+    _trafficTimingWaypointMaterializationMs,
+    _trafficTimingMetrics,
   );
   const _trafficTimingParseEnd = trafficTimingMark(
-    _trafficTimingState, 'road-parse-end', _trafficTimingMetrics
+    _trafficTimingState,
+    'road-parse-end',
+    _trafficTimingMetrics,
   );
   trafficTimingMeasure(
-    'road-parse-total', _trafficTimingState,
-    _trafficTimingParseStart, _trafficTimingParseEnd, _trafficTimingMetrics
+    'road-parse-total',
+    _trafficTimingState,
+    _trafficTimingParseStart,
+    _trafficTimingParseEnd,
+    _trafficTimingMetrics,
   );
   /* TRACE_ONLY_END */
   return roads;
@@ -1948,30 +2212,54 @@ function trafficTimingRenderState(trace, label) {
 }
 
 /** Record the first Cesium postRender following a completed dot render. */
-function scheduleTrafficTimingPostRender(state, renderEnd, renderId, renderMetrics) {
+function scheduleTrafficTimingPostRender(
+  state,
+  renderEnd,
+  renderId,
+  renderMetrics,
+) {
   if (!_viewer?.scene) return;
   let remove = null;
   remove = _viewer.scene.postRender.addEventListener(() => {
     remove?.();
     _trafficTimingPostRenderRemovers?.delete(remove);
     const visibleTime = performance.now();
-    const postRender = trafficTimingMark(state, 'next-post-render', {
-      renderId,
-      ...renderMetrics,
-    }, visibleTime);
-    const firstVisible = trafficTimingMark(state, 'first-visible-pixel', {
-      renderId,
-      visibleBoundary: 'next-postRender',
-      ...renderMetrics,
-    }, visibleTime);
-    trafficTimingMeasure('render-to-post-render', state, renderEnd, postRender, {
-      renderId,
-      visibleBoundary: 'next-postRender',
-      ...renderMetrics,
-    });
+    const postRender = trafficTimingMark(
+      state,
+      'next-post-render',
+      {
+        renderId,
+        ...renderMetrics,
+      },
+      visibleTime,
+    );
+    const firstVisible = trafficTimingMark(
+      state,
+      'first-visible-pixel',
+      {
+        renderId,
+        visibleBoundary: 'next-postRender',
+        ...renderMetrics,
+      },
+      visibleTime,
+    );
     trafficTimingMeasure(
-      'last-camera-change-to-first-visible', state, state.trace.cameraChangeMark, firstVisible,
-      { renderId, visibleBoundary: 'next-postRender', ...renderMetrics }
+      'render-to-post-render',
+      state,
+      renderEnd,
+      postRender,
+      {
+        renderId,
+        visibleBoundary: 'next-postRender',
+        ...renderMetrics,
+      },
+    );
+    trafficTimingMeasure(
+      'last-camera-change-to-first-visible',
+      state,
+      state.trace.cameraChangeMark,
+      firstVisible,
+      { renderId, visibleBoundary: 'next-postRender', ...renderMetrics },
     );
   });
   _trafficTimingPostRenderRemovers?.add(remove);
@@ -1991,7 +2279,9 @@ async function loadRoadsForBoundsTimed(bounds, altitude, expectedAnchor) {
     id: ++_trafficTimingSequence,
     interactionId: expectedAnchor.interactionId,
     cameraChangeTimestamp: expectedAnchor.timestamp,
-    cameraChangeMark: trafficTimingCameraChangeMarkName(expectedAnchor.interactionId),
+    cameraChangeMark: trafficTimingCameraChangeMarkName(
+      expectedAnchor.interactionId,
+    ),
     generation,
     cacheKey: `${clamped.south.toFixed(4)},${clamped.west.toFixed(4)},${clamped.north.toFixed(4)},${clamped.east.toFixed(4)}`,
     currentPass: null,
@@ -2046,7 +2336,9 @@ async function loadRoadsForBounds(bounds, altitude, trace = null) {
   // round 1). Failures are irrelevant; applyFlowToRoads settles the truth.
   ensureFlowStatus().then(() => {
     if (_liveMode && _enabled && generation === _loadGeneration) {
-      fetchFlowForBounds(clamped, {}).catch(() => { /* warm-up only */ });
+      fetchFlowForBounds(clamped, {}).catch(() => {
+        /* warm-up only */
+      });
     }
   });
 
@@ -2079,32 +2371,56 @@ async function loadRoadsForBounds(bounds, altitude, trace = null) {
     // FLOW_RENDER_RACE_MS either way; late flow recolors in place.
     if (cache.full) {
       renderedSomething = await applyFlowThenRender(
-        cache.full, clamped, generation, altitude, 'Cache full', trace
+        cache.full,
+        clamped,
+        generation,
+        altitude,
+        'Cache full',
+        trace,
       );
       return;
     }
 
     // Intermediate path: render cached major roads while fetching the rest
     if (cache.major) {
-      if (!await applyFlowThenRender(
-        cache.major, clamped, generation, altitude, 'Cache major', trace
-      )) return;
+      if (
+        !(await applyFlowThenRender(
+          cache.major,
+          clamped,
+          generation,
+          altitude,
+          'Cache major',
+          trace,
+        ))
+      )
+        return;
       renderedSomething = true;
     } else {
       // Fetch major roads first (smaller payload, faster response)
       _activeFetchAbort = new AbortController();
       console.log(`[Data:Traffic] Fast fetch major roads [${cacheKey}]`);
       const majorData = await fetchRoads(
-        clamped.south, clamped.west, clamped.north, clamped.east,
+        clamped.south,
+        clamped.west,
+        clamped.north,
+        clamped.east,
         { majorOnly: true, timeoutSec: 12, signal: _activeFetchAbort.signal },
         trace,
       );
       // Discard stale response if a newer load was triggered while waiting
       if (generation !== _loadGeneration) return;
       cache.major = _parseRoads(majorData, trace);
-      if (!await applyFlowThenRender(
-        cache.major, clamped, generation, altitude, 'Loaded major', trace
-      )) return;
+      if (
+        !(await applyFlowThenRender(
+          cache.major,
+          clamped,
+          generation,
+          altitude,
+          'Loaded major',
+          trace,
+        ))
+      )
+        return;
       renderedSomething = true;
     }
 
@@ -2115,18 +2431,28 @@ async function loadRoadsForBounds(bounds, altitude, trace = null) {
     _activeFetchAbort = new AbortController();
     console.log(`[Data:Traffic] Full fetch local roads [${cacheKey}]`);
     const fullData = await fetchRoads(
-      clamped.south, clamped.west, clamped.north, clamped.east,
+      clamped.south,
+      clamped.west,
+      clamped.north,
+      clamped.east,
       { majorOnly: false, timeoutSec: 20, signal: _activeFetchAbort.signal },
       trace,
     );
     if (generation !== _loadGeneration) return;
 
     cache.full = _parseRoads(fullData, trace);
-    if (!await applyFlowThenRender(
-      cache.full, clamped, generation, altitude, 'Loaded full', trace
-    )) return;
+    if (
+      !(await applyFlowThenRender(
+        cache.full,
+        clamped,
+        generation,
+        altitude,
+        'Loaded full',
+        trace,
+      ))
+    )
+      return;
     renderedSomething = true;
-
   } catch (e) {
     if (e?.name === 'AbortError') return;
     console.warn('[Data:Traffic] Fetch error:', e);
@@ -2219,7 +2545,9 @@ const trafficLayer = {
     if (typeof window !== 'undefined') {
       _stylePreset = document?.documentElement?.dataset?.gevStyle || 'normal';
       if (!_styleListenerBound) {
-        window.addEventListener('gev:style-change', (e) => setStylePreset(e?.detail?.style));
+        window.addEventListener('gev:style-change', (e) =>
+          setStylePreset(e?.detail?.style),
+        );
         _styleListenerBound = true;
       }
     }
@@ -2248,7 +2576,9 @@ const trafficLayer = {
       clearTrafficTimingEntries();
       _trafficTimingCurrentAnchor = null;
       _trafficTimingPostRenderRemovers = new Set();
-      _trafficTimingMoveEndRemover = viewer.camera.moveEnd.addEventListener(markTrafficTimingMoveEnd);
+      _trafficTimingMoveEndRemover = viewer.camera.moveEnd.addEventListener(
+        markTrafficTimingMoveEnd,
+      );
     }
 
     // Subscribe to camera changes with a 5% movement threshold. Save the prior
@@ -2480,7 +2810,9 @@ const trafficLayer = {
       error: feed.error,
       flowCoveragePct: _flowCoveragePct,
       tilesFetched: getFlowSessionStats().tilesFetched,
-      ...(TRAFFIC_TIMING_ENABLED ? { trafficTiming: getTrafficTimingDiagnostics() } : {}),
+      ...(TRAFFIC_TIMING_ENABLED
+        ? { trafficTiming: getTrafficTimingDiagnostics() }
+        : {}),
       // Per-bucket rendered-dot counts (sim = white ambient). Drives the
       // qa-traffic color assertions and the sync-chip mode label below.
       flowBuckets: { ..._bucketCounts },
@@ -2490,7 +2822,8 @@ const trafficLayer = {
       jamViz: _jamViz,
       // Preset-styling diagnostics (additive): active style + profile.
       stylePreset: _stylePreset,
-      styleProfile: _presetDots === 'on' ? trafficStyleProfile(_stylePreset) : 'normal',
+      styleProfile:
+        _presetDots === 'on' ? trafficStyleProfile(_stylePreset) : 'normal',
       // Sync-chip text: shown while busy, and flashed on its own for 1.5 s
       // after each completed load (ui.js _updateTrafficSyncChip semantics).
       // The settled flash carries NO progress number beside it — this label's

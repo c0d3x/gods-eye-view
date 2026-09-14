@@ -99,15 +99,18 @@ export function cachedRealEllipsoidalGround(lat, lon) {
 async function fetchChunk(chunk) {
   // lon,lat order (matches the proxy's documented `points=lon,lat;…` contract
   // and Task 2's implementation).
-  const pointsParam = chunk.map(({ lat, lon }) => `${lon.toFixed(5)},${lat.toFixed(5)}`).join(';');
+  const pointsParam = chunk
+    .map(({ lat, lon }) => `${lon.toFixed(5)},${lat.toFixed(5)}`)
+    .join(';');
   const url = `/api/terrain/heights?points=${encodeURIComponent(pointsParam)}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
   if (!res.ok) throw new Error(`terrain heights proxy HTTP ${res.status}`);
   const body = await res.json();
-  if (!Array.isArray(body?.results)) throw new Error('malformed terrain heights response (no results array)');
+  if (!Array.isArray(body?.results))
+    throw new Error('malformed terrain heights response (no results array)');
   if (body.results.length !== chunk.length) {
     throw new Error(
-      `terrain heights response length mismatch (expected ${chunk.length}, got ${body.results.length})`
+      `terrain heights response length mismatch (expected ${chunk.length}, got ${body.results.length})`,
     );
   }
   const out = new Map();
@@ -117,7 +120,8 @@ async function fetchChunk(chunk) {
   // for callers who want them, but this module doesn't need them.
   for (let i = 0; i < chunk.length; i += 1) {
     const ellipsoid = Number(body.results[i]?.ellipsoid);
-    if (!Number.isFinite(ellipsoid)) throw new Error(`non-finite ellipsoid height at index ${i}`);
+    if (!Number.isFinite(ellipsoid))
+      throw new Error(`non-finite ellipsoid height at index ${i}`);
     out.set(chunk[i].key, ellipsoid);
   }
   return out;
@@ -187,10 +191,16 @@ export async function resolveEllipsoidalGround(coords) {
   const now = Date.now();
   for (const item of work) {
     const entry = cache.get(item.key);
-    const fallbackCooling = entry?.source === 'geoid-fallback'
-      && Number.isFinite(entry.retryAt)
-      && now < entry.retryAt;
-    if ((entry && entry.source === 'reearth') || fallbackCooling || seenKeys.has(item.key)) continue;
+    const fallbackCooling =
+      entry?.source === 'geoid-fallback' &&
+      Number.isFinite(entry.retryAt) &&
+      now < entry.retryAt;
+    if (
+      (entry && entry.source === 'reearth') ||
+      fallbackCooling ||
+      seenKeys.has(item.key)
+    )
+      continue;
     seenKeys.add(item.key);
     uncached.push(item);
   }
@@ -221,7 +231,11 @@ export async function resolveEllipsoidalGround(coords) {
       // healthy) case never pays for the geoid grid's dynamic import.
       await ensureGeoidReady();
       for (const item of chunk) {
-        const ellipsoid = geoidFallback(item.lat, item.lon, item.sourceOrthometricM);
+        const ellipsoid = geoidFallback(
+          item.lat,
+          item.lon,
+          item.sourceOrthometricM,
+        );
         cache.set(item.key, {
           ellipsoid,
           source: 'geoid-fallback',

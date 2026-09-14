@@ -20,8 +20,12 @@ function makeCesiumEvent() {
       listeners.add(callback);
       return () => listeners.delete(callback);
     },
-    raise() { for (const callback of [...listeners]) callback(); },
-    get size() { return listeners.size; },
+    raise() {
+      for (const callback of [...listeners]) callback();
+    },
+    get size() {
+      return listeners.size;
+    },
   };
 }
 
@@ -30,9 +34,15 @@ function makeHostRecorder() {
   return {
     calls,
     host: {
-      setEntries(sourceId, entries, options) { calls.push({ op: 'set', sourceId, entries, options }); },
-      setVisible(sourceId, visible) { calls.push({ op: 'visible', sourceId, visible }); },
-      clearSource(sourceId) { calls.push({ op: 'clear', sourceId }); },
+      setEntries(sourceId, entries, options) {
+        calls.push({ op: 'set', sourceId, entries, options });
+      },
+      setVisible(sourceId, visible) {
+        calls.push({ op: 'visible', sourceId, visible });
+      },
+      clearSource(sourceId) {
+        calls.push({ op: 'clear', sourceId });
+      },
     },
   };
 }
@@ -43,7 +53,10 @@ test('tracked label text becomes an explicit title/details/accent model', () => 
     { title: 'UAL123', details: ['FL350 · 451 kts'], accent: '#39d0ff' },
   );
   assert.deepEqual(
-    trackedLabelModelFromText('RCH123\nC-17 · 01-0186\nUSAF · FL310', '#ffd166'),
+    trackedLabelModelFromText(
+      'RCH123\nC-17 · 01-0186\nUSAF · FL310',
+      '#ffd166',
+    ),
     {
       title: 'RCH123',
       details: ['C-17 · 01-0186', 'USAF · FL310'],
@@ -58,12 +71,18 @@ test('tracked position source reads only gevDisplayPosition and never entity.pos
   const entity = {
     gevDisplayPosition: () => cached,
     position: {
-      getValue() { propertyReads += 1; throw new Error('fresh position read is forbidden'); },
+      getValue() {
+        propertyReads += 1;
+        throw new Error('fresh position read is forbidden');
+      },
     },
   };
   assert.equal(cachedTrackedDisplayPosition(entity), cached);
   assert.equal(propertyReads, 0);
-  assert.equal(cachedTrackedDisplayPosition({ position: entity.position }), null);
+  assert.equal(
+    cachedTrackedDisplayPosition({ position: entity.position }),
+    null,
+  );
   assert.equal(propertyReads, 0);
 });
 
@@ -77,27 +96,52 @@ test('the tracked card anchors to the visual position without repurposing the di
   let displayReads = 0;
   const entity = {
     gevTrackedId: 'flights:aaa077',
-    gevDisplayPosition: () => { displayReads += 1; return display; },
+    gevDisplayPosition: () => {
+      displayReads += 1;
+      return display;
+    },
     gevVisualPosition: () => visual,
-    gevLabelModel: { title: 'SWA143', details: ['ON GROUND'], accent: '#6be8ff' },
+    gevLabelModel: {
+      title: 'SWA143',
+      details: ['ON GROUND'],
+      accent: '#6be8ff',
+    },
   };
   assert.equal(cachedTrackedVisualPosition(entity), visual);
-  assert.equal(displayReads, 0, 'the visual accessor short-circuits the display read');
-  assert.equal(cachedTrackedDisplayPosition(entity), display,
-    'the display accessor is untouched and still reports the dead-reckoned position');
-  assert.equal(createTrackedOverlayEntry(entity).position(), visual,
-    'the published tracked entry anchors to the visual position');
+  assert.equal(
+    displayReads,
+    0,
+    'the visual accessor short-circuits the display read',
+  );
+  assert.equal(
+    cachedTrackedDisplayPosition(entity),
+    display,
+    'the display accessor is untouched and still reports the dead-reckoned position',
+  );
+  assert.equal(
+    createTrackedOverlayEntry(entity).position(),
+    visual,
+    'the published tracked entry anchors to the visual position',
+  );
 
   // Layers with no 3D visual, and any layer before its model is ready, are
   // unchanged: the accessor falls back to the display position.
   const spriteOnly = { gevDisplayPosition: () => display };
   assert.equal(cachedTrackedVisualPosition(spriteOnly), display);
-  assert.equal(cachedTrackedVisualPosition({ ...spriteOnly, gevVisualPosition: () => null }), display,
-    'a null visual position falls back rather than blanking the card');
+  assert.equal(
+    cachedTrackedVisualPosition({
+      ...spriteOnly,
+      gevVisualPosition: () => null,
+    }),
+    display,
+    'a null visual position falls back rather than blanking the card',
+  );
   assert.equal(
     cachedTrackedVisualPosition({
       gevDisplayPosition: () => display,
-      gevVisualPosition: () => { throw new Error('model gone'); },
+      gevVisualPosition: () => {
+        throw new Error('model gone');
+      },
     }),
     display,
     'a throwing visual accessor falls back instead of dropping the card',
@@ -110,7 +154,11 @@ test('tracked entry factory pins the production protected-lane policy', () => {
   const entry = createTrackedOverlayEntry({
     gevTrackedId: 'satellites:25544',
     gevDisplayPosition: () => display,
-    gevLabelModel: { title: 'ISS', details: ['420 km · NORAD 25544'], accent: '#ffd84d' },
+    gevLabelModel: {
+      title: 'ISS',
+      details: ['420 km · NORAD 25544'],
+      accent: '#ffd84d',
+    },
   });
   assert.equal(entry.id, 'satellites:25544');
   assert.equal(entry.position(), display);
@@ -129,7 +177,11 @@ test('tracked entity publishes a protected host entry backed by the frame cache'
     id: 'generated',
     gevTrackedId: 'flights:abc123',
     gevDisplayPosition: () => display,
-    gevLabelModel: { title: 'UAL123', details: ['FL350 · 451 kts'], accent: '#39d0ff' },
+    gevLabelModel: {
+      title: 'UAL123',
+      details: ['FL350 · 451 kts'],
+      accent: '#39d0ff',
+    },
   };
   const viewer = { trackedEntity: entity, trackedEntityChanged: changed };
   const recorder = makeHostRecorder();
@@ -153,11 +205,15 @@ test('tracked entity publishes a protected host entry backed by the frame cache'
     assert.equal(publication.options.hideInCockpit, true);
     assert.equal(getActiveTrackedReadoutId(), 'flights:abc123');
 
-    entity.gevLabelModel = { ...entity.gevLabelModel, details: ['FL360 · 455 kts'] };
+    entity.gevLabelModel = {
+      ...entity.gevLabelModel,
+      details: ['FL360 · 455 kts'],
+    };
     refreshTrackedReadout(entity);
-    assert.deepEqual(recorder.calls.filter(({ op }) => op === 'set').at(-1).entries[0].details, [
-      'FL360 · 455 kts',
-    ]);
+    assert.deepEqual(
+      recorder.calls.filter(({ op }) => op === 'set').at(-1).entries[0].details,
+      ['FL360 · 455 kts'],
+    );
 
     viewer.trackedEntity = null;
     changed.raise();
@@ -179,44 +235,77 @@ test('selection lifecycle ignores vessels, accepts installations, and clears wit
   const installation = {
     gevTrackedId: 'installations:fort-test',
     gevDisplayPosition: () => ({ x: 1, y: 2, z: 3 }),
-    gevLabelModel: { title: 'FORT TEST', details: ['AIRFIELD'], accent: '#5aa9ff' },
+    gevLabelModel: {
+      title: 'FORT TEST',
+      details: ['AIRFIELD'],
+      accent: '#5aa9ff',
+    },
   };
   globalThis.window = fakeWindow;
   _setTrackedOverlayHostForTest(recorder.host);
   try {
     initTrackedReadout(viewer);
     const setsBefore = recorder.calls.filter(({ op }) => op === 'set').length;
-    fakeWindow.dispatchEvent(new CustomEvent('gev:entity-selected', {
-      detail: { layerId: 'ais-live-vessels', entity: installation },
-    }));
-    assert.equal(recorder.calls.filter(({ op }) => op === 'set').length, setsBefore);
+    fakeWindow.dispatchEvent(
+      new CustomEvent('gev:entity-selected', {
+        detail: { layerId: 'ais-live-vessels', entity: installation },
+      }),
+    );
+    assert.equal(
+      recorder.calls.filter(({ op }) => op === 'set').length,
+      setsBefore,
+    );
 
-    fakeWindow.dispatchEvent(new CustomEvent('gev:entity-selected', {
-      detail: { layerId: 'military-installations', entity: installation },
-    }));
+    fakeWindow.dispatchEvent(
+      new CustomEvent('gev:entity-selected', {
+        detail: { layerId: 'military-installations', entity: installation },
+      }),
+    );
     assert.equal(getActiveTrackedReadoutId(), 'installations:fort-test');
-    assert.equal(recorder.calls.filter(({ op }) => op === 'set').at(-1).entries[0].title, 'FORT TEST');
+    assert.equal(
+      recorder.calls.filter(({ op }) => op === 'set').at(-1).entries[0].title,
+      'FORT TEST',
+    );
 
-    fakeWindow.dispatchEvent(new CustomEvent('gev:entity-selected', {
-      detail: { layerId: 'ais-live-vessels', entity: installation },
-    }));
-    assert.equal(getActiveTrackedReadoutId(), null, 'sibling selection clears an installation card');
+    fakeWindow.dispatchEvent(
+      new CustomEvent('gev:entity-selected', {
+        detail: { layerId: 'ais-live-vessels', entity: installation },
+      }),
+    );
+    assert.equal(
+      getActiveTrackedReadoutId(),
+      null,
+      'sibling selection clears an installation card',
+    );
 
-    fakeWindow.dispatchEvent(new CustomEvent('gev:entity-selected', {
-      detail: { layerId: 'military-installations', entity: installation },
-    }));
+    fakeWindow.dispatchEvent(
+      new CustomEvent('gev:entity-selected', {
+        detail: { layerId: 'military-installations', entity: installation },
+      }),
+    );
 
-    fakeWindow.dispatchEvent(new CustomEvent('gev:entity-selection-cleared', {
-      detail: { layerId: 'military-installations' },
-    }));
+    fakeWindow.dispatchEvent(
+      new CustomEvent('gev:entity-selection-cleared', {
+        detail: { layerId: 'military-installations' },
+      }),
+    );
     assert.equal(getActiveTrackedReadoutId(), null);
     assert.ok(recorder.calls.some(({ op }) => op === 'clear'));
 
-    const clearsBeforeDestroy = recorder.calls.filter(({ op }) => op === 'clear').length;
+    const clearsBeforeDestroy = recorder.calls.filter(
+      ({ op }) => op === 'clear',
+    ).length;
     destroyTrackedReadout();
-    assert.ok(recorder.calls.filter(({ op }) => op === 'clear').length > clearsBeforeDestroy);
+    assert.ok(
+      recorder.calls.filter(({ op }) => op === 'clear').length >
+        clearsBeforeDestroy,
+    );
     assert.equal(changed.size, 0, 'trackedEntityChanged listener was removed');
-    assert.ok(recorder.calls.some(({ op, visible }) => op === 'visible' && visible === false));
+    assert.ok(
+      recorder.calls.some(
+        ({ op, visible }) => op === 'visible' && visible === false,
+      ),
+    );
   } finally {
     destroyTrackedReadout();
     _setTrackedOverlayHostForTest();
@@ -225,7 +314,10 @@ test('selection lifecycle ignores vessels, accepts installations, and clears wit
 });
 
 test('trackedReadout cannot resurrect a dedicated canvas or render listener', async () => {
-  const source = await readFile(new URL('./trackedReadout.js', import.meta.url), 'utf8');
+  const source = await readFile(
+    new URL('./trackedReadout.js', import.meta.url),
+    'utf8',
+  );
   for (const forbidden of [
     'document.createElement',
     "createElement('canvas')",
@@ -234,38 +326,74 @@ test('trackedReadout cannot resurrect a dedicated canvas or render listener', as
     "id = 'tracked-readout'",
     'keyholeLabelAlpha',
   ]) {
-    assert.equal(source.includes(forbidden), false, `dedicated renderer token returned: ${forbidden}`);
+    assert.equal(
+      source.includes(forbidden),
+      false,
+      `dedicated renderer token returned: ${forbidden}`,
+    );
   }
 });
 
 test('tracking layers write gevLabelModel and expose only their cached display positions', async () => {
-  const files = await Promise.all([
-    // Both flight layers are built by the aircraft layer core.
-    'aircraftLayerCore.js',
-    'satellites.js',
-    'militaryInstallations.js',
-  ].map(async (name) => [name, await readFile(new URL(`./${name}`, import.meta.url), 'utf8')]));
+  const files = await Promise.all(
+    [
+      // Both flight layers are built by the aircraft layer core.
+      'aircraftLayerCore.js',
+      'satellites.js',
+      'militaryInstallations.js',
+    ].map(async (name) => [
+      name,
+      await readFile(new URL(`./${name}`, import.meta.url), 'utf8'),
+    ]),
+  );
   const sources = Object.fromEntries(files);
   for (const [name, source] of files) {
-    assert.ok(source.includes('.gevLabelModel ='), `${name} writes the explicit model directly`);
-    assert.ok(source.includes('.gevDisplayPosition ='), `${name} exposes a display-position cache`);
+    assert.ok(
+      source.includes('.gevLabelModel ='),
+      `${name} writes the explicit model directly`,
+    );
+    assert.ok(
+      source.includes('.gevDisplayPosition ='),
+      `${name} exposes a display-position cache`,
+    );
   }
-  assert.ok(sources['aircraftLayerCore.js'].includes('gevDisplayPosition = _trackedDisplayCached'));
-  assert.ok(sources['satellites.js'].includes('gevDisplayPosition = _trackedDisplayCached'));
-  assert.equal(sources['aircraftLayerCore.js'].includes('_trackedEntity.label.text'), false);
-  assert.equal(sources['satellites.js'].includes('_trackedEntity.label.text'), false);
+  assert.ok(
+    sources['aircraftLayerCore.js'].includes(
+      'gevDisplayPosition = _trackedDisplayCached',
+    ),
+  );
+  assert.ok(
+    sources['satellites.js'].includes(
+      'gevDisplayPosition = _trackedDisplayCached',
+    ),
+  );
+  assert.equal(
+    sources['aircraftLayerCore.js'].includes('_trackedEntity.label.text'),
+    false,
+  );
+  assert.equal(
+    sources['satellites.js'].includes('_trackedEntity.label.text'),
+    false,
+  );
 });
 
 test('civilian and military trail heads use the lower-centre model anchor and weak-texture tint', async () => {
-  const files = await Promise.all(['aircraftLayerCore.js'].map(async (name) => (
-    [name, await readFile(new URL(`./${name}`, import.meta.url), 'utf8')]
-  )));
+  const files = await Promise.all(
+    ['aircraftLayerCore.js'].map(async (name) => [
+      name,
+      await readFile(new URL(`./${name}`, import.meta.url), 'utf8'),
+    ]),
+  );
   for (const [name, source] of files) {
     assert.ok(
-      /const head =\s*_trackedTrailCached\(\) \|\| _trackedDisplayPosition\(_trackedIcao\);/.test(source),
+      /const head =\s*_trackedTrailCached\(\) \|\| _trackedDisplayPosition\(_trackedIcao\);/.test(
+        source,
+      ),
       `${name} trail head uses the dedicated lower-centre model anchor`,
     );
-    assert.ok(source.includes('const MODEL_COLOR_BLEND_AMOUNT = 0.94;'),
-      `${name} keeps diffuse texture contribution weak through code-side MIX`);
+    assert.ok(
+      source.includes('const MODEL_COLOR_BLEND_AMOUNT = 0.94;'),
+      `${name} keeps diffuse texture contribution weak through code-side MIX`,
+    );
   }
 });

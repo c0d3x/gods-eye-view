@@ -85,18 +85,24 @@ export function selectCableReferenceLabelWinners(
   records,
   limit = CABLE_REFERENCE_LABEL_WINNER_CAP,
 ) {
-  const cap = Math.max(0, Math.min(
-    CABLE_REFERENCE_LABEL_WINNER_CAP,
-    Math.floor(Number(limit) || 0),
-  ));
+  const cap = Math.max(
+    0,
+    Math.min(CABLE_REFERENCE_LABEL_WINNER_CAP, Math.floor(Number(limit) || 0)),
+  );
   if (!Array.isArray(records) || cap === 0) return [];
   return records
-    .filter((record) => record?.visible === true
-      && record.label
-      && Number.isFinite(record.distanceM)
-      && record.distanceM <= CABLE_REFERENCE_LABEL_MAX_DISTANCE_M)
-    .sort((a, b) => a.distanceM - b.distanceM
-      || String(a.entity?.id || '').localeCompare(String(b.entity?.id || '')))
+    .filter(
+      (record) =>
+        record?.visible === true &&
+        record.label &&
+        Number.isFinite(record.distanceM) &&
+        record.distanceM <= CABLE_REFERENCE_LABEL_MAX_DISTANCE_M,
+    )
+    .sort(
+      (a, b) =>
+        a.distanceM - b.distanceM ||
+        String(a.entity?.id || '').localeCompare(String(b.entity?.id || '')),
+    )
     .slice(0, cap);
 }
 
@@ -108,7 +114,9 @@ export function selectCableReferenceLabelWinners(
  * @returns {number}
  */
 export function cableReferencePriority(distanceM) {
-  const distance = Number.isFinite(distanceM) ? Math.max(0, distanceM) : CABLE_REFERENCE_LABEL_MAX_DISTANCE_M;
+  const distance = Number.isFinite(distanceM)
+    ? Math.max(0, distanceM)
+    : CABLE_REFERENCE_LABEL_MAX_DISTANCE_M;
   return 1000 - Math.round(distance / 50000);
 }
 
@@ -227,7 +235,8 @@ const CABLE_GLOBE_STACK_IDS = Object.freeze(
  */
 export function cableClassificationTypeForStack(activeId) {
   if (activeId === 'photoreal') return Cesium.ClassificationType.CESIUM_3D_TILE;
-  if (CABLE_GLOBE_STACK_IDS.has(activeId)) return Cesium.ClassificationType.TERRAIN;
+  if (CABLE_GLOBE_STACK_IDS.has(activeId))
+    return Cesium.ClassificationType.TERRAIN;
   return Cesium.ClassificationType.BOTH;
 }
 
@@ -248,8 +257,14 @@ export function cableClassificationTypeForScene(scene) {
 
 /** EntityCluster's private marker collections and their required types. */
 const MARKER_COLLECTION_EXPECTATIONS = Object.freeze([
-  Object.freeze({ key: '_billboardCollection', type: Cesium.BillboardCollection }),
-  Object.freeze({ key: '_pointCollection', type: Cesium.PointPrimitiveCollection }),
+  Object.freeze({
+    key: '_billboardCollection',
+    type: Cesium.BillboardCollection,
+  }),
+  Object.freeze({
+    key: '_pointCollection',
+    type: Cesium.PointPrimitiveCollection,
+  }),
 ]);
 
 /**
@@ -299,7 +314,11 @@ function commitTranslucentMarkerBlend(probe) {
       collection.blendOption = Cesium.BlendOption.TRANSLUCENT;
     }
   }
-  return { applied: probe.ready.length, pending: probe.pending, invariantFailed: false };
+  return {
+    applied: probe.ready.length,
+    pending: probe.pending,
+    invariantFailed: false,
+  };
 }
 
 /**
@@ -324,7 +343,8 @@ function commitTranslucentMarkerBlend(probe) {
  */
 export function applyTranslucentMarkerBlend(dataSource) {
   const probe = probeTranslucentMarkerBlend(dataSource);
-  if (probe.invariantFailed) return { applied: 0, pending: 0, invariantFailed: true };
+  if (probe.invariantFailed)
+    return { applied: 0, pending: 0, invariantFailed: true };
   return commitTranslucentMarkerBlend(probe);
 }
 
@@ -335,7 +355,8 @@ export function applyTranslucentMarkerBlend(dataSource) {
  * @returns {number}
  */
 function defaultSweepClock() {
-  return (typeof performance === 'object' && typeof performance.now === 'function')
+  return typeof performance === 'object' &&
+    typeof performance.now === 'function'
     ? performance.now()
     : Date.now();
 }
@@ -398,7 +419,9 @@ export function createCableReferenceSweepGate({
   }
 
   return {
-    markDirty() { dirty = true; },
+    markDirty() {
+      dirty = true;
+    },
     /**
      * @param {Cesium.Camera} [camera] Live camera; omit to disable the motion
      *   fallback entirely (pure dirty-only gate).
@@ -418,8 +441,11 @@ export function createCableReferenceSweepGate({
       lastProbeAt = time;
       const position = camera.positionWC;
       if (!position) return false;
-      if (hasSweptPosition
-        && Cesium.Cartesian3.distanceSquared(position, lastSweptPosition) <= motionEpsilonSq) {
+      if (
+        hasSweptPosition &&
+        Cesium.Cartesian3.distanceSquared(position, lastSweptPosition) <=
+          motionEpsilonSq
+      ) {
         return false;
       }
       return accept(camera, time);
@@ -444,12 +470,17 @@ export function createCableReferenceSweepGate({
  * @param {number} fov Camera frustum field of view (radians).
  * @returns {boolean} True when the stem geometry was redefined.
  */
-export function updateCableReferenceStem(record, cameraPositionWC, canvasHeight, fov) {
+export function updateCableReferenceStem(
+  record,
+  cameraPositionWC,
+  canvasHeight,
+  fov,
+) {
   const distance = Cesium.Cartesian3.distance(cameraPositionWC, record.base);
   const effectiveDistance = Math.max(distance, 5000);
   const height = canvasHeight || 1080;
-  const fieldOfView = fov || (Math.PI / 3);
-  const metersPerPixelFactor = 2 * Math.tan(fieldOfView / 2) / height;
+  const fieldOfView = fov || Math.PI / 3;
+  const metersPerPixelFactor = (2 * Math.tan(fieldOfView / 2)) / height;
   const tipHeight = Math.max(
     700,
     Math.min(85000, effectiveDistance * metersPerPixelFactor * STEM_TARGET_PX),
@@ -461,12 +492,16 @@ export function updateCableReferenceStem(record, cameraPositionWC, canvasHeight,
     Cesium.Ellipsoid.WGS84,
     record.nextTip,
   );
-  if (Cesium.Cartesian3.distanceSquared(record.tip, record.nextTip) <= CABLE_STEM_TIP_EPSILON_SQ) {
+  if (
+    Cesium.Cartesian3.distanceSquared(record.tip, record.nextTip) <=
+    CABLE_STEM_TIP_EPSILON_SQ
+  ) {
     return false;
   }
   Cesium.Cartesian3.clone(record.nextTip, record.tip);
   record.stemPositionBufferIndex = 1 - record.stemPositionBufferIndex;
-  const stemPositions = record.stemPositionBuffers[record.stemPositionBufferIndex];
+  const stemPositions =
+    record.stemPositionBuffers[record.stemPositionBufferIndex];
   stemPositions[0] = record.base;
   stemPositions[1] = record.tip;
   record.entity.position.setValue(record.tip);
@@ -476,7 +511,8 @@ export function updateCableReferenceStem(record, cameraPositionWC, canvasHeight,
 
 export function createTeleGeographySubmarineCableLayer({
   overlayHost = DEFAULT_OVERLAY_HOST,
-  screenSpaceEventHandlerFactory = (canvas) => new Cesium.ScreenSpaceEventHandler(canvas),
+  screenSpaceEventHandlerFactory = (canvas) =>
+    new Cesium.ScreenSpaceEventHandler(canvas),
   mapStackEventTarget = typeof window !== 'undefined' ? window : null,
   // Test seam: the sweep gate's motion-fallback clock. Tests freeze it so the
   // fallback window is driven explicitly instead of by wall-clock timing.
@@ -509,7 +545,9 @@ export function createTeleGeographySubmarineCableLayer({
   let _markerBlendInvariantWarned = false;
   let _pickByEntity = new WeakMap();
   let _referenceLabelCount = 0;
-  const _referenceSweepGate = createCableReferenceSweepGate({ now: sweepClock });
+  const _referenceSweepGate = createCableReferenceSweepGate({
+    now: sweepClock,
+  });
   const _overlayPublisher = createCableOverlayPublisher({ host: overlayHost });
   /** Reused winner→entry scratch so a 2 Hz sweep allocates no arrays. */
   const _publishScratch = [];
@@ -571,7 +609,7 @@ export function createTeleGeographySubmarineCableLayer({
           strokeWidth: 2,
           markerColor: cableColor,
           markerSize: 6,
-        }
+        },
       );
       if (!owns()) return;
       const landingDataSource = await Cesium.GeoJsonDataSource.load(
@@ -583,14 +621,20 @@ export function createTeleGeographySubmarineCableLayer({
           strokeWidth: 2,
           markerColor: landingColor,
           markerSize: 6,
-        }
+        },
       );
       if (!owns()) return;
 
       cableDataSource.name = 'TeleGeography Submarine Cables';
       landingDataSource.name = 'TeleGeography Landing Points';
-      const referenceDataSource = new Cesium.CustomDataSource('TeleGeography Cable References');
-      const addedSources = [cableDataSource, landingDataSource, referenceDataSource];
+      const referenceDataSource = new Cesium.CustomDataSource(
+        'TeleGeography Cable References',
+      );
+      const addedSources = [
+        cableDataSource,
+        landingDataSource,
+        referenceDataSource,
+      ];
 
       // dataSources.add() is itself an await point: Cesium mutates the
       // collection on a DEFERRED tick, so a disable/destroy racing this
@@ -606,7 +650,9 @@ export function createTeleGeographySubmarineCableLayer({
         viewer.dataSources.add(landingDataSource),
         viewer.dataSources.add(referenceDataSource),
       ]);
-      const rejectedAdd = addResults.find((result) => result.status === 'rejected');
+      const rejectedAdd = addResults.find(
+        (result) => result.status === 'rejected',
+      );
       if (!owns() || rejectedAdd) {
         // Compensate: every add has settled by now, so removal is effective
         // (a remove inside the deferred window would have been a no-op).
@@ -615,7 +661,11 @@ export function createTeleGeographySubmarineCableLayer({
         // dataSourceAdded, so a REJECTED add may still have landed its
         // mutation. remove() of a never-added source is a harmless no-op.
         for (const source of addedSources) {
-          try { viewer.dataSources.remove(source, true); } catch { /* collection gone */ }
+          try {
+            viewer.dataSources.remove(source, true);
+          } catch {
+            /* collection gone */
+          }
         }
         if (owns() && rejectedAdd) throw rejectedAdd.reason;
         return;
@@ -748,16 +798,17 @@ export function createTeleGeographySubmarineCableLayer({
       if (!_markerBlendInvariantWarned && import.meta.env?.DEV === true) {
         _markerBlendInvariantWarned = true;
         console.error(
-          '[Data:telegeography-submarine-cables] EntityCluster marker-collection '
-          + 'shape changed — single-pass translucent blend skipped; markers fall '
-          + 'back to Cesium\'s default two-pass blend.',
+          '[Data:telegeography-submarine-cables] EntityCluster marker-collection ' +
+            'shape changed — single-pass translucent blend skipped; markers fall ' +
+            "back to Cesium's default two-pass blend.",
         );
       }
       return;
     }
     const landingBlend = commitTranslucentMarkerBlend(landing);
     const referenceBlend = commitTranslucentMarkerBlend(reference);
-    if (landingBlend.applied > 0 && referenceBlend.applied > 0) _markerBlendDone = true;
+    if (landingBlend.applied > 0 && referenceBlend.applied > 0)
+      _markerBlendDone = true;
   }
 
   /**
@@ -791,7 +842,11 @@ export function createTeleGeographySubmarineCableLayer({
     if (!_referenceDataSource || !reference) return;
 
     const base = Cesium.Cartesian3.fromDegrees(reference.lon, reference.lat, 0);
-    const tip = Cesium.Cartesian3.fromDegrees(reference.lon, reference.lat, 2500);
+    const tip = Cesium.Cartesian3.fromDegrees(
+      reference.lon,
+      reference.lat,
+      2500,
+    );
     const info = {
       kind,
       reference,
@@ -802,7 +857,10 @@ export function createTeleGeographySubmarineCableLayer({
     const stemColor = color.withAlpha(kind === 'cable' ? 0.58 : 0.68);
     // Constant properties on the sweep cadence, never per-frame callbacks:
     // the sweep redefines them through the alternating buffers below.
-    const stemPositionBuffers = [[base, tip], [base, tip]];
+    const stemPositionBuffers = [
+      [base, tip],
+      [base, tip],
+    ];
 
     const entity = _referenceDataSource.entities.add({
       id: `${kind}-reference-${_referenceRecords.length}-${info.featureId || 'feature'}`,
@@ -848,8 +906,11 @@ export function createTeleGeographySubmarineCableLayer({
     if (!cameraPos) return;
 
     const canvasHeight = _viewer.scene?.canvas?.clientHeight || 1080;
-    const fov = _viewer.camera.frustum?.fov || (Math.PI / 3);
-    const occluder = new Cesium.EllipsoidalOccluder(Cesium.Ellipsoid.WGS84, cameraPos);
+    const fov = _viewer.camera.frustum?.fov || Math.PI / 3;
+    const occluder = new Cesium.EllipsoidalOccluder(
+      Cesium.Ellipsoid.WGS84,
+      cameraPos,
+    );
     for (const record of _referenceRecords) {
       const visible = occluder.isPointVisible(record.base);
       record.visible = visible;
@@ -859,7 +920,8 @@ export function createTeleGeographySubmarineCableLayer({
       }
       // Hidden stems keep their last geometry; this same sweep refreshes them
       // in the pass where they turn visible again.
-      if (visible) updateCableReferenceStem(record, cameraPos, canvasHeight, fov);
+      if (visible)
+        updateCableReferenceStem(record, cameraPos, canvasHeight, fov);
     }
     for (const record of _surfaceRecords) {
       const visible = occluder.isPointVisible(record.base);
@@ -874,9 +936,11 @@ export function createTeleGeographySubmarineCableLayer({
       const priority = cableReferencePriority(record.distanceM);
       record.entry.priority = priority;
       _publishScratch[i] = record.entry;
-      if (!changed
-        && (_lastPublishedIds[i] !== record.entry.id
-          || _lastPublishedPriorities[i] !== priority)) {
+      if (
+        !changed &&
+        (_lastPublishedIds[i] !== record.entry.id ||
+          _lastPublishedPriorities[i] !== priority)
+      ) {
         changed = true;
       }
     }
@@ -915,7 +979,11 @@ export function createTeleGeographySubmarineCableLayer({
       const primitiveInfo = _pickByEntity.get(primitive);
       if (primitiveInfo) return primitiveInfo;
       if (primitive.__gevTeleGeography) return primitive.__gevTeleGeography;
-      if (primitive.id && typeof primitive.id === 'object' && primitive.id.reference) {
+      if (
+        primitive.id &&
+        typeof primitive.id === 'object' &&
+        primitive.id.reference
+      ) {
         return primitive.id;
       }
     }
@@ -935,7 +1003,11 @@ export function createTeleGeographySubmarineCableLayer({
 
   function flyToReference(viewer, reference) {
     if (!viewer || !reference) return;
-    const destination = Cesium.Cartesian3.fromDegrees(reference.lon, reference.lat, 6500);
+    const destination = Cesium.Cartesian3.fromDegrees(
+      reference.lon,
+      reference.lat,
+      6500,
+    );
     viewer.camera.cancelFlight();
     viewer.camera.flyTo({
       destination,
@@ -1050,11 +1122,16 @@ export function createTeleGeographySubmarineCableLayer({
       _classificationType = cableClassificationTypeForScene(viewer?.scene);
       if (!_mapStackListener && mapStackEventTarget?.addEventListener) {
         _mapStackListener = (event) => {
-          applyCableClassification(event?.detail?.activeId
-            ? cableClassificationTypeForStack(event.detail.activeId)
-            : cableClassificationTypeForScene(_viewer?.scene));
+          applyCableClassification(
+            event?.detail?.activeId
+              ? cableClassificationTypeForStack(event.detail.activeId)
+              : cableClassificationTypeForScene(_viewer?.scene),
+          );
         };
-        mapStackEventTarget.addEventListener('gev:map-stack-changed', _mapStackListener);
+        mapStackEventTarget.addEventListener(
+          'gev:map-stack-changed',
+          _mapStackListener,
+        );
       }
       beginInteraction(viewer);
       if (!_preRenderRemover) {
@@ -1063,8 +1140,12 @@ export function createTeleGeographySubmarineCableLayer({
           // never emit moveEnd — reach the motion fallback. No render is
           // requested for a fallback sweep: it only fires while the camera is
           // already moving, so frames are flowing by construction.
-          if (!_enabled || !_loaded
-            || !_referenceSweepGate.shouldRun(viewer.camera)) return;
+          if (
+            !_enabled ||
+            !_loaded ||
+            !_referenceSweepGate.shouldRun(viewer.camera)
+          )
+            return;
           updateReferenceVisibility();
         });
       }
@@ -1109,9 +1190,12 @@ export function createTeleGeographySubmarineCableLayer({
 
     destroy(viewer) {
       if (_abort) _abort.abort();
-      if (_cableDataSource && viewer) viewer.dataSources.remove(_cableDataSource, true);
-      if (_landingDataSource && viewer) viewer.dataSources.remove(_landingDataSource, true);
-      if (_referenceDataSource && viewer) viewer.dataSources.remove(_referenceDataSource, true);
+      if (_cableDataSource && viewer)
+        viewer.dataSources.remove(_cableDataSource, true);
+      if (_landingDataSource && viewer)
+        viewer.dataSources.remove(_landingDataSource, true);
+      if (_referenceDataSource && viewer)
+        viewer.dataSources.remove(_referenceDataSource, true);
       // hide() clears every published host entry and goes invisible while
       // keeping the publisher reusable — the legacy layer supported re-init
       // after destroy, and hidden publishers already drop late publishes.
@@ -1131,7 +1215,10 @@ export function createTeleGeographySubmarineCableLayer({
         _moveEndRemover = null;
       }
       if (_mapStackListener && mapStackEventTarget?.removeEventListener) {
-        mapStackEventTarget.removeEventListener('gev:map-stack-changed', _mapStackListener);
+        mapStackEventTarget.removeEventListener(
+          'gev:map-stack-changed',
+          _mapStackListener,
+        );
         _mapStackListener = null;
       }
       _viewer = null;
@@ -1170,7 +1257,9 @@ export function createTeleGeographySubmarineCableLayer({
 }
 
 function clampLabel(value, maxLength = 34) {
-  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  const text = String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!text) return '';
   if (text.length <= maxLength) return text;
   return `${text.slice(0, Math.max(1, maxLength - 3))}...`;

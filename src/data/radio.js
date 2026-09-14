@@ -46,7 +46,8 @@ const RADIO_TUNER_STATIC_MAX_GAIN = 0.018;
 const RADIO_VOICE_PLAYBACK_TIMEOUT_MS = 12_000;
 const RADIO_DIRECTORY_STALE_MS = 7 * 24 * 60 * 60 * 1000;
 const RADIO_DIRECTORY_FUTURE_SKEW_MS = 5 * 60 * 1000;
-const RADIO_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const RADIO_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const RADIO_OVERLAY_SOURCE_ID = 'radio';
 export const RADIO_OVERLAY_COHORT_LIMIT = 64;
 export const RADIO_SINGLETON_GLOBAL_LIMIT = 16;
@@ -106,8 +107,24 @@ const CATEGORY_MATCHERS = Object.freeze({
   news: ['news', 'current affairs', 'journalism'],
   talk: ['talk', 'spoken word', 'interview', 'podcast'],
   weather: ['weather', 'emergency', 'noaa'],
-  'public-safety': ['public safety', 'scanner', 'police', 'fire', 'ems', 'dispatch', 'emergency'],
-  'aviation-marine': ['aviation', 'air traffic', 'atc', 'airport', 'marine', 'maritime', 'coast guard'],
+  'public-safety': [
+    'public safety',
+    'scanner',
+    'police',
+    'fire',
+    'ems',
+    'dispatch',
+    'emergency',
+  ],
+  'aviation-marine': [
+    'aviation',
+    'air traffic',
+    'atc',
+    'airport',
+    'marine',
+    'maritime',
+    'coast guard',
+  ],
   'traffic-transit': ['traffic', 'transit', 'transport', 'rail', 'metro'],
 });
 
@@ -232,34 +249,44 @@ const VOICE_RESTORE_DURATION_MS = 1800;
 
 function isNonGlobalRadioIpv4(hostname) {
   const pieces = hostname.split('.');
-  if (pieces.length !== 4 || pieces.some((piece) => !/^\d{1,3}$/.test(piece))) return false;
+  if (pieces.length !== 4 || pieces.some((piece) => !/^\d{1,3}$/.test(piece)))
+    return false;
   const values = pieces.map(Number);
   if (values.some((value) => value > 255)) return true;
   const [a, b, c] = values;
-  return a === 0 || a === 10 || a === 127 || a >= 224
-    || (a === 100 && b >= 64 && b <= 127)
-    || (a === 169 && b === 254)
-    || (a === 172 && b >= 16 && b <= 31)
-    || (a === 192 && b === 0)
-    || (a === 192 && b === 88 && c === 99)
-    || (a === 192 && b === 168)
-    || (a === 198 && (b === 18 || b === 19))
-    || (a === 198 && b === 51 && c === 100)
-    || (a === 203 && b === 0 && c === 113);
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    a >= 224 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 0) ||
+    (a === 192 && b === 88 && c === 99) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    (a === 198 && b === 51 && c === 100) ||
+    (a === 203 && b === 0 && c === 113)
+  );
 }
 
 function isSafeRadioHttpsUrl(value) {
   if (typeof value !== 'string' || !value) return false;
   try {
     const url = new URL(value);
-    const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, '').replace(/\.$/, '');
-    if (url.protocol !== 'https:' || url.username || url.password || !hostname) return false;
+    const hostname = url.hostname
+      .toLowerCase()
+      .replace(/^\[|\]$/g, '')
+      .replace(/\.$/, '');
+    if (url.protocol !== 'https:' || url.username || url.password || !hostname)
+      return false;
     return !(
-      hostname === 'localhost'
-      || hostname.endsWith('.localhost')
-      || hostname.endsWith('.local')
-      || isNonGlobalRadioIpv4(hostname)
-      || hostname.includes(':')
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname.endsWith('.local') ||
+      isNonGlobalRadioIpv4(hostname) ||
+      hostname.includes(':')
     );
   } catch {
     return false;
@@ -267,38 +294,45 @@ function isSafeRadioHttpsUrl(value) {
 }
 
 function isValidRadioDirectoryStation(station) {
-  const cleanText = (value, maxLength, { allowEmpty = true } = {}) => (
-    typeof value === 'string'
-    && value.length <= maxLength
-    && (allowEmpty || value.trim().length > 0)
-    && !/[\u0000-\u001f\u007f]/.test(value)
-    && value === value.trim()
-    && !/\s{2,}/.test(value)
-  );
-  const textArray = (value, limit, itemMaxLength) => (
-    Array.isArray(value)
-    && value.length <= limit
-    && value.every((item) => cleanText(item, itemMaxLength, { allowEmpty: false }))
-  );
+  const cleanText = (value, maxLength, { allowEmpty = true } = {}) =>
+    typeof value === 'string' &&
+    value.length <= maxLength &&
+    (allowEmpty || value.trim().length > 0) &&
+    !/[\u0000-\u001f\u007f]/.test(value) &&
+    value === value.trim() &&
+    !/\s{2,}/.test(value);
+  const textArray = (value, limit, itemMaxLength) =>
+    Array.isArray(value) &&
+    value.length <= limit &&
+    value.every((item) =>
+      cleanText(item, itemMaxLength, { allowEmpty: false }),
+    );
   return Boolean(
-    station
-    && RADIO_UUID_RE.test(station.id)
-    && cleanText(station.name, 140, { allowEmpty: false })
-    && Number.isFinite(station.lat) && station.lat >= -90 && station.lat <= 90
-    && Number.isFinite(station.lon) && station.lon >= -180 && station.lon <= 180
-    && isSafeRadioHttpsUrl(station.streamUrl)
-    && (station.homepage === null || isSafeRadioHttpsUrl(station.homepage))
-    && textArray(station.tags, 24, 80)
-    && textArray(station.languages, 8, 40)
-    && cleanText(station.state, 80)
-    && cleanText(station.country, 80)
-    && cleanText(station.countryCode, 2)
-    && (station.countryCode === '' || normalizeRadioCountryInput(station.countryCode).valid)
-    && station.metadataTrust === 'untrusted-community'
-    && cleanText(station.codec, 16, { allowEmpty: false })
-    && /^(?:MP3|AAC(?:\+|-LC|-HE)?|HE-AAC)$/i.test(station.codec)
-    && (station.bitrate === null
-      || (Number.isInteger(station.bitrate) && station.bitrate >= 8 && station.bitrate <= 1024))
+    station &&
+      RADIO_UUID_RE.test(station.id) &&
+      cleanText(station.name, 140, { allowEmpty: false }) &&
+      Number.isFinite(station.lat) &&
+      station.lat >= -90 &&
+      station.lat <= 90 &&
+      Number.isFinite(station.lon) &&
+      station.lon >= -180 &&
+      station.lon <= 180 &&
+      isSafeRadioHttpsUrl(station.streamUrl) &&
+      (station.homepage === null || isSafeRadioHttpsUrl(station.homepage)) &&
+      textArray(station.tags, 24, 80) &&
+      textArray(station.languages, 8, 40) &&
+      cleanText(station.state, 80) &&
+      cleanText(station.country, 80) &&
+      cleanText(station.countryCode, 2) &&
+      (station.countryCode === '' ||
+        normalizeRadioCountryInput(station.countryCode).valid) &&
+      station.metadataTrust === 'untrusted-community' &&
+      cleanText(station.codec, 16, { allowEmpty: false }) &&
+      /^(?:MP3|AAC(?:\+|-LC|-HE)?|HE-AAC)$/i.test(station.codec) &&
+      (station.bitrate === null ||
+        (Number.isInteger(station.bitrate) &&
+          station.bitrate >= 8 &&
+          station.bitrate <= 1024)),
   );
 }
 
@@ -321,7 +355,12 @@ function freezeRadioStation(station) {
   });
 }
 
-function createAcceptedCatalogSnapshot(instance, generation, updatedAt, stations) {
+function createAcceptedCatalogSnapshot(
+  instance,
+  generation,
+  updatedAt,
+  stations,
+) {
   if (!Number.isSafeInteger(generation) || generation < 1) return null;
   if (typeof instance !== 'string' || !instance) return null;
   const frozenStations = Object.freeze(stations.map(freezeRadioStation));
@@ -335,17 +374,23 @@ function createAcceptedCatalogSnapshot(instance, generation, updatedAt, stations
 }
 
 const RADIO_GLOBE_LABEL_MAX_CHARS = 30;
-const RADIO_LABEL_SEGMENTER = typeof Intl?.Segmenter === 'function'
-  ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
-  : null;
+const RADIO_LABEL_SEGMENTER =
+  typeof Intl?.Segmenter === 'function'
+    ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+    : null;
 
 function compactRadioLabelText(value, maxChars) {
-  const text = String(value || '').replace(/\s+/g, ' ').trim();
+  const text = String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim();
   const graphemes = RADIO_LABEL_SEGMENTER
     ? [...RADIO_LABEL_SEGMENTER.segment(text)].map((segment) => segment.segment)
     : Array.from(text);
   if (graphemes.length <= maxChars) return text;
-  return `${graphemes.slice(0, Math.max(1, maxChars - 1)).join('').trimEnd()}…`;
+  return `${graphemes
+    .slice(0, Math.max(1, maxChars - 1))
+    .join('')
+    .trimEnd()}…`;
 }
 
 function cleanRadioLabelName(value) {
@@ -359,12 +404,16 @@ function cleanRadioLabelName(value) {
 
 /** Return compact frequency-first text for a Radio globe label. */
 export function radioGlobeLabel(station) {
-  const fullName = String(station?.name || '').replace(/\s+/g, ' ').trim();
+  const fullName = String(station?.name || '')
+    .replace(/\s+/g, ' ')
+    .trim();
   if (!fullName) return '';
 
   let frequency = null;
   let labelName = '';
-  const explicitMatches = [...fullName.matchAll(/(\d{2,3}(?:\.\d{1,2})?)\s*FM\b/gi)];
+  const explicitMatches = [
+    ...fullName.matchAll(/(\d{2,3}(?:\.\d{1,2})?)\s*FM\b/gi),
+  ];
   const explicit = explicitMatches.find((match) => {
     const value = Number(match[1]);
     return value >= 64 && value <= 108;
@@ -372,12 +421,16 @@ export function radioGlobeLabel(station) {
   if (explicit) {
     frequency = explicit[1];
     const before = cleanRadioLabelName(fullName.slice(0, explicit.index));
-    const after = cleanRadioLabelName(fullName.slice(explicit.index + explicit[0].length));
+    const after = cleanRadioLabelName(
+      fullName.slice(explicit.index + explicit[0].length),
+    );
     labelName = before || after;
   } else {
     // Infer only a leading decimal in the conventional FM band. Integers such
     // as "80's" or "100 GREATEST" and domains such as "1.fm" stay names.
-    const leading = fullName.match(/^(\d{2,3}\.\d{1,2})(?:\s+|\s*[-–—]\s*)(.+)$/);
+    const leading = fullName.match(
+      /^(\d{2,3}\.\d{1,2})(?:\s+|\s*[-–—]\s*)(.+)$/,
+    );
     const value = Number(leading?.[1]);
     if (leading && value >= 87.5 && value <= 108) {
       frequency = leading[1];
@@ -385,7 +438,8 @@ export function radioGlobeLabel(station) {
     }
   }
 
-  if (!frequency) return compactRadioLabelText(fullName, RADIO_GLOBE_LABEL_MAX_CHARS);
+  if (!frequency)
+    return compactRadioLabelText(fullName, RADIO_GLOBE_LABEL_MAX_CHARS);
   const prefix = `${frequency} FM`;
   if (!labelName) return prefix;
   const nameBudget = RADIO_GLOBE_LABEL_MAX_CHARS - prefix.length - 3;
@@ -420,7 +474,13 @@ export function createRadioSelectedOverlayEntry(station, position) {
 }
 
 /** Build one bounded ambient cluster badge for the shared overlay host. */
-export function createRadioClusterOverlayEntry({ id, position, text, accent, stationCount }) {
+export function createRadioClusterOverlayEntry({
+  id,
+  position,
+  text,
+  accent,
+  stationCount,
+}) {
   if (!id || !position || !text) return null;
   return {
     id: `cluster:${id}`,
@@ -432,7 +492,10 @@ export function createRadioClusterOverlayEntry({ id, position, text, accent, sta
     title: text,
     accent: accent || RADIO_CATEGORY_COLORS.other,
     interactive: false,
-    anchorRadiusPx: Math.min(13, 6 + Math.log2(Math.max(1, Number(stationCount) || 1)) * 0.8),
+    anchorRadiusPx: Math.min(
+      13,
+      6 + Math.log2(Math.max(1, Number(stationCount) || 1)) * 0.8,
+    ),
     minAnchorGapPx: 4,
     verticalOnly: true,
     placement: 'above',
@@ -458,7 +521,11 @@ export function createRadioClusterOverlayEntry({ id, position, text, accent, sta
 }
 
 /** Build one ambient station label while Cesium retains its point and picking. */
-export function createRadioSingletonOverlayEntry({ station, position, priority = 1 }) {
+export function createRadioSingletonOverlayEntry({
+  station,
+  position,
+  priority = 1,
+}) {
   if (!station?.id || !station?.name || !position) return null;
   return {
     id: `station:${station.id}`,
@@ -500,26 +567,36 @@ export function radioSingletonLabelLimit(cameraHeightM) {
 }
 
 /** Rank visible singleton stations by camera distance and stable station id. */
-export function selectRadioSingletonCandidates(candidates, limit = RADIO_SINGLETON_NEAR_LIMIT) {
+export function selectRadioSingletonCandidates(
+  candidates,
+  limit = RADIO_SINGLETON_NEAR_LIMIT,
+) {
   const distance = (candidate) => {
     const value = Number(candidate?.distanceM);
     return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
   };
   return [...(candidates || [])]
-    .sort((a, b) => (
-      distance(a) - distance(b)
-      || String(a?.station?.id || a?.id || '').localeCompare(String(b?.station?.id || b?.id || ''))
-    ))
+    .sort(
+      (a, b) =>
+        distance(a) - distance(b) ||
+        String(a?.station?.id || a?.id || '').localeCompare(
+          String(b?.station?.id || b?.id || ''),
+        ),
+    )
     .slice(0, Math.max(0, Math.floor(Number(limit) || 0)));
 }
 
 /** Rank and cap ambient Radio clusters before shared-host entry allocation. */
-export function selectRadioClusterCandidates(candidates, limit = RADIO_OVERLAY_COHORT_LIMIT) {
+export function selectRadioClusterCandidates(
+  candidates,
+  limit = RADIO_OVERLAY_COHORT_LIMIT,
+) {
   return [...(candidates || [])]
-    .sort((a, b) => (
-      (Number(b?.stationCount) || 0) - (Number(a?.stationCount) || 0)
-      || String(a?.id || '').localeCompare(String(b?.id || ''))
-    ))
+    .sort(
+      (a, b) =>
+        (Number(b?.stationCount) || 0) - (Number(a?.stationCount) || 0) ||
+        String(a?.id || '').localeCompare(String(b?.id || '')),
+    )
     .slice(0, Math.max(0, Math.floor(Number(limit) || 0)));
 }
 
@@ -532,18 +609,28 @@ export function selectRadioClusterCandidates(candidates, limit = RADIO_OVERLAY_C
  * greatest contributors and a prior identity transfers only to one of its
  * strongest split children.
  */
-export function reconcileRadioClusterCandidates(candidates, previous = [], createId = null) {
-  const current = (Array.isArray(candidates) ? candidates : []).map((candidate, index) => {
-    const stationIds = [...new Set((candidate?.stationIds || []).map((id) => String(id)))].sort();
-    const membershipId = String(candidate?.id || `membership:${stationIds.join('|')}`);
-    return {
-      ...candidate,
-      _reconcileIndex: index,
-      _reconcileMembershipId: membershipId,
-      _reconcileCanonicalKey: `${membershipId}\u0000${stationIds.join('\u0000')}`,
-      stationIds,
-    };
-  });
+export function reconcileRadioClusterCandidates(
+  candidates,
+  previous = [],
+  createId = null,
+) {
+  const current = (Array.isArray(candidates) ? candidates : []).map(
+    (candidate, index) => {
+      const stationIds = [
+        ...new Set((candidate?.stationIds || []).map((id) => String(id))),
+      ].sort();
+      const membershipId = String(
+        candidate?.id || `membership:${stationIds.join('|')}`,
+      );
+      return {
+        ...candidate,
+        _reconcileIndex: index,
+        _reconcileMembershipId: membershipId,
+        _reconcileCanonicalKey: `${membershipId}\u0000${stationIds.join('\u0000')}`,
+        stationIds,
+      };
+    },
+  );
   const priorMembershipsByIdentity = new Map();
   for (const candidate of Array.isArray(previous) ? previous : []) {
     const identityId = String(candidate?.identityId || candidate?.id || '');
@@ -552,7 +639,8 @@ export function reconcileRadioClusterCandidates(candidates, previous = [], creat
       priorMembershipsByIdentity.set(identityId, new Set());
     }
     const membership = priorMembershipsByIdentity.get(identityId);
-    for (const stationId of candidate?.stationIds || []) membership.add(String(stationId));
+    for (const stationId of candidate?.stationIds || [])
+      membership.add(String(stationId));
   }
   const prior = [...priorMembershipsByIdentity]
     .map(([identityId, stationIds]) => ({
@@ -576,12 +664,21 @@ export function reconcileRadioClusterCandidates(candidates, previous = [], creat
     const overlapByPrior = new Map();
     for (const stationId of current[currentIndex].stationIds) {
       for (const priorIndex of priorByStation.get(stationId) || []) {
-        overlapByPrior.set(priorIndex, (overlapByPrior.get(priorIndex) || 0) + 1);
+        overlapByPrior.set(
+          priorIndex,
+          (overlapByPrior.get(priorIndex) || 0) + 1,
+        );
       }
     }
     for (const [priorIndex, overlap] of overlapByPrior) {
-      const union = current[currentIndex].stationIds.length + prior[priorIndex].stationIds.length - overlap;
-      const smaller = Math.min(current[currentIndex].stationIds.length, prior[priorIndex].stationIds.length);
+      const union =
+        current[currentIndex].stationIds.length +
+        prior[priorIndex].stationIds.length -
+        overlap;
+      const smaller = Math.min(
+        current[currentIndex].stationIds.length,
+        prior[priorIndex].stationIds.length,
+      );
       const score = smaller > 0 ? overlap / smaller : 0;
       const similarity = union > 0 ? overlap / union : 0;
       edges.push({ currentIndex, priorIndex, overlap, score, similarity });
@@ -595,28 +692,40 @@ export function reconcileRadioClusterCandidates(candidates, previous = [], creat
       );
     }
   }
-  const eligibleEdges = edges.filter((edge) => (
-    edge.overlap === greatestOverlapByCurrent.get(edge.currentIndex)
-    && edge.overlap === greatestOverlapByPrior.get(edge.priorIndex)
-  ));
-  eligibleEdges.sort((a, b) => (
-    // Identity follows the contributor representing the largest share of the
-    // new cluster. Overlap-coefficient-first incorrectly lets a fully retained
-    // two-station minority beat a larger partial contributor during a merge.
-    b.overlap - a.overlap
-    || b.score - a.score
-    || b.similarity - a.similarity
-    || current[a.currentIndex]._reconcileCanonicalKey
-      .localeCompare(current[b.currentIndex]._reconcileCanonicalKey)
-    || prior[a.priorIndex].identityId.localeCompare(prior[b.priorIndex].identityId)
-  ));
+  const eligibleEdges = edges.filter(
+    (edge) =>
+      edge.overlap === greatestOverlapByCurrent.get(edge.currentIndex) &&
+      edge.overlap === greatestOverlapByPrior.get(edge.priorIndex),
+  );
+  eligibleEdges.sort(
+    (a, b) =>
+      // Identity follows the contributor representing the largest share of the
+      // new cluster. Overlap-coefficient-first incorrectly lets a fully retained
+      // two-station minority beat a larger partial contributor during a merge.
+      b.overlap - a.overlap ||
+      b.score - a.score ||
+      b.similarity - a.similarity ||
+      current[a.currentIndex]._reconcileCanonicalKey.localeCompare(
+        current[b.currentIndex]._reconcileCanonicalKey,
+      ) ||
+      prior[a.priorIndex].identityId.localeCompare(
+        prior[b.priorIndex].identityId,
+      ),
+  );
 
   const inheritedByCurrent = new Map();
   const usedPriorIdentities = new Set();
   for (const edge of eligibleEdges) {
     const identityId = prior[edge.priorIndex].identityId;
-    if (inheritedByCurrent.has(edge.currentIndex) || usedPriorIdentities.has(identityId)) continue;
-    inheritedByCurrent.set(edge.currentIndex, prior[edge.priorIndex].identityId);
+    if (
+      inheritedByCurrent.has(edge.currentIndex) ||
+      usedPriorIdentities.has(identityId)
+    )
+      continue;
+    inheritedByCurrent.set(
+      edge.currentIndex,
+      prior[edge.priorIndex].identityId,
+    );
     usedPriorIdentities.add(identityId);
   }
 
@@ -625,9 +734,11 @@ export function reconcileRadioClusterCandidates(candidates, previous = [], creat
     const freshIndices = current
       .map((candidate, index) => ({ candidate, index }))
       .filter(({ index }) => !inheritedByCurrent.has(index))
-      .sort((a, b) => (
-        a.candidate._reconcileCanonicalKey.localeCompare(b.candidate._reconcileCanonicalKey)
-      ));
+      .sort((a, b) =>
+        a.candidate._reconcileCanonicalKey.localeCompare(
+          b.candidate._reconcileCanonicalKey,
+        ),
+      );
     for (const { candidate, index } of freshIndices) {
       generatedByCurrent.set(index, String(createId(candidate, index) || ''));
     }
@@ -669,7 +780,11 @@ function clampRadioVolume(value) {
 }
 
 /** Return whether camera translation materially changes horizon visibility. */
-export function radioCameraPositionChanged(previous, current, epsilonM = HORIZON_CAMERA_MOVE_EPSILON_M) {
+export function radioCameraPositionChanged(
+  previous,
+  current,
+  epsilonM = HORIZON_CAMERA_MOVE_EPSILON_M,
+) {
   if (!previous || !current) return true;
   const dx = Number(current.x) - Number(previous.x);
   const dy = Number(current.y) - Number(previous.y);
@@ -684,19 +799,22 @@ function cancelRadioVolumeTransition() {
   if (_voiceRestoreTimer) clearTimeout(_voiceRestoreTimer);
   _voiceRestoreTimer = null;
   if (_volumeFadeFrame) {
-    if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(_volumeFadeFrame);
+    if (typeof cancelAnimationFrame === 'function')
+      cancelAnimationFrame(_volumeFadeFrame);
     else clearTimeout(_volumeFadeFrame);
   }
   _volumeFadeFrame = null;
 }
 
 function scheduleVolumeFrame(callback) {
-  if (typeof requestAnimationFrame === 'function') return requestAnimationFrame(callback);
+  if (typeof requestAnimationFrame === 'function')
+    return requestAnimationFrame(callback);
   return setTimeout(() => callback(Date.now()), 16);
 }
 
 function volumeClock() {
-  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+  return typeof performance !== 'undefined' &&
+    typeof performance.now === 'function'
     ? performance.now()
     : Date.now();
 }
@@ -712,7 +830,8 @@ export function normalizeRadioTag(value) {
 }
 
 function stationTags(station) {
-  if (Array.isArray(station?.tags)) return station.tags.map(normalizeRadioTag).filter(Boolean);
+  if (Array.isArray(station?.tags))
+    return station.tags.map(normalizeRadioTag).filter(Boolean);
   return String(station?.tags ?? '')
     .split(',')
     .map(normalizeRadioTag)
@@ -721,11 +840,15 @@ function stationTags(station) {
 
 function hasTag(station, needles) {
   const tags = stationTags(station);
-  return needles.some((needle) => tags.some((tag) => tag === needle || tag.includes(needle)));
+  return needles.some((needle) =>
+    tags.some((tag) => tag === needle || tag.includes(needle)),
+  );
 }
 
 function detectedGenres(station) {
-  return MUSIC_GENRES.filter(([genre]) => hasTag(station, [genre])).map(([genre]) => genre);
+  return MUSIC_GENRES.filter(([genre]) => hasTag(station, [genre])).map(
+    ([genre]) => genre,
+  );
 }
 
 /** Return whether a station belongs in a station-tag category. */
@@ -735,12 +858,17 @@ export function stationMatchesRadioCategory(station, categoryId) {
     return detectedGenres(station).includes(categoryId.slice('genre:'.length));
   }
   if (categoryId === 'music') {
-    return detectedGenres(station).length > 0
-      || hasTag(station, ['music', 'hits', 'songs']);
+    return (
+      detectedGenres(station).length > 0 ||
+      hasTag(station, ['music', 'hits', 'songs'])
+    );
   }
   if (categoryId === 'other') {
-    return !Object.entries(CATEGORY_MATCHERS).some(([id]) => stationMatchesRadioCategory(station, id))
-      && !stationMatchesRadioCategory(station, 'music');
+    return (
+      !Object.entries(CATEGORY_MATCHERS).some(([id]) =>
+        stationMatchesRadioCategory(station, id),
+      ) && !stationMatchesRadioCategory(station, 'music')
+    );
   }
   return hasTag(station, CATEGORY_MATCHERS[categoryId] || []);
 }
@@ -765,7 +893,11 @@ export function radioClusterBadgeText(categoryId = 'other', count = 0) {
 export function radioClusterCategoryId(stations, activeFilter = 'all') {
   const filter = String(activeFilter || 'all');
   if (filter !== 'all') {
-    if (filter.startsWith('genre:') || RADIO_MARKER_CATEGORY_ORDER.includes(filter) || filter === 'other') {
+    if (
+      filter.startsWith('genre:') ||
+      RADIO_MARKER_CATEGORY_ORDER.includes(filter) ||
+      filter === 'other'
+    ) {
       return filter;
     }
     return 'other';
@@ -790,15 +922,19 @@ export function radioClusterCategoryId(stations, activeFilter = 'all') {
 
 /** Build the code-native four-corner bracket used by the selected station. */
 export function radioSelectionBracketSvg(color = RADIO_CATEGORY_COLORS.other) {
-  const stroke = /^#[0-9a-f]{6}$/i.test(String(color)) ? String(color) : RADIO_CATEGORY_COLORS.other;
+  const stroke = /^#[0-9a-f]{6}$/i.test(String(color))
+    ? String(color)
+    : RADIO_CATEGORY_COLORS.other;
   return `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><path d="M2 13V2H13 M27 2H38V13 M38 27V38H27 M13 38H2V27" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="square"/></svg>`;
 }
 
 /** Choose one stable display category for a station that may match several filters. */
 export function radioStationCategoryId(station) {
-  return RADIO_MARKER_CATEGORY_ORDER.find((categoryId) => (
-    stationMatchesRadioCategory(station, categoryId)
-  )) || 'other';
+  return (
+    RADIO_MARKER_CATEGORY_ORDER.find((categoryId) =>
+      stationMatchesRadioCategory(station, categoryId),
+    ) || 'other'
+  );
 }
 
 /** Build canonical and detected-genre categories from station-level tags. */
@@ -825,14 +961,17 @@ export function buildRadioCategories(stations) {
   return categories.map((category) => ({
     ...category,
     color: radioCategoryColor(category.id),
-    count: rows.filter((station) => stationMatchesRadioCategory(station, category.id)).length,
+    count: rows.filter((station) =>
+      stationMatchesRadioCategory(station, category.id),
+    ).length,
   }));
 }
 
 /** Filter stations without changing the active stream or selection. */
 export function filterRadioStations(stations, categoryId = 'all') {
-  return (Array.isArray(stations) ? stations : [])
-    .filter((station) => stationMatchesRadioCategory(station, categoryId));
+  return (Array.isArray(stations) ? stations : []).filter((station) =>
+    stationMatchesRadioCategory(station, categoryId),
+  );
 }
 
 /** Return whether Radio Browser metadata identifies a station as English-language. */
@@ -840,7 +979,11 @@ export function isEnglishRadioStation(station) {
   const languages = Array.isArray(station?.languages) ? station.languages : [];
   return languages.some((language) => {
     const normalized = normalizeRadioTag(language);
-    return normalized === 'en' || normalized === 'eng' || normalized.startsWith('english');
+    return (
+      normalized === 'en' ||
+      normalized === 'eng' ||
+      normalized.startsWith('english')
+    );
   });
 }
 
@@ -849,16 +992,22 @@ function radioAngularDistance(station, anchor) {
   const lon1 = Cesium.Math.toRadians(Number(anchor?.lon));
   const lat2 = Cesium.Math.toRadians(Number(station?.lat));
   const lon2 = Cesium.Math.toRadians(Number(station?.lon));
-  if (![lat1, lon1, lat2, lon2].every(Number.isFinite)) return Number.POSITIVE_INFINITY;
+  if (![lat1, lon1, lat2, lon2].every(Number.isFinite))
+    return Number.POSITIVE_INFINITY;
   const deltaLat = lat2 - lat1;
   const deltaLon = lon2 - lon1;
-  const haversine = Math.sin(deltaLat / 2) ** 2
-    + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) ** 2;
+  const haversine =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) ** 2;
   return 2 * Math.asin(Math.min(1, Math.sqrt(Math.max(0, haversine))));
 }
 
 /** Rank a copied station list by viewport distance, with an optional English-first tier. */
-export function rankRadioStationsForViewport(stations, anchor, { preferEnglish = false } = {}) {
+export function rankRadioStationsForViewport(
+  stations,
+  anchor,
+  { preferEnglish = false } = {},
+) {
   return (Array.isArray(stations) ? stations : [])
     .map((station, index) => ({
       station,
@@ -866,38 +1015,49 @@ export function rankRadioStationsForViewport(stations, anchor, { preferEnglish =
       distance: radioAngularDistance(station, anchor),
       languageTier: preferEnglish && !isEnglishRadioStation(station) ? 1 : 0,
     }))
-    .sort((a, b) => a.languageTier - b.languageTier || a.distance - b.distance || a.index - b.index)
+    .sort(
+      (a, b) =>
+        a.languageTier - b.languageTier ||
+        a.distance - b.distance ||
+        a.index - b.index,
+    )
     .map(({ station }) => station);
 }
 
 /** Rank stations for an explicit voice/player request without moving the camera. */
-export function rankRadioStationsForRequest(stations, {
-  categoryId = 'all',
-  anchor = null,
-  country = '',
-  stationQuery = '',
-} = {}) {
+export function rankRadioStationsForRequest(
+  stations,
+  { categoryId = 'all', anchor = null, country = '', stationQuery = '' } = {},
+) {
   const countryFilter = normalizeRadioCountryInput(country);
   if (!countryFilter.valid) return [];
   const query = normalizeRadioTag(stationQuery);
   let matches = filterRadioStations(stations, categoryId);
   if (countryFilter.code || countryFilter.name) {
     matches = matches.filter((station) => {
-      const stationCode = String(station?.countryCode || '').trim().toUpperCase();
+      const stationCode = String(station?.countryCode || '')
+        .trim()
+        .toUpperCase();
       const stationCountry = normalizeRadioCountryInput(station?.country);
-      return (countryFilter.code && stationCode === countryFilter.code)
-        || (countryFilter.code && stationCountry.valid && stationCountry.code === countryFilter.code);
+      return (
+        (countryFilter.code && stationCode === countryFilter.code) ||
+        (countryFilter.code &&
+          stationCountry.valid &&
+          stationCountry.code === countryFilter.code)
+      );
     });
   }
   if (query) {
-    matches = matches.filter((station) => [
-      station?.id,
-      station?.name,
-      station?.state,
-      station?.country,
-      station?.countryCode,
-      ...(Array.isArray(station?.tags) ? station.tags : []),
-    ].some((value) => normalizeRadioTag(value).includes(query)));
+    matches = matches.filter((station) =>
+      [
+        station?.id,
+        station?.name,
+        station?.state,
+        station?.country,
+        station?.countryCode,
+        ...(Array.isArray(station?.tags) ? station.tags : []),
+      ].some((value) => normalizeRadioTag(value).includes(query)),
+    );
   }
   return anchor
     ? rankRadioStationsForViewport(matches, anchor)
@@ -906,7 +1066,10 @@ export function rankRadioStationsForRequest(stations, {
 
 /** Classify a globe-scale Radio view without flapping on Cesium height round-off. */
 export function radioViewIsGlobal(altitudeM) {
-  return Number.isFinite(altitudeM) && Math.round(altitudeM) >= GLOBAL_RADIO_ALTITUDE_M;
+  return (
+    Number.isFinite(altitudeM) &&
+    Math.round(altitudeM) >= GLOBAL_RADIO_ALTITUDE_M
+  );
 }
 
 /** Pure stale-response guard shared by the async directory update path. */
@@ -917,9 +1080,11 @@ export function radioRequestIsCurrent(
   sessionGeneration = null,
   currentSessionGeneration = sessionGeneration,
 ) {
-  return generation === currentGeneration
-    && Boolean(enabled)
-    && sessionGeneration === currentSessionGeneration;
+  return (
+    generation === currentGeneration &&
+    Boolean(enabled) &&
+    sessionGeneration === currentSessionGeneration
+  );
 }
 
 /** Resolve a station id from ordinary, selected, or Cesium cluster pick shapes. */
@@ -930,7 +1095,8 @@ export function radioStationIdFromPick(picked) {
     const value = pending.shift();
     if (typeof value === 'string' || typeof value === 'number') {
       const id = String(value);
-      if (id.startsWith(`${RADIO_PREFIX}selected:`)) return id.slice(`${RADIO_PREFIX}selected:`.length);
+      if (id.startsWith(`${RADIO_PREFIX}selected:`))
+        return id.slice(`${RADIO_PREFIX}selected:`.length);
       if (id.startsWith(RADIO_PREFIX)) return id.slice(RADIO_PREFIX.length);
       continue;
     }
@@ -948,7 +1114,15 @@ export function radioStationIdFromPick(picked) {
 /** Map an integer tuner slot directly to one available directory station. */
 export function radioTunerSlot(value, stationCount) {
   const count = Math.max(0, Math.floor(Number(stationCount) || 0));
-  if (!count) return { slot: 0, max: 0, locked: false, stationIndex: -1, leftIndex: -1, rightIndex: -1 };
+  if (!count)
+    return {
+      slot: 0,
+      max: 0,
+      locked: false,
+      stationIndex: -1,
+      leftIndex: -1,
+      rightIndex: -1,
+    };
   const max = Math.max(0, count - 1);
   const slot = Math.min(max, Math.max(0, Math.round(Number(value) || 0)));
   return {
@@ -967,29 +1141,49 @@ export function radioTunerCommitSlot(value, stationCount) {
 }
 
 /** Map one pointer coordinate to continuous absolute directory progress. */
-export function radioTunerPointerPosition(clientX, left, width, stationCount, insetPx = 7) {
+export function radioTunerPointerPosition(
+  clientX,
+  left,
+  width,
+  stationCount,
+  insetPx = 7,
+) {
   const count = Math.max(0, Math.floor(Number(stationCount) || 0));
   if (!count) return { ratio: 0, coordinate: 0, stationIndex: -1 };
   if (count === 1) return { ratio: 0.5, coordinate: 0, stationIndex: 0 };
   const inset = Math.max(0, Number(insetPx) || 0);
   const usableWidth = Math.max(1, (Number(width) || 0) - inset * 2);
-  const ratio = Math.min(1, Math.max(0, ((Number(clientX) || 0) - (Number(left) || 0) - inset) / usableWidth));
+  const ratio = Math.min(
+    1,
+    Math.max(
+      0,
+      ((Number(clientX) || 0) - (Number(left) || 0) - inset) / usableWidth,
+    ),
+  );
   const coordinate = ratio * (count - 1);
   return {
     ratio,
     coordinate,
-    stationIndex: Math.min(count - 1, Math.max(0, Math.floor(coordinate + 0.5))),
+    stationIndex: Math.min(
+      count - 1,
+      Math.max(0, Math.floor(coordinate + 0.5)),
+    ),
   };
 }
 
 /** Build a bounded virtual tuner tape around one continuous directory coordinate. */
-export function buildRadioTunerTicks(coordinate, stationCount, width, {
-  insetPx = 7,
-  minPitchPx = 14,
-  speedFactor = 5,
-  overscan = 2,
-  labelStep = 6,
-} = {}) {
+export function buildRadioTunerTicks(
+  coordinate,
+  stationCount,
+  width,
+  {
+    insetPx = 7,
+    minPitchPx = 14,
+    speedFactor = 5,
+    overscan = 2,
+    labelStep = 6,
+  } = {},
+) {
   const count = Math.max(0, Math.floor(Number(stationCount) || 0));
   const dialWidth = Math.max(0, Number(width) || 0);
   const inset = Math.max(0, Number(insetPx) || 0);
@@ -998,7 +1192,15 @@ export function buildRadioTunerTicks(coordinate, stationCount, width, {
   const value = Math.min(count - 1, Math.max(0, Number(coordinate) || 0));
   if (count === 1) {
     return {
-      ticks: [{ stationIndex: 0, channel: 1, xPx: inset + usableWidth / 2, current: true, label: '01' }],
+      ticks: [
+        {
+          stationIndex: 0,
+          channel: 1,
+          xPx: inset + usableWidth / 2,
+          current: true,
+          label: '01',
+        },
+      ],
       needleX: inset + usableWidth / 2,
       pitchPx: Math.max(1, Number(minPitchPx) || 14),
       ratio: 0.5,
@@ -1011,16 +1213,29 @@ export function buildRadioTunerTicks(coordinate, stationCount, width, {
   );
   const needleX = inset + directoryStep * value;
   const overscanPx = pitchPx * Math.max(0, Number(overscan) || 0);
-  const first = Math.max(0, Math.ceil(value + (-overscanPx - needleX) / pitchPx));
-  const last = Math.min(count - 1, Math.floor(value + (dialWidth + overscanPx - needleX) / pitchPx));
-  const currentIndex = Math.min(count - 1, Math.max(0, Math.floor(value + 0.5)));
+  const first = Math.max(
+    0,
+    Math.ceil(value + (-overscanPx - needleX) / pitchPx),
+  );
+  const last = Math.min(
+    count - 1,
+    Math.floor(value + (dialWidth + overscanPx - needleX) / pitchPx),
+  );
+  const currentIndex = Math.min(
+    count - 1,
+    Math.max(0, Math.floor(value + 0.5)),
+  );
   const majorEvery = Math.max(1, Math.floor(Number(labelStep) || 6));
   const labelWidth = Math.max(2, String(count).length);
   const ticks = [];
   for (let stationIndex = first; stationIndex <= last; stationIndex += 1) {
     const channel = stationIndex + 1;
     const current = stationIndex === currentIndex;
-    const labelled = current || stationIndex === 0 || stationIndex === count - 1 || channel % majorEvery === 0;
+    const labelled =
+      current ||
+      stationIndex === 0 ||
+      stationIndex === count - 1 ||
+      channel % majorEvery === 0;
     ticks.push({
       stationIndex,
       channel,
@@ -1037,29 +1252,44 @@ export function radioStationCameraPlan(station, cameraState = {}) {
   const targetLat = Number(station?.lat);
   const targetLon = Number(station?.lon);
   const height = Math.max(1, Number(cameraState.height) || 1);
-  const heading = Number.isFinite(cameraState.heading) ? cameraState.heading : 0;
-  const pitch = Number.isFinite(cameraState.pitch) ? cameraState.pitch : -Math.PI / 2;
+  const heading = Number.isFinite(cameraState.heading)
+    ? cameraState.heading
+    : 0;
+  const pitch = Number.isFinite(cameraState.pitch)
+    ? cameraState.pitch
+    : -Math.PI / 2;
   const roll = Number.isFinite(cameraState.roll) ? cameraState.roll : 0;
   if (!Number.isFinite(targetLat) || !Number.isFinite(targetLon)) return null;
 
-  const downAngle = Math.min(Math.PI / 2, Math.max(0.08, Math.abs(Math.min(-0.001, pitch))));
-  const groundOffsetM = downAngle > Math.PI / 2 - 1e-6
-    ? 0
-    : Math.min(2_000_000, height / Math.max(0.08, Math.tan(downAngle)));
+  const downAngle = Math.min(
+    Math.PI / 2,
+    Math.max(0.08, Math.abs(Math.min(-0.001, pitch))),
+  );
+  const groundOffsetM =
+    downAngle > Math.PI / 2 - 1e-6
+      ? 0
+      : Math.min(2_000_000, height / Math.max(0.08, Math.tan(downAngle)));
   const angularDistance = groundOffsetM / 6_378_137;
-  const targetLatRad = targetLat * Math.PI / 180;
+  const targetLatRad = (targetLat * Math.PI) / 180;
   const cameraBearing = heading + Math.PI;
   const cameraLatRad = Math.asin(
-    Math.sin(targetLatRad) * Math.cos(angularDistance)
-      + Math.cos(targetLatRad) * Math.sin(angularDistance) * Math.cos(cameraBearing),
+    Math.sin(targetLatRad) * Math.cos(angularDistance) +
+      Math.cos(targetLatRad) *
+        Math.sin(angularDistance) *
+        Math.cos(cameraBearing),
   );
-  const cameraLonRad = targetLon * Math.PI / 180 + Math.atan2(
-    Math.sin(cameraBearing) * Math.sin(angularDistance) * Math.cos(targetLatRad),
-    Math.cos(angularDistance) - Math.sin(targetLatRad) * Math.sin(cameraLatRad),
-  );
-  const cameraLon = ((cameraLonRad * 180 / Math.PI + 540) % 360) - 180;
+  const cameraLonRad =
+    (targetLon * Math.PI) / 180 +
+    Math.atan2(
+      Math.sin(cameraBearing) *
+        Math.sin(angularDistance) *
+        Math.cos(targetLatRad),
+      Math.cos(angularDistance) -
+        Math.sin(targetLatRad) * Math.sin(cameraLatRad),
+    );
+  const cameraLon = (((cameraLonRad * 180) / Math.PI + 540) % 360) - 180;
   return {
-    lat: cameraLatRad * 180 / Math.PI,
+    lat: (cameraLatRad * 180) / Math.PI,
     lon: cameraLon,
     height,
     heading,
@@ -1105,12 +1335,19 @@ export function radioGlobeRecenterHeight(currentHeight, fullGlobeCapable) {
 }
 
 /** Bound one already ordered filtered directory without injecting outside selections. */
-export function buildRadioTunerBand(rankedStations, selected, limit = RADIO_TUNER_STATION_LIMIT) {
+export function buildRadioTunerBand(
+  rankedStations,
+  selected,
+  limit = RADIO_TUNER_STATION_LIMIT,
+) {
   const boundedLimit = Math.min(
     RADIO_TUNER_DIRECTORY_LIMIT,
     Math.max(1, Math.floor(Number(limit) || RADIO_TUNER_STATION_LIMIT)),
   );
-  return (Array.isArray(rankedStations) ? rankedStations : []).slice(0, boundedLimit);
+  return (Array.isArray(rankedStations) ? rankedStations : []).slice(
+    0,
+    boundedLimit,
+  );
 }
 
 /** Decide whether tuner static should be audible for the current handoff state. */
@@ -1120,7 +1357,9 @@ export function radioTuningStaticShouldPlay({
   awaitingStationId = null,
   voiceDucked = false,
 } = {}) {
-  return Boolean(tuningStatic && !voiceDucked && (tuningActive || awaitingStationId));
+  return Boolean(
+    tuningStatic && !voiceDucked && (tuningActive || awaitingStationId),
+  );
 }
 
 function markerPosition(station, liftM = MARKER_LIFT_M) {
@@ -1153,8 +1392,14 @@ function viewportRadioAnchor() {
   let cartographic = null;
   const canvas = scene?.canvas;
   if (canvas && typeof camera.pickEllipsoid === 'function') {
-    const center = new Cesium.Cartesian2(canvas.clientWidth / 2, canvas.clientHeight / 2);
-    const position = camera.pickEllipsoid(center, scene.globe?.ellipsoid || Cesium.Ellipsoid.WGS84);
+    const center = new Cesium.Cartesian2(
+      canvas.clientWidth / 2,
+      canvas.clientHeight / 2,
+    );
+    const position = camera.pickEllipsoid(
+      center,
+      scene.globe?.ellipsoid || Cesium.Ellipsoid.WGS84,
+    );
     if (position) cartographic = Cesium.Cartographic.fromCartesian(position);
   }
   cartographic ||= camera.positionCartographic || null;
@@ -1183,16 +1428,32 @@ export function getRadioAcceptedCatalogSnapshot() {
 export function radioStationResolutionMatches(frozenStation, currentStation) {
   if (!frozenStation || !currentStation) return false;
   for (const key of [
-    'id', 'name', 'lat', 'lon', 'streamUrl', 'homepage', 'state', 'country',
-    'countryCode', 'metadataTrust', 'codec', 'bitrate',
+    'id',
+    'name',
+    'lat',
+    'lon',
+    'streamUrl',
+    'homepage',
+    'state',
+    'country',
+    'countryCode',
+    'metadataTrust',
+    'codec',
+    'bitrate',
   ]) {
     if (frozenStation[key] !== currentStation[key]) return false;
   }
   return ['tags', 'languages'].every((key) => {
-    const frozenValues = Array.isArray(frozenStation[key]) ? frozenStation[key] : [];
-    const currentValues = Array.isArray(currentStation[key]) ? currentStation[key] : [];
-    return frozenValues.length === currentValues.length
-      && frozenValues.every((value, index) => value === currentValues[index]);
+    const frozenValues = Array.isArray(frozenStation[key])
+      ? frozenStation[key]
+      : [];
+    const currentValues = Array.isArray(currentStation[key])
+      ? currentStation[key]
+      : [];
+    return (
+      frozenValues.length === currentValues.length &&
+      frozenValues.every((value, index) => value === currentValues[index])
+    );
   });
 }
 
@@ -1222,7 +1483,9 @@ export function getRadioUIState() {
     stationCount: _stations.length,
     filteredCount: visible.length,
     selected,
-    selectedIndex: selected ? visible.findIndex((station) => station.id === selected.id) : -1,
+    selectedIndex: selected
+      ? visible.findIndex((station) => station.id === selected.id)
+      : -1,
     audioState: _audioState,
     audioError: _audioError,
     playingStationId: _audioStationId,
@@ -1266,7 +1529,11 @@ export function subscribeToRadioPlaybackControls(listener) {
   return () => _playbackControlListeners.delete(listener);
 }
 
-function emitPlaybackControl(action, origin, attemptId = _activePlaybackAttempt?.id || null) {
+function emitPlaybackControl(
+  action,
+  origin,
+  attemptId = _activePlaybackAttempt?.id || null,
+) {
   const event = { action, origin, attemptId };
   for (const listener of _playbackControlListeners) {
     try {
@@ -1279,10 +1546,12 @@ function emitPlaybackControl(action, origin, attemptId = _activePlaybackAttempt?
 
 function audioEventBelongsToActiveAttempt(audio) {
   const attempt = _activePlaybackAttempt;
-  return _audio === audio
-    && Boolean(attempt)
-    && attempt.generation === _playGeneration
-    && attempt.stationId === _audioStationId;
+  return (
+    _audio === audio &&
+    Boolean(attempt) &&
+    attempt.generation === _playGeneration &&
+    attempt.stationId === _audioStationId
+  );
 }
 
 function installAudio({ replace = false } = {}) {
@@ -1291,9 +1560,21 @@ function installAudio({ replace = false } = {}) {
   const previousAudio = _audio;
   _audio = null;
   if (previousAudio) {
-    try { previousAudio.pause(); } catch { /* already stopped */ }
-    try { previousAudio.removeAttribute('src'); } catch { /* no source */ }
-    try { previousAudio.load(); } catch { /* detached media */ }
+    try {
+      previousAudio.pause();
+    } catch {
+      /* already stopped */
+    }
+    try {
+      previousAudio.removeAttribute('src');
+    } catch {
+      /* no source */
+    }
+    try {
+      previousAudio.load();
+    } catch {
+      /* detached media */
+    }
   }
   const audio = new Audio();
   _audio = audio;
@@ -1305,7 +1586,8 @@ function installAudio({ replace = false } = {}) {
     if (!['loading', 'buffering', 'playing'].includes(_audioState)) return;
     _audioState = 'playing';
     _audioError = null;
-    if (_tuningAwaitingStationId === _audioStationId) clearRadioTuningNoise({ emit: false });
+    if (_tuningAwaitingStationId === _audioStationId)
+      clearRadioTuningNoise({ emit: false });
     emitState();
   });
   audio.addEventListener('pause', () => {
@@ -1329,18 +1611,35 @@ function installAudio({ replace = false } = {}) {
     const attempt = _activePlaybackAttempt;
     if (tryRadioFallback(failedId, attempt?.origin, attempt?.id)) return;
     _audioState = 'error';
-    _audioError = 'Broadcaster stream is unavailable or blocked by the browser.';
+    _audioError =
+      'Broadcaster stream is unavailable or blocked by the browser.';
     emitState();
   });
 }
 
 function stopTuningNoiseSource() {
   if (_tuningNoiseSource) {
-    try { _tuningNoiseSource.stop(); } catch { /* already stopped */ }
-    try { _tuningNoiseSource.disconnect(); } catch { /* already disconnected */ }
+    try {
+      _tuningNoiseSource.stop();
+    } catch {
+      /* already stopped */
+    }
+    try {
+      _tuningNoiseSource.disconnect();
+    } catch {
+      /* already disconnected */
+    }
   }
-  try { _tuningNoiseFilter?.disconnect(); } catch { /* already disconnected */ }
-  try { _tuningNoiseGain?.disconnect(); } catch { /* already disconnected */ }
+  try {
+    _tuningNoiseFilter?.disconnect();
+  } catch {
+    /* already disconnected */
+  }
+  try {
+    _tuningNoiseGain?.disconnect();
+  } catch {
+    /* already disconnected */
+  }
   _tuningNoiseSource = null;
   _tuningNoiseFilter = null;
   _tuningNoiseGain = null;
@@ -1364,17 +1663,26 @@ function syncTuningNoiseGain() {
 }
 
 function installTuningNoise() {
-  const AudioContextClass = globalThis.AudioContext || globalThis.webkitAudioContext;
+  const AudioContextClass =
+    globalThis.AudioContext || globalThis.webkitAudioContext;
   if (!AudioContextClass) return false;
   if (!_tuningNoiseContext) _tuningNoiseContext = new AudioContextClass();
   const resumed = _tuningNoiseContext.resume?.();
   if (resumed?.catch) void resumed.catch(() => {});
   if (_tuningNoiseSource) return true;
 
-  const frameCount = Math.max(1, Math.floor(_tuningNoiseContext.sampleRate * 0.75));
-  const buffer = _tuningNoiseContext.createBuffer(1, frameCount, _tuningNoiseContext.sampleRate);
+  const frameCount = Math.max(
+    1,
+    Math.floor(_tuningNoiseContext.sampleRate * 0.75),
+  );
+  const buffer = _tuningNoiseContext.createBuffer(
+    1,
+    frameCount,
+    _tuningNoiseContext.sampleRate,
+  );
   const channel = buffer.getChannelData(0);
-  for (let index = 0; index < channel.length; index += 1) channel[index] = Math.random() * 2 - 1;
+  for (let index = 0; index < channel.length; index += 1)
+    channel[index] = Math.random() * 2 - 1;
 
   _tuningNoiseSource = _tuningNoiseContext.createBufferSource();
   _tuningNoiseFilter = _tuningNoiseContext.createBiquadFilter();
@@ -1394,7 +1702,8 @@ function installTuningNoise() {
 
 /** Return the complete accepted filtered directory in stable catalog order. */
 export function getRadioTunerStations(limit = RADIO_TUNER_STATION_LIMIT) {
-  if (!radioPresentationAllowed() || !_acceptedCatalogSnapshot.stations.length) return [];
+  if (!radioPresentationAllowed() || !_acceptedCatalogSnapshot.stations.length)
+    return [];
   return buildRadioTunerBand(visibleStations(), selectedStation(), limit);
 }
 
@@ -1402,7 +1711,8 @@ export function getRadioTunerStations(limit = RADIO_TUNER_STATION_LIMIT) {
 export function beginRadioTuning() {
   if (!radioPresentationAllowed() || !visibleStations().length) return false;
   const snapshot = captureRadioTuningResolutionSnapshot();
-  if (!Number.isSafeInteger(snapshot.generation) || !snapshot.stations.length) return false;
+  if (!Number.isSafeInteger(snapshot.generation) || !snapshot.stations.length)
+    return false;
   _tuningResolutionSnapshot = snapshot;
   _tuningStationById = new Map(
     _tuningResolutionSnapshot.stations.map((station) => [station.id, station]),
@@ -1464,21 +1774,22 @@ function radioGlobeRecenterPlan(viewer = _viewer) {
   let fullGlobeCapable = false;
   if (geometry) {
     if (!radioGlobeNeedsRecentering(geometry)) return null;
-    fullGlobeCapable = isFullGlobeInsideKeyhole({
-      ...geometry,
-      earthCenterX: geometry.keyholeCenterX,
-      earthCenterY: geometry.keyholeCenterY,
-    }, false);
+    fullGlobeCapable = isFullGlobeInsideKeyhole(
+      {
+        ...geometry,
+        earthCenterX: geometry.keyholeCenterX,
+        earthCenterY: geometry.keyholeCenterY,
+      },
+      false,
+    );
   } else {
     const earthRadius = earthDiscScreenRadius(
       Cesium.Cartesian3.magnitude(camera.positionWC),
       height,
       camera.frustum?.fovy,
     );
-    const facingEarthCenter = Cesium.Cartesian3.dot(
-      camera.directionWC,
-      _radioEarthToCenter,
-    ) > 0;
+    const facingEarthCenter =
+      Cesium.Cartesian3.dot(camera.directionWC, _radioEarthToCenter) > 0;
     if (!earthRadius || facingEarthCenter) return null;
     const keyhole = getKeyholeGeometry(width, height);
     fullGlobeCapable = earthRadius + GLOBE_ENTER_CLEARANCE_PX <= keyhole.radius;
@@ -1506,15 +1817,16 @@ function radioGlobeRecenterPlan(viewer = _viewer) {
 
 function radioCameraNavigationIsCurrent(navigation) {
   return Boolean(
-    navigation
-    && navigation.generation === _radioCameraNavigationGeneration
-    && _enabled
-    && radioCameraNavigationAllowed(_viewer)
+    navigation &&
+      navigation.generation === _radioCameraNavigationGeneration &&
+      _enabled &&
+      radioCameraNavigationAllowed(_viewer),
   );
 }
 
 function cancelActiveRadioCameraFlight() {
-  if (!_activeRadioCameraFlight || !radioCameraNavigationAllowed(_viewer)) return;
+  if (!_activeRadioCameraFlight || !radioCameraNavigationAllowed(_viewer))
+    return;
   _activeRadioCameraFlight = null;
   _viewer.camera.cancelFlight();
 }
@@ -1527,10 +1839,10 @@ function invalidateRadioCameraNavigation() {
 
 function radioCameraNavigationOwnsSelection(navigation, station) {
   return Boolean(
-    navigation
-    && station
-    && navigation.generation === _radioCameraNavigationGeneration
-    && navigation.target?.id === station.id
+    navigation &&
+      station &&
+      navigation.generation === _radioCameraNavigationGeneration &&
+      navigation.target?.id === station.id,
   );
 }
 
@@ -1539,7 +1851,8 @@ function startRadioCameraFlight(navigation, options, onComplete) {
   const token = ++_radioCameraFlightSequence;
   _activeRadioCameraFlight = { generation: navigation.generation, token };
   const finish = (completed) => {
-    if (_activeRadioCameraFlight?.token === token) _activeRadioCameraFlight = null;
+    if (_activeRadioCameraFlight?.token === token)
+      _activeRadioCameraFlight = null;
     if (completed && radioCameraNavigationIsCurrent(navigation)) onComplete?.();
   };
   _viewer.camera.flyTo({
@@ -1551,17 +1864,33 @@ function startRadioCameraFlight(navigation, options, onComplete) {
 }
 
 function focusRadioNavigationTarget(navigation) {
-  if (!radioCameraNavigationIsCurrent(navigation) || !navigation.target) return false;
-  const plan = radioStationCameraPlan(navigation.target, navigation.cameraState);
+  if (!radioCameraNavigationIsCurrent(navigation) || !navigation.target)
+    return false;
+  const plan = radioStationCameraPlan(
+    navigation.target,
+    navigation.cameraState,
+  );
   if (!plan) return false;
   navigation.phase = 'focusing';
-  return startRadioCameraFlight(navigation, {
-    destination: Cesium.Cartesian3.fromDegrees(plan.lon, plan.lat, plan.height),
-    orientation: { heading: plan.heading, pitch: plan.pitch, roll: plan.roll },
-    duration: navigation.duration,
-  }, () => {
-    navigation.phase = 'settled';
-  });
+  return startRadioCameraFlight(
+    navigation,
+    {
+      destination: Cesium.Cartesian3.fromDegrees(
+        plan.lon,
+        plan.lat,
+        plan.height,
+      ),
+      orientation: {
+        heading: plan.heading,
+        pitch: plan.pitch,
+        roll: plan.roll,
+      },
+      duration: navigation.duration,
+    },
+    () => {
+      navigation.phase = 'settled';
+    },
+  );
 }
 
 function beginRadioCameraNavigation(cameraState = null) {
@@ -1586,8 +1915,10 @@ function rotateRadioStationIntoView(
   cameraState = null,
   navigation = null,
 ) {
-  const activeNavigation = navigation || beginRadioCameraNavigation(cameraState);
-  if (!station || !radioCameraNavigationIsCurrent(activeNavigation)) return false;
+  const activeNavigation =
+    navigation || beginRadioCameraNavigation(cameraState);
+  if (!station || !radioCameraNavigationIsCurrent(activeNavigation))
+    return false;
   activeNavigation.target = station;
   activeNavigation.duration = duration;
   if (activeNavigation.phase === 'recentering') return true;
@@ -1595,20 +1926,24 @@ function rotateRadioStationIntoView(
   if (activeNavigation.recenterPlan && !activeNavigation.recentered) {
     activeNavigation.phase = 'recentering';
     const recenterDuration = Math.min(0.9, Math.max(0.65, duration));
-    return startRadioCameraFlight(activeNavigation, {
-      destination: activeNavigation.recenterPlan.destination,
-      orientation: {
-        heading: activeNavigation.cameraState.heading,
-        pitch: activeNavigation.cameraState.pitch,
-        roll: activeNavigation.cameraState.roll,
+    return startRadioCameraFlight(
+      activeNavigation,
+      {
+        destination: activeNavigation.recenterPlan.destination,
+        orientation: {
+          heading: activeNavigation.cameraState.heading,
+          pitch: activeNavigation.cameraState.pitch,
+          roll: activeNavigation.cameraState.roll,
+        },
+        duration: recenterDuration,
+        easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT,
       },
-      duration: recenterDuration,
-      easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT,
-    }, () => {
-      activeNavigation.recentered = true;
-      activeNavigation.phase = 'idle';
-      focusRadioNavigationTarget(activeNavigation);
-    });
+      () => {
+        activeNavigation.recentered = true;
+        activeNavigation.phase = 'idle';
+        focusRadioNavigationTarget(activeNavigation);
+      },
+    );
   }
   return focusRadioNavigationTarget(activeNavigation);
 }
@@ -1626,9 +1961,13 @@ export function previewRadioTuningStation(id, { rotate = true } = {}) {
     if (station && rotate) {
       const cameraState = radioCameraState();
       _tuningCameraNavigation = beginRadioCameraNavigation(cameraState);
-      rotateRadioStationIntoView(station, 0.35, cameraState, _tuningCameraNavigation);
-    }
-    else if (rotate) {
+      rotateRadioStationIntoView(
+        station,
+        0.35,
+        cameraState,
+        _tuningCameraNavigation,
+      );
+    } else if (rotate) {
       _tuningCameraNavigation = null;
       invalidateRadioCameraNavigation();
     }
@@ -1659,8 +1998,14 @@ function clearRadioTuningNoise({ emit = true, restoredStation = null } = {}) {
 
 /** Finish a tuning gesture and release its synthesized noise source. */
 export function endRadioTuning() {
-  if (!_tuningActive && !_tuningStatic && !_tuningAwaitingStationId
-      && !_tuningNoiseSource && !_cancelledTuningPresentationStation) return;
+  if (
+    !_tuningActive &&
+    !_tuningStatic &&
+    !_tuningAwaitingStationId &&
+    !_tuningNoiseSource &&
+    !_cancelledTuningPresentationStation
+  )
+    return;
   clearRadioTuningNoise();
 }
 
@@ -1679,7 +2024,12 @@ export function commitRadioTuningStation(id, { origin = 'programmatic' } = {}) {
   const generation = _tuningResolutionSnapshot.generation;
   if (!radioPresentationAllowed() || !_tuningActive || !frozenStation) {
     endRadioTuning();
-    return Object.freeze({ ok: false, reason: 'not-tuning', stationId: String(id || ''), generation });
+    return Object.freeze({
+      ok: false,
+      reason: 'not-tuning',
+      stationId: String(id || ''),
+      generation,
+    });
   }
   if (!radioStationResolutionMatches(frozenStation, currentStation)) {
     const stationId = frozenStation.id;
@@ -1691,7 +2041,12 @@ export function commitRadioTuningStation(id, { origin = 'programmatic' } = {}) {
     clearRadioTuningNoise({ emit: false });
     _tuningUnavailableStationId = stationId;
     emitState();
-    return Object.freeze({ ok: false, reason: 'station-unavailable', stationId, generation });
+    return Object.freeze({
+      ok: false,
+      reason: 'station-unavailable',
+      stationId,
+      generation,
+    });
   }
   _tuningActive = false;
   _tuningStatic = true;
@@ -1741,14 +2096,17 @@ function tryRadioFallback(
   if (!fallbackStation || fallbackId === failedId || _selectedId !== failedId) {
     return false;
   }
-  const fallbackFocusResult = typeof fallbackFocusPolicy === 'function'
-    ? fallbackFocusPolicy(fallbackStation)
-    : fallbackFocusPolicy;
-  const fallbackCameraNavigation = fallbackFocusResult
-    && typeof fallbackFocusResult === 'object'
-    ? fallbackFocusResult
-    : null;
-  const fallbackFocus = fallbackCameraNavigation ? false : Boolean(fallbackFocusResult);
+  const fallbackFocusResult =
+    typeof fallbackFocusPolicy === 'function'
+      ? fallbackFocusPolicy(fallbackStation)
+      : fallbackFocusPolicy;
+  const fallbackCameraNavigation =
+    fallbackFocusResult && typeof fallbackFocusResult === 'object'
+      ? fallbackFocusResult
+      : null;
+  const fallbackFocus = fallbackCameraNavigation
+    ? false
+    : Boolean(fallbackFocusResult);
   selectRadioStation(fallbackId, {
     autoplay: true,
     focus: fallbackFocus,
@@ -1769,7 +2127,10 @@ function recordDirectoryClick(id) {
 }
 
 /** Play the selected broadcaster stream after an explicit user action. */
-export async function playSelectedRadio({ origin = 'programmatic', attemptId = null } = {}) {
+export async function playSelectedRadio({
+  origin = 'programmatic',
+  attemptId = null,
+} = {}) {
   const station = selectedStation();
   if (!radioPresentationAllowed() || !station?.streamUrl) return false;
   if (_tuningActive) endRadioTuning();
@@ -1805,12 +2166,14 @@ export async function playSelectedRadio({ origin = 'programmatic', attemptId = n
     const playback = _audio.play();
     if (playback?.then) await playback;
     if (
-      generation !== _playGeneration
-      || _audioStationId !== station.id
-      || _activePlaybackAttempt?.id !== ownedAttemptId
-    ) return false;
+      generation !== _playGeneration ||
+      _audioStationId !== station.id ||
+      _activePlaybackAttempt?.id !== ownedAttemptId
+    )
+      return false;
     _audioState = 'playing';
-    if (_tuningAwaitingStationId === station.id) clearRadioTuningNoise({ emit: false });
+    if (_tuningAwaitingStationId === station.id)
+      clearRadioTuningNoise({ emit: false });
     _playFallbackId = null;
     _playFallbackFocus = null;
     _playFallbackOrigin = 'programmatic';
@@ -1820,12 +2183,17 @@ export async function playSelectedRadio({ origin = 'programmatic', attemptId = n
     if (origin === 'user') emitPlaybackControl('play', origin, ownedAttemptId);
     return true;
   } catch (error) {
-    if (generation !== _playGeneration || _activePlaybackAttempt?.id !== ownedAttemptId) return false;
+    if (
+      generation !== _playGeneration ||
+      _activePlaybackAttempt?.id !== ownedAttemptId
+    )
+      return false;
     if (tryRadioFallback(station.id, origin, ownedAttemptId)) return false;
     _audioState = 'error';
-    _audioError = error?.name === 'NotAllowedError'
-      ? 'Playback requires a direct click or tap.'
-      : 'Broadcaster stream could not be started.';
+    _audioError =
+      error?.name === 'NotAllowedError'
+        ? 'Playback requires a direct click or tap.'
+        : 'Broadcaster stream could not be started.';
     emitState();
     return false;
   }
@@ -1842,7 +2210,11 @@ export function confirmRadioPlayback({
   getState,
   timeoutMs = RADIO_VOICE_PLAYBACK_TIMEOUT_MS,
 } = {}) {
-  if (typeof startPlayback !== 'function' || typeof subscribe !== 'function' || typeof getState !== 'function') {
+  if (
+    typeof startPlayback !== 'function' ||
+    typeof subscribe !== 'function' ||
+    typeof getState !== 'function'
+  ) {
     return Promise.resolve(false);
   }
   return new Promise((resolve) => {
@@ -1859,11 +2231,18 @@ export function confirmRadioPlayback({
     };
     const inspect = (state) => {
       if (!started || !state) return;
-      if (!state.voiceDucked && ['loading', 'buffering', 'playing'].includes(state.audioState)) {
+      if (
+        !state.voiceDucked &&
+        ['loading', 'buffering', 'playing'].includes(state.audioState)
+      ) {
         finish(false);
         return;
       }
-      if (state.audioState === 'playing' && state.playingStationId && state.voiceDucked) {
+      if (
+        state.audioState === 'playing' &&
+        state.playingStationId &&
+        state.voiceDucked
+      ) {
         finish(true);
       } else if (state.audioState === 'error') {
         finish(false);
@@ -1871,13 +2250,20 @@ export function confirmRadioPlayback({
     };
     unsubscribe = subscribe(inspect);
     started = true;
-    timer = setTimeout(() => finish(false), Math.max(1, Number(timeoutMs) || RADIO_VOICE_PLAYBACK_TIMEOUT_MS));
+    timer = setTimeout(
+      () => finish(false),
+      Math.max(1, Number(timeoutMs) || RADIO_VOICE_PLAYBACK_TIMEOUT_MS),
+    );
     Promise.resolve()
       .then(startPlayback)
       .then((playStarted) => {
         const state = getState();
         inspect(state);
-        if (!playStarted && !['loading', 'buffering', 'playing'].includes(state?.audioState)) finish(false);
+        if (
+          !playStarted &&
+          !['loading', 'buffering', 'playing'].includes(state?.audioState)
+        )
+          finish(false);
       })
       .catch(() => finish(false));
   });
@@ -1887,7 +2273,8 @@ export function confirmRadioPlayback({
 export function playPreparedRadioForVoice(options = {}) {
   if (!_voiceDucked) return Promise.resolve(false);
   return confirmRadioPlayback({
-    startPlayback: () => playSelectedRadio({ origin: 'voice', attemptId: options.attemptId }),
+    startPlayback: () =>
+      playSelectedRadio({ origin: 'voice', attemptId: options.attemptId }),
     subscribe: subscribeToRadio,
     getState: getRadioUIState,
     timeoutMs: options.timeoutMs,
@@ -1895,7 +2282,10 @@ export function playPreparedRadioForVoice(options = {}) {
 }
 
 /** Stop the shared stream and release its network resource. */
-export function stopRadioPlayback({ origin = 'programmatic', attemptId = null } = {}) {
+export function stopRadioPlayback({
+  origin = 'programmatic',
+  attemptId = null,
+} = {}) {
   if (attemptId && _activePlaybackAttempt?.id !== attemptId) return false;
   const stoppedAttemptId = _activePlaybackAttempt?.id || null;
   endRadioTuning();
@@ -1978,16 +2368,21 @@ export function setRadioParams(params = {}) {
     ? normalizeRadioFilter(params.filter)
     : null;
   if (Object.hasOwn(params, 'filter') && !nextFilter) return false;
-  const numericVolume = Object.hasOwn(params, 'volume') ? Number(params.volume) : null;
-  if (Object.hasOwn(params, 'volume') && !Number.isFinite(numericVolume)) return false;
-  const nextVolume = numericVolume === null ? null : clampRadioVolume(numericVolume);
+  const numericVolume = Object.hasOwn(params, 'volume')
+    ? Number(params.volume)
+    : null;
+  if (Object.hasOwn(params, 'volume') && !Number.isFinite(numericVolume))
+    return false;
+  const nextVolume =
+    numericVolume === null ? null : clampRadioVolume(numericVolume);
 
   let changed = false;
   let filterChanged = false;
   let clearedCancelledPresentation = false;
   if (nextFilter !== null) {
     filterChanged = nextFilter !== _filter;
-    if (filterChanged && (_tuningActive || _tuningAwaitingStationId)) endRadioTuning();
+    if (filterChanged && (_tuningActive || _tuningAwaitingStationId))
+      endRadioTuning();
     clearedCancelledPresentation = Boolean(_cancelledTuningPresentationStation);
     _cancelledTuningPresentationStation = null;
     _filter = nextFilter;
@@ -2027,14 +2422,22 @@ export function getRadioParams() {
  * Mute Radio during a live voice turn, then gently restore the user-owned
  * volume after voice returns to standby. Repeated state sync is idempotent.
  */
-export function setRadioVoiceDucking(ducked, {
-  restoreDelayMs = VOICE_RESTORE_DELAY_MS,
-  restoreDurationMs = VOICE_RESTORE_DURATION_MS,
-} = {}) {
+export function setRadioVoiceDucking(
+  ducked,
+  {
+    restoreDelayMs = VOICE_RESTORE_DELAY_MS,
+    restoreDurationMs = VOICE_RESTORE_DURATION_MS,
+  } = {},
+) {
   const shouldDuck = Boolean(ducked);
   if (shouldDuck === _voiceDucked && (shouldDuck || _voiceRestoring)) return;
-  if (!shouldDuck && !_voiceDucked && !_voiceRestoring
-      && (!_audio || Math.abs(_audio.volume - _userVolume) < 0.001)) return;
+  if (
+    !shouldDuck &&
+    !_voiceDucked &&
+    !_voiceRestoring &&
+    (!_audio || Math.abs(_audio.volume - _userVolume) < 0.001)
+  )
+    return;
 
   cancelRadioVolumeTransition();
   _voiceDucked = shouldDuck;
@@ -2059,15 +2462,22 @@ export function setRadioVoiceDucking(ducked, {
   emitState();
   const beginRestore = () => {
     _voiceRestoreTimer = null;
-    if (generation !== _volumeTransitionGeneration || _voiceDucked || !_audio) return;
+    if (generation !== _volumeTransitionGeneration || _voiceDucked || !_audio)
+      return;
     const startedAt = volumeClock();
     const initialVolume = _audio.volume;
     const duration = Math.max(0, Number(restoreDurationMs) || 0);
     const step = (now) => {
-      if (generation !== _volumeTransitionGeneration || _voiceDucked || !_audio) return;
-      const progress = duration === 0 ? 1 : Math.min(1, Math.max(0, (now - startedAt) / duration));
+      if (generation !== _volumeTransitionGeneration || _voiceDucked || !_audio)
+        return;
+      const progress =
+        duration === 0
+          ? 1
+          : Math.min(1, Math.max(0, (now - startedAt) / duration));
       const eased = progress * progress * (3 - 2 * progress);
-      _audio.volume = clampRadioVolume(initialVolume + (_userVolume - initialVolume) * eased);
+      _audio.volume = clampRadioVolume(
+        initialVolume + (_userVolume - initialVolume) * eased,
+      );
       if (progress < 1) {
         _volumeFadeFrame = scheduleVolumeFrame(step);
         return;
@@ -2154,7 +2564,13 @@ function publishRadioOverlayEntries() {
   const points = clusterPointCollection();
   for (let index = 0; index < (points?.length || 0); index += 1) {
     const point = points.get(index);
-    if (!point?.show || !point.position || !Array.isArray(point.id) || point.id.length < 3) continue;
+    if (
+      !point?.show ||
+      !point.position ||
+      !Array.isArray(point.id) ||
+      point.id.length < 3
+    )
+      continue;
     const stationIds = point.id
       .map((entity) => String(entity?.id || '').slice(RADIO_PREFIX.length))
       .filter((id) => {
@@ -2175,7 +2591,8 @@ function publishRadioOverlayEntries() {
       stationCount: stationIds.length,
     });
   }
-  const selectedClusterCandidates = selectRadioClusterCandidates(clusterCandidates);
+  const selectedClusterCandidates =
+    selectRadioClusterCandidates(clusterCandidates);
   _clusterOverlayIdentities = reconcileRadioClusterCandidates(
     selectedClusterCandidates,
     _clusterOverlayIdentities,
@@ -2196,11 +2613,12 @@ function publishRadioOverlayEntries() {
   );
   const singletonCandidates = selectRadioSingletonCandidates(
     [..._renderById.values()]
-      .filter((record) => (
-        record.entity?.show
-        && record.station?.id !== station?.id
-        && !clusteredStationIds.has(record.station?.id)
-      ))
+      .filter(
+        (record) =>
+          record.entity?.show &&
+          record.station?.id !== station?.id &&
+          !clusteredStationIds.has(record.station?.id),
+      )
       .map((record) => ({
         ...record,
         distanceM: cameraPosition
@@ -2216,20 +2634,32 @@ function publishRadioOverlayEntries() {
       position: candidate.position,
       // Cluster priorities begin at three. Keep clusters authoritative while
       // retaining nearest-first singleton ordering inside the ambient lane.
-      priority: 2 - (index / Math.max(1, singletonCandidates.length + 1)),
+      priority: 2 - index / Math.max(1, singletonCandidates.length + 1),
     });
     if (singletonEntry) entries.push(singletonEntry);
   }
 
-  setOverlayEntries(RADIO_OVERLAY_SOURCE_ID, entries, RADIO_OVERLAY_SOURCE_OPTIONS);
+  setOverlayEntries(
+    RADIO_OVERLAY_SOURCE_ID,
+    entries,
+    RADIO_OVERLAY_SOURCE_OPTIONS,
+  );
   setOverlaySourceVisible(RADIO_OVERLAY_SOURCE_ID, true);
   _overlayDiagnostics = {
     entryCount: entries.length,
     selectedCount: entries.filter((entry) => entry.selected).length,
-    singletonTexts: entries.filter((entry) => entry.id.startsWith('station:')).map((entry) => entry.title),
-    singletonIds: entries.filter((entry) => entry.id.startsWith('station:')).map((entry) => entry.id),
-    clusterTexts: entries.filter((entry) => entry.id.startsWith('cluster:')).map((entry) => entry.title),
-    clusterIds: entries.filter((entry) => entry.id.startsWith('cluster:')).map((entry) => entry.id),
+    singletonTexts: entries
+      .filter((entry) => entry.id.startsWith('station:'))
+      .map((entry) => entry.title),
+    singletonIds: entries
+      .filter((entry) => entry.id.startsWith('station:'))
+      .map((entry) => entry.id),
+    clusterTexts: entries
+      .filter((entry) => entry.id.startsWith('cluster:'))
+      .map((entry) => entry.title),
+    clusterIds: entries
+      .filter((entry) => entry.id.startsWith('cluster:'))
+      .map((entry) => entry.id),
     clusterMemberships: _clusterOverlayIdentities.map((candidate) => ({
       membershipId: candidate.membershipId,
       entryId: `cluster:${candidate.id}`,
@@ -2250,20 +2680,27 @@ function focusStation(station) {
   if (!station || !radioCameraNavigationAllowed(_viewer)) return false;
   cancelActiveRadioCameraFlight();
   _viewer.camera.flyTo({
-    destination: Cesium.Cartesian3.fromDegrees(station.lon, station.lat, 85_000),
+    destination: Cesium.Cartesian3.fromDegrees(
+      station.lon,
+      station.lat,
+      85_000,
+    ),
     duration: 1.1,
   });
   return true;
 }
 
 /** Select a station. Playback occurs only when autoplay is explicitly true. */
-export function selectRadioStation(id, {
-  autoplay = false,
-  focus = false,
-  origin = 'programmatic',
-  attemptId = null,
-  cameraNavigation = null,
-} = {}) {
+export function selectRadioStation(
+  id,
+  {
+    autoplay = false,
+    focus = false,
+    origin = 'programmatic',
+    attemptId = null,
+    cameraNavigation = null,
+  } = {},
+) {
   if (!radioPresentationAllowed()) return false;
   const station = _stationById.get(String(id));
   if (!station) return false;
@@ -2271,7 +2708,11 @@ export function selectRadioStation(id, {
   if (!radioCameraNavigationOwnsSelection(cameraNavigation, station)) {
     invalidateRadioCameraNavigation();
   }
-  if (_tuningActive || (_tuningAwaitingStationId && _tuningAwaitingStationId !== station.id)) endRadioTuning();
+  if (
+    _tuningActive ||
+    (_tuningAwaitingStationId && _tuningAwaitingStationId !== station.id)
+  )
+    endRadioTuning();
   _cancelledTuningPresentationStation = null;
   _selectedId = station.id;
   const generation = ++_selectionGeneration;
@@ -2282,10 +2723,11 @@ export function selectRadioStation(id, {
   _selectionTimer = setTimeout(() => {
     _selectionTimer = null;
     if (
-      sessionGeneration === _sessionGeneration
-      && generation === _selectionGeneration
-      && _selectedId === station.id
-    ) updateSelectionEntity();
+      sessionGeneration === _sessionGeneration &&
+      generation === _selectionGeneration &&
+      _selectedId === station.id
+    )
+      updateSelectionEntity();
   }, 1300);
   if (focus) focusStation(station);
   emitState();
@@ -2294,35 +2736,57 @@ export function selectRadioStation(id, {
 }
 
 /** Select the previous or next station and optionally retain a UI-owned band order. */
-export function cycleRadioStation(direction = 1, {
-  rotate = false,
-  stationIds = null,
-  autoplay = true,
-  origin = 'programmatic',
-} = {}) {
+export function cycleRadioStation(
+  direction = 1,
+  {
+    rotate = false,
+    stationIds = null,
+    autoplay = true,
+    origin = 'programmatic',
+  } = {},
+) {
   if (!radioPresentationAllowed()) return false;
-  const ranked = Array.isArray(stationIds) && stationIds.length
-    ? stationIds
-      .slice(0, RADIO_TUNER_DIRECTORY_LIMIT)
-      .map((id) => _stationById.get(String(id)))
-      .filter((station) => station && stationMatchesRadioCategory(station, _filter))
-    : rankedVisibleStations();
+  const ranked =
+    Array.isArray(stationIds) && stationIds.length
+      ? stationIds
+          .slice(0, RADIO_TUNER_DIRECTORY_LIMIT)
+          .map((id) => _stationById.get(String(id)))
+          .filter(
+            (station) =>
+              station && stationMatchesRadioCategory(station, _filter),
+          )
+      : rankedVisibleStations();
   if (!ranked.length) return false;
   const current = ranked.findIndex((station) => station.id === _selectedId);
-  const nextIndex = current < 0
-    ? 0
-    : (current + (direction < 0 ? -1 : 1) + ranked.length) % ranked.length;
-  _playFallbackId = ranked.length > 1 ? ranked[(nextIndex + 1) % ranked.length].id : null;
+  const nextIndex =
+    current < 0
+      ? 0
+      : (current + (direction < 0 ? -1 : 1) + ranked.length) % ranked.length;
+  _playFallbackId =
+    ranked.length > 1 ? ranked[(nextIndex + 1) % ranked.length].id : null;
   const rotationCameraState = rotate ? radioCameraState() : null;
-  const rotationNavigation = rotate ? beginRadioCameraNavigation(rotationCameraState) : null;
+  const rotationNavigation = rotate
+    ? beginRadioCameraNavigation(rotationCameraState)
+    : null;
   _playFallbackFocus = rotate
     ? (fallbackStation) => {
-      rotateRadioStationIntoView(fallbackStation, 0.65, rotationCameraState, rotationNavigation);
-      return rotationNavigation;
-    }
+        rotateRadioStationIntoView(
+          fallbackStation,
+          0.65,
+          rotationCameraState,
+          rotationNavigation,
+        );
+        return rotationNavigation;
+      }
     : false;
   const station = ranked[nextIndex];
-  if (rotate) rotateRadioStationIntoView(station, 0.65, rotationCameraState, rotationNavigation);
+  if (rotate)
+    rotateRadioStationIntoView(
+      station,
+      0.65,
+      rotationCameraState,
+      rotationNavigation,
+    );
   return selectRadioStation(station.id, {
     autoplay,
     focus: false,
@@ -2332,10 +2796,15 @@ export function cycleRadioStation(direction = 1, {
 }
 
 /** Select and optionally play the best station for a location/category request. */
-export function selectRequestedRadioStation(criteria = {}, { autoplay = true, origin = 'programmatic' } = {}) {
+export function selectRequestedRadioStation(
+  criteria = {},
+  { autoplay = true, origin = 'programmatic' } = {},
+) {
   if (!radioPresentationAllowed()) return null;
   const requestedCategory = String(criteria.categoryId || 'all');
-  const categoryId = _categories.some((category) => category.id === requestedCategory)
+  const categoryId = _categories.some(
+    (category) => category.id === requestedCategory,
+  )
     ? requestedCategory
     : 'all';
   setRadioFilter(categoryId);
@@ -2354,7 +2823,11 @@ export function selectRequestedRadioStation(criteria = {}, { autoplay = true, or
 function updateRenderVisibility({ force = true } = {}) {
   if (!_viewer || !_dataSource) return;
   const cameraPosition = _viewer.camera?.positionWC;
-  if (!force && !radioCameraPositionChanged(_lastHorizonCameraPosition, cameraPosition)) return;
+  if (
+    !force &&
+    !radioCameraPositionChanged(_lastHorizonCameraPosition, cameraPosition)
+  )
+    return;
   _lastHorizonCameraPosition = cameraPosition
     ? { x: cameraPosition.x, y: cameraPosition.y, z: cameraPosition.z }
     : null;
@@ -2368,7 +2841,9 @@ function updateRenderVisibility({ force = true } = {}) {
     record.entity.show = visible;
   }
   if (_selectedEntity) {
-    const position = _selectedEntity.position?.getValue?.(Cesium.JulianDate.now());
+    const position = _selectedEntity.position?.getValue?.(
+      Cesium.JulianDate.now(),
+    );
     const selectedVisible = !position || occluder.isPointVisible(position);
     if (_selectedEntity.show !== selectedVisible) visibilityChanged = true;
     _selectedEntity.show = selectedVisible;
@@ -2386,7 +2861,9 @@ export function setRadioFilter(categoryId) {
   const nextFilter = valid ? categoryId : 'all';
   const changed = nextFilter !== _filter;
   if (changed && (_tuningActive || _tuningAwaitingStationId)) endRadioTuning();
-  const clearsCancelledPresentation = Boolean(_cancelledTuningPresentationStation);
+  const clearsCancelledPresentation = Boolean(
+    _cancelledTuningPresentationStation,
+  );
   _cancelledTuningPresentationStation = null;
   _filter = nextFilter;
   if (clearsCancelledPresentation) updateSelectionEntity();
@@ -2408,12 +2885,19 @@ export function setRadioFilter(categoryId) {
 
 /** Retain refresh identities only while every represented station still exists. */
 export function retainRadioClusterIdentitiesForStations(previous, stations) {
-  const stationIds = new Set((stations || []).map((station) => String(station?.id || '')).filter(Boolean));
-  return (previous || []).filter((candidate) => (
-    Array.isArray(candidate?.stationIds)
-    && candidate.stationIds.length > 0
-    && candidate.stationIds.every((stationId) => stationIds.has(String(stationId)))
-  ));
+  const stationIds = new Set(
+    (stations || [])
+      .map((station) => String(station?.id || ''))
+      .filter(Boolean),
+  );
+  return (previous || []).filter(
+    (candidate) =>
+      Array.isArray(candidate?.stationIds) &&
+      candidate.stationIds.length > 0 &&
+      candidate.stationIds.every((stationId) =>
+        stationIds.has(String(stationId)),
+      ),
+  );
 }
 
 function reconcileStations(stations) {
@@ -2424,8 +2908,13 @@ function reconcileStations(stations) {
   );
   _stations = Object.freeze([...stations]);
   _stationById = new Map(stations.map((station) => [station.id, station]));
-  _categories = Object.freeze(buildRadioCategories(stations).map((category) => Object.freeze(category)));
-  if (_filter === DEFAULT_RADIO_FILTER && !filterRadioStations(stations, DEFAULT_RADIO_FILTER).length) {
+  _categories = Object.freeze(
+    buildRadioCategories(stations).map((category) => Object.freeze(category)),
+  );
+  if (
+    _filter === DEFAULT_RADIO_FILTER &&
+    !filterRadioStations(stations, DEFAULT_RADIO_FILTER).length
+  ) {
     _filter = 'all';
   }
   if (_selectedId && !_stationById.has(_selectedId)) {
@@ -2469,34 +2958,45 @@ function installClusterStyling() {
   clustering.clusterPoints = true;
   clustering.clusterLabels = false;
   clustering.clusterBillboards = false;
-  _removeClusterListener = clustering.clusterEvent.addEventListener((clusteredEntities, cluster) => {
-    const clusteredStations = [];
-    for (const entity of clusteredEntities) {
-      const stationId = String(entity.id || '').slice(RADIO_PREFIX.length);
-      const station = _renderById.get(stationId)?.station;
-      if (station) clusteredStations.push(station);
-    }
-    const clusterCategory = radioClusterCategoryId(clusteredStations, _filter);
-    const clusterColor = Cesium.Color.fromCssColorString(radioCategoryColor(clusterCategory));
-    // Cesium assigns the entity-id array only to the generated cluster label.
-    // Mirror it to the visible point so clicking either part of the callout
-    // resolves the first station and remains a direct playback gesture.
-    cluster.point.id = clusteredEntities;
-    cluster.billboard.id = clusteredEntities;
-    cluster.label.show = false;
-    cluster.label.text = '';
-    cluster.point.show = true;
-    cluster.point.pixelSize = Math.min(26, 12 + Math.log2(clusteredEntities.length) * 1.6);
-    cluster.point.color = clusterColor.withAlpha(0.9);
-    cluster.point.outlineColor = Cesium.Color.BLACK;
-    cluster.point.outlineWidth = 2;
-    cluster.point.disableDepthTestDistance = Number.POSITIVE_INFINITY;
-    cluster.point.distanceDisplayCondition = new Cesium.DistanceDisplayCondition(
-      0,
-      RADIO_GLOBE_INTERACTION_MAX_DISTANCE_M,
-    );
-    scheduleRadioOverlayPublish();
-  });
+  _removeClusterListener = clustering.clusterEvent.addEventListener(
+    (clusteredEntities, cluster) => {
+      const clusteredStations = [];
+      for (const entity of clusteredEntities) {
+        const stationId = String(entity.id || '').slice(RADIO_PREFIX.length);
+        const station = _renderById.get(stationId)?.station;
+        if (station) clusteredStations.push(station);
+      }
+      const clusterCategory = radioClusterCategoryId(
+        clusteredStations,
+        _filter,
+      );
+      const clusterColor = Cesium.Color.fromCssColorString(
+        radioCategoryColor(clusterCategory),
+      );
+      // Cesium assigns the entity-id array only to the generated cluster label.
+      // Mirror it to the visible point so clicking either part of the callout
+      // resolves the first station and remains a direct playback gesture.
+      cluster.point.id = clusteredEntities;
+      cluster.billboard.id = clusteredEntities;
+      cluster.label.show = false;
+      cluster.label.text = '';
+      cluster.point.show = true;
+      cluster.point.pixelSize = Math.min(
+        26,
+        12 + Math.log2(clusteredEntities.length) * 1.6,
+      );
+      cluster.point.color = clusterColor.withAlpha(0.9);
+      cluster.point.outlineColor = Cesium.Color.BLACK;
+      cluster.point.outlineWidth = 2;
+      cluster.point.disableDepthTestDistance = Number.POSITIVE_INFINITY;
+      cluster.point.distanceDisplayCondition =
+        new Cesium.DistanceDisplayCondition(
+          0,
+          RADIO_GLOBE_INTERACTION_MAX_DISTANCE_M,
+        );
+      scheduleRadioOverlayPublish();
+    },
+  );
 }
 
 function pickedRadioStationAt(position) {
@@ -2522,7 +3022,10 @@ function pickedRadioStationAt(position) {
   }
 
   for (const [offsetX, offsetY] of RADIO_PICK_OFFSETS) {
-    const offsetPosition = new Cesium.Cartesian2(position.x + offsetX, position.y + offsetY);
+    const offsetPosition = new Cesium.Cartesian2(
+      position.x + offsetX,
+      position.y + offsetY,
+    );
     const picked = scene.pick(offsetPosition);
     const pickedId = resolvePickId(picked);
     if (pickedId && isOwnedByOtherLayer('radio', pickedId)) continue;
@@ -2534,10 +3037,12 @@ function pickedRadioStationAt(position) {
 
 function radioPresentationAllowed() {
   if (!_managerLifecyclePresentation) return _enabled;
-  return _enabled
-    && _managerLifecyclePresentation.lifecycleState === 'enabled'
-    && _managerLifecyclePresentation.enabled
-    && !_managerLifecyclePresentation.uncertain;
+  return (
+    _enabled &&
+    _managerLifecyclePresentation.lifecycleState === 'enabled' &&
+    _managerLifecyclePresentation.enabled &&
+    !_managerLifecyclePresentation.uncertain
+  );
 }
 
 function syncRadioLifecyclePresentation() {
@@ -2568,13 +3073,18 @@ function installInteraction() {
     _playFallbackFocus = null;
     selectRadioStation(stationId, { autoplay: true, origin: 'user' });
     if (typeof document !== 'undefined') {
-      document.dispatchEvent(new CustomEvent('gev:radio-selected', { detail: { stationId } }));
+      document.dispatchEvent(
+        new CustomEvent('gev:radio-selected', { detail: { stationId } }),
+      );
     }
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
   // Polling remains bounded during flights, but a stationary camera no longer
   // rewrites every station's visibility four times per second while voice and
   // audio processing share the main thread.
-  _horizonTimer = setInterval(() => updateRenderVisibility({ force: false }), HORIZON_TICK_MS);
+  _horizonTimer = setInterval(
+    () => updateRenderVisibility({ force: false }),
+    HORIZON_TICK_MS,
+  );
 }
 
 function removeInteraction() {
@@ -2617,9 +3127,18 @@ export const radioLayer = {
   },
 
   /** Apply the manager-owned lifecycle gate to visible and pickable Radio state. */
-  setLifecyclePresentation({ lifecycleState = null, enabled = false, uncertain = false } = {}) {
+  setLifecyclePresentation({
+    lifecycleState = null,
+    enabled = false,
+    uncertain = false,
+  } = {}) {
     const settledState = enabled ? 'enabled' : 'disabled';
-    const normalizedState = ['enabling', 'enabled', 'disabling', 'disabled'].includes(lifecycleState)
+    const normalizedState = [
+      'enabling',
+      'enabled',
+      'disabling',
+      'disabled',
+    ].includes(lifecycleState)
       ? lifecycleState
       : settledState;
     _managerLifecyclePresentation = {
@@ -2671,66 +3190,86 @@ export const radioLayer = {
     _error = null;
     emitState();
     try {
-      const response = await fetch(DIRECTORY_ENDPOINT, { signal: _abortController.signal });
-      if (!response.ok) throw new Error(`Radio directory returned ${response.status}`);
+      const response = await fetch(DIRECTORY_ENDPOINT, {
+        signal: _abortController.signal,
+      });
+      if (!response.ok)
+        throw new Error(`Radio directory returned ${response.status}`);
       const body = await response.json();
-      if (!radioRequestIsCurrent(
-        generation,
-        _requestGeneration,
-        _enabled,
-        sessionGeneration,
-        _sessionGeneration,
-      )) return;
-      if (!Array.isArray(body?.stations)) throw new Error('Radio directory response was malformed');
-      const updatedAt = typeof body.updatedAt === 'string' && Number.isFinite(Date.parse(body.updatedAt))
-        ? body.updatedAt
-        : null;
+      if (
+        !radioRequestIsCurrent(
+          generation,
+          _requestGeneration,
+          _enabled,
+          sessionGeneration,
+          _sessionGeneration,
+        )
+      )
+        return;
+      if (!Array.isArray(body?.stations))
+        throw new Error('Radio directory response was malformed');
+      const updatedAt =
+        typeof body.updatedAt === 'string' &&
+        Number.isFinite(Date.parse(body.updatedAt))
+          ? body.updatedAt
+          : null;
       const updatedAtMs = updatedAt ? Date.parse(updatedAt) : NaN;
       if (
-        !updatedAt
-        || updatedAtMs < Date.now() - RADIO_DIRECTORY_STALE_MS
-        || updatedAtMs > Date.now() + RADIO_DIRECTORY_FUTURE_SKEW_MS
-        || typeof body.stale !== 'boolean'
-        || typeof body.degraded !== 'boolean'
-      ) throw new Error('Radio directory freshness metadata was malformed');
+        !updatedAt ||
+        updatedAtMs < Date.now() - RADIO_DIRECTORY_STALE_MS ||
+        updatedAtMs > Date.now() + RADIO_DIRECTORY_FUTURE_SKEW_MS ||
+        typeof body.stale !== 'boolean' ||
+        typeof body.degraded !== 'boolean'
+      )
+        throw new Error('Radio directory freshness metadata was malformed');
       const rows = body.stations;
       const acceptedRows = rows.filter(isValidRadioDirectoryStation);
-      if (!acceptedRows.length) throw new Error('Radio directory returned no usable stations');
+      if (!acceptedRows.length)
+        throw new Error('Radio directory returned no usable stations');
       if (acceptedRows.length !== rows.length) {
-        throw new Error('Radio directory response contained malformed stations');
+        throw new Error(
+          'Radio directory response contained malformed stations',
+        );
       }
       const acceptedGeneration = body.acceptedGeneration;
       if (
-        acceptedGeneration !== null
-        && (!Number.isSafeInteger(acceptedGeneration) || acceptedGeneration < 1)
-      ) throw new Error('Radio directory generation metadata was malformed');
+        acceptedGeneration !== null &&
+        (!Number.isSafeInteger(acceptedGeneration) || acceptedGeneration < 1)
+      )
+        throw new Error('Radio directory generation metadata was malformed');
       if (!body.stale && !body.degraded && acceptedGeneration === null) {
         throw new Error('Radio directory omitted its accepted generation');
       }
       const catalogInstance = body.catalogInstance;
-      if (!body.stale && !body.degraded && (typeof catalogInstance !== 'string' || !catalogInstance)) {
+      if (
+        !body.stale &&
+        !body.degraded &&
+        (typeof catalogInstance !== 'string' || !catalogInstance)
+      ) {
         throw new Error('Radio directory omitted its catalog instance');
       }
-      const preservingWarmCatalog = _stations.length > 0 && (body.stale || body.degraded);
+      const preservingWarmCatalog =
+        _stations.length > 0 && (body.stale || body.degraded);
       // Generations are only comparable within one producer instance. A new
       // instance token (server restart, different proxy process) starts a fresh
       // sequence: never a repeat and never a regression.
-      const sameCatalogInstance = _acceptedCatalogSnapshot?.instance === catalogInstance;
+      const sameCatalogInstance =
+        _acceptedCatalogSnapshot?.instance === catalogInstance;
       const currentAcceptedGeneration = sameCatalogInstance
         ? _acceptedCatalogSnapshot?.generation
         : null;
       if (
-        !body.stale
-        && !body.degraded
-        && Number.isSafeInteger(currentAcceptedGeneration)
-        && acceptedGeneration < currentAcceptedGeneration
-      ) throw new Error('Radio directory generation regressed');
-      const repeatingAcceptedGeneration = (
-        !body.stale
-        && !body.degraded
-        && Number.isSafeInteger(currentAcceptedGeneration)
-        && acceptedGeneration === currentAcceptedGeneration
-      );
+        !body.stale &&
+        !body.degraded &&
+        Number.isSafeInteger(currentAcceptedGeneration) &&
+        acceptedGeneration < currentAcceptedGeneration
+      )
+        throw new Error('Radio directory generation regressed');
+      const repeatingAcceptedGeneration =
+        !body.stale &&
+        !body.degraded &&
+        Number.isSafeInteger(currentAcceptedGeneration) &&
+        acceptedGeneration === currentAcceptedGeneration;
       if (!preservingWarmCatalog) {
         const immutableRows = acceptedRows.map(freezeRadioStation);
         if (repeatingAcceptedGeneration) {
@@ -2746,7 +3285,10 @@ export const radioLayer = {
             updatedAt,
             immutableRows,
           );
-          if (!acceptedSnapshot) throw new Error('Radio directory generation metadata was malformed');
+          if (!acceptedSnapshot)
+            throw new Error(
+              'Radio directory generation metadata was malformed',
+            );
           _acceptedCatalogSnapshot = acceptedSnapshot;
           reconcileStations(acceptedSnapshot.stations);
         } else {
@@ -2758,22 +3300,31 @@ export const radioLayer = {
       _stale = body.stale;
       _error = preservingWarmCatalog
         ? 'Directory refresh degraded; showing the previous station catalog.'
-        : (_degraded ? 'Radio directory coverage is degraded.' : null);
+        : _degraded
+          ? 'Radio directory coverage is degraded.'
+          : null;
     } catch (error) {
-      if (error?.name === 'AbortError' || !radioRequestIsCurrent(
-        generation,
-        _requestGeneration,
-        _enabled,
-        sessionGeneration,
-        _sessionGeneration,
-      )) return;
+      if (
+        error?.name === 'AbortError' ||
+        !radioRequestIsCurrent(
+          generation,
+          _requestGeneration,
+          _enabled,
+          sessionGeneration,
+          _sessionGeneration,
+        )
+      )
+        return;
       _error = _stations.length
         ? 'Directory refresh failed; showing the previous station catalog.'
         : 'Radio directory is temporarily unavailable.';
       _stale = _stations.length > 0;
       _degraded = _stations.length > 0;
     } finally {
-      if (generation === _requestGeneration && sessionGeneration === _sessionGeneration) {
+      if (
+        generation === _requestGeneration &&
+        sessionGeneration === _sessionGeneration
+      ) {
         _loading = false;
         _abortController = null;
         emitState();
@@ -2856,7 +3407,9 @@ export const radioLayer = {
     singletonIds: [..._overlayDiagnostics.singletonIds],
     clusterTexts: [..._overlayDiagnostics.clusterTexts],
     clusterIds: [..._overlayDiagnostics.clusterIds],
-    clusterMemberships: _overlayDiagnostics.clusterMemberships.map((entry) => ({ ...entry })),
+    clusterMemberships: _overlayDiagnostics.clusterMemberships.map((entry) => ({
+      ...entry,
+    })),
   }),
   getTunerStations: getRadioTunerStations,
   beginTuning: beginRadioTuning,
