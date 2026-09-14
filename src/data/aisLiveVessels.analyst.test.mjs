@@ -1,8 +1,9 @@
 // src/data/aisLiveVessels.analyst.test.mjs
 // Focused tests for the pure analyst-record mapper (analyst query engine seam).
 // Separate file from aisLiveVessels.test.mjs (feed-status helper) by design.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import { mapAnalystRecord } from './aisLiveVessels.js';
 
 const FULL_RECORD = {

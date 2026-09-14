@@ -1,11 +1,11 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import * as Cesium from 'cesium';
 import {
-  BIKESHARE_SELECTED_OVERLAY_SOURCE_OPTIONS,
   _clearBikeshareSelectionForTest,
   _selectBikeshareStationForTest,
   _setBikeshareSelectionStateForTest,
+  BIKESHARE_SELECTED_OVERLAY_SOURCE_OPTIONS,
   createBikeshareSelectedOverlayEntry,
 } from './bikeshare.js';
 

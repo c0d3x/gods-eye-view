@@ -1,56 +1,56 @@
 import * as Cesium from 'cesium';
 import {
-  registerEntityContext,
-  selectEntityContext,
-  clearSelectedEntityContextForLayer,
-} from './contextStore.js';
-import { createTrail } from './trailRenderer.js';
-import {
-  screenProjectedRotation,
-  cameraPoseSignature,
-} from './iconOrientation.js';
-import { formatKnots } from './detectionDraw.js';
-import {
-  isOwnedByOtherLayer,
-  registerPickOwner,
-  unregisterPickOwner,
-  resolvePickId,
-} from './pickRegistry.js';
-import {
-  applyVesselOverlayPolicy,
-  accentForVesselType,
-  VESSEL_CARD_FADE_DISTANCE_M,
-  VESSEL_LABEL_GRID_PX,
-  VESSEL_OVERLAY_SOURCE_ID,
-  vesselTypeCss,
-  vesselOverlayCohortLimit,
-  normalizeVesselType,
-} from './vesselLabels.js';
-import {
   clearOverlaySource,
   hitTestWorldOverlay,
   setOverlayEntries,
   setOverlaySourceVisible,
 } from '../overlays/worldOverlay.js';
+import {
+  holdContinuousRender,
+  releaseContinuousRender,
+} from '../renderGovernor.js';
+import { requestWorldFocus } from '../worldFocus.js';
+import {
+  clearSelectedEntityContextForLayer,
+  registerEntityContext,
+  selectEntityContext,
+} from './contextStore.js';
+import { formatKnots } from './detectionDraw.js';
+import {
+  advanceSpriteFocus,
+  focusAlphaNeedsWrite,
+  focusNowMs,
+  focusPassIsNeeded,
+  forgetSpriteFocus,
+  getFocusTarget,
+} from './focusDeemphasis.js';
 import { ensureGeoidReadyWhenIdle, geoidHeight } from './geoid.js';
+import {
+  cameraPoseSignature,
+  screenProjectedRotation,
+} from './iconOrientation.js';
+import {
+  isOwnedByOtherLayer,
+  registerPickOwner,
+  resolvePickId,
+  unregisterPickOwner,
+} from './pickRegistry.js';
 import {
   registerSpriteCollection,
   restoreSpriteOrder,
   restoreSpriteOrderOnEnable,
 } from './spriteOrder.js';
+import { createTrail } from './trailRenderer.js';
 import {
-  advanceSpriteFocus,
-  focusNowMs,
-  focusAlphaNeedsWrite,
-  focusPassIsNeeded,
-  forgetSpriteFocus,
-  getFocusTarget,
-} from './focusDeemphasis.js';
-import { requestWorldFocus } from '../worldFocus.js';
-import {
-  holdContinuousRender,
-  releaseContinuousRender,
-} from '../renderGovernor.js';
+  accentForVesselType,
+  applyVesselOverlayPolicy,
+  normalizeVesselType,
+  VESSEL_CARD_FADE_DISTANCE_M,
+  VESSEL_LABEL_GRID_PX,
+  VESSEL_OVERLAY_SOURCE_ID,
+  vesselOverlayCohortLimit,
+  vesselTypeCss,
+} from './vesselLabels.js';
 
 const FOCUS_EVIDENCE_DEV = import.meta.env?.DEV === true;
 
@@ -642,12 +642,7 @@ const aisLiveVesselsLayer = {
    * @returns {Array<{position: Cesium.Cartesian3, id: string, type: string, skipLabel: boolean}>}
    */
   getDetectableObjects(options = {}) {
-    if (
-      !state.enabled ||
-      !state.billboardCollection ||
-      !state.billboardCollection.show
-    )
-      return [];
+    if (!state.enabled || !state.billboardCollection?.show) return [];
     const records = state.vesselRecords;
     if (!Array.isArray(records) || !records.length) return [];
 
@@ -1287,7 +1282,7 @@ function shipIcon(record, selected) {
       <path d="M0,-14 L11,10 L4,7 L0,14 L-4,7 L-11,10 Z" fill="${cssColor}" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linejoin="round"/>
     </g>
   </svg>`;
-  const icon = 'data:image/svg+xml;base64,' + btoa(svg);
+  const icon = `data:image/svg+xml;base64,${btoa(svg)}`;
   shipIconCache.set(key, icon);
   return icon;
 }
@@ -1781,7 +1776,7 @@ async function backfillVesselTrail(mmsi, token) {
   let samples = null;
   try {
     const response = await fetch(
-      '/api/ais-live/track?mmsi=' + encodeURIComponent(mmsi),
+      `/api/ais-live/track?mmsi=${encodeURIComponent(mmsi)}`,
       {
         signal: AbortSignal.timeout(8000),
       },

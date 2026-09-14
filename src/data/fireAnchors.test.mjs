@@ -14,13 +14,14 @@
 // `fetch` is injected via `globalThis.fetch` (no real network), same pattern
 // as terrainHeights.test.mjs. The terrainHeights/groundFloor module caches
 // persist across tests in this file, so each test uses distinct coordinates.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
+  _resetFireAnchorsForTest,
   FIRE_ANCHOR_LIFT_M,
   fireAnchorHeight,
   warmFireAnchorFloors,
-  _resetFireAnchorsForTest,
 } from './fireAnchors.js';
 import { reportMeshFloorCell, setMeshFloorPreferred } from './groundFloor.js';
 

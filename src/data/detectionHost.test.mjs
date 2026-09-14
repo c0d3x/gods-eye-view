@@ -1,7 +1,14 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import test from 'node:test';
 import * as Cesium from 'cesium';
+import {
+  destroyWorldOverlay,
+  initWorldOverlay,
+  setOverlayEntries,
+} from '../overlays/worldOverlay.js';
+import { DETECTION_THEME_MAP } from '../overlays/worldOverlayTokens.js';
+import { readUiSource } from '../testing/uiSources.mjs';
 import {
   countFadingRenderEntries,
   destroyDetection,
@@ -17,13 +24,6 @@ import {
   setMode,
   suspendDetection,
 } from './detection.js';
-import {
-  destroyWorldOverlay,
-  initWorldOverlay,
-  setOverlayEntries,
-} from '../overlays/worldOverlay.js';
-import { DETECTION_THEME_MAP } from '../overlays/worldOverlayTokens.js';
-import { readUiSource } from '../testing/uiSources.mjs';
 
 test('detection diagnostics count rendered fading rows instead of absent selected identities', () => {
   assert.equal(
@@ -560,7 +560,7 @@ test('detection lifecycle re-hosts unchanged painters behind the sole host liste
       env.detectionCtx.calls.filter(
         ([name, text]) =>
           name === 'fillText' &&
-          /^(SPARSE|BALANCED|DENSE)  VIS:/.test(String(text)),
+          /^(SPARSE|BALANCED|DENSE) {2}VIS:/.test(String(text)),
       ).length;
     const beforeSuspend = bannerCount();
     suspendDetection('intercity');
@@ -951,7 +951,7 @@ test('the mode banner is absent by default and present behind the flag', () => {
     env.detectionCtx.calls.filter(
       ([name, text]) =>
         name === 'fillText' &&
-        /^(SPARSE|BALANCED|DENSE)  VIS:/.test(String(text)),
+        /^(SPARSE|BALANCED|DENSE) {2}VIS:/.test(String(text)),
     ).length;
 
   const painted = (search) => {

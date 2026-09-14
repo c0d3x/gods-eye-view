@@ -39,7 +39,7 @@ test('FIRMS retains large sources in order and filters expired rows', async () =
   const last = { ...recent, marker: 'last' };
   const calls = [];
   let active = 0;
-  const refresh = createRefresh(async (key, source) => {
+  const refresh = createRefresh(async (_key, source) => {
     assert.equal(active++, 0, 'sources must be fetched sequentially');
     calls.push(source);
     await Promise.resolve();
@@ -67,7 +67,7 @@ test('FIRMS retains large sources in order and filters expired rows', async () =
 });
 
 test('FIRMS keeps successful sources when another upstream fails', async () => {
-  const result = await createRefresh(async (key, source) => {
+  const result = await createRefresh(async (_key, source) => {
     if (source === SOURCES[1]) throw new Error('upstream unavailable');
     return [recent];
   })('fixture');
@@ -85,7 +85,7 @@ test('FIRMS keeps successful sources when another upstream fails', async () => {
 test('FIRMS reports one failure if consuming a source throws before append', async () => {
   const failing = [];
   const result = await createRefresh(
-    async (key, source) => (source === SOURCES[0] ? failing : [recent]),
+    async (_key, source) => (source === SOURCES[0] ? failing : [recent]),
     (records, now) => {
       if (records !== failing) return filterTrailing24h(records, now);
       // Fault injection for aggregation; ordinary parsed CSV returns an array.

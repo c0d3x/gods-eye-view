@@ -2,39 +2,39 @@
 // Focused tests for the AIS feed-status derivation helper (Batch 10, finding H3/AIS)
 // and the vessel vertical-datum seam (2026-07-27 datum pass — see
 // docs/superpowers/specs/2026-07-27-vessel-datum-design.md).
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import * as Cesium from 'cesium';
-import {
+import { WORLD_FOCUS_REQUEST_EVENT } from '../worldFocus.js';
+import aisLiveVesselsLayer, {
+  _applyAisFeedSnapshotForTest,
+  _beginAisSessionForTest,
+  _bindVesselInteractionForTest,
+  _getVesselFeedStateForTest,
+  _getVesselStateForTest,
+  _loadLivePositionsForTest,
+  _reconcileVesselsForTest,
+  _setAisRuntimeForTest,
+  _setVesselOverlayHostForTest,
+  _setVesselStateForTest,
+  _updateVesselCardsForTest,
   AIS_FIRST_CONNECT_GRACE_MS,
-  deriveAisFeedError,
-  classifyAisFeedSnapshot,
-  buildVesselCard,
+  applyVesselFocusDeemphasis,
   buildSelectedVesselCard,
+  buildVesselCard,
   cardScreenSeparated,
+  classifyAisFeedSnapshot,
+  deriveAisFeedError,
+  mapAnalystRecord,
   reduceVesselSelection,
   vesselDatumHeightM,
-  _bindVesselInteractionForTest,
-  _setVesselStateForTest,
-  _reconcileVesselsForTest,
-  _applyAisFeedSnapshotForTest,
-  _loadLivePositionsForTest,
-  _beginAisSessionForTest,
-  _setAisRuntimeForTest,
-  _getVesselStateForTest,
-  _getVesselFeedStateForTest,
-  _setVesselOverlayHostForTest,
-  _updateVesselCardsForTest,
-  applyVesselFocusDeemphasis,
-  mapAnalystRecord,
 } from './aisLiveVessels.js';
-import aisLiveVesselsLayer from './aisLiveVessels.js';
 import { registerEntityContext, selectEntityContext } from './contextStore.js';
-import { WORLD_FOCUS_REQUEST_EVENT } from '../worldFocus.js';
 import { ensureGeoidReady, geoidHeight } from './geoid.js';
+import { layerFeedState } from './manager.js';
 import { registerPickOwner, unregisterPickOwner } from './pickRegistry.js';
 import { applyVesselOverlayPolicy } from './vesselLabels.js';
-import { layerFeedState } from './manager.js';
 
 test('open feed with vessels is healthy (null)', () => {
   assert.equal(

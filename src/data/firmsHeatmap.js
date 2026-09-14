@@ -1,39 +1,39 @@
 import * as Cesium from 'cesium';
-import { governorRequestRender } from '../renderGovernor.js';
-import {
-  registerSpriteCollection,
-  restoreSpriteOrder,
-  restoreSpriteOrderOnEnable,
-} from './spriteOrder.js';
-import {
-  clearSelectedEntityContextForLayer,
-  getContextStore,
-  registerEntityContext,
-  selectEntityContext,
-} from './contextStore.js';
-import {
-  isOwnedByOtherLayer,
-  registerPickOwner,
-  resolvePickId,
-  unregisterPickOwner,
-} from './pickRegistry.js';
-import { adaptFirmsRecords } from './firmsAdapt.js';
-import { fireAnchorHeight, warmFireAnchorFloors } from './fireAnchors.js';
-import { horizonOccluder } from './iconOrientation.js';
-import {
-  accentForSeverity,
-  fireDetectionKey,
-  FIRMS_AMBIENT_COHORT_LIMIT,
-  FIRMS_OVERLAY_SOURCE_ID,
-  satelliteShortName,
-} from './firmsLabels.js';
 import {
   clearOverlaySource,
   hitTestWorldOverlay,
   setOverlayEntries,
   setOverlaySourceVisible,
 } from '../overlays/worldOverlay.js';
+import { governorRequestRender } from '../renderGovernor.js';
 import { requestWorldFocus } from '../worldFocus.js';
+import {
+  clearSelectedEntityContextForLayer,
+  getContextStore,
+  registerEntityContext,
+  selectEntityContext,
+} from './contextStore.js';
+import { fireAnchorHeight, warmFireAnchorFloors } from './fireAnchors.js';
+import { adaptFirmsRecords } from './firmsAdapt.js';
+import {
+  accentForSeverity,
+  FIRMS_AMBIENT_COHORT_LIMIT,
+  FIRMS_OVERLAY_SOURCE_ID,
+  fireDetectionKey,
+  satelliteShortName,
+} from './firmsLabels.js';
+import { horizonOccluder } from './iconOrientation.js';
+import {
+  isOwnedByOtherLayer,
+  registerPickOwner,
+  resolvePickId,
+  unregisterPickOwner,
+} from './pickRegistry.js';
+import {
+  registerSpriteCollection,
+  restoreSpriteOrder,
+  restoreSpriteOrderOnEnable,
+} from './spriteOrder.js';
 
 /** Same-origin live-fires proxy (vite.config.js firmsProxy — key stays server-side). */
 const FIRMS_API_URL = '/api/firms';
@@ -756,7 +756,7 @@ export function createFirmsHeatmapLayer({
       warmFireAnchorFloors(candidates).then((warmed) => {
         if (!warmed || !_enabled || !_viewer) return;
         const currentLod = LOD_LEVELS[_currentLodIndex];
-        if (!currentLod || currentLod.mode !== 'detections') return;
+        if (currentLod?.mode !== 'detections') return;
         renderCurrentLod(true);
       });
     }
@@ -1137,7 +1137,7 @@ export function createFirmsHeatmapLayer({
    * No-ops in the `cells` bands, where the collection is empty.
    */
   function refreshHorizonCulling() {
-    if (!_billboards || !_billboards.length) return;
+    if (!_billboards?.length) return;
     applyHorizonCull(_billboards, fireHorizonOccluder(), _cullPositions);
   }
 
@@ -1507,7 +1507,7 @@ export function applyHorizonCull(billboards, occluder, cullPositions = null) {
   for (let i = 0; i < total; i += 1) {
     const billboard = billboards.get(i);
     if (!billboard) continue;
-    const point = (cullPositions && cullPositions[i]) || billboard.position;
+    const point = cullPositions?.[i] || billboard.position;
     const visible = occluder.isPointVisible(point) === true;
     if (billboard.show !== visible) billboard.show = visible;
     if (visible) visibleCount += 1;

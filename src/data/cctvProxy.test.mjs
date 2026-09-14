@@ -1,5 +1,5 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
   CCTV_FRAME_FETCH_TIMEOUT_MS,
   fetchCctvImageFromUpstream,

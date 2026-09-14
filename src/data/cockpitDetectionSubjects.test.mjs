@@ -1,16 +1,16 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import test from 'node:test';
 import * as Cesium from 'cesium';
+import { readUiSource } from '../testing/uiSources.mjs';
 import flightsLayer, {
-  _setCockpitDetectionSubjectForTest as setFlightsCockpitSubject,
   _setTrackedFlightRefreshStateForTest,
+  _setCockpitDetectionSubjectForTest as setFlightsCockpitSubject,
 } from './flights.js';
 import militaryFlightsLayer, {
-  _setCockpitDetectionSubjectForTest as setMilitaryCockpitSubject,
   _setTrackedMilitaryRefreshStateForTest,
+  _setCockpitDetectionSubjectForTest as setMilitaryCockpitSubject,
 } from './militaryFlights.js';
-import { readUiSource } from '../testing/uiSources.mjs';
 
 const SUBJECT = 'abc123';
 const NEXT_SUBJECT = 'def456';
@@ -95,7 +95,7 @@ function candidateIds(layer) {
 
 test('Cockpit lifecycle publishes one normalized aircraft identity to both detection owners', () => {
   const dispatcher =
-    /dispatchCockpitModeChanged\(active, info = null\) \{[\s\S]*?\n  \}/.exec(
+    /dispatchCockpitModeChanged\(active, info = null\) \{[\s\S]*?\n {2}\}/.exec(
       UI_SOURCE,
     )?.[0];
   assert.ok(dispatcher, 'Cockpit event dispatcher is defined');

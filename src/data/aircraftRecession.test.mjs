@@ -1,11 +1,11 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
-  DEFAULT_AIRCRAFT_RECESSION_PARAMS,
   aircraftRecessionFactors,
   applyAircraftBillboardTreatment,
   applyAircraftModelTreatment,
   cameraLimbDistanceM,
+  DEFAULT_AIRCRAFT_RECESSION_PARAMS,
 } from './aircraftRecession.js';
 
 const params = { ...DEFAULT_AIRCRAFT_RECESSION_PARAMS };

@@ -1,6 +1,7 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import test from 'node:test';
+import { KEYHOLE_OUTSIDE_OPACITY_DEFAULT } from '../celestialRing.js';
 import {
   AIRCRAFT_BRACKET_ALPHA_FLOOR,
   AIRCRAFT_BRACKET_FLOOR_ANCHOR,
@@ -16,7 +17,6 @@ import {
   profileForDensity,
   viewScaleForAltitude,
 } from './detectionPolicy.js';
-import { KEYHOLE_OUTSIDE_OPACITY_DEFAULT } from '../celestialRing.js';
 
 const indexHtml = fs.readFileSync(
   new URL('../../index.html', import.meta.url),

@@ -2,20 +2,21 @@
 // camera over (pre-launch defect #4 + P1-3). Driven through the production
 // click handler and the production card-render path; only the viewer, the
 // event handler, the overlay host and the world→window projection are stubbed.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import * as Cesium from 'cesium';
+import { WORLD_FOCUS_REQUEST_EVENT } from '../worldFocus.js';
 import {
-  createFirmsHeatmapLayer,
   applyFirmsOverlayPolicy,
   buildCellCard,
+  createFirmsHeatmapLayer,
 } from './firmsHeatmap.js';
 import { fireDetectionKey } from './firmsLabels.js';
 import { registerPickOwner, unregisterPickOwner } from './pickRegistry.js';
-import { WORLD_FOCUS_REQUEST_EVENT } from '../worldFocus.js';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const LAYER_SOURCE = fs.readFileSync(
   path.join(path.dirname(fileURLToPath(import.meta.url)), 'firmsHeatmap.js'),
@@ -68,7 +69,7 @@ function harness({
     id: 'firms-test',
     name: 'Fires',
     overlayHost: {
-      setEntries: (sourceId, entries) => published.push(...entries),
+      setEntries: (_sourceId, entries) => published.push(...entries),
       setVisible() {},
       clearSource() {},
       hitTest: () => (cardHit ? { sourceId: 'firms', entryId: cardHit } : null),
@@ -200,7 +201,7 @@ test('selection restoration uses the same key the cards and focus use', () => {
   // the wrong record. Reachable only through the 30-minute refetch, so this is
   // a source contract; the key's own behavior is proven above.
   const match = LAYER_SOURCE.match(
-    /function findMatchingFire\(previous\) \{([\s\S]*?)\n  \}\n/,
+    /function findMatchingFire\(previous\) \{([\s\S]*?)\n {2}\}\n/,
   );
   assert.ok(match, 'findMatchingFire is missing');
   assert.match(match[1], /fireDetectionKey\(previous\)/);

@@ -2,8 +2,9 @@
 // split (owner adversarial review, 2026-07-04): bare cardinal words were
 // matched in free-form Austin camera names, so a street like "5TH ST / WEST
 // AVE" was mis-read as a west-facing camera with false high confidence.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import { directionToHeading } from './directionText.js';
 
 test('explicit travel forms resolve in BOTH modes (bound words + abbreviations)', () => {

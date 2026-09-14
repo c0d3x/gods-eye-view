@@ -1,5 +1,5 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import { aircraftIncludedInNearby } from './aircraftNearbyPolicy.js';
 
 test('awareness proximity includes horizon-hidden loaded aircraft without changing the default', () => {

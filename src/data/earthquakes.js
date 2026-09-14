@@ -212,7 +212,7 @@ export function createEarthquakesLayer({
       console.log('[Data:Earthquakes] Initialized');
     },
 
-    enable(viewer) {
+    enable(_viewer) {
       _enabled = true;
       // No continuous-render hold: the discs are static geometry now, so the
       // layer has no per-frame animator to keep the render loop alive for.
@@ -220,14 +220,14 @@ export function createEarthquakesLayer({
       overlayHost.setVisible(EARTHQUAKE_OVERLAY_SOURCE_ID, true);
     },
 
-    disable(viewer) {
+    disable(_viewer) {
       _enabled = false;
       if (_dataSource) _dataSource.show = false;
       overlayHost.clearSource(EARTHQUAKE_OVERLAY_SOURCE_ID);
       overlayHost.setVisible(EARTHQUAKE_OVERLAY_SOURCE_ID, false);
     },
 
-    async update(viewer, { signal } = {}) {
+    async update(_viewer, { signal } = {}) {
       try {
         const response = await fetch(API_URL, { signal });
         if (!response.ok) {
@@ -260,7 +260,7 @@ export function createEarthquakesLayer({
           time,
         } of rows) {
           count++;
-          const baseRadius = Math.pow(2, mag) * 1000;
+          const baseRadius = 2 ** mag * 1000;
           const color = depthColor(depthKm || 0);
           const isSignificant = mag >= 5.0;
           const fillAlpha = isSignificant ? 0.4 : 0.3;
@@ -354,7 +354,7 @@ export function createEarthquakesLayer({
      * @returns {Array<Object>} See mapAnalystRecord for the record shape.
      */
     getAnalystRecords(maxCount = 2000) {
-      if (!_dataSource || !_dataSource.show) return [];
+      if (!_dataSource?.show) return [];
       const entities = _dataSource.entities.values;
       if (!entities.length) return [];
       const limit = Number.isFinite(maxCount)

@@ -1,12 +1,16 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import * as Cesium from 'cesium';
+import {
+  isOverlayPointVisible,
+  normalizeOverlayEntry,
+} from '../overlays/worldOverlay.js';
+import { FIRE_ANCHOR_LIFT_M } from './fireAnchors.js';
 import {
   applyHorizonCull,
   createFirmsHeatmapLayer,
   fireCullPosition,
 } from './firmsHeatmap.js';
-import { FIRE_ANCHOR_LIFT_M } from './fireAnchors.js';
 import {
   FIRMS_AMBIENT_COHORT_LIMIT,
   FIRMS_OVERLAY_SOURCE_ID,
@@ -17,10 +21,6 @@ import {
   setMeshFloorPreferred,
 } from './groundFloor.js';
 import { unregisterSpriteCollection } from './spriteOrder.js';
-import {
-  isOverlayPointVisible,
-  normalizeOverlayEntry,
-} from '../overlays/worldOverlay.js';
 
 const AUSTIN = { lon: -97.7, lat: 30.2 };
 /** Antipode of Austin — as far behind the limb as a point on Earth can be. */
@@ -560,7 +560,7 @@ function createHarness(rawFires) {
   // canvas, so declutter geometry never decides these assertions.
   const slots = new Map();
   Cesium.SceneTransforms.worldToWindowCoordinates = (
-    scene,
+    _scene,
     position,
     result,
   ) => {
@@ -611,7 +611,7 @@ function createHarness(rawFires) {
     id: 'firms',
     name: 'FIRMS',
     overlayHost: {
-      setEntries: (sourceId, entries) => entryCalls.push(entries),
+      setEntries: (_sourceId, entries) => entryCalls.push(entries),
       setVisible: () => {},
       clearSource: () => {},
     },

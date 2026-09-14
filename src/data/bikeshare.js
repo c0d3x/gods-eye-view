@@ -11,14 +11,14 @@
  */
 
 import * as Cesium from 'cesium';
-import { governorRequestRender } from '../renderGovernor.js';
-import { registerSpriteCollection, restoreSpriteOrder } from './spriteOrder.js';
-import { registerPickOwner, unregisterPickOwner } from './pickRegistry.js';
 import {
   clearOverlaySource,
   setOverlayEntries,
   setOverlaySourceVisible,
 } from '../overlays/worldOverlay.js';
+import { governorRequestRender } from '../renderGovernor.js';
+import { registerPickOwner, unregisterPickOwner } from './pickRegistry.js';
+import { registerSpriteCollection, restoreSpriteOrder } from './spriteOrder.js';
 
 export const BIKESHARE_SELECTED_OVERLAY_SOURCE_ID = 'bikeshare-selected';
 export const BIKESHARE_SELECTED_OVERLAY_SOURCE_OPTIONS = Object.freeze({
@@ -1119,7 +1119,7 @@ function _selectStation(key) {
   _clearSelection();
 
   const record = _stationRenderMap.get(key);
-  if (!record || !record.point?.position || !_viewer) return;
+  if (!record?.point?.position || !_viewer) return;
 
   _selectedKey = key;
   // Hide the base point so the highlight entity replaces it visually
@@ -1360,7 +1360,7 @@ function buildDetectionId(record) {
   // shape), so `record.name` was always undefined → every label read "Dock N".
   const label = record.stationName || `Dock ${record.stationId}`;
   // Truncate long station names to keep HUD readable
-  const short = label.length > 24 ? label.slice(0, 22) + '…' : label;
+  const short = label.length > 24 ? `${label.slice(0, 22)}…` : label;
   return `🚲 ${short} [${bikes}/${capacity}]`;
 }
 
@@ -1374,12 +1374,7 @@ function buildDetectionId(record) {
  * @returns {Array<{ position: Cesium.Cartesian3, id: string, type: string, skipLabel: boolean }>}
  */
 function collectDetectableStations(options = {}) {
-  if (
-    !_enabled ||
-    !_pointCollection ||
-    !_pointCollection.show ||
-    _stationRenderMap.size === 0
-  )
+  if (!_enabled || !_pointCollection?.show || _stationRenderMap.size === 0)
     return [];
 
   // Gather all visible station records (include selected even though its point is hidden)

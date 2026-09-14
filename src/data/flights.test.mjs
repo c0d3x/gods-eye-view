@@ -1,28 +1,29 @@
 // src/data/flights.test.mjs
 // Focused tests for the pure analyst-record mapper (analyst query engine seam).
 // Pure function — no viewer/DOM needed; imported directly.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import * as Cesium from 'cesium';
 import flightsLayer, {
   _addFlightTrackingCandidateForTest,
   _applyPendingFlightTrackingRestoreForTest,
   _armFlightTrackingRestoreForTest,
+  _clearDisplayFloorStateForTest,
+  _floorGroundedDisplayPositionForTest,
   _militaryLayerSuppressesForTest,
   _pendingFlightTrackingRestoreForTest,
   _setFlightTrackingRefreshOutcomeForTest,
   _setTrackedFlightRefreshStateForTest,
-  _floorGroundedDisplayPositionForTest,
-  _clearDisplayFloorStateForTest,
   mapAnalystRecord,
 } from './flights.js';
-import { setMilitaryLayerActive } from './militaryRegistry.js';
 import {
+  _clearMeshFloorCellsForTest,
   GROUND_FLOOR_LIFT_M,
   reportMeshFloorCell,
   setMeshFloorPreferred,
-  _clearMeshFloorCellsForTest,
 } from './groundFloor.js';
+import { setMilitaryLayerActive } from './militaryRegistry.js';
 import {
   _setTrackedOverlayHostForTest,
   destroyTrackedReadout,

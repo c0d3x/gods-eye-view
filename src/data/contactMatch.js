@@ -91,12 +91,12 @@ export function rankContactMatch({
     return CONTACT_MATCH_TIER.REGISTRATION_EXACT;
   }
 
-  if (callsignText && callsignText.startsWith(rawQuery))
+  if (callsignText?.startsWith(rawQuery))
     return CONTACT_MATCH_TIER.CALLSIGN_PREFIX;
   if (canonicalQuery && canonicalRegistration.startsWith(canonicalQuery)) {
     return CONTACT_MATCH_TIER.REGISTRATION_PREFIX;
   }
-  if (callsignText && callsignText.includes(rawQuery))
+  if (callsignText?.includes(rawQuery))
     return CONTACT_MATCH_TIER.CALLSIGN_SUBSTRING;
   if (canonicalQuery && canonicalRegistration.includes(canonicalQuery)) {
     return CONTACT_MATCH_TIER.REGISTRATION_SUBSTRING;

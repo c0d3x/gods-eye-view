@@ -1,12 +1,13 @@
 // src/data/aircraftClass.test.mjs
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
-  classifyAircraft,
+  CLASS_MODEL_REAL,
+  CLASS_MODEL_URL,
   CLASS_SCALE_2D,
   CLASS_SCALE_3D,
-  CLASS_MODEL_URL,
-  CLASS_MODEL_REAL,
+  classifyAircraft,
 } from './aircraftClass.js';
 
 test('type-code classification (military layer path)', () => {

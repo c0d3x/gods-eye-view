@@ -3,18 +3,19 @@
 // (fix/cctv-part-c-review): zoom-scaled card budgets, nearest-first in-view
 // selection, video exclusion, the eviction-grace planner, and source-aware
 // static-frame pacing.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
+  applyEvictionGrace,
+  blendCenterRankKm,
+  CCTV_AMBIENT_CARD_MAX,
+  CCTV_AMBIENT_CARD_MID,
+  CCTV_AMBIENT_CARD_MIN,
   CCTV_CARD_CENTER_WEIGHT,
   CCTV_CARD_INCUMBENT_FACTOR,
   CCTV_LOD_GRACE_MS,
   CCTV_LOD_GRACE_PASSES,
-  CCTV_AMBIENT_CARD_MAX,
-  CCTV_AMBIENT_CARD_MID,
-  CCTV_AMBIENT_CARD_MIN,
-  applyEvictionGrace,
-  blendCenterRankKm,
   cctvCandidateSpreadKm,
   cctvLodBudgets,
   distributeCctvCards,

@@ -1,20 +1,21 @@
 // Unit tests for the pure drawing/format helpers behind the detection overlay.
 // These are renderer-agnostic (no Cesium, no DOM) so they pin the Phase-1 label
 // + batching behavior and carry straight into the Phase-2 GPU renderer.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
-  formatFlightLevel,
-  formatKnots,
-  monoTextWidth,
-  composeLabel,
   acquireAlpha,
   appendCornerBracket,
-  resolveTier,
+  composeLabel,
+  formatFlightLevel,
+  formatKnots,
   measureLabelCard,
   measureTrackLabel,
+  monoTextWidth,
   nearFarScale,
   rectIntersectsAny,
+  resolveTier,
 } from './detectionDraw.js';
 
 test('formatFlightLevel converts metres to a 3-digit flight level', () => {

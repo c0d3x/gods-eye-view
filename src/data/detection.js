@@ -1,38 +1,29 @@
 import * as Cesium from 'cesium';
-import { governorRequestRender } from '../renderGovernor.js';
-import {
-  DETECTION_ENABLE_FADE_MS,
-  countAnimatingRenderEntries,
-  detectionNeedsFollowUpFrame,
-  detectionPaintSkipDecision,
-  scanlineOffsetPx,
-} from './detectionRenderDemand.js';
-import {
-  acquireAlpha,
-  appendCornerBracket,
-  resolveTier,
-  measureTrackLabel,
-  nearFarScale,
-  rectIntersectsAny,
-} from './detectionDraw.js';
 import {
   getKeyholeFadeTuning,
   keyholeLabelAlphaFromGeometry,
 } from '../celestialRing.js';
 import { registerWorldOverlayPaintLane } from '../overlays/worldOverlay.js';
+import { paintDetectionCallout } from '../overlays/worldOverlayDraw.js';
 import {
   DETECTION_STYLE,
   DETECTION_THEME_MAP,
   SKY_PLATE_SCALE,
 } from '../overlays/worldOverlayTokens.js';
-import { skyBackdropFactor } from './iconOrientation.js';
-import { paintDetectionCallout } from '../overlays/worldOverlayDraw.js';
-import { allocateLayerQuotas, LabelArbiter } from './labelArbiter.js';
+import { governorRequestRender } from '../renderGovernor.js';
 import {
   BoundedCohort,
   cohortCapForQuota,
   stableIdentityHash,
 } from './detectionCohort.js';
+import {
+  acquireAlpha,
+  appendCornerBracket,
+  measureTrackLabel,
+  nearFarScale,
+  rectIntersectsAny,
+  resolveTier,
+} from './detectionDraw.js';
 import {
   ALLOCATION_ELASTIC,
   canonicalizeDensity,
@@ -41,11 +32,19 @@ import {
   detectionHorizontalSector,
   labelBudgetFor,
   normalizeAllocationStrategy,
-  normalizeProfile,
   profileForDensity,
   viewScaleForAltitude,
 } from './detectionPolicy.js';
 import { detectionBracketOpacity } from './detectionPresentation.js';
+import {
+  countAnimatingRenderEntries,
+  DETECTION_ENABLE_FADE_MS,
+  detectionNeedsFollowUpFrame,
+  detectionPaintSkipDecision,
+  scanlineOffsetPx,
+} from './detectionRenderDemand.js';
+import { skyBackdropFactor } from './iconOrientation.js';
+import { allocateLayerQuotas, LabelArbiter } from './labelArbiter.js';
 
 /**
  * @module detection
@@ -1258,7 +1257,7 @@ function _drawOverlay(frame) {
   _ctx.font = FONT;
   if (!_charWidth) _charWidth = _ctx.measureText('0000000000').width / 10 || 6;
   const tiers = _theme.tiers || null;
-  const colorFor = (key) => (tiers && tiers[key]) || _theme.line;
+  const colorFor = (key) => tiers?.[key] || _theme.line;
   const bracketPaths = new Map();
   const pathFor = (map, color, alpha) => {
     const band = Math.max(

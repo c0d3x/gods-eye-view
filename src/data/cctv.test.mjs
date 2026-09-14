@@ -13,58 +13,58 @@
 //
 // computeFrustumGeometry is PURE (no viewer, no scene queries) so it runs under
 // plain node:test.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
-import path from 'node:path';
+import { test } from 'node:test';
 import * as Cesium from 'cesium';
+import {
+  activateCctvCameraFromWorldClick,
+  CCTV_ACTIVATION_RESULT,
+  CCTV_FOCUS_REQUEST_EVENT,
+} from '../cctvFocusRequest.js';
+import { readUiSource } from '../testing/uiSources.mjs';
 import cctvLayer, {
-  CCTV_PROJECTION_OVERLAY_SOURCE_OPTIONS,
   _createCctvProjectionPlaneForTest,
   _extractPickedCameraIdForTest,
-  _updateCctvProjectionPlaneForTest,
-  _setCctvCoverageStateForTest,
   _pushAmbientCardEntriesForTest,
+  _setCctvCoverageStateForTest,
   _setCctvOverlayHostForTest,
+  _updateCctvProjectionPlaneForTest,
   activationProbeClampRange,
   bindCctvWorldClickGesture,
-  clearProbeClampOnDeactivation,
-  computeFrustumGeometry,
+  CCTV_CALIBRATION_STORAGE_KEY_V1,
+  CCTV_CALIBRATION_STORAGE_KEY_V2,
+  CCTV_FOCUS_RESULT,
+  CCTV_PROJECTION_OVERLAY_SOURCE_OPTIONS,
+  calibrationPatchMovesAnchor,
   cctvCycleIndex,
   cctvEmptyClickDeselects,
-  cctvRecordNeedsActivation,
-  deactivateActiveCamera,
-  CCTV_FOCUS_RESULT,
-  FRUSTUM_GROUND_CLEARANCE_M,
-  CCTV_CALIBRATION_STORAGE_KEY_V2,
-  CCTV_CALIBRATION_STORAGE_KEY_V1,
-  readCalibrationStoreV2,
-  writeCalibrationStoreV2,
-  deriveCalBadge,
-  surfaceRegimeKey,
-  calibrationPatchMovesAnchor,
   cctvGeometryDrainPacing,
+  cctvRecordNeedsActivation,
+  clearProbeClampOnDeactivation,
+  computeFrustumGeometry,
   createGeometryProgressNotifier,
-  normalizeCoverageMode,
-  frameSignatureFromPixels,
+  deactivateActiveCamera,
+  deriveCalBadge,
+  FRUSTUM_GROUND_CLEARANCE_M,
   focusCctvRecord,
+  frameSignatureFromPixels,
   hideCctvRecordVisuals,
   materializeCctvActiveCoverageEntities,
   materializeCctvVisibleCoverageEntities,
   maybeAutoHop,
+  normalizeCoverageMode,
   prioritizeActiveCctvGeometryRecord,
   processCctvGeometryDrainBatch,
   processCctvGeometryQueueBatch,
   processGeometryBatch,
+  readCalibrationStoreV2,
   refreshCoverageStyles,
-  setCctvCardPresentationOptions,
   setActiveCamera,
+  setCctvCardPresentationOptions,
+  surfaceRegimeKey,
+  writeCalibrationStoreV2,
 } from './cctv.js';
-import {
-  CCTV_ACTIVATION_RESULT,
-  CCTV_FOCUS_REQUEST_EVENT,
-  activateCctvCameraFromWorldClick,
-} from '../cctvFocusRequest.js';
-import { readUiSource } from '../testing/uiSources.mjs';
 
 const UI_SOURCE = readUiSource();
 
@@ -1207,7 +1207,7 @@ test('CCTV null-active coverage, auto-hop, cycling, and panel targets stay hones
     assert.equal(cctvCycleIndex(0, -1, records.length), records.length - 1);
 
     const renderer = UI_SOURCE.match(
-      /_renderCctvState\(state\) \{[\s\S]*?\n  \}\n/,
+      /_renderCctvState\(state\) \{[\s\S]*?\n {2}\}\n/,
     );
     assert.ok(renderer, '_renderCctvState is missing');
     assert.match(

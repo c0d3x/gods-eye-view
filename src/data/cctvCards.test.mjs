@@ -4,10 +4,12 @@
 // bounded thumbnail-cache prune. Rendering geometry (placeCard/cardAlpha) is
 // shared with firmsLabels.js and covered by firmsLabels.test.mjs; the radial
 // keyhole edge fade is covered by the celestialRing suite.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
 import {
+  applyFrameResult,
   CCTV_CARD_FADE_END_M,
   CCTV_CARD_FADE_START_M,
   CCTV_CARD_FETCH_BURST_LIMIT,
@@ -19,7 +21,6 @@ import {
   CCTV_CARD_SCALE_MID_M,
   CCTV_CARD_SCALE_MIN,
   CCTV_FRAME_CACHE_MAX,
-  applyFrameResult,
   cardFetchPolicy,
   cardScaleForAltitude,
   createCctvThumbnailOverlayEntry,

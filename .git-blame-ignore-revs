@@ -22,3 +22,6 @@ a5da6e4b8d949ea77db98473a39176af258e4076
 
 # Format the top level of src with Biome
 a966209dac9c819033fb5c2c1414ef9eb89ca358
+
+# Format src/data (adsbLolFallback to flights) with Biome
+3dcc3a3f2ecffab4892b1af6b91b91added51b36

@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import { nextCockpitNearContacts } from './cockpitAirLod.js';
 
 test('Cockpit AIR LOD admits at ADD and retains through KEEP', () => {

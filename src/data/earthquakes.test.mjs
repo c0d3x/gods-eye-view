@@ -1,24 +1,25 @@
 // src/data/earthquakes.test.mjs
 // Focused tests for the pure analyst-record mapper (analyst query engine seam).
 // Pure function — no viewer/DOM needed; imported directly.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
 import * as Cesium from 'cesium';
 import {
-  EARTHQUAKE_OVERLAY_COHORT_LIMIT,
-  EARTHQUAKE_OVERLAY_COLLISION_CAPACITY,
+  _resetRenderGovernorForTest,
+  getRenderGovernorDiagnostics,
+  installRenderGovernor,
+} from '../renderGovernor.js';
+import {
   createEarthquakeOverlayEntry,
   createEarthquakesLayer,
+  EARTHQUAKE_OVERLAY_COHORT_LIMIT,
+  EARTHQUAKE_OVERLAY_COLLISION_CAPACITY,
   mapAnalystRecord,
   selectEarthquakeOverlayCohort,
 } from './earthquakes.js';
 import { DataLayerManager } from './manager.js';
-import {
-  getRenderGovernorDiagnostics,
-  installRenderGovernor,
-  _resetRenderGovernorForTest,
-} from '../renderGovernor.js';
 
 const FULL_RAW = {
   id: 'us7000abcd',
@@ -312,10 +313,7 @@ test('quake disc axes are STATIC — a per-frame callback re-tessellates ground 
         `${axis} must be a constant property`,
       );
       // Magnitude 5.5 → 2^5.5 * 1000 m, unchanged by the dropped pulse.
-      assert.equal(
-        property.getValue(Cesium.JulianDate.now()),
-        Math.pow(2, 5.5) * 1000,
-      );
+      assert.equal(property.getValue(Cesium.JulianDate.now()), 2 ** 5.5 * 1000);
     }
   } finally {
     globalThis.fetch = originalFetch;

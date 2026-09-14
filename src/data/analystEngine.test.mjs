@@ -1,8 +1,8 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
-  createAnalystEngine,
   applyScope,
+  createAnalystEngine,
   haversineKm,
 } from './analystEngine.js';
 

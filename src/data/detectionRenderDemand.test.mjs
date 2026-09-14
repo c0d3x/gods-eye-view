@@ -30,19 +30,20 @@
 //
 // The runtime counterpart — parked scene, detection ON vs OFF, near-zero renders
 // either way, and the overlay still painting — is `scripts/qa-perf.mjs` §1b.
-import test from 'node:test';
+
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import test from 'node:test';
 
 import {
+  countAnimatingRenderEntries,
   DETECTION_ENABLE_FADE_MS,
   DETECTION_PAINT_SKIP_THRESHOLD_MS,
-  SCANLINE_PERIOD_PX,
-  SCANLINE_STEP_MS,
-  countAnimatingRenderEntries,
   detectionNeedsFollowUpFrame,
   detectionPaintSkipDecision,
   renderEntryIsAnimating,
+  SCANLINE_PERIOD_PX,
+  SCANLINE_STEP_MS,
   scanlineOffsetPx,
 } from './detectionRenderDemand.js';
 

@@ -1,7 +1,8 @@
 // src/data/aircraftMeta.test.mjs
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
-import { stickyText, stickyNumber } from './aircraftMeta.js';
+import { test } from 'node:test';
+import { stickyNumber, stickyText } from './aircraftMeta.js';
 
 test('stickyText holds last non-empty value', () => {
   assert.equal(stickyText('UAL123 ', undefined), 'UAL123');

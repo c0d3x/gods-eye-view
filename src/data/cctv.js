@@ -46,61 +46,48 @@
  * plus CCTV-specific methods (selectCamera, cycleCamera, focusNearest, etc.).
  */
 import * as Cesium from 'cesium';
-import { registerSpriteCollection, restoreSpriteOrder } from './spriteOrder.js';
 import {
-  CCTV_ACTIVATION_RESULT,
   activateCctvCameraFromWorldClick,
+  CCTV_ACTIVATION_RESULT,
 } from '../cctvFocusRequest.js';
-import {
-  bindTrackingClickGesture,
-  isTrackingClickGesture,
-} from './trackingClickGesture.js';
+import { fetchJson } from '../fetchJson.js';
+import { CITY_POIS } from '../locations.js';
 import {
   clearOverlaySource,
   hitTestWorldOverlay,
   setOverlayEntries,
   setOverlaySourceVisible,
 } from '../overlays/worldOverlay.js';
-import { CITY_POIS } from '../locations.js';
 import {
-  registerPickOwner,
-  resolvePickId,
-  unregisterPickOwner,
-} from './pickRegistry.js';
-import { resolveEllipsoidalGround } from './terrainHeights.js';
+  holdContinuousRender,
+  releaseContinuousRender,
+} from '../renderGovernor.js';
 import {
-  cachedGroundFloor,
-  resolveGroundFloorCells,
-  warmGroundFloor,
-} from './groundFloor.js';
-import { sampleMeshFloorCells } from './meshFloorSampler.js';
-import { horizonOccluder } from './iconOrientation.js';
-import {
-  cameraHue,
-  viewshedColors,
-  createFrustumVolumePrimitive,
-} from './cctvViewshed.js';
-import { createCalibrationGizmo, GIZMO_ID_PREFIX } from './cctvGizmo.js';
-import {
-  CCTV_AMBIENT_CARD_MAX,
-  applyEvictionGrace,
-  selectCctvLod,
-  staticFrameRefreshMs,
-} from './cctvLod.js';
-import {
+  applyFrameResult,
   CCTV_CARD_FETCH_BURST_LIMIT,
   CCTV_CARD_FETCH_BURST_SPACING_MS,
-  CCTV_FRAME_CANVAS_W,
   CCTV_FRAME_CANVAS_H,
-  applyFrameResult,
+  CCTV_FRAME_CANVAS_W,
+  CCTV_OVERLAY_SOURCE_ID,
   cardFetchPolicy,
   createCctvThumbnailOverlayEntry,
   createFrameSlot,
   declutterCctvCards,
-  CCTV_OVERLAY_SOURCE_ID,
-  planFrameCachePrune,
   frameFetchDue,
+  planFrameCachePrune,
 } from './cctvCards.js';
+import { createCalibrationGizmo, GIZMO_ID_PREFIX } from './cctvGizmo.js';
+import {
+  applyEvictionGrace,
+  CCTV_AMBIENT_CARD_MAX,
+  selectCctvLod,
+  staticFrameRefreshMs,
+} from './cctvLod.js';
+import {
+  cameraHue,
+  createFrustumVolumePrimitive,
+  viewshedColors,
+} from './cctvViewshed.js';
 import {
   advanceSpriteFocus,
   focusAlphaNeedsWrite,
@@ -110,10 +97,23 @@ import {
   onFocusTargetAppear,
 } from './focusDeemphasis.js';
 import {
-  holdContinuousRender,
-  releaseContinuousRender,
-} from '../renderGovernor.js';
-import { fetchJson } from '../fetchJson.js';
+  cachedGroundFloor,
+  resolveGroundFloorCells,
+  warmGroundFloor,
+} from './groundFloor.js';
+import { horizonOccluder } from './iconOrientation.js';
+import { sampleMeshFloorCells } from './meshFloorSampler.js';
+import {
+  registerPickOwner,
+  resolvePickId,
+  unregisterPickOwner,
+} from './pickRegistry.js';
+import { registerSpriteCollection, restoreSpriteOrder } from './spriteOrder.js';
+import { resolveEllipsoidalGround } from './terrainHeights.js';
+import {
+  bindTrackingClickGesture,
+  isTrackingClickGesture,
+} from './trackingClickGesture.js';
 
 // ---------------------------------------------------------------------------
 // API endpoints
@@ -215,8 +215,7 @@ const DEFAULT_CAMERA_CALIBRATION = Object.freeze({
 export function calibrationPatchMovesAnchor(patch) {
   if (!patch || typeof patch !== 'object') return false;
   return (
-    Object.prototype.hasOwnProperty.call(patch, 'offsetNorthM') ||
-    Object.prototype.hasOwnProperty.call(patch, 'offsetEastM')
+    Object.hasOwn(patch, 'offsetNorthM') || Object.hasOwn(patch, 'offsetEastM')
   );
 }
 
@@ -238,7 +237,7 @@ const CAMERA_ICON = (() => {
       <rect x="4.2" y="24" width="8.6" height="2.5" rx="1.1" fill="#0b151d" stroke="#4ecde7" stroke-width="0.8"/>
     </g>
   </svg>`;
-  return 'data:image/svg+xml;base64,' + btoa(svg);
+  return `data:image/svg+xml;base64,${btoa(svg)}`;
 })();
 
 /**
@@ -526,7 +525,7 @@ let _lastHealthSyncAt = 0;
 let _lastError = null;
 let _healthById = new Map();
 let _calibrationById = new Map();
-let _listeners = new Set();
+const _listeners = new Set();
 let _projectionRaf = 0;
 let _removeFocusAppearListener = null;
 let _lastFocusStyleAt = 0;
@@ -736,28 +735,6 @@ function normalizeHeading(deg) {
  */
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
-}
-
-/**
- * Normalizes an angle to the (-180, 180] range.
- * @param {number} deg
- * @returns {number}
- */
-function normalizeSignedAngle(deg) {
-  let value = deg % 360;
-  if (value > 180) value -= 360;
-  if (value <= -180) value += 360;
-  return value;
-}
-
-/**
- * Returns the absolute angular difference between two headings in degrees.
- * @param {number} aDeg
- * @param {number} bDeg
- * @returns {number} Value in [0, 180].
- */
-function angularDeltaAbs(aDeg, bDeg) {
-  return Math.abs(normalizeSignedAngle(aDeg - bDeg));
 }
 
 /**
@@ -2167,7 +2144,7 @@ function destroyProjectionRuntime(runtime) {
  */
 function refreshProjectionImage(record, force = false) {
   const runtime = record?.projection;
-  if (!runtime || runtime.mode !== 'image' || !runtime.image) return;
+  if (runtime?.mode !== 'image' || !runtime.image) return;
   // Hidden-state gate (perf wave 2): no new frame fetch/decode for a canvas
   // nobody can see. The refresh interval re-fills naturally on return.
   if (typeof document !== 'undefined' && document.hidden && !force) return;
@@ -2226,7 +2203,7 @@ function paintPlaceholderThrottled(record, runtime, health) {
  */
 function drawProjectionFrame(record) {
   const runtime = record?.projection;
-  if (!runtime || !runtime.ctx) return;
+  if (!runtime?.ctx) return;
 
   const health = _healthById.get(record.camera.id) || null;
 
@@ -3073,7 +3050,7 @@ function getActiveRecord() {
   }
   // Sync _activeCameraId when falling back to first record to prevent ID mismatch
   const fallback = _records[0] || null;
-  if (fallback && fallback.camera?.id) {
+  if (fallback?.camera?.id) {
     _activeCameraId = fallback.camera.id;
   }
   return fallback;
@@ -5428,7 +5405,7 @@ const cctvLayer = {
     if (!_records.length) return null;
     const current = getActiveRecord();
     const nextIdx = cctvCycleIndex(
-      _records.findIndex((record) => record === current),
+      _records.indexOf(current),
       step,
       _records.length,
     );

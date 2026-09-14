@@ -10,13 +10,14 @@
 //     its 5 vertices are exactly the caller's frustumCartesians positions and
 //     its 18 indices only reference those 5 vertices (4 side faces + 2 cap
 //     triangles) — no independent geometry recompute anywhere.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import * as Cesium from 'cesium';
 import {
   cameraHue,
-  viewshedColors,
   frustumVolumeGeometryData,
+  viewshedColors,
 } from './cctvViewshed.js';
 
 const GOLDEN_ANGLE = 137.50776405003785;
