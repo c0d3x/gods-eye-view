@@ -18,6 +18,7 @@ export const UI_SOURCE_FILES = Object.freeze([
   'ui/detectionControls.js',
   'ui/cockpitControls.js',
   'ui/contextPanel.js',
+  'ui/shareState.js',
 ]);
 
 /**
