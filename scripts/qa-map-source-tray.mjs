@@ -1209,7 +1209,9 @@ try {
         .getElementById('global-loading-detail')
         .textContent.trim(),
     });
-    const waitForQueuedNotice = async (label, timeoutMs = 1000) => {
+    // The share failure appears on the next animation frame, and a
+    // SwiftShader frame of the globe can take seconds (#50).
+    const waitForQueuedNotice = async (label, timeoutMs = 15_000) => {
       const deadline = performance.now() + timeoutMs;
       while (
         styleManager._globalStatusNotice?.label !== label &&
@@ -1220,6 +1222,23 @@ try {
       return styleManager._globalStatusNotice?.label === label;
     };
     const baseNow = performance.now();
+    // Every update in this sequence runs on the synthetic clock: the
+    // harness steps, the deferred notice frame and both chip tickers. On a
+    // slow page the real clock would otherwise age the notices between
+    // steps (#50).
+    const ownUpdate = Object.hasOwn(
+      styleManager,
+      '_updateGlobalLoadingFeedback',
+    );
+    const originalUpdate = styleManager._updateGlobalLoadingFeedback;
+    let syntheticNow = baseNow;
+    styleManager._updateGlobalLoadingFeedback = function () {
+      return originalUpdate.call(this, syntheticNow);
+    };
+    const advance = (ms) => {
+      syntheticNow = baseNow + ms;
+      styleManager._updateGlobalLoadingFeedback();
+    };
     try {
       styleManager._loadingFeedbackState = {
         phase: 'idle',
@@ -1247,15 +1266,15 @@ try {
           stats: {},
         },
       ];
-      styleManager._updateGlobalLoadingFeedback(baseNow);
-      styleManager._updateGlobalLoadingFeedback(baseNow + 200);
+      advance(0);
+      advance(200);
       dataManager.getAll = () => [];
       styleManager._loadingFeedbackEvent = {
         type: 'visibility-failed',
         layerId: 'qa-unrelated-layer',
         error: new Error('QA offline'),
       };
-      styleManager._updateGlobalLoadingFeedback(baseNow + 300);
+      advance(300);
       const failureStart = snapshot();
       styleManager._handleShareTrackingRestoreStatus({
         classification: 'source-unavailable',
@@ -1267,13 +1286,13 @@ try {
         'Shared flight could not be restored — feed unavailable',
       );
       const shareFailureQueued = snapshot();
-      styleManager._updateGlobalLoadingFeedback(baseNow + 5299);
+      advance(5299);
       const failureEnd = snapshot();
-      styleManager._updateGlobalLoadingFeedback(baseNow + 5300);
+      advance(5300);
       const shareFailureStart = snapshot();
-      styleManager._updateGlobalLoadingFeedback(baseNow + 10299);
+      advance(10299);
       const shareFailureEnd = snapshot();
-      styleManager._updateGlobalLoadingFeedback(baseNow + 10300);
+      advance(10300);
       const settled = snapshot();
       return {
         failureStart,
@@ -1285,6 +1304,8 @@ try {
         settled,
       };
     } finally {
+      if (ownUpdate) styleManager._updateGlobalLoadingFeedback = originalUpdate;
+      else delete styleManager._updateGlobalLoadingFeedback;
       dataManager.getAll = originalGetAll;
       styleManager._handleShareTrackingRestoreStatus({
         classification: 'cancelled',
