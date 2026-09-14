@@ -14,7 +14,7 @@ import {
 } from '../lib/diskCacheLimits.mjs';
 import { requiredFiniteQueryNumber } from '../lib/queryParams.mjs';
 import { createRateLimiter, rateLimitKey } from '../lib/rateLimit.mjs';
-import { errorMessage } from '../lib/thrownErrors.mjs';
+import { errorField, errorMessage } from '../lib/thrownErrors.mjs';
 import { fetchOverpassPayload } from './overpass.mjs';
 
 const _militaryInstallationsRateLimiter = createRateLimiter({
@@ -308,16 +308,19 @@ function trimMilitaryInstallationCache() {
 
 /**
  * Safe, evidence-based reason for an installation upstream failure.
- * @param {any} error Whatever the refresh threw.
+ * @param {unknown} error Whatever the refresh threw.
+ * @returns {'rate_limited'|'timeout'|'query_failed'|'unavailable'}
  */
 export function militaryInstallationFailureReason(error) {
+  const reason = errorField(error, 'installationReason');
   if (
-    ['rate_limited', 'timeout', 'query_failed'].includes(
-      error?.installationReason,
-    )
+    reason === 'rate_limited' ||
+    reason === 'timeout' ||
+    reason === 'query_failed'
   )
-    return error.installationReason;
-  return ['AbortError', 'TimeoutError'].includes(error?.name)
+    return reason;
+  const name = errorField(error, 'name');
+  return name === 'AbortError' || name === 'TimeoutError'
     ? 'timeout'
     : 'unavailable';
 }

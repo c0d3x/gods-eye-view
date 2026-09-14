@@ -35,16 +35,36 @@ test('installation failure reasons disclose no raw upstream error and do not gue
     'unavailable',
   );
   assert.equal(
-    militaryInstallationFailureReason({ name: 'AbortError' }),
+    militaryInstallationFailureReason(
+      new DOMException('aborted', 'AbortError'),
+    ),
     'timeout',
   );
   assert.equal(
-    militaryInstallationFailureReason({ installationReason: 'rate_limited' }),
+    militaryInstallationFailureReason(new DOMException('slow', 'TimeoutError')),
+    'timeout',
+  );
+  // The refresh attaches its reason to a real Error.
+  assert.equal(
+    militaryInstallationFailureReason(
+      Object.assign(new Error('Mapped installation upstream unavailable'), {
+        installationReason: 'rate_limited',
+      }),
+    ),
     'rate_limited',
   );
   assert.equal(
-    militaryInstallationFailureReason({ installationReason: 'query_failed' }),
+    militaryInstallationFailureReason(
+      Object.assign(new Error('Mapped installation upstream unavailable'), {
+        installationReason: 'query_failed',
+      }),
+    ),
     'query_failed',
+  );
+  // Only an Error is trusted to carry a reason.
+  assert.equal(
+    militaryInstallationFailureReason({ installationReason: 'rate_limited' }),
+    'unavailable',
   );
 });
 const TTL_MS = 30 * DAY_MS;
