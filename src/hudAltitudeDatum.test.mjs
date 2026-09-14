@@ -108,7 +108,7 @@ test('hud.js corrects the camera height to MSL through the geoid module', () => 
     'the ~2.7 MB grid must be requested once, on demand — not at HUD construction',
   );
   assert.equal(
-    has(/\.catch\(\(\) => \{ \/\* readout falls back to the uncorrected height \*\/ \}\)/),
+    has(/\s*\.catch\(\s*\(,?\s*\)\s*=>\s*\{\s*\/\*\s*readout\s*falls\s*back\s*to\s*the\s*uncorrected\s*height\s*\*\/,?\s*\},?\s*\)/),
     true,
     'a failed geoid load must leave the readout uncorrected, not unhandled',
   );

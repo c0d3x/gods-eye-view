@@ -69,7 +69,7 @@ test('Cockpit vision cycle exposes exactly five real visual styles without NONE'
   assert.match(ui, /const modes = COCKPIT_VISION_MODES;/);
   assert.match(ui, /const\s*labels\s*=\s*\{\s*optical:\s*inherited,\s*crt:\s*'CRT',\s*nvg:\s*'NVG',\s*thermal:\s*'FLIR',\s*noir:\s*'NOIR',?\s*\};/);
   assert.doesNotMatch(ui, /none: 'NONE'/);
-  assert.match(ui, /getInheritedVisionLabel: \(\) => \([\s\S]*?STYLE_STATUS_LABELS\[this\.activeStyle\]/);
+  assert.match(ui, /getInheritedVisionLabel:\s*\(,?\s*\)\s*=>\s*\(?\s*[\s\S]*?STYLE_STATUS_LABELS\[\s*this\s*\.activeStyle,?\s*\]/);
   assert.match(html, /id="cockpit-vision-current-label"[^>]*>NORMAL<\/strong>/);
   assert.match(ui, /const\s*target\s*=\s*applyCockpitVisionStageIntensities\(\s*this\s*\.stages,\s*next,\s*this\s*\._cockpitVisionRestore,?\s*\);/);
   assert.match(ui, /this\s*\._cockpitVisionRestore\s*=\s*captureCockpitVisionBaseline\(\s*this\s*\.stages,\s*this\s*\.transitions,?\s*\);/);
@@ -393,7 +393,7 @@ test('fresh Cockpit entry temporarily collapses map panels and exit restores the
   );
   assert.match(
     callback[1],
-    /_cockpitPanelRestore\.set\(panelId, panel\.classList\.contains\('collapsed'\)\)/,
+    /_cockpitPanelRestore\s*\.set\(\s*panelId,\s*panel\s*\.classList\s*\.contains\(\s*'collapsed',?\s*\),?\s*\)/,
     'entry must remember each panel\'s exact collapsed state before hiding it',
   );
   assert.match(

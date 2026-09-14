@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ShareLinkManager, decodeShareCreatedAtMs } from './sharelink.js';
 import { createDefaultLayerState } from './data/layerState.js';
-import { memberSource, readUiSource } from './testing/uiSources.mjs';
+import { looseIndexOf, memberSource, readUiSource } from './testing/uiSources.mjs';
 
 const uiSource = readUiSource();
 
@@ -433,8 +433,8 @@ test('every explicit visual UI gesture claims restore authority before it mutate
     ["slider?.addEventListener('input'", 'if (this._celestialBtn)', 'this._applyDetectionFadeFromUi()', 'detection fade controls'],
   ];
   for (const [start, end, mutation, label] of gestureRoutes) {
-    const startIndex = initUi.indexOf(start);
-    const endIndex = initUi.indexOf(end, startIndex + start.length);
+    const startIndex = looseIndexOf(initUi, start);
+    const endIndex = looseIndexOf(initUi, end, startIndex + start.length);
     assert.ok(startIndex >= 0 && endIndex > startIndex, `${label} route is missing`);
     assertClaimsBefore(initUi.slice(startIndex, endIndex), mutation, label);
   }

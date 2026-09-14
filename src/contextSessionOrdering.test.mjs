@@ -12,7 +12,7 @@
 //  - the right-rail entry ignored the activation result entirely.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { memberSource, readUiSource } from './testing/uiSources.mjs';
+import { looseIndexOf, memberSource, readUiSource } from './testing/uiSources.mjs';
 
 const src = readUiSource();
 
@@ -60,7 +60,7 @@ test('direct Context entry captures on the synchronous request boundary', () => 
   );
   assert.match(
     attach,
-    /_captureContextSessionSnapshot\(\{ excludeLayerIds: \[change\.layerId\] \}\)/,
+    /_captureContextSessionSnapshot\(\s*\{\s*excludeLayerIds:\s*\[\s*change\s*\.layerId,?\s*\],?\s*\},?\s*\)/,
   );
 });
 
@@ -116,7 +116,7 @@ test('context handler: either failed direct Context-shell start rolls the sessio
     handler.indexOf("change?.type === 'visibility-failed'"),
     handler.indexOf("change?.type === 'visibility-will-change'"),
   );
-  assert.match(failedBranch, /\['military-awareness', 'rocket-launches'\]\.includes\(change\.layerId\)/);
+  assert.match(failedBranch, /\[\s*'military-awareness',\s*'rocket-launches',?\s*\]\s*\.includes\(\s*change\s*\.layerId,?\s*\)/);
   assert.match(
     failedBranch,
     /_restoreContextSessionAfterLayerSettles\(\s*change\s*\.layerId,\s*\{\s*notificationToken,?\s*\},?\s*\)/,
@@ -252,18 +252,18 @@ test('Context entry awaits isolation and direct shell routes isolate in the visi
   assert.match(dispose, /this\._contextModeGeneration \+= 1;/);
 
   const guard = src.slice(
-    src.indexOf('this._dataManagerVisibilityGuardUnsubscribe = this._dataManager.addVisibilityGuard'),
-    src.indexOf("if (typeof this._dataManager?.subscribeBeforeDestroy === 'function')"),
+    looseIndexOf(src, 'this._dataManagerVisibilityGuardUnsubscribe = this._dataManager.addVisibilityGuard'),
+    looseIndexOf(src, "if (typeof this._dataManager?.subscribeBeforeDestroy === 'function')"),
   );
-  assert.match(guard, /\['military-awareness', 'rocket-launches'\]\.includes\(change\.layerId\)/);
-  assert.match(guard, /const notificationToken = change\.notificationToken \|\| Symbol\('direct-context-shell-entry'\)/);
+  assert.match(guard, /\[\s*'military-awareness',\s*'rocket-launches',?\s*\]\s*\.includes\(\s*change\s*\.layerId,?\s*\)/);
+  assert.match(guard, /const\s*notificationToken\s*=\s*change\s*\.notificationToken\s*\|\|\s*Symbol\(\s*'direct-context-shell-entry',?\s*\)/);
   assert.match(guard, /this\._userFacingContextNotificationTokens\.add\(notificationToken\)/);
-  assert.match(guard, /await this\._clearLayersOutsideContextMode\(entryMode, \{ notificationToken \}\)/);
+  assert.match(guard, /await\s*this\s*\._clearLayersOutsideContextMode\(\s*entryMode,\s*\{\s*notificationToken,?\s*\},?\s*\)/);
   assert.match(
     guard,
     /await this\._restoreContextSession\(\{\s*excludeLayerIds: \[change\.layerId\],\s*notificationToken,\s*\}\)/,
   );
-  assert.match(guard, /this\._userFacingContextNotificationTokens\.delete\(notificationToken\)/);
+  assert.match(guard, /this\s*\._userFacingContextNotificationTokens\s*\.delete\(\s*notificationToken,?\s*\)/);
 });
 
 test('a lost cross-mode switch says Context is off, and the state agrees', () => {

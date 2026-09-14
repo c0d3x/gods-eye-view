@@ -728,7 +728,7 @@ test('the loading ticker never runs hidden and stops after loading and notices s
   //    throws on every visibilitychange — and must be torn down with the rest.
   assert.match(
     ui,
-    /this\._loadingVisibilityHandler = \(\) => \{\s*if \(!document\.hidden\) this\._updateGlobalLoadingFeedback\(\);\s*\};\s*document\.addEventListener\('visibilitychange', this\._loadingVisibilityHandler\);/,
+    /this\s*\._loadingVisibilityHandler\s*=\s*\(,?\s*\)\s*=>\s*\{\s*if\s*\(\s*!document\s*\.hidden,?\s*\)\s*this\s*\._updateGlobalLoadingFeedback\(,?\s*\);,?\s*\};\s*document\s*\.addEventListener\(\s*'visibilitychange',\s*this\s*\._loadingVisibilityHandler,?\s*\);/,
     'visibilitychange must resample the chip on return',
   );
   const styleManager = ui.slice(ui.indexOf('export class StyleManager'));
@@ -738,7 +738,7 @@ test('the loading ticker never runs hidden and stops after loading and notices s
   );
   assert.match(
     ui,
-    /document\.removeEventListener\('visibilitychange', this\._loadingVisibilityHandler\);/,
+    /document\s*\.removeEventListener\(\s*'visibilitychange',\s*this\s*\._loadingVisibilityHandler,?\s*\);/,
     'the resample handler must be removed on teardown',
   );
 });

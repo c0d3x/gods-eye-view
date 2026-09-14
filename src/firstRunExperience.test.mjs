@@ -221,8 +221,8 @@ test('the key handler refuses to act for a card that is not really on screen', (
   const module = fs.readFileSync(new URL('./firstRunExperience.js', import.meta.url), 'utf8');
   // Real visibility, not just the class: the class survives while CSS hides the
   // card, which is precisely how a Scene left an invisible ESC handler armed.
-  assert.match(module, /const isTopmost = \(\) => root\.isConnected/);
-  assert.match(module, /&& root\.getClientRects\(\)\.length > 0\s*\n\s*&& !coveredByOverlay\(\);/);
+  assert.match(module, /const\s*isTopmost\s*=\s*\(,?\s*\)\s*=>\s*root\s*\.isConnected/);
+  assert.match(module, /&&\s*root\s*\.getClientRects\(,?\s*\)\s*\.length\s*>\s*0\s*&&\s*!coveredByOverlay\(,?\s*\);/);
   const handler = module.slice(module.indexOf('function onKeyDown(event) {'));
   assert.match(
     handler.slice(0, handler.indexOf("if (event.key === 'Escape')")),
@@ -370,7 +370,7 @@ test('the launcher yields on engage and waits when a surface is already up', () 
   assert.match(module, /dismiss\(\{ restoreFocus: false \}\)/);
   // A cheap attribute watch, not a per-frame poll — the render governor must
   // not see a new hold because of onboarding chrome.
-  assert.match(module, /attributes: true, attributeFilter: \['class'\]/);
+  assert.match(module, /attributes:\s*true,\s*attributeFilter:\s*\[\s*'class',?\s*\]/);
   assert.match(module, /surfaceObserver\?\.disconnect\(\)/);
   assert.doesNotMatch(module, /setInterval|requestAnimationFrame\(function poll/);
 });
@@ -531,7 +531,7 @@ test('no mission writes a preference the visitor did not choose by picking it', 
   const panelWrites = code.match(/setPanelCollapsed/g) || [];
   assert.equal(panelWrites.length, 1, 'exactly one panel reveal, on the Context path');
   const contextPath = code.slice(code.indexOf('setContextMode: async (mode)'), code.indexOf('setLayerEnabled:'));
-  assert.match(contextPath, /result\?\.ok[\s\S]*?setPanelCollapsed\?\.\('global-context-panel', false, \{ explicit: true \}\)/);
+  assert.match(contextPath, /result\s*\?\s*\.ok[\s\S]*?setPanelCollapsed\s*\?\.\(\s*'global-context-panel',\s*false,\s*\{\s*explicit:\s*true,?\s*\},?\s*\)/);
 });
 
 test('the decision table is written down where the next editor will read it', () => {

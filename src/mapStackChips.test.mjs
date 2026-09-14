@@ -364,7 +364,7 @@ test('the Visual Presets tray owns Map Source and the retired left panel is abse
   );
   assert.match(
     ui,
-    /window\.removeEventListener\('gev:map-stack-changed', this\._mapStackChangeHandler\)/,
+    /window\s*\.removeEventListener\(\s*'gev:map-stack-changed',\s*this\s*\._mapStackChangeHandler,?\s*\)/,
     'the provider-driven state listener must be released with StyleManager',
   );
 });
@@ -396,7 +396,7 @@ test('repeated active Esri tile failures fall back to OSM and one transient does
   assert.match(controller, /state\?\.activeId === 'osm'[\s\S]*?this\._emitChange\('error'\)/);
   assert.match(
     controller,
-    /gen !== this\._switchGen \|\| this\._activeImageryProvider !== resolution\.provider/,
+    /gen\s*!==\s*this\s*\._switchGen\s*\|\|\s*this\s*\._activeImageryProvider\s*!==\s*resolution\s*\.provider/,
     'a stale provider error must not replace a newer user selection',
   );
 });

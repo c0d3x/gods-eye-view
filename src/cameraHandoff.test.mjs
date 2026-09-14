@@ -43,7 +43,7 @@ test('Cockpit takeover invalidates deferred work before camera cancellation', ()
   ], 'Cockpit takeover');
   assert.match(
     ui,
-    /onCameraTakeover: \(\) => this\._stampNavigation\(\{ cancelPendingSelection: false \}\),/,
+    /onCameraTakeover:\s*\(,?\s*\)\s*=>\s*this\s*\._stampNavigation\(\s*\{\s*cancelPendingSelection:\s*false,?\s*\},?\s*\),\s*/,
     'Cockpit retires stale camera work without clearing the aircraft selection it adopts',
   );
 });
@@ -54,14 +54,14 @@ test('one explicit tracking selection clears sibling IDs before publishing its d
     /_persistAwarenessSelection\(event, cleared = false\) \{([\s\S]*?)\n  \}/,
     'tracking persistence',
   );
-  assert.match(persist, /adoptLayerParams\?\.\(layerId,/);
+  assert.match(persist, /adoptLayerParams\s*\?\.\(\s*layerId,\s*/);
   assert.match(persist, /\['flights', 'selectedFlightsTrackingId'\]/);
   assert.match(persist, /\['military', 'selectedMilitaryTrackingId'\]/);
   assert.match(persist, /\['satellites', 'selectedSatTrackingId'\]/);
   assert.match(persist, /if \(otherLayerId === layerId\) continue;/);
   assert.match(
     persist,
-    /for \(const \[otherLayerId, otherKey\][\s\S]*?setLayerParams\(otherLayerId,[\s\S]*?adoptLayerParams\?\.\(layerId,/,
+    /for\s*\(\s*const\s*\[\s*otherLayerId,\s*otherKey,?\s*\][\s\S]*?setLayerParams\(\s*otherLayerId,\s*[\s\S]*?adoptLayerParams\s*\?\.\(\s*layerId,\s*/,
     'the previous family clears before Flight/Military/Satellite publishes the new durable ID',
   );
 });
@@ -111,7 +111,7 @@ test('voice Cockpit entry reaches the camera only through stamping seams', () =>
   // Seam 1: any tracker handoff stamps, so the adoption step is covered.
   assert.match(
     ui,
-    /viewer\.trackedEntityChanged\.addEventListener\(\(entity\) => \{\s*if \(entity && !this\._disposed\) this\._stampNavigation\(\{ cancelPendingSelection: false \}\);/,
+    /viewer\s*\.trackedEntityChanged\s*\.addEventListener\(\s*\(\s*entity,?\s*\)\s*=>\s*\{\s*if\s*\(\s*entity\s*&&\s*!this\s*\._disposed,?\s*\)\s*this\s*\._stampNavigation\(\s*\{\s*cancelPendingSelection:\s*false,?\s*\},?\s*\);/,
     'tracker handoff must stamp',
   );
   // Seam 2 is pinned by "Cockpit takeover invalidates deferred work" above.
@@ -228,7 +228,7 @@ test('validated voice camera destinations share the UI navigation authority faca
 
   const route = body(
     cameraVerbs,
-    /export function flyRoute\(annoList, args = \{\}, floorFn = null, runNavigation = null, warmFn = null\) \{([\s\S]*?)\n\}/,
+    /export\s*function\s*flyRoute\(\s*annoList,\s*args\s*=\s*\{,?\s*\},\s*floorFn\s*=\s*null,\s*runNavigation\s*=\s*null,\s*warmFn\s*=\s*null,?\s*\)\s*\{\s*([\s\S]*?)\n\}/,
     'fly route',
   );
   ordered(route, [
@@ -269,15 +269,15 @@ test('a direct globe gesture retires delayed camera and selection restore only',
   );
   assert.match(
     ui,
-    /viewer\?\.canvas\?\.addEventListener\('pointerdown', this\._initialShareGestureHandler/,
+    /viewer\s*\?\s*\.canvas\s*\?\s*\.addEventListener\(\s*'pointerdown',\s*this\s*\._initialShareGestureHandler/,
   );
   assert.match(
     ui,
-    /viewer\?\.canvas\?\.addEventListener\('wheel', this\._initialShareGestureHandler/,
+    /viewer\s*\?\s*\.canvas\s*\?\s*\.addEventListener\(\s*'wheel',\s*this\s*\._initialShareGestureHandler/,
   );
   assert.match(
     ui,
-    /removeEventListener\('pointerdown', this\._initialShareGestureHandler\)[\s\S]*?removeEventListener\('wheel', this\._initialShareGestureHandler\)/,
+    /removeEventListener\(\s*'pointerdown',\s*this\s*\._initialShareGestureHandler,?\s*\)[\s\S]*?removeEventListener\(\s*'wheel',\s*this\s*\._initialShareGestureHandler,?\s*\)/,
   );
   const stamp = body(
     ui,
