@@ -795,13 +795,13 @@ test('the unavailable retry backs off 30s to a 240s ceiling and restarts clean',
 
 test('the retry is wired to every lifecycle edge, not just declared', () => {
   assert.match(installationsSource,
-    /setInstallationStatus\('unavailable',[^]*?\);\n\s*scheduleUnavailableRetry\(\);/,
+    /setInstallationStatus\(\s*'unavailable',\s*[^]*?,?\s*\);\s*scheduleUnavailableRetry\(,?\s*\);/,
     'a failed load schedules the retry immediately after reporting unavailable');
   assert.match(installationsSource,
     /clearUnavailableRetry\(\);\n\s*setInstallationStatus\(\n?\s*state\.records\.length/,
     'a successful load clears the pending retry and resets the backoff');
   assert.match(installationsSource,
-    /clearUnavailableRetry\(\);\n\s*setInstallationStatus\('zoom-in'/,
+    /clearUnavailableRetry\(,?\s*\);\s*setInstallationStatus\(\s*'zoom-in'/,
     'zooming out of range cancels the retry — moveEnd owns re-entry there');
   assert.match(installationsSource, /disable\(\) \{[^]*?clearUnavailableRetry\(\);/,
     'disabling the layer cancels the retry');

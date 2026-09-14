@@ -276,7 +276,7 @@ test('detection holds nothing, and asks for its own frames instead', async () =>
 
   assert.match(source, /governorRequestRender\('detection-visibility'\)/,
     'mode/suspend transitions request their own repaint');
-  assert.match(source, /if \(detectionNeedsFollowUpFrame\(\{[\s\S]*?\}\)\) \{\s*\n\s*governorRequestRender\('detection-animation'\);/,
+  assert.match(source, /if\s*\(\s*detectionNeedsFollowUpFrame\(\s*\{\s*[\s\S]*?,?\s*\},?\s*\),?\s*\)\s*\{\s*governorRequestRender\(\s*'detection-animation',?\s*\);/,
     'the follow-up frame is gated on the policy, never unconditional');
 
   // The demand call must read the FRAME's timestamp, not a fresh sample.
@@ -305,11 +305,11 @@ test('detection holds nothing, and asks for its own frames instead', async () =>
   // the emptiest possible scene. (Caught by the governor gate at 301 renders/5 s
   // with zero layers; the fix settles the solve there, because with nothing
   // detectable it is vacuously complete.)
-  const emptyExit = /\/\/ Drop the replay buffer with it[\s\S]*?return \{ didSolve: false[^\n]*\n/.exec(source)?.[0];
+  const emptyExit = /\/\/ Drop the replay buffer with it[\s\S]*?return \{\s*didSolve: false[^}]*\}/.exec(source)?.[0];
   assert.ok(emptyExit, 'the zero-objects exit is still identifiable');
   assert.match(emptyExit, /_labelSolveDirty = false;/,
     'the zero-objects exit settles the solve instead of carrying it forward');
-  assert.match(emptyExit, /solvePending: false/,
+  assert.match(emptyExit, /solvePending:\s*false/,
     'and reports no outstanding solve — nothing detectable means nothing to place');
 
   // No wall clock may drive anything the demand model reasons about.
@@ -330,7 +330,7 @@ test('detection holds nothing, and asks for its own frames instead', async () =>
     'the valve asks the shared policy instead of inlining its own threshold');
   assert.doesNotMatch(shouldPaint, /_lastPaintMs > 22/,
     'the old inline threshold must be gone, not shadowing the policy');
-  assert.match(shouldPaint, /if \(decision\.requestFollowUp\) governorRequestRender\('detection-paint-skipped'\)/,
+  assert.match(shouldPaint, /if\s*\(\s*decision\s*\.requestFollowUp,?\s*\)\s*governorRequestRender\(\s*'detection-paint-skipped',?\s*\)/,
     'skipping a paint must hand the request forward, not swallow it');
 
   // The scanline must not go back to the frame counter: that is what made a

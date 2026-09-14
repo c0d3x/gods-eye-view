@@ -621,7 +621,7 @@ test('successful explicit user playback hands the speaker from voice to Radio', 
   assert.ok(confirmedPlaying >= 0 && takeoverSignal > confirmedPlaying);
   assert.match(
     radio,
-    /startPlayback: \(\) => playSelectedRadio\(\{ origin: 'voice', attemptId: options\.attemptId \}\)/,
+    /startPlayback:\s*\(,?\s*\)\s*=>\s*playSelectedRadio\(\s*\{\s*origin:\s*'voice',\s*attemptId:\s*options\s*\.attemptId,?\s*\},?\s*\)/,
   );
   assert.match(
     radio,

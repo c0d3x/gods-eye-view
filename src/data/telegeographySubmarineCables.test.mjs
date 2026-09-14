@@ -474,7 +474,7 @@ test('cables create no native labels and no per-frame geometry callbacks', () =>
   assert.doesNotMatch(source, /new Cesium\.CallbackProperty/, 'reverting to per-frame stem callbacks must fail this pin');
   assert.match(source, /setOverlayEntries/, 'labels must flow through the shared world-overlay host');
   assert.match(source, /record\.entity\.position\.setValue\(record\.tip\)/);
-  assert.match(source, /const stemPositionBuffers = \[\[base, tip\], \[base, tip\]\]/);
+  assert.match(source, /const\s*stemPositionBuffers\s*=\s*\[\s*\[\s*base,\s*tip,?\s*\],\s*\[\s*base,\s*tip,?\s*\],?\s*\]/);
   assert.match(source, /record\.entity\.polyline\.positions\.setValue\(stemPositions\)/);
 });
 

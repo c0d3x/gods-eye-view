@@ -720,7 +720,7 @@ test('CCTV repeated in-world clicks dispatch focus only for the one real activat
 
   assert.deepEqual(activated, ['atx-cam-3', 'atx-cam-3', 'atx-cam-3']);
   assert.deepEqual(requests, [{ cameraId: 'atx-cam-3' }]);
-  assert.match(cctvLayer.init.toString(), /bindCctvWorldClickGesture\(_clickHandler/);
+  assert.match(cctvLayer.init.toString(), /bindCctvWorldClickGesture\(\s*_clickHandler/);
   assert.match(cctvLayer.init.toString(), /_cctvOverlayHost\.hitTest/);
   assert.match(cctvLayer.init.toString(), /sourceId: CCTV_OVERLAY_SOURCE_ID/);
   assert.match(cctvLayer.init.toString(), /activateCctvCameraFromWorldClick\(cameraId, setActiveCamera\)/);
