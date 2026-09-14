@@ -22,6 +22,7 @@ export const UI_SOURCE_FILES = Object.freeze([
   'ui/statusFeedback.js',
   'ui/hudControls.js',
   'ui/recordingControls.js',
+  'ui/mapStackControl.js',
 ]);
 
 /**
