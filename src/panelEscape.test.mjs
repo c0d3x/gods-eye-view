@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import test from 'node:test';
+import { readUiSource } from './testing/uiSources.mjs';
 
-const source = fs.readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
+const source = readUiSource();
 
 function method(name, nextName) {
   const start = source.indexOf(`  ${name}(`);

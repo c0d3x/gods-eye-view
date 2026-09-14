@@ -15,9 +15,7 @@
 // plain node:test.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import * as Cesium from 'cesium';
 import cctvLayer, {
   CCTV_PROJECTION_OVERLAY_SOURCE_OPTIONS,
@@ -66,11 +64,9 @@ import {
   CCTV_FOCUS_REQUEST_EVENT,
   activateCctvCameraFromWorldClick,
 } from '../cctvFocusRequest.js';
+import { readUiSource } from '../testing/uiSources.mjs';
 
-const UI_SOURCE = fs.readFileSync(
-  path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'ui.js'),
-  'utf8',
-);
+const UI_SOURCE = readUiSource();
 
 const ASPECT = 16 / 9;
 const toRad = (deg) => (deg * Math.PI) / 180;

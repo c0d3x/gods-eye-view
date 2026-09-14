@@ -17,6 +17,7 @@ import {
   shouldShowFirstRun,
 } from './firstRunExperience.js';
 import { GEV_REALTIME_TOOLS } from '../server/realtime/tools.mjs';
+import { readUiSource } from './testing/uiSources.mjs';
 
 function memoryStorage(key, value = null) {
   const values = new Map(value == null ? [] : [[key, value]]);
@@ -262,7 +263,7 @@ test('an overlay with NO class to watch still disarms the launcher', () => {
 });
 
 test('one ESC does one thing — the radio disclosure stops the launcher outright', () => {
-  const ui = fs.readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
+  const ui = readUiSource();
   const module = fs.readFileSync(new URL('./firstRunExperience.js', import.meta.url), 'utf8');
 
   // stopPropagation() does NOT stop later listeners on the SAME document, so the
@@ -734,7 +735,7 @@ test('focus leaves the launcher before it is hidden, whichever way it closes', (
 });
 
 test('the DISPLAY rail starts collapsed on a first run, and a stored choice wins', () => {
-  const ui = fs.readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
+  const ui = readUiSource();
   // The rail opened by default to advertise HUD / DETECT / 3D. Those default ON
   // now, so it was opening to offer controls for things already happening —
   // while competing with the mission card for the one first impression there is.

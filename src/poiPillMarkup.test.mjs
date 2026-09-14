@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { readUiSource } from './testing/uiSources.mjs';
 
-const ui = readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
+const ui = readUiSource();
 
 test('POI pills show the key and the name as text, never as markup', () => {
   const start = ui.indexOf('_expandPOIRow(cityId) {');

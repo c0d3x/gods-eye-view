@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { readUiSource } from './testing/uiSources.mjs';
 
 // Exercise the installed event routes and central close method, without WebGL.
-const source = readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
+const source = readUiSource();
 const markup = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const locationMarkup = markup.slice(markup.indexOf('<div id="location-bar"'), markup.indexOf('<div id="left-panel-stack"'));
 const locationToggleMarkup = locationMarkup.match(/<button\b([^>]*\bid="location-bar-toggle"[^>]*)>([\s\S]*?)<\/button>/);

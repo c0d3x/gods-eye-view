@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { readUiSource } from './testing/uiSources.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-const ui = readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
+const ui = readUiSource();
 
 // Focused markup guards; actual computed names are checked in Chromium.
 // Native labels and hidden inputs must not be treated as missing aria-labels.

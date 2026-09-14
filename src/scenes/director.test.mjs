@@ -11,12 +11,12 @@
 // cancellable — an AbortSignal for the data manager, a liveness predicate for
 // the visual commit. Several of these assert exactly that plumbing.
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import test from 'node:test';
 
 import { SceneDirector } from './director.js';
 import { SCENE_TRACKING_PARAM_KEYS } from './scenePolicy.js';
 import { SCENE_RECIPES } from './recipes.js';
+import { readUiSource } from '../testing/uiSources.mjs';
 
 /** The layer registry as main.js builds it (src/main.js dataManager.register calls). */
 const REGISTERED = [
@@ -483,7 +483,7 @@ test('applyVisualState gates the map-stack switch on both sides of its await', (
   // another setStack() arrives, and a winning state that omits `mapStack`
   // never issues one — every normalized scene shot omits it — so a stale
   // switch would otherwise stand on the globe.
-  const source = fs.readFileSync(new URL('../ui.js', import.meta.url), 'utf8');
+  const source = readUiSource();
   const method = source.match(/\n {2}async applyVisualState\([\s\S]*?\n {2}\}\n/);
   assert.ok(method, 'applyVisualState is missing from ui.js');
   assert.match(method[0], /async applyVisualState\(state = \{\}, \{ isCurrent = null \} = \{\}\)/);

@@ -21,6 +21,7 @@
       "src/data/militaryFlights.js",
       "src/data/localAsset.js",
       "src/data/localAsset.test.mjs",
+      "src/testing/uiSources.mjs",
       "src/main.js",
       "scripts/qa-application.mjs",
       "src/app/application.js",

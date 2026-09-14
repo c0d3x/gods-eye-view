@@ -32,6 +32,7 @@ import militaryFlightsLayer, {
 import { findCompatibleHistoryIndex } from './militaryAwareness.js';
 import { createGevActionRunner } from '../voice/gevActions.js';
 import { ANALYST_LAYERS, createAnalystEngine } from './analystEngine.js';
+import { readUiSource } from '../testing/uiSources.mjs';
 
 /** Strip block and line comments so source pins scan CODE, not prose. */
 function stripComments(source) {
@@ -271,8 +272,10 @@ test('conversions are session-scoped and no lifecycle path clears them', async (
   // personally clicked, and re-tracking the same aircraft after a layer restart
   // should still show the triangle. Only a page reload resets it — so no
   // production code may clear the registry.
-  for (const name of ['aircraftLayerCore.js', '../ui.js']) {
-    const source = await readFile(new URL(`./${name}`, import.meta.url), 'utf8');
+  for (const [name, source] of [
+    ['aircraftLayerCore.js', await readFile(new URL('./aircraftLayerCore.js', import.meta.url), 'utf8')],
+    ['the UI source', readUiSource()],
+  ]) {
     assert.doesNotMatch(source, /clearTr3bRegistry/,
       `${name}: teardown must not clear session conversions`);
   }

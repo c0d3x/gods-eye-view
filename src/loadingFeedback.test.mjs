@@ -52,6 +52,7 @@ import {
   reduceTrafficSyncFeedback,
   TRAFFIC_SYNC_CONFIRM_MS,
 } from './loadingFeedback.js';
+import { readUiSource } from './testing/uiSources.mjs';
 
 test('universal status notices reuse the standard failure dwell', () => {
   const notice = createGlobalStatusNotice('Shared satellite is unavailable', 1000);
@@ -89,7 +90,7 @@ test('deferred terminal notices lose ownership to newer acquisition epochs and d
 });
 
 test('share-follow failures use the universal top-center status instead of the bottom toast', () => {
-  const ui = readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
+  const ui = readUiSource();
   const start = ui.indexOf('  _handleShareTrackingRestoreStatus(result) {');
   const end = ui.indexOf('\n  _initGlobalContextPanel() {', start);
   const handler = ui.slice(start, end);
@@ -195,7 +196,7 @@ test('replacement, repetition, and hidden-tab elapsed time use the newest fixed 
 });
 
 test('universal notice lifecycle clears on dispose and uses the one top-center live region', () => {
-  const ui = readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
+  const ui = readUiSource();
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const disposeStart = ui.indexOf('  async dispose() {');
   const disposeEnd = ui.indexOf('\n  }\n', disposeStart);
@@ -589,7 +590,7 @@ test('the settled traffic chip shows exactly one percentage — the coverage it 
 });
 
 test('the chip renderer clears the progress slot instead of stranding the last value', () => {
-  const ui = readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
+  const ui = readUiSource();
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
   const start = ui.indexOf('  _updateTrafficSyncChip(');
   assert.ok(start > 0, '_updateTrafficSyncChip is missing');
@@ -678,7 +679,7 @@ test('aggregates Mapped Installations refresh beside CCTV without changing eithe
 // stack layout contract — the ticker's lifecycle is pinned against ui.js
 // source. (perf rebase 2026-08-17)
 test('the loading ticker never runs hidden and stops after loading and notices settle', () => {
-  const ui = readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
+  const ui = readUiSource();
   // Scope every assertion to _armLoadingFeedbackTicker's own body. The
   // neighbouring _startTrafficChipTicker is a deliberately PERMANENT 500ms
   // safety-net poll, so its `if (document.hidden) return;` is correct there

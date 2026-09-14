@@ -5,12 +5,12 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import {
   retireSupersededPanelPositions,
   takePanelLayoutResetNotice,
 } from './panelLayoutStorage.js';
+import { readUiSource } from './testing/uiSources.mjs';
 
 /** A Map-backed stand-in for the Web Storage API. */
 function memoryStorage(entries = {}) {
@@ -119,7 +119,7 @@ test('a malformed version is refused instead of deleting every position', () => 
 });
 
 test('the UI saves positions in the format this module retires, and shows the notice', async () => {
-  const source = await readFile(new URL('./ui.js', import.meta.url), 'utf8');
+  const source = readUiSource();
   assert.match(source, /const PANEL_POSITION_STORAGE_VERSION = 'v\d+';/);
   assert.match(
     source,

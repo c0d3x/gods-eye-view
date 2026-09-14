@@ -10,11 +10,12 @@ import militaryFlightsLayer, {
   _setCockpitDetectionSubjectForTest as setMilitaryCockpitSubject,
   _setTrackedMilitaryRefreshStateForTest,
 } from './militaryFlights.js';
+import { readUiSource } from '../testing/uiSources.mjs';
 
 const SUBJECT = 'abc123';
 const NEXT_SUBJECT = 'def456';
 
-const UI_SOURCE = readFileSync(new URL('../ui.js', import.meta.url), 'utf8');
+const UI_SOURCE = readUiSource();
 // Both flight layers are built by the aircraft layer core.
 const AIRCRAFT_SOURCE = readFileSync(new URL('./aircraftLayerCore.js', import.meta.url), 'utf8');
 

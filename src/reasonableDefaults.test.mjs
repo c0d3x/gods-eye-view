@@ -40,8 +40,9 @@ import {
   setScopeMaskFeather,
 } from './scopeMask.js';
 import { ShareLinkManager } from './sharelink.js';
+import { readUiSource } from './testing/uiSources.mjs';
 
-const uiSource = fs.readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
+const uiSource = readUiSource();
 const indexHtml = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
 const shareSource = fs.readFileSync(new URL('./sharelink.js', import.meta.url), 'utf8');
 

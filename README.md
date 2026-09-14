@@ -368,6 +368,7 @@ src/                        # The browser app
 ├── overlays/               # Screen-space labels and cards anchored to the world
 ├── annotations/            # Voice map annotations: footprints, callouts, rings
 ├── scenes/                 # Cinematic scene director
+├── testing/                # Test helpers, such as the UI source tests read as text
 └── styles/                 # Visual styles as GLSL post-process shaders
 server/                     # Dev-server routes: proxies, AIS relay, voice agent, key setup
 ├── ais/                    # AISStream relay, its socket adapter and watchdog

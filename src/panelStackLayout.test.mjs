@@ -7,6 +7,7 @@ import {
   resolveLeftStackBottomBoundary,
   resolvePanelStackCorridor,
 } from './panelStackLayout.js';
+import { readUiSource } from './testing/uiSources.mjs';
 
 // Measured in Cockpit at 1512x790: CONTACT card at y541, HUD corner at y659,
 // Cesium credits at y758, viewport inset boundary at y758.4. Every surface is
@@ -132,7 +133,7 @@ test('minimum panel corridor expands upward without crossing the lower obstacle 
 });
 
 test('desktop panel lanes use per-panel allocations and presentation-only auto-collapse', () => {
-  const ui = readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
+  const ui = readUiSource();
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
   assert.doesNotMatch(ui, /_enforce(?:Left|Right)PanelAccordion/);
   assert.match(ui, /classList\.add\('collapsed', 'layout-auto-collapsed'\)/);
@@ -186,7 +187,7 @@ test('desktop panel lanes use per-panel allocations and presentation-only auto-c
 });
 
 test('share-panel state excludes responsive collapse and preserves recipient preferences', () => {
-  const ui = readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
+  const ui = readUiSource();
   const sharelink = readFileSync(new URL('./sharelink.js', import.meta.url), 'utf8');
 
   assert.match(
@@ -209,7 +210,7 @@ test('share-panel state excludes responsive collapse and preserves recipient pre
 });
 
 test('parameterized Display presets keep one stable scroll owner', () => {
-  const ui = readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
+  const ui = readUiSource();
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 
   assert.match(css, /#pp-toggles:not\(\.collapsed\) > #param-slider-panel\.active\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?max-height:\s*none;[\s\S]*?overflow-y:\s*visible;/);
