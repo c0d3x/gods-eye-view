@@ -51,7 +51,10 @@ import {
   CCTV_ACTIVATION_RESULT,
   activateCctvCameraFromWorldClick,
 } from '../cctvFocusRequest.js';
-import { bindTrackingClickGesture, isTrackingClickGesture } from './trackingClickGesture.js';
+import {
+  bindTrackingClickGesture,
+  isTrackingClickGesture,
+} from './trackingClickGesture.js';
 import {
   clearOverlaySource,
   hitTestWorldOverlay,
@@ -65,10 +68,18 @@ import {
   unregisterPickOwner,
 } from './pickRegistry.js';
 import { resolveEllipsoidalGround } from './terrainHeights.js';
-import { cachedGroundFloor, resolveGroundFloorCells, warmGroundFloor } from './groundFloor.js';
+import {
+  cachedGroundFloor,
+  resolveGroundFloorCells,
+  warmGroundFloor,
+} from './groundFloor.js';
 import { sampleMeshFloorCells } from './meshFloorSampler.js';
 import { horizonOccluder } from './iconOrientation.js';
-import { cameraHue, viewshedColors, createFrustumVolumePrimitive } from './cctvViewshed.js';
+import {
+  cameraHue,
+  viewshedColors,
+  createFrustumVolumePrimitive,
+} from './cctvViewshed.js';
 import { createCalibrationGizmo, GIZMO_ID_PREFIX } from './cctvGizmo.js';
 import {
   CCTV_AMBIENT_CARD_MAX,
@@ -98,7 +109,10 @@ import {
   getFocusTarget,
   onFocusTargetAppear,
 } from './focusDeemphasis.js';
-import { holdContinuousRender, releaseContinuousRender } from '../renderGovernor.js';
+import {
+  holdContinuousRender,
+  releaseContinuousRender,
+} from '../renderGovernor.js';
 import { fetchJson } from '../fetchJson.js';
 
 // ---------------------------------------------------------------------------
@@ -145,14 +159,17 @@ const PLACEHOLDER_REPAINT_MS = 750;
 // legacy import): kept here only as a documented constant so nothing ever
 // re-reads it by accident. Exported for the unit suite's "v1 is ignored"
 // assertion; there is NO read path for this key anywhere in the module.
-export const CCTV_CALIBRATION_STORAGE_KEY_V1 = 'godsEyeView.cctv.calibration.v1';
+export const CCTV_CALIBRATION_STORAGE_KEY_V1 =
+  'godsEyeView.cctv.calibration.v1';
 /** v2 store key. Entries: { values: <7-field calibration offsets>, source: 'manual', savedAt: <epoch ms> }. */
-export const CCTV_CALIBRATION_STORAGE_KEY_V2 = 'godsEyeView.cctv.calibration.v2';
+export const CCTV_CALIBRATION_STORAGE_KEY_V2 =
+  'godsEyeView.cctv.calibration.v2';
 // H5: throttle for double-buffered canvas texture swaps (<=1Hz; each swap is a
 // full 1080p texture re-upload because Cesium re-uploads only on a NEW image
 // object reference).
 const PROJECTION_TEXTURE_SWAP_MS = 1000;
-const PROJECTION_VERT_ASPECT = PROJECTION_CANVAS_WIDTH / PROJECTION_CANVAS_HEIGHT;
+const PROJECTION_VERT_ASPECT =
+  PROJECTION_CANVAS_WIDTH / PROJECTION_CANVAS_HEIGHT;
 // V2 frustum geometry (design §2a/§6): the far-cap center + corners never sink
 // below groundAlt + this clearance, so a fabricated pitch (-24°) cannot bury
 // the monitor plane in the 3D tiles. Exported for the unit suite.
@@ -197,8 +214,10 @@ const DEFAULT_CAMERA_CALIBRATION = Object.freeze({
  */
 export function calibrationPatchMovesAnchor(patch) {
   if (!patch || typeof patch !== 'object') return false;
-  return Object.prototype.hasOwnProperty.call(patch, 'offsetNorthM') ||
-    Object.prototype.hasOwnProperty.call(patch, 'offsetEastM');
+  return (
+    Object.prototype.hasOwnProperty.call(patch, 'offsetNorthM') ||
+    Object.prototype.hasOwnProperty.call(patch, 'offsetEastM')
+  );
 }
 
 /** Base64-encoded SVG camera icon for billboard rendering. */
@@ -228,48 +247,256 @@ const CAMERA_ICON = (() => {
  * plus offsets to place the camera near the POI.
  */
 const CAMERA_SEEDS = [
-  { id: 'nyc-midtown-w', cityId: 'nyc', poiIndex: 1, label: 'Midtown West @ 34th', offsetNorthM: 120, offsetEastM: -70, headingDeg: 206, fovDeg: 74, rangeM: 880, elevationM: 26 },
-  { id: 'nyc-wtc-n', cityId: 'nyc', poiIndex: 2, label: 'WTC North Plaza', offsetNorthM: 95, offsetEastM: 34, headingDeg: 164, fovDeg: 68, rangeM: 760, elevationM: 32 },
-  { id: 'nyc-times-square-ne', cityId: 'nyc', poiIndex: 1, label: 'Times Sq Northeast', offsetNorthM: 230, offsetEastM: 120, headingDeg: 218, fovDeg: 66, rangeM: 640, elevationM: 24 },
+  {
+    id: 'nyc-midtown-w',
+    cityId: 'nyc',
+    poiIndex: 1,
+    label: 'Midtown West @ 34th',
+    offsetNorthM: 120,
+    offsetEastM: -70,
+    headingDeg: 206,
+    fovDeg: 74,
+    rangeM: 880,
+    elevationM: 26,
+  },
+  {
+    id: 'nyc-wtc-n',
+    cityId: 'nyc',
+    poiIndex: 2,
+    label: 'WTC North Plaza',
+    offsetNorthM: 95,
+    offsetEastM: 34,
+    headingDeg: 164,
+    fovDeg: 68,
+    rangeM: 760,
+    elevationM: 32,
+  },
+  {
+    id: 'nyc-times-square-ne',
+    cityId: 'nyc',
+    poiIndex: 1,
+    label: 'Times Sq Northeast',
+    offsetNorthM: 230,
+    offsetEastM: 120,
+    headingDeg: 218,
+    fovDeg: 66,
+    rangeM: 640,
+    elevationM: 24,
+  },
 
-  { id: 'sf-market-5th', cityId: 'sf', poiIndex: 2, label: 'Market & 5th', offsetNorthM: -160, offsetEastM: 80, headingDeg: 320, fovDeg: 70, rangeM: 780, elevationM: 20 },
-  { id: 'sf-financial-district', cityId: 'sf', poiIndex: 1, label: 'SF Financial Core', offsetNorthM: 110, offsetEastM: 52, headingDeg: 205, fovDeg: 72, rangeM: 760, elevationM: 24 },
+  {
+    id: 'sf-market-5th',
+    cityId: 'sf',
+    poiIndex: 2,
+    label: 'Market & 5th',
+    offsetNorthM: -160,
+    offsetEastM: 80,
+    headingDeg: 320,
+    fovDeg: 70,
+    rangeM: 780,
+    elevationM: 20,
+  },
+  {
+    id: 'sf-financial-district',
+    cityId: 'sf',
+    poiIndex: 1,
+    label: 'SF Financial Core',
+    offsetNorthM: 110,
+    offsetEastM: 52,
+    headingDeg: 205,
+    fovDeg: 72,
+    rangeM: 760,
+    elevationM: 24,
+  },
 
-  { id: 'tokyo-shibuya-scramble', cityId: 'tokyo', poiIndex: 4, label: 'Shibuya Crossing', offsetNorthM: 180, offsetEastM: 46, headingDeg: 18, fovDeg: 82, rangeM: 640, elevationM: 30 },
-  { id: 'tokyo-ginza-core', cityId: 'tokyo', poiIndex: 0, label: 'Ginza Core', offsetNorthM: -180, offsetEastM: 150, headingDeg: 245, fovDeg: 70, rangeM: 690, elevationM: 28 },
-  { id: 'tokyo-asakusa-n', cityId: 'tokyo', poiIndex: 3, label: 'Asakusa North Gate', offsetNorthM: 110, offsetEastM: -65, headingDeg: 192, fovDeg: 68, rangeM: 620, elevationM: 24 },
+  {
+    id: 'tokyo-shibuya-scramble',
+    cityId: 'tokyo',
+    poiIndex: 4,
+    label: 'Shibuya Crossing',
+    offsetNorthM: 180,
+    offsetEastM: 46,
+    headingDeg: 18,
+    fovDeg: 82,
+    rangeM: 640,
+    elevationM: 30,
+  },
+  {
+    id: 'tokyo-ginza-core',
+    cityId: 'tokyo',
+    poiIndex: 0,
+    label: 'Ginza Core',
+    offsetNorthM: -180,
+    offsetEastM: 150,
+    headingDeg: 245,
+    fovDeg: 70,
+    rangeM: 690,
+    elevationM: 28,
+  },
+  {
+    id: 'tokyo-asakusa-n',
+    cityId: 'tokyo',
+    poiIndex: 3,
+    label: 'Asakusa North Gate',
+    offsetNorthM: 110,
+    offsetEastM: -65,
+    headingDeg: 192,
+    fovDeg: 68,
+    rangeM: 620,
+    elevationM: 24,
+  },
 
-  { id: 'london-city-a1', cityId: 'london', poiIndex: 4, label: 'City Cluster A1', offsetNorthM: 80, offsetEastM: 65, headingDeg: 220, fovDeg: 71, rangeM: 720, elevationM: 27 },
-  { id: 'london-soho-core', cityId: 'london', poiIndex: 2, label: 'Soho Core', offsetNorthM: 210, offsetEastM: 120, headingDeg: 206, fovDeg: 70, rangeM: 700, elevationM: 22 },
+  {
+    id: 'london-city-a1',
+    cityId: 'london',
+    poiIndex: 4,
+    label: 'City Cluster A1',
+    offsetNorthM: 80,
+    offsetEastM: 65,
+    headingDeg: 220,
+    fovDeg: 71,
+    rangeM: 720,
+    elevationM: 27,
+  },
+  {
+    id: 'london-soho-core',
+    cityId: 'london',
+    poiIndex: 2,
+    label: 'Soho Core',
+    offsetNorthM: 210,
+    offsetEastM: 120,
+    headingDeg: 206,
+    fovDeg: 70,
+    rangeM: 700,
+    elevationM: 22,
+  },
 
-  { id: 'paris-rivoli', cityId: 'paris', poiIndex: 4, label: 'Rue de Rivoli', offsetNorthM: 55, offsetEastM: 85, headingDeg: 248, fovDeg: 66, rangeM: 640, elevationM: 22 },
-  { id: 'paris-champs-n', cityId: 'paris', poiIndex: 1, label: 'Champs-Élysées North', offsetNorthM: 130, offsetEastM: -38, headingDeg: 175, fovDeg: 68, rangeM: 700, elevationM: 26 },
+  {
+    id: 'paris-rivoli',
+    cityId: 'paris',
+    poiIndex: 4,
+    label: 'Rue de Rivoli',
+    offsetNorthM: 55,
+    offsetEastM: 85,
+    headingDeg: 248,
+    fovDeg: 66,
+    rangeM: 640,
+    elevationM: 22,
+  },
+  {
+    id: 'paris-champs-n',
+    cityId: 'paris',
+    poiIndex: 1,
+    label: 'Champs-Élysées North',
+    offsetNorthM: 130,
+    offsetEastM: -38,
+    headingDeg: 175,
+    fovDeg: 68,
+    rangeM: 700,
+    elevationM: 26,
+  },
 
-  { id: 'dc-mall-center', cityId: 'dc', poiIndex: 1, label: 'National Mall Center', offsetNorthM: 120, offsetEastM: 20, headingDeg: 258, fovDeg: 78, rangeM: 940, elevationM: 24 },
-  { id: 'dc-pentagon-s', cityId: 'dc', poiIndex: 3, label: 'Pentagon South', offsetNorthM: -100, offsetEastM: 92, headingDeg: 14, fovDeg: 66, rangeM: 620, elevationM: 21 },
+  {
+    id: 'dc-mall-center',
+    cityId: 'dc',
+    poiIndex: 1,
+    label: 'National Mall Center',
+    offsetNorthM: 120,
+    offsetEastM: 20,
+    headingDeg: 258,
+    fovDeg: 78,
+    rangeM: 940,
+    elevationM: 24,
+  },
+  {
+    id: 'dc-pentagon-s',
+    cityId: 'dc',
+    poiIndex: 3,
+    label: 'Pentagon South',
+    offsetNorthM: -100,
+    offsetEastM: 92,
+    headingDeg: 14,
+    fovDeg: 66,
+    rangeM: 620,
+    elevationM: 21,
+  },
 
-  { id: 'dubai-difc-loop', cityId: 'dubai', poiIndex: 4, label: 'DIFC Loop', offsetNorthM: 92, offsetEastM: -45, headingDeg: 196, fovDeg: 70, rangeM: 720, elevationM: 26 },
-  { id: 'dubai-downtown-east', cityId: 'dubai', poiIndex: 0, label: 'Downtown East', offsetNorthM: -130, offsetEastM: 190, headingDeg: 322, fovDeg: 72, rangeM: 760, elevationM: 28 },
+  {
+    id: 'dubai-difc-loop',
+    cityId: 'dubai',
+    poiIndex: 4,
+    label: 'DIFC Loop',
+    offsetNorthM: 92,
+    offsetEastM: -45,
+    headingDeg: 196,
+    fovDeg: 70,
+    rangeM: 720,
+    elevationM: 26,
+  },
+  {
+    id: 'dubai-downtown-east',
+    cityId: 'dubai',
+    poiIndex: 0,
+    label: 'Downtown East',
+    offsetNorthM: -130,
+    offsetEastM: 190,
+    headingDeg: 322,
+    fovDeg: 72,
+    rangeM: 760,
+    elevationM: 28,
+  },
 
-  { id: 'austin-congress-s', cityId: 'austin', poiIndex: 0, label: 'Congress Southbound', offsetNorthM: -165, offsetEastM: 40, headingDeg: 12, fovDeg: 74, rangeM: 760, elevationM: 24 },
-  { id: 'austin-downtown-west', cityId: 'austin', poiIndex: 1, label: 'Downtown West', offsetNorthM: -120, offsetEastM: -160, headingDeg: 120, fovDeg: 69, rangeM: 700, elevationM: 20 },
+  {
+    id: 'austin-congress-s',
+    cityId: 'austin',
+    poiIndex: 0,
+    label: 'Congress Southbound',
+    offsetNorthM: -165,
+    offsetEastM: 40,
+    headingDeg: 12,
+    fovDeg: 74,
+    rangeM: 760,
+    elevationM: 24,
+  },
+  {
+    id: 'austin-downtown-west',
+    cityId: 'austin',
+    poiIndex: 1,
+    label: 'Downtown West',
+    offsetNorthM: -120,
+    offsetEastM: -160,
+    headingDeg: 120,
+    fovDeg: 69,
+    rangeM: 700,
+    elevationM: 20,
+  },
 ];
 
 // ---------------------------------------------------------------------------
 // Visual style constants
 // ---------------------------------------------------------------------------
-const IDLE_CAMERA_COLOR = Cesium.Color.fromCssColorString('#6be8ff').withAlpha(0.88);
-const ACTIVE_CAMERA_COLOR = Cesium.Color.fromCssColorString('#ffd97a').withAlpha(0.95);
-const IDLE_COVERAGE_COLOR = Cesium.Color.fromCssColorString('#2fe0ff').withAlpha(0.24);
-const IDLE_COVERAGE_CENTER_MUTED = Cesium.Color.fromCssColorString('#2fe0ff').withAlpha(0.2);
-const IDLE_COVERAGE_EDGE_MUTED = Cesium.Color.fromCssColorString('#2fe0ff').withAlpha(0.18);
-const ACTIVE_COVERAGE_EDGE = Cesium.Color.fromCssColorString('#8dff87').withAlpha(0.58);
-const ACTIVE_COVERAGE_CENTER = Cesium.Color.fromCssColorString('#d7ff8d').withAlpha(0.82);
+const IDLE_CAMERA_COLOR =
+  Cesium.Color.fromCssColorString('#6be8ff').withAlpha(0.88);
+const ACTIVE_CAMERA_COLOR =
+  Cesium.Color.fromCssColorString('#ffd97a').withAlpha(0.95);
+const IDLE_COVERAGE_COLOR =
+  Cesium.Color.fromCssColorString('#2fe0ff').withAlpha(0.24);
+const IDLE_COVERAGE_CENTER_MUTED =
+  Cesium.Color.fromCssColorString('#2fe0ff').withAlpha(0.2);
+const IDLE_COVERAGE_EDGE_MUTED =
+  Cesium.Color.fromCssColorString('#2fe0ff').withAlpha(0.18);
+const ACTIVE_COVERAGE_EDGE =
+  Cesium.Color.fromCssColorString('#8dff87').withAlpha(0.58);
+const ACTIVE_COVERAGE_CENTER =
+  Cesium.Color.fromCssColorString('#d7ff8d').withAlpha(0.82);
 // H6: dimmer depth-fail materials let the active frustum wireframe read
 // through buildings while in monitor fallback mode.
-const ACTIVE_COVERAGE_EDGE_DEPTHFAIL = Cesium.Color.fromCssColorString('#8dff87').withAlpha(0.18);
-const ACTIVE_COVERAGE_CENTER_DEPTHFAIL = Cesium.Color.fromCssColorString('#d7ff8d').withAlpha(0.26);
-const PLANE_OUTLINE_COLOR = Cesium.Color.fromCssColorString('#6be8ff').withAlpha(0.55);
+const ACTIVE_COVERAGE_EDGE_DEPTHFAIL =
+  Cesium.Color.fromCssColorString('#8dff87').withAlpha(0.18);
+const ACTIVE_COVERAGE_CENTER_DEPTHFAIL =
+  Cesium.Color.fromCssColorString('#d7ff8d').withAlpha(0.26);
+const PLANE_OUTLINE_COLOR =
+  Cesium.Color.fromCssColorString('#6be8ff').withAlpha(0.55);
 
 // ---------------------------------------------------------------------------
 // Module-scoped mutable state
@@ -424,7 +651,9 @@ export function _pushAmbientCardEntriesForTest() {
 
 /** Test seam for exercising real layer lifecycle paths without a DOM host. */
 export function _setCctvOverlayHostForTest(host = null) {
-  _cctvOverlayHost = host ? { ...DEFAULT_CCTV_OVERLAY_HOST, ...host } : DEFAULT_CCTV_OVERLAY_HOST;
+  _cctvOverlayHost = host
+    ? { ...DEFAULT_CCTV_OVERLAY_HOST, ...host }
+    : DEFAULT_CCTV_OVERLAY_HOST;
   _projectionOverlayOwnerId = null;
 }
 
@@ -465,7 +694,9 @@ export function createCctvProjectionOverlayEntry({ cameraId, name, position }) {
  * @param {boolean} [options.activeCameraCardEnabled=false]
  * @returns {{activeCameraCardEnabled:boolean}}
  */
-export function setCctvCardPresentationOptions({ activeCameraCardEnabled = false } = {}) {
+export function setCctvCardPresentationOptions({
+  activeCameraCardEnabled = false,
+} = {}) {
   _activeCameraCardEnabled = activeCameraCardEnabled === true;
   if (_enabled) pushAmbientCardEntries();
   _viewer?.scene?.requestRender?.();
@@ -556,7 +787,9 @@ export function surfaceRegimeKey(globeShow) {
  * @returns {string} Canonical feed type.
  */
 function normalizeFeedType(value) {
-  const raw = String(value || '').trim().toLowerCase();
+  const raw = String(value || '')
+    .trim()
+    .toLowerCase();
   if (!raw) return 'image';
   if (raw === 'mjpg') return 'mjpeg';
   if (raw === 'jpeg') return 'image';
@@ -622,8 +855,14 @@ function quantize(value, step = 0.1) {
 function normalizeCalibration(value = {}) {
   const raw = value && typeof value === 'object' ? value : {};
   return {
-    offsetNorthM: quantize(clamp(safeNumber(raw.offsetNorthM, 0), -900, 900), 0.1),
-    offsetEastM: quantize(clamp(safeNumber(raw.offsetEastM, 0), -900, 900), 0.1),
+    offsetNorthM: quantize(
+      clamp(safeNumber(raw.offsetNorthM, 0), -900, 900),
+      0.1,
+    ),
+    offsetEastM: quantize(
+      clamp(safeNumber(raw.offsetEastM, 0), -900, 900),
+      0.1,
+    ),
     headingDeg: quantize(clamp(safeNumber(raw.headingDeg, 0), -180, 180), 0.1),
     pitchDeg: quantize(clamp(safeNumber(raw.pitchDeg, 0), -45, 45), 0.1),
     fovDeg: quantize(clamp(safeNumber(raw.fovDeg, 0), -50, 50), 0.1),
@@ -639,7 +878,9 @@ function normalizeCalibration(value = {}) {
  */
 function isDefaultCalibration(calibration) {
   const probe = normalizeCalibration(calibration);
-  return Object.keys(DEFAULT_CAMERA_CALIBRATION).every((key) => Math.abs(probe[key] - DEFAULT_CAMERA_CALIBRATION[key]) < 0.0001);
+  return Object.keys(DEFAULT_CAMERA_CALIBRATION).every(
+    (key) => Math.abs(probe[key] - DEFAULT_CAMERA_CALIBRATION[key]) < 0.0001,
+  );
 }
 
 /**
@@ -732,7 +973,10 @@ export function readCalibrationStoreV2(storage = safeWindowLocalStorage()) {
  * @param {{setItem:function}|null} [storage] - Injectable storage (defaults
  *   to `window.localStorage`).
  */
-export function writeCalibrationStoreV2(map, storage = safeWindowLocalStorage()) {
+export function writeCalibrationStoreV2(
+  map,
+  storage = safeWindowLocalStorage(),
+) {
   if (!storage) return;
   try {
     const payload = {};
@@ -814,18 +1058,30 @@ function ensureCameraPose(camera) {
     };
   }
 
-  const nextCalibration = normalizeCalibration(camera.calibration || DEFAULT_CAMERA_CALIBRATION);
+  const nextCalibration = normalizeCalibration(
+    camera.calibration || DEFAULT_CAMERA_CALIBRATION,
+  );
   camera.calibration = nextCalibration;
 
   const base = camera.basePose;
-  const offsets = offsetDegrees(base.lat, nextCalibration.offsetNorthM, nextCalibration.offsetEastM);
+  const offsets = offsetDegrees(
+    base.lat,
+    nextCalibration.offsetNorthM,
+    nextCalibration.offsetEastM,
+  );
   camera.lat = base.lat + offsets.latOffset;
   camera.lon = base.lon + offsets.lonOffset;
-  camera.headingDeg = normalizeHeading(base.headingDeg + nextCalibration.headingDeg);
+  camera.headingDeg = normalizeHeading(
+    base.headingDeg + nextCalibration.headingDeg,
+  );
   camera.pitchDeg = clamp(base.pitchDeg + nextCalibration.pitchDeg, -70, 10);
   camera.fovDeg = clamp(base.fovDeg + nextCalibration.fovDeg, 20, 130);
   camera.rangeM = clamp(base.rangeM * nextCalibration.rangeScale, 120, 5000);
-  camera.mountHeightM = clamp(base.mountHeightM + nextCalibration.heightM, 2, 240);
+  camera.mountHeightM = clamp(
+    base.mountHeightM + nextCalibration.heightM,
+    2,
+    240,
+  );
 
   camera.intrinsics = {
     fovDeg: camera.fovDeg,
@@ -860,8 +1116,9 @@ function projectPoint(latDeg, lonDeg, bearingDeg, distanceM) {
   const lat1 = toRad(latDeg);
   const lon1 = toRad(lonDeg);
 
-  const sinLat2 = Math.sin(lat1) * Math.cos(angular)
-    + Math.cos(lat1) * Math.sin(angular) * Math.cos(bearing);
+  const sinLat2 =
+    Math.sin(lat1) * Math.cos(angular) +
+    Math.cos(lat1) * Math.sin(angular) * Math.cos(bearing);
   const lat2 = Math.asin(sinLat2);
 
   const y = Math.sin(bearing) * Math.sin(angular) * Math.cos(lat1);
@@ -904,11 +1161,18 @@ function projectPoint(latDeg, lonDeg, bearingDeg, distanceM) {
  *   corners: { tl: Object, tr: Object, br: Object, bl: Object },
  *   topCenter: {lat:number,lon:number,alt:number}, groundAltM: number }}
  */
-export function computeFrustumGeometry(camera, groundAltM, rangeOverrideM = null) {
+export function computeFrustumGeometry(
+  camera,
+  groundAltM,
+  rangeOverrideM = null,
+) {
   const ground = safeNumber(groundAltM, 0);
   const poseRange = Math.max(1, safeNumber(camera.rangeM, 700));
   const override = safeNumber(rangeOverrideM, NaN);
-  const R = Number.isFinite(override) && override > 0 ? Math.min(poseRange, override) : poseRange;
+  const R =
+    Number.isFinite(override) && override > 0
+      ? Math.min(poseRange, override)
+      : poseRange;
   const pitch = toRad(clamp(safeNumber(camera.pitchDeg, -17), -89, 89));
   const hFov = toRad(clamp(safeNumber(camera.fovDeg, 74), 8, 160));
   const heading = safeNumber(camera.headingDeg, 0);
@@ -974,7 +1238,12 @@ export function activationProbeClampRange(rangeM, hitDistanceM) {
   const nominalRange = Number(rangeM);
   const hitDistance = Number(hitDistanceM);
   if (!Number.isFinite(nominalRange) || nominalRange <= 0) return null;
-  if (!Number.isFinite(hitDistance) || hitDistance <= 0 || hitDistance >= nominalRange) return null;
+  if (
+    !Number.isFinite(hitDistance) ||
+    hitDistance <= 0 ||
+    hitDistance >= nominalRange
+  )
+    return null;
   return Math.max(PROBE_MIN_RANGE_M, hitDistance - PROBE_CLEARANCE_M);
 }
 
@@ -989,8 +1258,9 @@ export function activationProbeClampRange(rangeM, hitDistanceM) {
 function haversineKm(lat1, lon1, lat2, lon2) {
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat / 2) ** 2
-    + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -1017,14 +1287,22 @@ function currentViewContext() {
   const lat = Cesium.Math.toDegrees(carto.latitude);
   const lon = Cesium.Math.toDegrees(carto.longitude);
   const alt = carto.height || 0;
-  const zoomBucket = alt < 1500 ? 'street'
-    : alt < 12000 ? 'city'
-      : alt < 75000 ? 'regional'
-        : 'global';
-  const grid = zoomBucket === 'street' ? 0.045
-    : zoomBucket === 'city' ? 0.24
-      : zoomBucket === 'regional' ? 1.0
-        : 4.5;
+  const zoomBucket =
+    alt < 1500
+      ? 'street'
+      : alt < 12000
+        ? 'city'
+        : alt < 75000
+          ? 'regional'
+          : 'global';
+  const grid =
+    zoomBucket === 'street'
+      ? 0.045
+      : zoomBucket === 'city'
+        ? 0.24
+        : zoomBucket === 'regional'
+          ? 1.0
+          : 4.5;
   return `${zoomBucket}:${Math.floor(lat / grid)}:${Math.floor(lon / grid)}`;
 }
 
@@ -1043,7 +1321,7 @@ function seedCatalog() {
     const { latOffset, lonOffset } = offsetDegrees(
       poi.lat,
       seed.offsetNorthM || 0,
-      seed.offsetEastM || 0
+      seed.offsetEastM || 0,
     );
     const camera = {
       id: seed.id,
@@ -1062,7 +1340,9 @@ function seedCatalog() {
       rangeM: clamp(seed.rangeM ?? 700, 260, 1800),
       mountHeightM: clamp(seed.elevationM ?? 22, 8, 80),
       groundElevationM: Number(city.groundElevation) || 0,
-      absoluteHeightM: (Number(city.groundElevation) || 0) + clamp(seed.elevationM ?? 22, 8, 80),
+      absoluteHeightM:
+        (Number(city.groundElevation) || 0) +
+        clamp(seed.elevationM ?? 22, 8, 80),
       pitchDeg: clamp(seed.pitchDeg ?? -17, -40, -4),
     };
     ensureCameraPose(camera);
@@ -1077,13 +1357,19 @@ function seedCatalog() {
  * @returns {string|null} Matching city ID or null.
  */
 function cityIdByName(cityName) {
-  const probe = String(cityName || '').trim().toLowerCase();
+  const probe = String(cityName || '')
+    .trim()
+    .toLowerCase();
   if (!probe) return null;
   for (const [cityId, city] of Object.entries(CITY_POIS)) {
     if (city.name.toLowerCase() === probe) return cityId;
   }
   for (const [cityId, city] of Object.entries(CITY_POIS)) {
-    if (city.name.toLowerCase().includes(probe) || probe.includes(city.name.toLowerCase())) return cityId;
+    if (
+      city.name.toLowerCase().includes(probe) ||
+      probe.includes(city.name.toLowerCase())
+    )
+      return cityId;
   }
   return null;
 }
@@ -1095,7 +1381,10 @@ function cityIdByName(cityName) {
 async function loadCameraSources() {
   try {
     // The server may still be building the catalog from three live feeds.
-    const data = await fetchJson(SOURCE_ENDPOINT, { cache: 'no-store', timeoutMs: 30_000 });
+    const data = await fetchJson(SOURCE_ENDPOINT, {
+      cache: 'no-store',
+      timeoutMs: 30_000,
+    });
     if (!Array.isArray(data?.sources)) return [];
     return data.sources;
   } catch {
@@ -1123,7 +1412,11 @@ function buildCatalogFromSources(rawSources) {
     const id = String(source.id || '').trim();
     if (!id) continue;
     const seed = seedById.get(id);
-    const cityId = String(source.cityId || '').trim() || cityIdByName(source.city) || seed?.cityId || '';
+    const cityId =
+      String(source.cityId || '').trim() ||
+      cityIdByName(source.city) ||
+      seed?.cityId ||
+      '';
     const city = cityId && CITY_POIS[cityId] ? CITY_POIS[cityId] : null;
 
     const lat = safeNumber(source.lat, seed?.lat ?? NaN);
@@ -1134,27 +1427,57 @@ function buildCatalogFromSources(rawSources) {
     const headingDeg = normalizeHeading(
       Number.isFinite(sourceHeading)
         ? sourceHeading
-        : (seed?.headingDeg ?? headingFromId(id))
+        : (seed?.headingDeg ?? headingFromId(id)),
     );
-    const fovDeg = clamp(safeNumber(source.fovDeg, seed?.fovDeg ?? 74), 20, 125);
-    const rangeM = clamp(safeNumber(source.rangeM, seed?.rangeM ?? 700), 220, 2200);
-    const mountHeightM = clamp(safeNumber(source.mountHeightM, seed?.mountHeightM ?? 24), 6, 120);
-    const pitchDeg = clamp(safeNumber(source.pitchDeg, seed?.pitchDeg ?? -17), -55, -2);
-    const groundElevationM = safeNumber(source.groundElevationM, city?.groundElevation ?? seed?.groundElevationM ?? 0);
-    const feedType = normalizeFeedType(source.feedType || source.type || 'image');
-    const headingConfidence = String(source.headingConfidence || (seed ? 'high' : 'low')).toLowerCase();
+    const fovDeg = clamp(
+      safeNumber(source.fovDeg, seed?.fovDeg ?? 74),
+      20,
+      125,
+    );
+    const rangeM = clamp(
+      safeNumber(source.rangeM, seed?.rangeM ?? 700),
+      220,
+      2200,
+    );
+    const mountHeightM = clamp(
+      safeNumber(source.mountHeightM, seed?.mountHeightM ?? 24),
+      6,
+      120,
+    );
+    const pitchDeg = clamp(
+      safeNumber(source.pitchDeg, seed?.pitchDeg ?? -17),
+      -55,
+      -2,
+    );
+    const groundElevationM = safeNumber(
+      source.groundElevationM,
+      city?.groundElevation ?? seed?.groundElevationM ?? 0,
+    );
+    const feedType = normalizeFeedType(
+      source.feedType || source.type || 'image',
+    );
+    const headingConfidence = String(
+      source.headingConfidence || (seed ? 'high' : 'low'),
+    ).toLowerCase();
     // CAL badge input (design §3b passthrough): hand-authored file/env source
     // entries may carry poseSource:'curated'. Austin Open Data rows never set
     // this — they stay RAW PRIOR until a human manually calibrates them.
-    const poseSource = source.poseSource === 'curated' ? 'curated' : (seed?.poseSource || null);
+    const poseSource =
+      source.poseSource === 'curated' ? 'curated' : seed?.poseSource || null;
 
     const camera = {
       id,
       name: String(source.name || seed?.name || id),
       cityId,
       city: String(source.city || city?.name || seed?.city || 'Global'),
-      provider: String(source.provider || seed?.provider || 'Configured CCTV Source'),
-      sourceKind: String(source.sourceKind || source.kind || (source.url ? 'configured' : 'seed')).toLowerCase(),
+      provider: String(
+        source.provider || seed?.provider || 'Configured CCTV Source',
+      ),
+      sourceKind: String(
+        source.sourceKind ||
+          source.kind ||
+          (source.url ? 'configured' : 'seed'),
+      ).toLowerCase(),
       feedType,
       feedConfigured: typeof source.url === 'string' && !!source.url.trim(),
       lat,
@@ -1234,7 +1557,7 @@ function frustumCartesians(geometry) {
     label: Cesium.Cartesian3.fromDegrees(
       geometry.topCenter.lon,
       geometry.topCenter.lat,
-      geometry.topCenter.alt + 1.2
+      geometry.topCenter.alt + 1.2,
     ),
   };
 }
@@ -1257,12 +1580,12 @@ function frustumFrameEcef(camera, atPos) {
   const dirEnu = new Cesium.Cartesian3(
     Math.sin(h) * Math.cos(p),
     Math.cos(h) * Math.cos(p),
-    Math.sin(p)
+    Math.sin(p),
   );
   const upEnu = new Cesium.Cartesian3(
     -Math.sin(p) * Math.sin(h),
     -Math.sin(p) * Math.cos(h),
-    Math.cos(p)
+    Math.cos(p),
   );
   return {
     dir: Cesium.Matrix3.multiplyByVector(rot, dirEnu, new Cesium.Cartesian3()),
@@ -1283,12 +1606,22 @@ function frustumFrameEcef(camera, atPos) {
  */
 function planeOrientationFor(camera, capCenterPos) {
   const frame = frustumFrameEcef(camera, capCenterPos);
-  const right = Cesium.Cartesian3.cross(frame.dir, frame.up, new Cesium.Cartesian3());
+  const right = Cesium.Cartesian3.cross(
+    frame.dir,
+    frame.up,
+    new Cesium.Cartesian3(),
+  );
   const normal = Cesium.Cartesian3.negate(frame.dir, new Cesium.Cartesian3());
   const m = new Cesium.Matrix3(
-    right.x, frame.up.x, normal.x,
-    right.y, frame.up.y, normal.y,
-    right.z, frame.up.z, normal.z
+    right.x,
+    frame.up.x,
+    normal.x,
+    right.y,
+    frame.up.y,
+    normal.y,
+    right.z,
+    frame.up.z,
+    normal.z,
   );
   return Cesium.Quaternion.fromRotationMatrix(m);
 }
@@ -1318,7 +1651,9 @@ function currentSurfaceRegime() {
  */
 function groundPriorAltFor(record) {
   const prior = record?.groundPrior?.ellipsoid;
-  return Number.isFinite(prior) ? prior : (Number(record?.camera?.groundElevationM) || 0);
+  return Number.isFinite(prior)
+    ? prior
+    : Number(record?.camera?.groundElevationM) || 0;
 }
 
 /**
@@ -1384,7 +1719,9 @@ function projectionFrameSignature(runtime) {
     canvas.width = FRAME_SIGNATURE_W;
     canvas.height = FRAME_SIGNATURE_H;
     runtime.signatureCanvas = canvas;
-    runtime.signatureCtx = canvas.getContext('2d', { willReadFrequently: true });
+    runtime.signatureCtx = canvas.getContext('2d', {
+      willReadFrequently: true,
+    });
   }
   const ctx = runtime.signatureCtx;
   if (!ctx) return null;
@@ -1392,7 +1729,7 @@ function projectionFrameSignature(runtime) {
     ctx.clearRect(0, 0, FRAME_SIGNATURE_W, FRAME_SIGNATURE_H);
     ctx.drawImage(image, 0, 0, FRAME_SIGNATURE_W, FRAME_SIGNATURE_H);
     return frameSignatureFromPixels(
-      ctx.getImageData(0, 0, FRAME_SIGNATURE_W, FRAME_SIGNATURE_H).data
+      ctx.getImageData(0, 0, FRAME_SIGNATURE_W, FRAME_SIGNATURE_H).data,
     );
   } catch {
     // Tainted canvas (a cross-origin source served without CORS) or a decode
@@ -1448,7 +1785,11 @@ function refreshProjectionTextures(record) {
   const runtime = record?.projection;
   if (!runtime || runtime.mode === 'video') return;
   const now = Date.now();
-  if (now - safeNumber(runtime.lastTextureSwapAt, 0) < PROJECTION_TEXTURE_SWAP_MS) return;
+  if (
+    now - safeNumber(runtime.lastTextureSwapAt, 0) <
+    PROJECTION_TEXTURE_SWAP_MS
+  )
+    return;
 
   const planeShowing = !!(runtime.planeEntity?.show && runtime.planeMaterial);
   if (!planeShowing) return;
@@ -1475,7 +1816,10 @@ function refreshProjectionTextures(record) {
  * @returns {string} Frame URL.
  */
 function frameUrlFor(camera, refreshMs = ACTIVE_FRAME_REFRESH_MS) {
-  const cadenceMs = Math.max(1000, safeNumber(refreshMs, ACTIVE_FRAME_REFRESH_MS));
+  const cadenceMs = Math.max(
+    1000,
+    safeNumber(refreshMs, ACTIVE_FRAME_REFRESH_MS),
+  );
   const tick = Math.floor(Date.now() / cadenceMs);
   const params = new URLSearchParams({
     label: camera.name,
@@ -1520,7 +1864,9 @@ function paintProjectionPlaceholder(ctx, camera, health = null) {
 
   const label = String(camera?.name || 'CCTV');
   const city = String(camera?.city || 'GLOBAL');
-  const status = String(health?.message || health?.status || camera?.feedType || 'NO FEED').toUpperCase();
+  const status = String(
+    health?.message || health?.status || camera?.feedType || 'NO FEED',
+  ).toUpperCase();
 
   ctx.strokeStyle = 'rgba(0, 220, 255, 0.24)';
   ctx.lineWidth = 2;
@@ -1547,15 +1893,23 @@ function paintProjectionPlaceholder(ctx, camera, health = null) {
 function updatePlanePlacement(record) {
   const runtime = record?.projection;
   if (!runtime?.planeEntity) return;
-  const geometry = record.frustumGeometry
-    || computeFrustumGeometry(record.camera, groundAltFor(record), record.probeClampRangeM);
+  const geometry =
+    record.frustumGeometry ||
+    computeFrustumGeometry(
+      record.camera,
+      groundAltFor(record),
+      record.probeClampRangeM,
+    );
   const positions = record.frustumPositions || frustumCartesians(geometry);
   runtime.planeEntity.position = positions.capCenter;
-  runtime.planeEntity.orientation = planeOrientationFor(record.camera, positions.capCenter);
+  runtime.planeEntity.orientation = planeOrientationFor(
+    record.camera,
+    positions.capCenter,
+  );
   if (runtime.planeEntity.plane) {
     runtime.planeEntity.plane.dimensions = new Cesium.Cartesian2(
       geometry.halfW * 2,
-      geometry.halfH * 2
+      geometry.halfH * 2,
     );
   }
   if (runtime.labelPosition) {
@@ -1630,8 +1984,13 @@ function createProjectionPlane(record, runtime, geometry, positions) {
  */
 export function _createCctvProjectionPlaneForTest(viewer, record) {
   _viewer = viewer;
-  const geometry = record.frustumGeometry
-    || computeFrustumGeometry(record.camera, groundAltFor(record), record.probeClampRangeM);
+  const geometry =
+    record.frustumGeometry ||
+    computeFrustumGeometry(
+      record.camera,
+      groundAltFor(record),
+      record.probeClampRangeM,
+    );
   const positions = record.frustumPositions || frustumCartesians(geometry);
   record.frustumGeometry = geometry;
   record.frustumPositions = positions;
@@ -1744,11 +2103,16 @@ function createProjectionRuntime(record) {
   // directly (Cesium updates video-backed entity materials per frame); image
   // feeds start on the placeholder canvas and switch to double-buffer swaps
   // at <=1Hz.
-  const geometry = record.frustumGeometry
-    || computeFrustumGeometry(record.camera, groundAltFor(record), record.probeClampRangeM);
+  const geometry =
+    record.frustumGeometry ||
+    computeFrustumGeometry(
+      record.camera,
+      groundAltFor(record),
+      record.probeClampRangeM,
+    );
   const positions = record.frustumPositions || frustumCartesians(geometry);
   runtime.planeMaterial = new Cesium.ImageMaterialProperty({
-    image: (mode === 'video' && runtime.video) ? runtime.video : canvas,
+    image: mode === 'video' && runtime.video ? runtime.video : canvas,
     transparent: true,
     color: Cesium.Color.WHITE.withAlpha(0.95),
   });
@@ -1813,9 +2177,10 @@ function refreshProjectionImage(record, force = false) {
   // clears this latch so the next normal tick can refresh.
   if (runtime.imageLoading) return;
   const now = Date.now();
-  const refreshMs = record.camera.id === _activeCameraId
-    ? PROJECTION_ACTIVE_REFRESH_MS
-    : PROJECTION_IDLE_REFRESH_MS;
+  const refreshMs =
+    record.camera.id === _activeCameraId
+      ? PROJECTION_ACTIVE_REFRESH_MS
+      : PROJECTION_IDLE_REFRESH_MS;
   if (!force && now - runtime.lastImageRefreshAt < refreshMs) return;
   runtime.lastImageRefreshAt = now;
 
@@ -1836,7 +2201,11 @@ function refreshProjectionImage(record, force = false) {
  */
 function paintPlaceholderThrottled(record, runtime, health) {
   const now = Date.now();
-  if (now - safeNumber(runtime.lastPlaceholderPaintAt, 0) < PLACEHOLDER_REPAINT_MS) return;
+  if (
+    now - safeNumber(runtime.lastPlaceholderPaintAt, 0) <
+    PLACEHOLDER_REPAINT_MS
+  )
+    return;
   runtime.lastPlaceholderPaintAt = now;
   runtime.drawnImageStamp = -1;
   // The placeholder overwrites the canvas, so the last real frame is no longer
@@ -1863,9 +2232,24 @@ function drawProjectionFrame(record) {
 
   if (runtime.mode === 'video' && runtime.video) {
     const video = runtime.video;
-    if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
-      runtime.ctx.clearRect(0, 0, PROJECTION_CANVAS_WIDTH, PROJECTION_CANVAS_HEIGHT);
-      runtime.ctx.drawImage(video, 0, 0, PROJECTION_CANVAS_WIDTH, PROJECTION_CANVAS_HEIGHT);
+    if (
+      video.readyState >= 2 &&
+      video.videoWidth > 0 &&
+      video.videoHeight > 0
+    ) {
+      runtime.ctx.clearRect(
+        0,
+        0,
+        PROJECTION_CANVAS_WIDTH,
+        PROJECTION_CANVAS_HEIGHT,
+      );
+      runtime.ctx.drawImage(
+        video,
+        0,
+        0,
+        PROJECTION_CANVAS_WIDTH,
+        PROJECTION_CANVAS_HEIGHT,
+      );
       runtime.canvasStamp = (runtime.canvasStamp || 0) + 1;
       return;
     }
@@ -1893,8 +2277,19 @@ function drawProjectionFrame(record) {
         return;
       }
       runtime.lastFrameSignature = signature;
-      runtime.ctx.clearRect(0, 0, PROJECTION_CANVAS_WIDTH, PROJECTION_CANVAS_HEIGHT);
-      runtime.ctx.drawImage(runtime.image, 0, 0, PROJECTION_CANVAS_WIDTH, PROJECTION_CANVAS_HEIGHT);
+      runtime.ctx.clearRect(
+        0,
+        0,
+        PROJECTION_CANVAS_WIDTH,
+        PROJECTION_CANVAS_HEIGHT,
+      );
+      runtime.ctx.drawImage(
+        runtime.image,
+        0,
+        0,
+        PROJECTION_CANVAS_WIDTH,
+        PROJECTION_CANVAS_HEIGHT,
+      );
       runtime.canvasStamp = (runtime.canvasStamp || 0) + 1;
       runtime.lastPlaceholderPaintAt = 0;
     }
@@ -1970,7 +2365,12 @@ function startProjectionLoop() {
 function refreshCctvFocusStyles(nowMs) {
   nowMs = focusNowMs(nowMs);
   const target = getFocusTarget();
-  if (!_enabled || !_viewer || !focusPassIsNeeded(target, _activeFocusStyleCount)) return;
+  if (
+    !_enabled ||
+    !_viewer ||
+    !focusPassIsNeeded(target, _activeFocusStyleCount)
+  )
+    return;
   if (nowMs - _lastFocusStyleAt < 80) return;
   _lastFocusStyleAt = nowMs;
   const scene = _viewer.scene;
@@ -1980,13 +2380,18 @@ function refreshCctvFocusStyles(nowMs) {
     target,
     previousActiveCount: _activeFocusStyleCount,
     nowMs,
-    screenPositionFor: (position) => (
-      Cesium.SceneTransforms.worldToWindowCoordinates(scene, position, _scratchFocusScreen)
-    ),
-    cameraDistanceFor: (position) => Cesium.Cartesian3.distance(camera.positionWC, position),
-    baseColorFor: (record) => (
-      record.camera.id === _activeCameraId ? ACTIVE_CAMERA_COLOR : IDLE_CAMERA_COLOR
-    ),
+    screenPositionFor: (position) =>
+      Cesium.SceneTransforms.worldToWindowCoordinates(
+        scene,
+        position,
+        _scratchFocusScreen,
+      ),
+    cameraDistanceFor: (position) =>
+      Cesium.Cartesian3.distance(camera.positionWC, position),
+    baseColorFor: (record) =>
+      record.camera.id === _activeCameraId
+        ? ACTIVE_CAMERA_COLOR
+        : IDLE_CAMERA_COLOR,
   });
   _activeFocusStyleCount = result.activeCount;
 }
@@ -2020,7 +2425,8 @@ export function applyCctvFocusDeemphasis({
     const focus = advanceSpriteFocus(bb, {
       // Keep hidden icons in the state/release pass so the active count cannot
       // drop while a stale dim alpha remains waiting to reappear.
-      screenPosition: bb.show === false || !position ? null : screenPositionFor(position),
+      screenPosition:
+        bb.show === false || !position ? null : screenPositionFor(position),
       cameraDistance: position ? cameraDistanceFor(position) : Number.NaN,
       nowMs,
       target,
@@ -2061,7 +2467,11 @@ function stopProjectionLoop() {
  * @param {number} groundAltM - Ground altitude at the mount (metres).
  */
 function applyFrustumGeometry(record, groundAltM) {
-  const geometry = computeFrustumGeometry(record.camera, groundAltM, record.probeClampRangeM);
+  const geometry = computeFrustumGeometry(
+    record.camera,
+    groundAltM,
+    record.probeClampRangeM,
+  );
   const positions = frustumCartesians(geometry);
   record.frustumGeometry = geometry;
   record.frustumPositions = positions;
@@ -2071,12 +2481,28 @@ function applyFrustumGeometry(record, groundAltM) {
     record.billboard.position = positions.mount;
   }
   if (record.coverageEntities?.length >= 5) {
-    record.coverageEntities[0].polyline.positions = [positions.mount, positions.tl];
-    record.coverageEntities[1].polyline.positions = [positions.mount, positions.tr];
-    record.coverageEntities[2].polyline.positions = [positions.mount, positions.br];
-    record.coverageEntities[3].polyline.positions = [positions.mount, positions.bl];
+    record.coverageEntities[0].polyline.positions = [
+      positions.mount,
+      positions.tl,
+    ];
+    record.coverageEntities[1].polyline.positions = [
+      positions.mount,
+      positions.tr,
+    ];
+    record.coverageEntities[2].polyline.positions = [
+      positions.mount,
+      positions.br,
+    ];
+    record.coverageEntities[3].polyline.positions = [
+      positions.mount,
+      positions.bl,
+    ];
     record.coverageEntities[4].polyline.positions = [
-      positions.tl, positions.tr, positions.br, positions.bl, positions.tl,
+      positions.tl,
+      positions.tr,
+      positions.br,
+      positions.bl,
+      positions.tl,
     ];
   }
   // A live viewshed volume tracks its wireframe: rebuild from the SAME fresh
@@ -2126,7 +2552,9 @@ function updateRecordGeometry(record, options = {}) {
 
   if (regime === 'terrain-globe') {
     const cachedFloor = cachedGroundFloor(point.lat, point.lon);
-    const ground = Number.isFinite(cachedFloor) ? cachedFloor : groundPriorAltFor(record);
+    const ground = Number.isFinite(cachedFloor)
+      ? cachedFloor
+      : groundPriorAltFor(record);
     record.groundSamples['terrain-globe'] = ground;
     record.groundResolved['terrain-globe'] = true;
     applyFrustumGeometry(record, ground);
@@ -2137,15 +2565,21 @@ function updateRecordGeometry(record, options = {}) {
   // sampler. It remains event-driven, one-shot per cell, and keeps its
   // existing acceptance window; CCTV adds no rooftop rejection policy.
   if (sampleGround && projectionTilesReady()) {
-    record.groundMeshSampleRequestCount = (record.groundMeshSampleRequestCount || 0) + 1;
+    record.groundMeshSampleRequestCount =
+      (record.groundMeshSampleRequestCount || 0) + 1;
     const viewerCarto = _viewer?.camera?.positionCartographic;
     const excludeObjects = [...(record.coverageEntities || [])];
     if (record.billboard) excludeObjects.push(record.billboard);
-    if (record.projection?.planeEntity) excludeObjects.push(record.projection.planeEntity);
+    if (record.projection?.planeEntity)
+      excludeObjects.push(record.projection.planeEntity);
     sampleMeshFloorCells(_viewer?.scene, [point], {
       excludeObjects: excludeObjects.filter(Boolean),
-      viewerLat: viewerCarto ? Cesium.Math.toDegrees(viewerCarto.latitude) : undefined,
-      viewerLon: viewerCarto ? Cesium.Math.toDegrees(viewerCarto.longitude) : undefined,
+      viewerLat: viewerCarto
+        ? Cesium.Math.toDegrees(viewerCarto.latitude)
+        : undefined,
+      viewerLon: viewerCarto
+        ? Cesium.Math.toDegrees(viewerCarto.longitude)
+        : undefined,
     });
   }
 
@@ -2192,7 +2626,8 @@ function rearmGroundResolution(record) {
  */
 function resolveCommittedGroundAnchor(record) {
   if (!record?.camera) return;
-  record.calibrationGroundResolveCount = (record.calibrationGroundResolveCount || 0) + 1;
+  record.calibrationGroundResolveCount =
+    (record.calibrationGroundResolveCount || 0) + 1;
   const revision = (record.calibrationGroundRevision || 0) + 1;
   record.calibrationGroundRevision = revision;
   const point = { lat: record.camera.lat, lon: record.camera.lon };
@@ -2204,7 +2639,8 @@ function resolveCommittedGroundAnchor(record) {
   resolveGroundFloorCells([point]).then(() => {
     if (_recordById.get(record.camera.id) !== record) return;
     if (record.calibrationGroundRevision !== revision) return;
-    if (record.camera.lat !== point.lat || record.camera.lon !== point.lon) return;
+    if (record.camera.lat !== point.lat || record.camera.lon !== point.lon)
+      return;
     rearmGroundResolution(record);
     updateRecordGeometry(record);
     refreshCoverageStyles();
@@ -2235,7 +2671,10 @@ async function resolveGroundPriors(catalog) {
     });
     return await resolveEllipsoidalGround(coords);
   } catch (error) {
-    console.warn('[Data:CCTV] ground-prior batch failed (keeping catalog fallbacks):', error?.message || error);
+    console.warn(
+      '[Data:CCTV] ground-prior batch failed (keeping catalog fallbacks):',
+      error?.message || error,
+    );
     return null;
   }
 }
@@ -2268,7 +2707,8 @@ function applyLateGroundPriors(records, priors) {
     // Keep the cheap pre-enable altitude consistent for records whose
     // geometry hasn't been applied yet (applyFrustumGeometry overwrites it).
     if (!record.frustumPositions) {
-      record.camera.absoluteHeightM = prior.ellipsoid + record.camera.mountHeightM;
+      record.camera.absoluteHeightM =
+        prior.ellipsoid + record.camera.mountHeightM;
     }
     const regime = currentSurfaceRegime();
     if (regime === 'terrain-globe') {
@@ -2315,7 +2755,10 @@ function handleMapStackChanged() {
     const ground = groundAltFor(record, regime);
     // Skip the entity rewrite when the applied ground already matches (e.g.
     // entering google-3d before any sample: prior → prior is a no-op).
-    if (record.frustumGeometry && Math.abs(record.frustumGeometry.groundAltM - ground) < 0.001) {
+    if (
+      record.frustumGeometry &&
+      Math.abs(record.frustumGeometry.groundAltM - ground) < 0.001
+    ) {
       continue;
     }
     applyFrustumGeometry(record, ground);
@@ -2378,7 +2821,10 @@ export function createGeometryProgressNotifier(notify, options = {}) {
     progress() {
       batchesSinceNotify += 1;
       const current = now();
-      if (current - lastNotifyAt < intervalMs && batchesSinceNotify < batchLimit) {
+      if (
+        current - lastNotifyAt < intervalMs &&
+        batchesSinceNotify < batchLimit
+      ) {
         return false;
       }
       batchesSinceNotify = 0;
@@ -2414,7 +2860,9 @@ export function processCctvGeometryQueueBatch({
   complete,
 }) {
   const safeQueue = Array.isArray(queue) ? queue : [];
-  const take = Number.isFinite(batchSize) ? Math.max(1, Math.floor(batchSize)) : 1;
+  const take = Number.isFinite(batchSize)
+    ? Math.max(1, Math.floor(batchSize))
+    : 1;
   const batch = safeQueue.splice(0, take);
   for (const record of batch) visit?.(record);
   if (safeQueue.length) {
@@ -2435,9 +2883,15 @@ export function processCctvGeometryQueueBatch({
  * @param {boolean} [ownership.cockpitActive] Whether cockpit owns the camera.
  * @returns {{ batchSize: number, delayMs: number }} Drain pacing.
  */
-export function cctvGeometryDrainPacing({ trackedEntity = null, cockpitActive = false } = {}) {
+export function cctvGeometryDrainPacing({
+  trackedEntity = null,
+  cockpitActive = false,
+} = {}) {
   if (trackedEntity || cockpitActive) {
-    return { batchSize: GEO_TRACKING_BATCH_SIZE, delayMs: GEO_TRACKING_BATCH_DELAY_MS };
+    return {
+      batchSize: GEO_TRACKING_BATCH_SIZE,
+      delayMs: GEO_TRACKING_BATCH_DELAY_MS,
+    };
   }
   return { batchSize: GEO_LOAD_BATCH_SIZE, delayMs: GEO_LOAD_BATCH_DELAY_MS };
 }
@@ -2507,14 +2961,18 @@ export function processGeometryBatch() {
     queue: _geoQueue,
     readOwnership: () => ({
       trackedEntity: _viewer.trackedEntity,
-      cockpitActive: typeof document !== 'undefined'
-        && document.body?.classList.contains('cockpit-mode'),
+      cockpitActive:
+        typeof document !== 'undefined' &&
+        document.body?.classList.contains('cockpit-mode'),
     }),
     visit: (record) => {
       try {
         updateRecordGeometry(record);
       } catch (err) {
-        console.warn('[Data:CCTV] geometry refresh error:', err?.message || err);
+        console.warn(
+          '[Data:CCTV] geometry refresh error:',
+          err?.message || err,
+        );
       }
       if (_geoLoading && _geoLoadDone < _geoLoadTotal) {
         _geoLoadDone += 1;
@@ -2580,8 +3038,12 @@ function startGeometryLoadQueue() {
   if (!_records.length) return;
   const active = getActiveRecord();
   const carto = _viewer?.camera?.positionCartographic;
-  const refLat = carto ? Cesium.Math.toDegrees(carto.latitude) : (active?.camera.lat ?? 0);
-  const refLon = carto ? Cesium.Math.toDegrees(carto.longitude) : (active?.camera.lon ?? 0);
+  const refLat = carto
+    ? Cesium.Math.toDegrees(carto.latitude)
+    : (active?.camera.lat ?? 0);
+  const refLon = carto
+    ? Cesium.Math.toDegrees(carto.longitude)
+    : (active?.camera.lon ?? 0);
   const pending = _records
     .filter((record) => record !== active)
     .map((record) => ({
@@ -2656,16 +3118,21 @@ function buildCoverageVisibleSet(activeRecord) {
         activeRecord.camera.lat,
         activeRecord.camera.lon,
         record.camera.lat,
-        record.camera.lon
+        record.camera.lon,
       ),
     };
   });
 
   ranked.sort((a, b) => a.distKm - b.distKm);
 
-  const primary = ranked.filter((entry) => entry.distKm <= COVERAGE_NEIGHBOR_RADIUS_KM || entry.distKm === -1);
+  const primary = ranked.filter(
+    (entry) =>
+      entry.distKm <= COVERAGE_NEIGHBOR_RADIUS_KM || entry.distKm === -1,
+  );
   const fallback = ranked;
-  const chosen = (primary.length >= COVERAGE_NEIGHBOR_LIMIT ? primary : fallback)
+  const chosen = (
+    primary.length >= COVERAGE_NEIGHBOR_LIMIT ? primary : fallback
+  )
     .slice(0, COVERAGE_NEIGHBOR_LIMIT)
     .map((entry) => entry.record.camera.id);
   return new Set(chosen);
@@ -2696,8 +3163,13 @@ function destroyViewshedVolume(record) {
 function rebuildViewshedVolume(record, isActive) {
   destroyViewshedVolume(record);
   if (!_viewer || !record?.frustumPositions || !record.viewshedColors) return;
-  const color = isActive ? record.viewshedColors.fillActive : record.viewshedColors.fill;
-  const primitive = createFrustumVolumePrimitive(record.frustumPositions, color);
+  const color = isActive
+    ? record.viewshedColors.fillActive
+    : record.viewshedColors.fill;
+  const primitive = createFrustumVolumePrimitive(
+    record.frustumPositions,
+    color,
+  );
   // QA tag: the harness counts viewshed volumes by this marker.
   primitive._gevViewshed = record.camera.id;
   record.viewshedPrimitive = _viewer.scene.primitives.add(primitive);
@@ -2759,7 +3231,11 @@ function ensureCardFrameSlot(cameraId) {
  */
 function refreshAmbientCards() {
   if (!_enabled || !_viewer || _viewer.isDestroyed() || !_records.length) {
-    _cctvOverlayHost.setEntries(CCTV_OVERLAY_SOURCE_ID, [], CCTV_OVERLAY_SOURCE_OPTIONS);
+    _cctvOverlayHost.setEntries(
+      CCTV_OVERLAY_SOURCE_ID,
+      [],
+      CCTV_OVERLAY_SOURCE_OPTIONS,
+    );
     return;
   }
   const scene = _viewer.scene;
@@ -2786,9 +3262,15 @@ function refreshAmbientCards() {
     let sy = NaN;
     if (occluder.isPointVisible(record.position)) {
       const screen = scene.cartesianToCanvasCoordinates(record.position);
-      if (screen && Number.isFinite(screen.x) && Number.isFinite(screen.y)
-        && screen.x >= -marginX && screen.x <= width + marginX
-        && screen.y >= -marginY && screen.y <= height + marginY) {
+      if (
+        screen &&
+        Number.isFinite(screen.x) &&
+        Number.isFinite(screen.y) &&
+        screen.x >= -marginX &&
+        screen.x <= width + marginX &&
+        screen.y >= -marginY &&
+        screen.y <= height + marginY
+      ) {
         inView = true;
         sx = screen.x;
         sy = screen.y;
@@ -2797,7 +3279,12 @@ function refreshAmbientCards() {
     }
     candidates.push({
       id,
-      distanceKm: haversineKm(viewerLat, viewerLon, record.camera.lat, record.camera.lon),
+      distanceKm: haversineKm(
+        viewerLat,
+        viewerLon,
+        record.camera.lat,
+        record.camera.lon,
+      ),
       inView,
       isVideo: isVideoFeedType(normalizeFeedType(record.camera.feedType)),
       sx,
@@ -2838,7 +3325,7 @@ function refreshAmbientCards() {
         // by central proximity when two anchors contest the min separation.
         distanceKm: index,
       })),
-    { limit: cardLimit }
+    { limit: cardLimit },
   );
   // Owner finding 2: grace must never apply to the active camera — drop any
   // lingering grace entry and keep it out of the retained-card baseline.
@@ -2861,10 +3348,11 @@ function refreshAmbientCards() {
   // hover card's slot is protected too while the gesture lasts.
   const keepFrames = new Set(_cardIds);
   if (_hoverCardId) keepFrames.add(_hoverCardId);
-  if (_activeCameraCardEnabled && _activeCameraId) keepFrames.add(_activeCameraId);
+  if (_activeCameraCardEnabled && _activeCameraId)
+    keepFrames.add(_activeCameraId);
   const drops = planFrameCachePrune(
     [..._cardFrameSlots].map(([id, slot]) => ({ id, stamp: slot.stamp })),
-    keepFrames
+    keepFrames,
   );
   for (const id of drops) _cardFrameSlots.delete(id);
 
@@ -2885,19 +3373,25 @@ function pushAmbientCardEntries() {
   const push = (id, { pinned = false, active = false } = {}) => {
     const record = _recordById.get(id);
     if (!record?.position) return;
-    entries.push(createCctvThumbnailOverlayEntry({
-      id,
-      position: record.position,
-      gapPx: CARD_GAP_PX,
-      title: record.camera.name,
-      frameSlot: ensureCardFrameSlot(id),
-      rank: rank++,
-      pinned,
-      active,
-    }));
+    entries.push(
+      createCctvThumbnailOverlayEntry({
+        id,
+        position: record.position,
+        gapPx: CARD_GAP_PX,
+        title: record.camera.name,
+        frameSlot: ensureCardFrameSlot(id),
+        rank: rank++,
+        pinned,
+        active,
+      }),
+    );
   };
   for (const id of _cardIds) push(id, { pinned: id === _hoverCardId });
-  if (_hoverCardId && !_cardIds.has(_hoverCardId) && _hoverCardId !== _activeCameraId) {
+  if (
+    _hoverCardId &&
+    !_cardIds.has(_hoverCardId) &&
+    _hoverCardId !== _activeCameraId
+  ) {
     push(_hoverCardId, { pinned: true });
   }
   if (_activeCameraCardEnabled && _activeCameraId) {
@@ -2942,10 +3436,11 @@ function handleHoverMove(position) {
   // Hovering the active camera or a camera that already has a card is a
   // no-op; video feeds stay icon-only until activated (ambient tier is
   // stills-only — same rule as the LOD selection).
-  const eligible = !!record
-    && cameraId !== _activeCameraId
-    && !_cardIds.has(cameraId)
-    && !isVideoFeedType(normalizeFeedType(record.camera.feedType));
+  const eligible =
+    !!record &&
+    cameraId !== _activeCameraId &&
+    !_cardIds.has(cameraId) &&
+    !isVideoFeedType(normalizeFeedType(record.camera.feedType));
   if (eligible) {
     cancelHoverRelease();
     _hoverCardId = cameraId;
@@ -3021,7 +3516,11 @@ function hoverFetchCardFrame(record) {
  * source, so a dead upstream never eats the burst slots.
  */
 function cardFrameTick() {
-  if (!_enabled || (!_cardIds.size && !(_activeCameraCardEnabled && _activeCameraId))) return;
+  if (
+    !_enabled ||
+    (!_cardIds.size && !(_activeCameraCardEnabled && _activeCameraId))
+  )
+    return;
   const now = Date.now();
   let frameless = null;
   let stalest = null;
@@ -3081,7 +3580,8 @@ function cardFrameTick() {
  *   stamps `_cardLastFetchAt`, so the pacer waits a full interval after it.
  */
 function fetchCardFrame(record, slot, refreshMs, { userGesture = false } = {}) {
-  if (typeof document !== 'undefined' && document.hidden && !userGesture) return;
+  if (typeof document !== 'undefined' && document.hidden && !userGesture)
+    return;
   const now = Date.now();
   const cameraId = record.camera.id;
   _cardFetchInFlightCount += 1;
@@ -3090,9 +3590,10 @@ function fetchCardFrame(record, slot, refreshMs, { userGesture = false } = {}) {
     const spacing = now - _cardLastFetchAt;
     // NOTE: cold-fill bursts legitimately push this to ~250 ms — read it
     // together with the ambientCards.fetchMode telemetry.
-    _cardMinFetchSpacingMs = _cardMinFetchSpacingMs == null
-      ? spacing
-      : Math.min(_cardMinFetchSpacingMs, spacing);
+    _cardMinFetchSpacingMs =
+      _cardMinFetchSpacingMs == null
+        ? spacing
+        : Math.min(_cardMinFetchSpacingMs, spacing);
   }
   _cardLastFetchAt = now;
   _cardFetchCount += 1;
@@ -3112,13 +3613,18 @@ function fetchCardFrame(record, slot, refreshMs, { userGesture = false } = {}) {
         const canvas = document.createElement('canvas');
         canvas.width = CCTV_FRAME_CANVAS_W;
         canvas.height = CCTV_FRAME_CANVAS_H;
-        canvas.getContext('2d').drawImage(image, 0, 0, canvas.width, canvas.height);
+        canvas
+          .getContext('2d')
+          .drawImage(image, 0, 0, canvas.width, canvas.height);
         frame = canvas;
       } catch {
         frame = null;
       }
     }
-    Object.assign(slot, applyFrameResult(slot, { ok: !!frame, frame }, Date.now()));
+    Object.assign(
+      slot,
+      applyFrameResult(slot, { ok: !!frame, frame }, Date.now()),
+    );
     _viewer?.scene?.requestRender?.();
   };
   image.onload = () => settle(true);
@@ -3197,7 +3703,11 @@ function teardownAmbientCards() {
  * @param {(record: Object) => void} destroyVolume Viewshed teardown callback.
  * @param {string|null} [activeCameraId=null] Active camera whose activation probe must be re-armed.
  */
-export function hideCctvRecordVisuals(records, destroyVolume, activeCameraId = null) {
+export function hideCctvRecordVisuals(
+  records,
+  destroyVolume,
+  activeCameraId = null,
+) {
   for (const record of Array.isArray(records) ? records : []) {
     if (record) {
       record.probeClampRangeM = null;
@@ -3205,7 +3715,8 @@ export function hideCctvRecordVisuals(records, destroyVolume, activeCameraId = n
     }
     for (const entity of record?.coverageEntities || []) entity.show = false;
     if (record?.viewshedPrimitive) destroyVolume?.(record);
-    if (record?.projection?.planeEntity) record.projection.planeEntity.show = false;
+    if (record?.projection?.planeEntity)
+      record.projection.planeEntity.show = false;
   }
 }
 
@@ -3230,7 +3741,9 @@ export function refreshCoverageStyles() {
   for (const record of _records) {
     const isActive = record.camera.id === activeId;
     if (record.billboard) {
-      record.billboard.color = isActive ? ACTIVE_CAMERA_COLOR : IDLE_CAMERA_COLOR;
+      record.billboard.color = isActive
+        ? ACTIVE_CAMERA_COLOR
+        : IDLE_CAMERA_COLOR;
       record.billboard.scale = isActive ? 1.25 : 1.0;
       // disableDepthTestDistance stays POSITIVE_INFINITY for every billboard
       // (set at creation) — see the field-test far-zoom submerge fix there.
@@ -3249,7 +3762,10 @@ export function refreshCoverageStyles() {
       // The frustum wireframe is part of the projection representation —
       // force it on for the active camera and let it read through geometry
       // via depthFailMaterial (polylines have no disableDepthTestDistance).
-      entity.show = !!(_enabled && ((coverageOn && inVisibleSet) || planeShowing));
+      entity.show = !!(
+        _enabled &&
+        ((coverageOn && inVisibleSet) || planeShowing)
+      );
       if (!entity.polyline) continue;
       // Viewshed mode swaps the cyan/green scheme for the camera's own hue so
       // adjacent cones read as distinct coverage claims (design §3b); the
@@ -3257,19 +3773,31 @@ export function refreshCoverageStyles() {
       const hue = viewshedOn ? record.viewshedColors : null;
       if (entity._coverageRole === 'cap') {
         entity.polyline.material = hue
-          ? (isActive ? hue.lineActive : hue.line)
-          : (isActive ? ACTIVE_COVERAGE_CENTER : IDLE_COVERAGE_CENTER_MUTED);
+          ? isActive
+            ? hue.lineActive
+            : hue.line
+          : isActive
+            ? ACTIVE_COVERAGE_CENTER
+            : IDLE_COVERAGE_CENTER_MUTED;
         entity.polyline.width = isActive ? 2.2 : 1.0;
         entity.polyline.depthFailMaterial = planeShowing
-          ? (hue ? hue.line.withAlpha(0.26) : ACTIVE_COVERAGE_CENTER_DEPTHFAIL)
+          ? hue
+            ? hue.line.withAlpha(0.26)
+            : ACTIVE_COVERAGE_CENTER_DEPTHFAIL
           : undefined;
       } else {
         entity.polyline.material = hue
-          ? (isActive ? hue.lineActive : hue.line.withAlpha(0.6))
-          : (isActive ? ACTIVE_COVERAGE_EDGE : IDLE_COVERAGE_EDGE_MUTED);
+          ? isActive
+            ? hue.lineActive
+            : hue.line.withAlpha(0.6)
+          : isActive
+            ? ACTIVE_COVERAGE_EDGE
+            : IDLE_COVERAGE_EDGE_MUTED;
         entity.polyline.width = isActive ? 1.8 : 0.9;
         entity.polyline.depthFailMaterial = planeShowing
-          ? (hue ? hue.line.withAlpha(0.18) : ACTIVE_COVERAGE_EDGE_DEPTHFAIL)
+          ? hue
+            ? hue.line.withAlpha(0.18)
+            : ACTIVE_COVERAGE_EDGE_DEPTHFAIL
           : undefined;
       }
     }
@@ -3277,7 +3805,12 @@ export function refreshCoverageStyles() {
     // Viewshed volume lifecycle: exists iff enabled + viewshed mode + in the
     // visible set. Rebuild on active-tint flips (rare); otherwise leave the
     // primitive alone so idle refreshes never churn geometry.
-    const wantVolume = !!(_enabled && viewshedOn && inVisibleSet && record.frustumPositions);
+    const wantVolume = !!(
+      _enabled &&
+      viewshedOn &&
+      inVisibleSet &&
+      record.frustumPositions
+    );
     if (wantVolume) {
       if (!record.viewshedPrimitive || record.viewshedActiveTint !== isActive) {
         rebuildViewshedVolume(record, isActive);
@@ -3331,9 +3864,10 @@ function coverageNeighborCount(targetRecord) {
       targetRecord.camera.lat,
       targetRecord.camera.lon,
       record.camera.lat,
-      record.camera.lon
+      record.camera.lon,
     );
-    const overlapKm = (targetRecord.camera.rangeM + record.camera.rangeM) / 1000 * 0.92;
+    const overlapKm =
+      ((targetRecord.camera.rangeM + record.camera.rangeM) / 1000) * 0.92;
     if (dKm <= overlapKm) count++;
   }
   return count;
@@ -3370,9 +3904,13 @@ function buildSummaryText() {
     `PROJ ${_showProjection ? 'MONITOR' : 'OFF'}`,
     _coverageMode === 'viewshed' ? 'VIEWSHED' : null,
     `CAL ${calBadge.replace('-', ' ').toUpperCase()}`,
-    health?.sourceKind ? `SRC ${String(health.sourceKind).toUpperCase()}` : `SRC ${String(active.camera.feedType || 'image').toUpperCase()}`,
+    health?.sourceKind
+      ? `SRC ${String(health.sourceKind).toUpperCase()}`
+      : `SRC ${String(active.camera.feedType || 'image').toUpperCase()}`,
     `${viewBand.toUpperCase()} CONTEXT`,
-  ].filter(Boolean).join(' · ');
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 /**
@@ -3403,7 +3941,10 @@ function getPublicCameraState(record, activeId = null) {
     mountHeightM: camera.mountHeightM,
     active: isActive,
     feedType: camera.feedType,
-    sourceKind: health?.sourceKind || camera.sourceKind || (camera.feedConfigured ? 'configured' : 'seed'),
+    sourceKind:
+      health?.sourceKind ||
+      camera.sourceKind ||
+      (camera.feedConfigured ? 'configured' : 'seed'),
     sourceStatus: health?.status || 'unknown',
     sourceMessage: health?.message || '',
     sourceLabel: health?.label || camera.provider || '',
@@ -3565,14 +4106,15 @@ function ensureGizmo() {
   // Both patch callbacks receive the gizmo's PINNED drag record — never
   // re-resolve the active camera here: a mid-drag voice select or auto-hop
   // would route the captured offsets onto a camera with a different basePose.
-  const liveRecord = (record) => (
-    record && _recordById.get(record.camera?.id) === record ? record : null
-  );
+  const liveRecord = (record) =>
+    record && _recordById.get(record.camera?.id) === record ? record : null;
   _gizmo = createCalibrationGizmo({
     viewer: _viewer,
-    getActiveRecord: () => (_enabled && _calibrationMode ? getActiveRecord() : null),
+    getActiveRecord: () =>
+      _enabled && _calibrationMode ? getActiveRecord() : null,
     applyPatch: (patch, draggedRecord) => {
-      const record = _enabled && _calibrationMode ? liveRecord(draggedRecord) : null;
+      const record =
+        _enabled && _calibrationMode ? liveRecord(draggedRecord) : null;
       if (record) applyCalibrationPatch(record, patch, { transient: true });
     },
     endPatch: (draggedRecord) => {
@@ -3613,7 +4155,11 @@ function runActivationObstructionProbe(record) {
   if (Math.abs(rangeScale - 1) > 0.0001) return; // slider overrides the clamp
   try {
     const mountAlt = groundAltFor(record) + camera.mountHeightM;
-    const mountPos = Cesium.Cartesian3.fromDegrees(camera.lon, camera.lat, mountAlt);
+    const mountPos = Cesium.Cartesian3.fromDegrees(
+      camera.lon,
+      camera.lat,
+      mountAlt,
+    );
     const { dir } = frustumFrameEcef(camera, mountPos);
     // Exclude everything the layer itself draws so the probe can only hit the
     // world (3D tiles), not our own billboards/polylines/planes.
@@ -3667,10 +4213,14 @@ export function cctvRecordNeedsActivation(cameraId, activeCameraId, record) {
  * @returns {void}
  */
 export function bindCctvWorldClickGesture(handler, onClick, options = {}) {
-  bindTrackingClickGesture(handler, (click, gesture) => {
-    if (!isTrackingClickGesture(gesture)) return;
-    onClick(click);
-  }, options);
+  bindTrackingClickGesture(
+    handler,
+    (click, gesture) => {
+      if (!isTrackingClickGesture(gesture)) return;
+      onClick(click);
+    },
+    options,
+  );
 }
 
 /**
@@ -3680,7 +4230,8 @@ export function bindCctvWorldClickGesture(handler, onClick, options = {}) {
  * @returns {'activated'|'unchanged'|'not-found'} Discriminated activation result.
  */
 export function setActiveCamera(cameraId) {
-  if (!cameraId || !_recordById.has(cameraId)) return CCTV_ACTIVATION_RESULT.NOT_FOUND;
+  if (!cameraId || !_recordById.has(cameraId))
+    return CCTV_ACTIVATION_RESULT.NOT_FOUND;
   const record = _recordById.get(cameraId);
   const previousActiveRecord = getActiveRecord();
   // Re-selecting the already-active camera is a no-op: re-running the
@@ -3784,10 +4335,10 @@ export function deactivateActiveCamera() {
  * @param {boolean} [context.calibrationMode]
  * @returns {boolean}
  */
-export function cctvEmptyClickDeselects(picked, {
-  activeCameraId = null,
-  calibrationMode = false,
-} = {}) {
+export function cctvEmptyClickDeselects(
+  picked,
+  { activeCameraId = null, calibrationMode = false } = {},
+) {
   if (!activeCameraId || calibrationMode) return false;
   return resolvePickId(picked) === null;
 }
@@ -3811,7 +4362,7 @@ function buildCoverageEntities(record) {
     geometry = computeFrustumGeometry(
       camera,
       groundPriorAltFor(record),
-      record.probeClampRangeM
+      record.probeClampRangeM,
     );
     positions = frustumCartesians(geometry);
     record.frustumGeometry = geometry;
@@ -3819,22 +4370,29 @@ function buildCoverageEntities(record) {
     record.position = positions.mount;
   }
 
-  const addPolyline = (role, linePositions) => _viewer.entities.add({
-    id: `cctv-${camera.id}-${role}`,
-    properties: { cctvCameraId: camera.id },
-    polyline: {
-      positions: linePositions,
-      width: 1.2,
-      material: IDLE_COVERAGE_COLOR,
-    },
-  });
+  const addPolyline = (role, linePositions) =>
+    _viewer.entities.add({
+      id: `cctv-${camera.id}-${role}`,
+      properties: { cctvCameraId: camera.id },
+      polyline: {
+        positions: linePositions,
+        width: 1.2,
+        material: IDLE_COVERAGE_COLOR,
+      },
+    });
 
   const entities = [
     addPolyline('ray-tl', [positions.mount, positions.tl]),
     addPolyline('ray-tr', [positions.mount, positions.tr]),
     addPolyline('ray-br', [positions.mount, positions.br]),
     addPolyline('ray-bl', [positions.mount, positions.bl]),
-    addPolyline('cap', [positions.tl, positions.tr, positions.br, positions.bl, positions.tl]),
+    addPolyline('cap', [
+      positions.tl,
+      positions.tr,
+      positions.br,
+      positions.bl,
+      positions.tl,
+    ]),
   ];
 
   entities[0]._coverageRole = 'edge';
@@ -3863,9 +4421,12 @@ export function materializeCctvCoverageEntities(
   const created = [];
   if (typeof buildEntities !== 'function') return created;
   for (const record of Array.isArray(records) ? records : []) {
-    if (!record || record.coverageEntities?.length || !isEligible(record)) continue;
+    if (!record || record.coverageEntities?.length || !isEligible(record))
+      continue;
     const entities = buildEntities(record);
-    record.coverageEntities = Array.isArray(entities) ? entities.filter(Boolean) : [];
+    record.coverageEntities = Array.isArray(entities)
+      ? entities.filter(Boolean)
+      : [];
     created.push(...record.coverageEntities);
   }
   return created;
@@ -3877,8 +4438,13 @@ export function materializeCctvActiveCoverageEntities(record, buildEntities) {
 }
 
 /** Materializes only records in the current coverage-visible ID set. */
-export function materializeCctvVisibleCoverageEntities(records, visibleIds, buildEntities) {
-  const eligibleIds = visibleIds instanceof Set ? visibleIds : new Set(visibleIds || []);
+export function materializeCctvVisibleCoverageEntities(
+  records,
+  visibleIds,
+  buildEntities,
+) {
+  const eligibleIds =
+    visibleIds instanceof Set ? visibleIds : new Set(visibleIds || []);
   return materializeCctvCoverageEntities(
     records,
     (record) => eligibleIds.has(record.camera?.id),
@@ -3900,7 +4466,11 @@ function ensureActiveCoverageEntities(record) {
 
 function ensureVisibleCoverageEntities(records, visibleIds) {
   return registerCoverageEntities(
-    materializeCctvVisibleCoverageEntities(records, visibleIds, buildCoverageEntities),
+    materializeCctvVisibleCoverageEntities(
+      records,
+      visibleIds,
+      buildCoverageEntities,
+    ),
   );
 }
 
@@ -3913,18 +4483,27 @@ function ensureVisibleCoverageEntities(records, visibleIds) {
 function extractPickedCameraId(picked) {
   if (!picked) return null;
 
-  const entity = picked.id?.properties ? picked.id : picked.primitive?.id?.properties ? picked.primitive.id : null;
+  const entity = picked.id?.properties
+    ? picked.id
+    : picked.primitive?.id?.properties
+      ? picked.primitive.id
+      : null;
   const maybeProp = entity?.properties?.cctvCameraId;
   if (maybeProp) {
-    const value = typeof maybeProp.getValue === 'function'
-      ? maybeProp.getValue(Cesium.JulianDate.now())
-      : maybeProp;
+    const value =
+      typeof maybeProp.getValue === 'function'
+        ? maybeProp.getValue(Cesium.JulianDate.now())
+        : maybeProp;
     const record = typeof value === 'string' ? _recordById.get(value) : null;
-    const ownsCoverageEntity = Boolean(record?.coverageEntities?.includes(entity));
-    const ownsProjectionEntity = record?.projection?.planeEntity === entity
-      || _projectionEntities.some((runtime) => (
-        runtime?.cameraId === value && runtime.planeEntity === entity
-      ));
+    const ownsCoverageEntity = Boolean(
+      record?.coverageEntities?.includes(entity),
+    );
+    const ownsProjectionEntity =
+      record?.projection?.planeEntity === entity ||
+      _projectionEntities.some(
+        (runtime) =>
+          runtime?.cameraId === value && runtime.planeEntity === entity,
+      );
     if (record && (ownsCoverageEntity || ownsProjectionEntity)) return value;
   }
 
@@ -3932,12 +4511,16 @@ function extractPickedCameraId(picked) {
   // sibling may legitimately use the same string. A bare ID match is not
   // ownership proof: require this layer's billboard collection or the exact
   // billboard stored on the record.
-  const directId = typeof picked.id === 'string'
-    ? picked.id
-    : typeof picked.primitive?.id === 'string' ? picked.primitive.id : null;
+  const directId =
+    typeof picked.id === 'string'
+      ? picked.id
+      : typeof picked.primitive?.id === 'string'
+        ? picked.primitive.id
+        : null;
   const record = directId === null ? null : _recordById.get(directId);
   if (!record) return null;
-  return picked.primitive === _billboards || picked.primitive === record.billboard
+  return picked.primitive === _billboards ||
+    picked.primitive === record.billboard
     ? directId
     : null;
 }
@@ -4037,28 +4620,35 @@ export function _setCctvCoverageStateForTest({
  */
 export function focusCctvRecord(viewer, record, duration = 2.2) {
   if (!viewer || !record) return CCTV_FOCUS_RESULT.NO_ACTIVE_CAMERA;
-  if (typeof document !== 'undefined'
-    && document.body?.classList.contains('cockpit-mode')) {
+  if (
+    typeof document !== 'undefined' &&
+    document.body?.classList.contains('cockpit-mode')
+  ) {
     console.debug('[Data:CCTV] focus ignored while cockpit owns the camera');
     return CCTV_FOCUS_RESULT.COCKPIT_ACTIVE;
   }
   if (viewer.trackedEntity) {
-    console.debug('[Data:CCTV] focus ignored while a tracked entity owns the camera');
+    console.debug(
+      '[Data:CCTV] focus ignored while a tracked entity owns the camera',
+    );
     return CCTV_FOCUS_RESULT.TRACKING_HOLDS_VIEW;
   }
   const { camera } = record;
   const range = Math.max(280, camera.rangeM * 1.18);
   viewer.camera.flyToBoundingSphere(
-    new Cesium.BoundingSphere(record.position, Math.max(40, camera.rangeM * 0.36)),
+    new Cesium.BoundingSphere(
+      record.position,
+      Math.max(40, camera.rangeM * 0.36),
+    ),
     {
       offset: new Cesium.HeadingPitchRange(
         toRad(camera.headingDeg),
         toRad(-22),
-        range
+        range,
       ),
       duration: Math.max(0.2, duration || 0),
       easingFunction: Cesium.EasingFunction.CUBIC_IN_OUT,
-    }
+    },
   );
   return CCTV_FOCUS_RESULT.FOCUSED;
 }
@@ -4074,7 +4664,8 @@ function focusCamera(cameraId, duration = 2.2) {
  * @param {number} nowMs - Current timestamp in milliseconds.
  */
 export function maybeAutoHop(nowMs) {
-  if (!_autoHop || _autoHopSuspended || !_enabled || _records.length < 2) return;
+  if (!_autoHop || _autoHopSuspended || !_enabled || _records.length < 2)
+    return;
   if (nowMs - _lastHopAt < _autoHopSec * 1000) return;
 
   const viewKey = currentViewContext();
@@ -4131,7 +4722,10 @@ async function syncHealthState(force = false) {
   _lastHealthSyncAt = now;
 
   try {
-    const data = await fetchJson(HEALTH_ENDPOINT, { cache: 'no-store', timeoutMs: 10_000 });
+    const data = await fetchJson(HEALTH_ENDPOINT, {
+      cache: 'no-store',
+      timeoutMs: 10_000,
+    });
     const rows = Array.isArray(data?.cameras) ? data.cameras : [];
     const next = new Map();
     for (const row of rows) {
@@ -4189,13 +4783,18 @@ const cctvLayer = {
 
     const sources = await loadCameraSources();
     const catalogFromSources = buildCatalogFromSources(sources);
-    const catalog = catalogFromSources.length ? catalogFromSources : seedCatalog();
+    const catalog = catalogFromSources.length
+      ? catalogFromSources
+      : seedCatalog();
 
     // Viewshed color identity (design §3a): golden-angle hue over the
     // id-SORTED catalog index — deterministic across sessions for a stable
     // catalog, maximally separated for neighboring cameras.
     const hueIndexById = new Map(
-      catalog.map((camera) => camera.id).sort().map((id, index) => [id, index])
+      catalog
+        .map((camera) => camera.id)
+        .sort()
+        .map((id, index) => [id, index]),
     );
 
     for (const camera of catalog) {
@@ -4217,7 +4816,9 @@ const cctvLayer = {
     const priorsPromise = resolveGroundPriors(catalog);
     const priors = await Promise.race([
       priorsPromise,
-      new Promise((resolve) => setTimeout(() => resolve(null), GROUND_PRIOR_INIT_WAIT_MS)),
+      new Promise((resolve) =>
+        setTimeout(() => resolve(null), GROUND_PRIOR_INIT_WAIT_MS),
+      ),
     ]);
 
     for (let i = 0; i < catalog.length; i++) {
@@ -4232,9 +4833,13 @@ const cctvLayer = {
       // never raycasts the scene once per camera.
       const priorGround = Number.isFinite(groundPrior?.ellipsoid)
         ? groundPrior.ellipsoid
-        : (Number(camera.groundElevationM) || 0);
+        : Number(camera.groundElevationM) || 0;
       camera.absoluteHeightM = priorGround + camera.mountHeightM;
-      const position = Cesium.Cartesian3.fromDegrees(camera.lon, camera.lat, camera.absoluteHeightM);
+      const position = Cesium.Cartesian3.fromDegrees(
+        camera.lon,
+        camera.lat,
+        camera.absoluteHeightM,
+      );
       const billboard = _billboards.add({
         id: camera.id,
         image: CAMERA_ICON,
@@ -4286,7 +4891,9 @@ const cctvLayer = {
         probeClampRangeM: null,
         // Viewshed (design §3a/§3b): per-camera color identity + the volume
         // primitive handle (exists only in viewshed mode for the visible set).
-        viewshedColors: viewshedColors(cameraHue(hueIndexById.get(camera.id) ?? 0)),
+        viewshedColors: viewshedColors(
+          cameraHue(hueIndexById.get(camera.id) ?? 0),
+        ),
         viewshedPrimitive: null,
         viewshedActiveTint: false,
       };
@@ -4306,9 +4913,11 @@ const cctvLayer = {
     // a torn-down/re-inited catalog).
     if (!priors) {
       const initRecords = _records.slice();
-      priorsPromise.then((late) => {
-        if (late) applyLateGroundPriors(initRecords, late);
-      }).catch(() => {});
+      priorsPromise
+        .then((late) => {
+          if (late) applyLateGroundPriors(initRecords, late);
+        })
+        .catch(() => {});
     }
 
     // Task 5: track the surface regime the initial geometry was computed for
@@ -4346,46 +4955,52 @@ const cctvLayer = {
     refreshHorizonCulling();
 
     _clickHandler = new Cesium.ScreenSpaceEventHandler(_viewer.scene.canvas);
-    bindCctvWorldClickGesture(_clickHandler, (click) => {
-      if (!_enabled) return;
-      const picked = _viewer.scene.pick(click.position);
-      const cameraId = extractPickedCameraId(picked);
-      if (cameraId) {
-        activateCctvCameraFromWorldClick(cameraId, setActiveCamera);
-        return;
-      }
-      // Any identified scene object owns this click even if its layer does not
-      // register a shared pick predicate. This keeps selectable siblings ahead
-      // of an overlapping CCTV card while ID-less globe/terrain/tile surfaces
-      // remain eligible for true empty-space deselection.
-      const pickedId = resolvePickId(picked);
-      if (pickedId !== null) return;
-      // Item A (owner round 2): the scene pick found no camera — try the
-      // painted ambient cards. The cards canvas is pointer-events:none (this
-      // handler owns the events), so a click landing on a card's rect selects
-      // its camera exactly like a click on the icon. Cesium click positions
-      // and the recorded rects are both CSS px — direct comparison.
-      const cardId = _cctvOverlayHost.hitTest(
-        click.position.x,
-        click.position.y,
-        { sourceId: CCTV_OVERLAY_SOURCE_ID },
-      )?.entryId;
-      if (cardId && _recordById.has(cardId)) {
-        activateCctvCameraFromWorldClick(cardId, setActiveCamera);
-        return;
-      }
-      if (cctvEmptyClickDeselects(picked, {
-        activeCameraId: _activeCameraId,
-        calibrationMode: _calibrationMode,
-      })) {
-        deactivateActiveCamera();
-      }
-    }, {
-      // Item B: hover summons a card on a cardless camera icon. The gesture
-      // classifier owns MOUSE_MOVE too, so chain hover work through its seam
-      // instead of replacing the travel accumulator's handler.
-      onMouseMove: (movement) => handleHoverMove(movement?.endPosition),
-    });
+    bindCctvWorldClickGesture(
+      _clickHandler,
+      (click) => {
+        if (!_enabled) return;
+        const picked = _viewer.scene.pick(click.position);
+        const cameraId = extractPickedCameraId(picked);
+        if (cameraId) {
+          activateCctvCameraFromWorldClick(cameraId, setActiveCamera);
+          return;
+        }
+        // Any identified scene object owns this click even if its layer does not
+        // register a shared pick predicate. This keeps selectable siblings ahead
+        // of an overlapping CCTV card while ID-less globe/terrain/tile surfaces
+        // remain eligible for true empty-space deselection.
+        const pickedId = resolvePickId(picked);
+        if (pickedId !== null) return;
+        // Item A (owner round 2): the scene pick found no camera — try the
+        // painted ambient cards. The cards canvas is pointer-events:none (this
+        // handler owns the events), so a click landing on a card's rect selects
+        // its camera exactly like a click on the icon. Cesium click positions
+        // and the recorded rects are both CSS px — direct comparison.
+        const cardId = _cctvOverlayHost.hitTest(
+          click.position.x,
+          click.position.y,
+          { sourceId: CCTV_OVERLAY_SOURCE_ID },
+        )?.entryId;
+        if (cardId && _recordById.has(cardId)) {
+          activateCctvCameraFromWorldClick(cardId, setActiveCamera);
+          return;
+        }
+        if (
+          cctvEmptyClickDeselects(picked, {
+            activeCameraId: _activeCameraId,
+            calibrationMode: _calibrationMode,
+          })
+        ) {
+          deactivateActiveCamera();
+        }
+      },
+      {
+        // Item B: hover summons a card on a cardless camera icon. The gesture
+        // classifier owns MOUSE_MOVE too, so chain hover work through its seam
+        // instead of replacing the travel accumulator's handler.
+        onMouseMove: (movement) => handleHoverMove(movement?.endPosition),
+      },
+    );
 
     await syncHealthState(true);
     refreshCoverageStyles();
@@ -4407,8 +5022,12 @@ const cctvLayer = {
     // coverage polyline entities use `cctv-<cameraId>-<role>` entity ids.
     registerPickOwner('cctv', (pickedId) => {
       if (_recordById.has(pickedId)) return true;
-      if (typeof pickedId === 'string' && pickedId.startsWith(GIZMO_ID_PREFIX)) return true;
-      const coverage = /^cctv-(.+)-(?:ray-tl|ray-tr|ray-br|ray-bl|cap|plane|plane-label)$/.exec(pickedId);
+      if (typeof pickedId === 'string' && pickedId.startsWith(GIZMO_ID_PREFIX))
+        return true;
+      const coverage =
+        /^cctv-(.+)-(?:ray-tl|ray-tr|ray-br|ray-bl|cap|plane|plane-label)$/.exec(
+          pickedId,
+        );
       return Boolean(coverage && _recordById.has(coverage[1]));
     });
     if (!_activeCameraId && _records.length) {
@@ -4427,7 +5046,9 @@ const cctvLayer = {
     // (user starts tracking a contact) is the one edge it can't see while
     // stopped, so re-arm on it. Removed on disable.
     _removeFocusAppearListener?.();
-    _removeFocusAppearListener = onFocusTargetAppear(() => startProjectionLoop());
+    _removeFocusAppearListener = onFocusTargetAppear(() =>
+      startProjectionLoop(),
+    );
     // Ambient card tier: shared host source + policy-gated frame pacer + the
     // initial selection pass (moveEnd drives every later reselection).
     _cctvOverlayHost.setVisible(CCTV_OVERLAY_SOURCE_ID, true);
@@ -4575,23 +5196,38 @@ const cctvLayer = {
       _autoHop = params.autoHop;
       if (params.autoHop) _autoHopSuspended = false;
     }
-    if (typeof params.autoHopSec === 'number' && Number.isFinite(params.autoHopSec)) {
-      _autoHopSec = clamp(Math.round(params.autoHopSec), MIN_AUTO_HOP_SEC, MAX_AUTO_HOP_SEC);
+    if (
+      typeof params.autoHopSec === 'number' &&
+      Number.isFinite(params.autoHopSec)
+    ) {
+      _autoHopSec = clamp(
+        Math.round(params.autoHopSec),
+        MIN_AUTO_HOP_SEC,
+        MAX_AUTO_HOP_SEC,
+      );
     }
-    if (typeof params.selectedCameraId === 'string' && _recordById.has(params.selectedCameraId)) {
+    if (
+      typeof params.selectedCameraId === 'string' &&
+      _recordById.has(params.selectedCameraId)
+    ) {
       setActiveCamera(params.selectedCameraId);
     }
     if (params.calibration && typeof params.calibration === 'object') {
       const calibrationCfg = params.calibration;
-      const targetCameraId = typeof calibrationCfg.cameraId === 'string' && calibrationCfg.cameraId
-        ? calibrationCfg.cameraId
-        : _activeCameraId;
-      const targetRecord = targetCameraId ? _recordById.get(targetCameraId) : null;
+      const targetCameraId =
+        typeof calibrationCfg.cameraId === 'string' && calibrationCfg.cameraId
+          ? calibrationCfg.cameraId
+          : _activeCameraId;
+      const targetRecord = targetCameraId
+        ? _recordById.get(targetCameraId)
+        : null;
       if (targetRecord) {
         if (calibrationCfg.reset) {
           // RESET: back to the base prior, delete the persisted entry, clear
           // the dirty flag (semantics unchanged from v2).
-          targetRecord.camera.calibration = normalizeCalibration(DEFAULT_CAMERA_CALIBRATION);
+          targetRecord.camera.calibration = normalizeCalibration(
+            DEFAULT_CAMERA_CALIBRATION,
+          );
           targetRecord.camera.calSource = null;
           targetRecord.calDirty = false;
           ensureCameraPose(targetRecord.camera);
@@ -4663,10 +5299,12 @@ const cctvLayer = {
       autoHop: _autoHop,
       autoHopSec: _autoHopSec,
       selectedCameraId: active?.camera.id || null,
-      calibration: active?.camera ? {
-        cameraId: active.camera.id,
-        values: { ...normalizeCalibration(active.camera.calibration) },
-      } : null,
+      calibration: active?.camera
+        ? {
+            cameraId: active.camera.id,
+            values: { ...normalizeCalibration(active.camera.calibration) },
+          }
+        : null,
     };
   },
 

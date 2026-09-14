@@ -25,7 +25,8 @@ import {
  * already cover every discrete mutation this layer makes.
  */
 
-const API_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
+const API_URL =
+  'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson';
 
 export const EARTHQUAKE_OVERLAY_SOURCE_ID = 'earthquakes';
 export const EARTHQUAKE_OVERLAY_COHORT_LIMIT = 96;
@@ -60,7 +61,12 @@ function depthColor(depthKm) {
  * @param {string} input.accent Source-owned depth-band color.
  * @returns {object}
  */
-export function createEarthquakeOverlayEntry({ id, position, magnitude, accent }) {
+export function createEarthquakeOverlayEntry({
+  id,
+  position,
+  magnitude,
+  accent,
+}) {
   const mag = Number(magnitude);
   return {
     id: String(id),
@@ -86,14 +92,18 @@ export function selectEarthquakeOverlayCohort(
   entries,
   limit = EARTHQUAKE_OVERLAY_COHORT_LIMIT,
 ) {
-  const cap = Math.max(0, Math.min(
-    EARTHQUAKE_OVERLAY_COHORT_LIMIT,
-    Math.floor(Number(limit) || 0),
-  ));
+  const cap = Math.max(
+    0,
+    Math.min(EARTHQUAKE_OVERLAY_COHORT_LIMIT, Math.floor(Number(limit) || 0)),
+  );
   if (!Array.isArray(entries) || cap === 0) return [];
-  return entries.slice().sort((a, b) => (
-    b.priority - a.priority || String(a.id).localeCompare(String(b.id))
-  )).slice(0, cap);
+  return entries
+    .slice()
+    .sort(
+      (a, b) =>
+        b.priority - a.priority || String(a.id).localeCompare(String(b.id)),
+    )
+    .slice(0, cap);
 }
 
 /**
@@ -109,7 +119,10 @@ export function selectEarthquakeOverlayCohort(
  */
 export function mapAnalystRecord(raw, index = 0) {
   const num = (v) => (Number.isFinite(v) ? v : null);
-  const text = (v) => { const t = String(v ?? '').trim(); return t || null; };
+  const text = (v) => {
+    const t = String(v ?? '').trim();
+    return t || null;
+  };
   return {
     id: text(raw?.id) || `QUAKE-${String(index).padStart(4, '0')}`,
     magnitude: num(raw?.mag),
@@ -129,28 +142,51 @@ export function normalizeEarthquakeSnapshot(geojson) {
   for (const [index, feature] of geojson.features.entries()) {
     const coordinates = feature?.geometry?.coordinates;
     const properties = feature?.properties;
-    if (!Array.isArray(coordinates) || coordinates.length < 2 || !properties
-      || typeof properties !== 'object' || Array.isArray(properties)
-      || (feature.geometry.type != null && feature.geometry.type !== 'Point')) return null;
+    if (
+      !Array.isArray(coordinates) ||
+      coordinates.length < 2 ||
+      !properties ||
+      typeof properties !== 'object' ||
+      Array.isArray(properties) ||
+      (feature.geometry.type != null && feature.geometry.type !== 'Point')
+    )
+      return null;
     const [lon, lat, depthKm] = coordinates;
     const mag = properties.mag;
-    if (!Number.isFinite(lon) || Math.abs(lon) > 180
-      || !Number.isFinite(lat) || Math.abs(lat) > 90
-      || (depthKm != null && !Number.isFinite(depthKm))
-      || (mag != null && (!Number.isFinite(mag) || mag > 10))) return null;
+    if (
+      !Number.isFinite(lon) ||
+      Math.abs(lon) > 180 ||
+      !Number.isFinite(lat) ||
+      Math.abs(lat) > 90 ||
+      (depthKm != null && !Number.isFinite(depthKm)) ||
+      (mag != null && (!Number.isFinite(mag) || mag > 10))
+    )
+      return null;
     // A missing magnitude cannot establish that this event meets M2.5+.
     if (mag == null || mag < 2.5) continue;
-    const stableId = feature.id == null || feature.id === '' ? `event-${index + 1}` : String(feature.id);
+    const stableId =
+      feature.id == null || feature.id === ''
+        ? `event-${index + 1}`
+        : String(feature.id);
     if (ids.has(stableId)) return null;
     ids.add(stableId);
-    rows.push({ stableId, usgsId: feature.id ?? null, lon, lat, depthKm: depthKm ?? null,
-      mag, place: typeof properties.place === 'string' ? properties.place : null,
-      time: Number.isFinite(properties.time) ? properties.time : null });
+    rows.push({
+      stableId,
+      usgsId: feature.id ?? null,
+      lon,
+      lat,
+      depthKm: depthKm ?? null,
+      mag,
+      place: typeof properties.place === 'string' ? properties.place : null,
+      time: Number.isFinite(properties.time) ? properties.time : null,
+    });
   }
   return rows;
 }
 
-export function createEarthquakesLayer({ overlayHost = DEFAULT_OVERLAY_HOST } = {}) {
+export function createEarthquakesLayer({
+  overlayHost = DEFAULT_OVERLAY_HOST,
+} = {}) {
   let _dataSource = null;
   let _count = 0;
   let _lastUpdate = null;
@@ -158,185 +194,208 @@ export function createEarthquakesLayer({ overlayHost = DEFAULT_OVERLAY_HOST } = 
   let _enabled = false;
 
   const layer = {
-  id: 'earthquakes',
-  name: 'Earthquakes (24h)',
-  icon: '🌋',
-  source: 'USGS',
-  updateInterval: 60000,
+    id: 'earthquakes',
+    name: 'Earthquakes (24h)',
+    icon: '🌋',
+    source: 'USGS',
+    updateInterval: 60000,
 
-  init(viewer) {
-    _dataSource = new Cesium.CustomDataSource('earthquakes');
-    _dataSource.show = false;
-    viewer.dataSources.add(_dataSource);
-    _count = 0;
-    _lastUpdate = null;
-    _lastError = null;
-    _enabled = false;
-    overlayHost.setVisible(EARTHQUAKE_OVERLAY_SOURCE_ID, false);
-    console.log('[Data:Earthquakes] Initialized');
-  },
+    init(viewer) {
+      _dataSource = new Cesium.CustomDataSource('earthquakes');
+      _dataSource.show = false;
+      viewer.dataSources.add(_dataSource);
+      _count = 0;
+      _lastUpdate = null;
+      _lastError = null;
+      _enabled = false;
+      overlayHost.setVisible(EARTHQUAKE_OVERLAY_SOURCE_ID, false);
+      console.log('[Data:Earthquakes] Initialized');
+    },
 
-  enable(viewer) {
-    _enabled = true;
-    // No continuous-render hold: the discs are static geometry now, so the
-    // layer has no per-frame animator to keep the render loop alive for.
-    if (_dataSource) _dataSource.show = true;
-    overlayHost.setVisible(EARTHQUAKE_OVERLAY_SOURCE_ID, true);
-  },
+    enable(viewer) {
+      _enabled = true;
+      // No continuous-render hold: the discs are static geometry now, so the
+      // layer has no per-frame animator to keep the render loop alive for.
+      if (_dataSource) _dataSource.show = true;
+      overlayHost.setVisible(EARTHQUAKE_OVERLAY_SOURCE_ID, true);
+    },
 
-  disable(viewer) {
-    _enabled = false;
-    if (_dataSource) _dataSource.show = false;
-    overlayHost.clearSource(EARTHQUAKE_OVERLAY_SOURCE_ID);
-    overlayHost.setVisible(EARTHQUAKE_OVERLAY_SOURCE_ID, false);
-  },
+    disable(viewer) {
+      _enabled = false;
+      if (_dataSource) _dataSource.show = false;
+      overlayHost.clearSource(EARTHQUAKE_OVERLAY_SOURCE_ID);
+      overlayHost.setVisible(EARTHQUAKE_OVERLAY_SOURCE_ID, false);
+    },
 
-  async update(viewer, { signal } = {}) {
-    try {
-      const response = await fetch(API_URL, { signal });
-      if (!response.ok) {
-        _lastError = `USGS HTTP ${response.status}`;
-        console.warn(`[Data:Earthquakes] API returned ${response.status}`);
+    async update(viewer, { signal } = {}) {
+      try {
+        const response = await fetch(API_URL, { signal });
+        if (!response.ok) {
+          _lastError = `USGS HTTP ${response.status}`;
+          console.warn(`[Data:Earthquakes] API returned ${response.status}`);
+          return false;
+        }
+
+        const geojson = await response.json();
+        // Turned off while the feed was loading: leave the scene alone.
+        if (signal?.aborted) return false;
+        const rows = normalizeEarthquakeSnapshot(geojson);
+        if (!rows) {
+          _lastError = 'Malformed USGS response';
+          return false;
+        }
+
+        const nextEntities = [];
+        let count = 0;
+        const overlayEntries = [];
+
+        for (const {
+          stableId,
+          usgsId,
+          lon,
+          lat,
+          depthKm,
+          mag,
+          place,
+          time,
+        } of rows) {
+          count++;
+          const baseRadius = Math.pow(2, mag) * 1000;
+          const color = depthColor(depthKm || 0);
+          const isSignificant = mag >= 5.0;
+          const fillAlpha = isSignificant ? 0.4 : 0.3;
+          const outlineAlpha = isSignificant ? 1.0 : 0.8;
+
+          const position = Cesium.Cartesian3.fromDegrees(lon, lat);
+          nextEntities.push(
+            new Cesium.Entity({
+              id: `earthquake:${stableId}`,
+              position,
+              ellipse: {
+                // Static axes — see the module header. A CallbackProperty here
+                // re-tessellates the clamped ground geometry every frame.
+                semiMajorAxis: baseRadius,
+                semiMinorAxis: baseRadius,
+                material: new Cesium.ColorMaterialProperty(
+                  color.withAlpha(fillAlpha),
+                ),
+                outline: true,
+                outlineColor: color.withAlpha(outlineAlpha),
+                outlineWidth: isSignificant ? 3 : 2,
+                heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+              },
+              properties: {
+                // Analyst seam (additive): the USGS event id (e.g. "us7000abcd").
+                usgsId,
+                mag,
+                place,
+                time,
+                depth: depthKm,
+              },
+            }),
+          );
+          overlayEntries.push(
+            createEarthquakeOverlayEntry({
+              id: String(stableId),
+              position,
+              magnitude: mag,
+              accent: color.toCssColorString(),
+            }),
+          );
+        }
+
+        _dataSource.entities.removeAll();
+        for (const entity of nextEntities) _dataSource.entities.add(entity);
+        if (_enabled) {
+          overlayHost.setEntries(
+            EARTHQUAKE_OVERLAY_SOURCE_ID,
+            selectEarthquakeOverlayCohort(overlayEntries),
+            {
+              cohortLimit: EARTHQUAKE_OVERLAY_COHORT_LIMIT,
+              collisionCapacity: EARTHQUAKE_OVERLAY_COLLISION_CAPACITY,
+              moving: false,
+            },
+          );
+        }
+
+        _count = count;
+        _lastUpdate = Date.now();
+        _lastError = null;
+        console.log(`[Data:Earthquakes] Updated: ${_count} events (M2.5+)`);
+        return true;
+      } catch (e) {
+        // A refresh cancelled because the layer turned off is not a feed error.
+        if (signal?.aborted) return false;
+        console.warn('[Data:Earthquakes] Fetch error:', e);
+        _lastError = 'USGS network error';
         return false;
       }
+    },
 
-      const geojson = await response.json();
-      // Turned off while the feed was loading: leave the scene alone.
-      if (signal?.aborted) return false;
-      const rows = normalizeEarthquakeSnapshot(geojson);
-      if (!rows) {
-        _lastError = 'Malformed USGS response';
-        return false;
+    destroy(viewer) {
+      _enabled = false;
+      overlayHost.clearSource(EARTHQUAKE_OVERLAY_SOURCE_ID);
+      overlayHost.setVisible(EARTHQUAKE_OVERLAY_SOURCE_ID, false);
+      if (_dataSource) {
+        viewer.dataSources.remove(_dataSource, true);
+        _dataSource = null;
       }
+      _count = 0;
+      _lastUpdate = null;
+      _lastError = null;
+    },
 
-      const nextEntities = [];
-      let count = 0;
-      const overlayEntries = [];
-
-      for (const { stableId, usgsId, lon, lat, depthKm, mag, place, time } of rows) {
-        count++;
-        const baseRadius = Math.pow(2, mag) * 1000;
-        const color = depthColor(depthKm || 0);
-        const isSignificant = mag >= 5.0;
-        const fillAlpha = isSignificant ? 0.4 : 0.3;
-        const outlineAlpha = isSignificant ? 1.0 : 0.8;
-
-        const position = Cesium.Cartesian3.fromDegrees(lon, lat);
-        nextEntities.push(new Cesium.Entity({
-          id: `earthquake:${stableId}`,
-          position,
-          ellipse: {
-            // Static axes — see the module header. A CallbackProperty here
-            // re-tessellates the clamped ground geometry every frame.
-            semiMajorAxis: baseRadius,
-            semiMinorAxis: baseRadius,
-            material: new Cesium.ColorMaterialProperty(
-              color.withAlpha(fillAlpha)
-            ),
-            outline: true,
-            outlineColor: color.withAlpha(outlineAlpha),
-            outlineWidth: isSignificant ? 3 : 2,
-            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
-          },
-          properties: {
-            // Analyst seam (additive): the USGS event id (e.g. "us7000abcd").
-            usgsId,
-            mag,
-            place,
-            time,
-            depth: depthKm,
-          },
-        }));
-        overlayEntries.push(createEarthquakeOverlayEntry({
-          id: String(stableId),
-          position,
-          magnitude: mag,
-          accent: color.toCssColorString(),
-        }));
-      }
-
-      _dataSource.entities.removeAll();
-      for (const entity of nextEntities) _dataSource.entities.add(entity);
-      if (_enabled) {
-        overlayHost.setEntries(
-          EARTHQUAKE_OVERLAY_SOURCE_ID,
-          selectEarthquakeOverlayCohort(overlayEntries),
-          {
-            cohortLimit: EARTHQUAKE_OVERLAY_COHORT_LIMIT,
-            collisionCapacity: EARTHQUAKE_OVERLAY_COLLISION_CAPACITY,
-            moving: false,
-          },
+    /**
+     * Snapshot the layer's in-memory earthquake records as plain JSON-safe
+     * objects for the analyst query engine. On-demand only (called at most
+     * once per spoken query) — zero per-frame cost, no listeners, no caching.
+     * Returns [] while the layer is disabled or empty.
+     * @param {number} [maxCount=2000] - Maximum records to return (truncation).
+     * @returns {Array<Object>} See mapAnalystRecord for the record shape.
+     */
+    getAnalystRecords(maxCount = 2000) {
+      if (!_dataSource || !_dataSource.show) return [];
+      const entities = _dataSource.entities.values;
+      if (!entities.length) return [];
+      const limit = Number.isFinite(maxCount)
+        ? Math.max(1, Math.floor(maxCount))
+        : 2000;
+      const now = Cesium.JulianDate.now();
+      const result = [];
+      for (const entity of entities) {
+        if (result.length >= limit) break;
+        const cartesian = entity.position
+          ? entity.position.getValue(now)
+          : null;
+        const carto = cartesian
+          ? Cesium.Cartographic.fromCartesian(cartesian)
+          : null;
+        const p = entity.properties;
+        result.push(
+          mapAnalystRecord(
+            {
+              id: p?.usgsId?.getValue(now) ?? null,
+              mag: p?.mag?.getValue(now),
+              place: p?.place?.getValue(now),
+              time: p?.time?.getValue(now),
+              depth: p?.depth?.getValue(now),
+              lat: carto ? Cesium.Math.toDegrees(carto.latitude) : null,
+              lon: carto ? Cesium.Math.toDegrees(carto.longitude) : null,
+            },
+            result.length,
+          ),
         );
       }
+      return result;
+    },
 
-      _count = count;
-      _lastUpdate = Date.now();
-      _lastError = null;
-      console.log(`[Data:Earthquakes] Updated: ${_count} events (M2.5+)`);
-      return true;
-
-    } catch (e) {
-      // A refresh cancelled because the layer turned off is not a feed error.
-      if (signal?.aborted) return false;
-      console.warn('[Data:Earthquakes] Fetch error:', e);
-      _lastError = 'USGS network error';
-      return false;
-    }
-  },
-
-  destroy(viewer) {
-    _enabled = false;
-    overlayHost.clearSource(EARTHQUAKE_OVERLAY_SOURCE_ID);
-    overlayHost.setVisible(EARTHQUAKE_OVERLAY_SOURCE_ID, false);
-    if (_dataSource) {
-      viewer.dataSources.remove(_dataSource, true);
-      _dataSource = null;
-    }
-    _count = 0;
-    _lastUpdate = null;
-    _lastError = null;
-  },
-
-  /**
-   * Snapshot the layer's in-memory earthquake records as plain JSON-safe
-   * objects for the analyst query engine. On-demand only (called at most
-   * once per spoken query) — zero per-frame cost, no listeners, no caching.
-   * Returns [] while the layer is disabled or empty.
-   * @param {number} [maxCount=2000] - Maximum records to return (truncation).
-   * @returns {Array<Object>} See mapAnalystRecord for the record shape.
-   */
-  getAnalystRecords(maxCount = 2000) {
-    if (!_dataSource || !_dataSource.show) return [];
-    const entities = _dataSource.entities.values;
-    if (!entities.length) return [];
-    const limit = Number.isFinite(maxCount) ? Math.max(1, Math.floor(maxCount)) : 2000;
-    const now = Cesium.JulianDate.now();
-    const result = [];
-    for (const entity of entities) {
-      if (result.length >= limit) break;
-      const cartesian = entity.position ? entity.position.getValue(now) : null;
-      const carto = cartesian ? Cesium.Cartographic.fromCartesian(cartesian) : null;
-      const p = entity.properties;
-      result.push(mapAnalystRecord({
-        id: p?.usgsId?.getValue(now) ?? null,
-        mag: p?.mag?.getValue(now),
-        place: p?.place?.getValue(now),
-        time: p?.time?.getValue(now),
-        depth: p?.depth?.getValue(now),
-        lat: carto ? Cesium.Math.toDegrees(carto.latitude) : null,
-        lon: carto ? Cesium.Math.toDegrees(carto.longitude) : null,
-      }, result.length));
-    }
-    return result;
-  },
-
-  getStats() {
-    return {
-      count: _count,
-      lastUpdate: _lastUpdate,
-      error: _lastError,
-    };
-  },
+    getStats() {
+      return {
+        count: _count,
+        lastUpdate: _lastUpdate,
+        error: _lastError,
+      };
+    },
   };
   return layer;
 }

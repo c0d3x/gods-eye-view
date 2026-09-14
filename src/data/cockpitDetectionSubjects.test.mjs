@@ -17,7 +17,10 @@ const NEXT_SUBJECT = 'def456';
 
 const UI_SOURCE = readUiSource();
 // Both flight layers are built by the aircraft layer core.
-const AIRCRAFT_SOURCE = readFileSync(new URL('./aircraftLayerCore.js', import.meta.url), 'utf8');
+const AIRCRAFT_SOURCE = readFileSync(
+  new URL('./aircraftLayerCore.js', import.meta.url),
+  'utf8',
+);
 
 const LAYERS = [
   {
@@ -67,7 +70,11 @@ const LAYERS = [
 function candidateBillboard(icao24) {
   const offset = Number.parseInt(icao24.slice(-2), 16) || 1;
   return {
-    position: Cesium.Cartesian3.fromDegrees(-97.7 + offset * 0.001, 30.2, 10_668),
+    position: Cesium.Cartesian3.fromDegrees(
+      -97.7 + offset * 0.001,
+      30.2,
+      10_668,
+    ),
     color: Cesium.Color.WHITE,
     show: true,
   };
@@ -81,30 +88,51 @@ function candidateViewer() {
 }
 
 function candidateIds(layer) {
-  return layer.getDetectableObjects({ maxCount: 10 }).map((candidate) => candidate.sourceId);
+  return layer
+    .getDetectableObjects({ maxCount: 10 })
+    .map((candidate) => candidate.sourceId);
 }
 
 test('Cockpit lifecycle publishes one normalized aircraft identity to both detection owners', () => {
-  const dispatcher = /dispatchCockpitModeChanged\(active, info = null\) \{[\s\S]*?\n  \}/
-    .exec(UI_SOURCE)?.[0];
+  const dispatcher =
+    /dispatchCockpitModeChanged\(active, info = null\) \{[\s\S]*?\n  \}/.exec(
+      UI_SOURCE,
+    )?.[0];
   assert.ok(dispatcher, 'Cockpit event dispatcher is defined');
   assert.match(dispatcher, /info\?\.icao24/);
   assert.match(dispatcher, /\s*\.trim\(,?\s*\)\s*\.toLowerCase\(,?\s*\)/);
-  assert.match(dispatcher, /\['flights', 'military'\]\.includes\(info\?\.layerId\)/);
-  assert.match(dispatcher, /detail: \{ active: active === true, subjectId, layerId \}/);
-  assert.match(UI_SOURCE, /this\.dispatchCockpitModeChanged\(true, info\);/,
-    'entry and in-Cockpit handoff publish the active subject');
-  assert.match(UI_SOURCE, /this\.dispatchCockpitModeChanged\(false\);/,
-    'exit clears the active subject');
+  assert.match(
+    dispatcher,
+    /\['flights', 'military'\]\.includes\(info\?\.layerId\)/,
+  );
+  assert.match(
+    dispatcher,
+    /detail: \{ active: active === true, subjectId, layerId \}/,
+  );
+  assert.match(
+    UI_SOURCE,
+    /this\.dispatchCockpitModeChanged\(true, info\);/,
+    'entry and in-Cockpit handoff publish the active subject',
+  );
+  assert.match(
+    UI_SOURCE,
+    /this\.dispatchCockpitModeChanged\(false\);/,
+    'exit clears the active subject',
+  );
 
   for (const [name, source] of [['aircraft layer core', AIRCRAFT_SOURCE]]) {
-    const consumer = /^( *)function _applyCockpitState\(detail = \{\}\) \{[\s\S]*?\n\1\}/m
-      .exec(source)?.[0];
+    const consumer =
+      /^( *)function _applyCockpitState\(detail = \{\}\) \{[\s\S]*?\n\1\}/m.exec(
+        source,
+      )?.[0];
     assert.ok(consumer, `${name} Cockpit consumer is defined`);
     assert.match(consumer, /detail\?\.subjectId/);
     assert.match(consumer, /\.trim\(\)\s*\.toLowerCase\(\)/);
-    assert.doesNotMatch(consumer, /layerId/,
-      `${name} must also suppress a duplicate subject originating in the sibling AIR feed`);
+    assert.doesNotMatch(
+      consumer,
+      /layerId/,
+      `${name} must also suppress a duplicate subject originating in the sibling AIR feed`,
+    );
   }
 });
 
@@ -134,15 +162,27 @@ for (const fixture of LAYERS) {
       // becomes an ordinary nearby contact, and the new subject disappears.
       fixture.setSubject(true, NEXT_SUBJECT.toUpperCase());
       fixture.seed(SUBJECT);
-      assert.deepEqual(candidateIds(fixture.layer), [SUBJECT], 'handoff restores the old subject');
+      assert.deepEqual(
+        candidateIds(fixture.layer),
+        [SUBJECT],
+        'handoff restores the old subject',
+      );
       fixture.seed(NEXT_SUBJECT);
-      assert.deepEqual(candidateIds(fixture.layer), [], 'handoff suppresses the new subject');
+      assert.deepEqual(
+        candidateIds(fixture.layer),
+        [],
+        'handoff suppresses the new subject',
+      );
 
       // Exiting Cockpit restores the same candidate without touching Detection
       // mode or the aircraft layer.
       fixture.setSubject(false, null);
       fixture.seed(NEXT_SUBJECT);
-      assert.deepEqual(candidateIds(fixture.layer), [NEXT_SUBJECT], 'Cockpit exit restores the bracket');
+      assert.deepEqual(
+        candidateIds(fixture.layer),
+        [NEXT_SUBJECT],
+        'Cockpit exit restores the bracket',
+      );
     } finally {
       fixture.setSubject(false, null);
     }
@@ -165,7 +205,9 @@ test('a Cockpit subject duplicated across commercial and military feeds is suppr
             restore() {},
           };
         },
-        toDataURL() { return 'data:image/png;base64,cockpit-contact-test'; },
+        toDataURL() {
+          return 'data:image/png;base64,cockpit-contact-test';
+        },
       };
     },
   };
@@ -187,4 +229,3 @@ test('a Cockpit subject duplicated across commercial and military feeds is suppr
     else globalThis.document = realDocument;
   }
 });
-

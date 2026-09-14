@@ -48,10 +48,36 @@ const REFRESH_INTERVAL_MS = 600_000;
  * (hard cap MAX_AMBIENT_LABELS) — there are no per-band label knobs.
  */
 const LOD_LEVELS = [
-  { id: 'global', minHeight: 9000000, mode: 'cells', gridDegrees: 2.0, maxCells: 1800, labelDistance: 12000000 },
-  { id: 'regional', minHeight: 3000000, mode: 'cells', gridDegrees: 1.0, maxCells: 3600, labelDistance: 8500000 },
-  { id: 'local', minHeight: 750000, mode: 'detections', maxDetections: 2500, labelDistance: 4500000 },
-  { id: 'close', minHeight: 0, mode: 'detections', maxDetections: 3000, labelDistance: 1800000 },
+  {
+    id: 'global',
+    minHeight: 9000000,
+    mode: 'cells',
+    gridDegrees: 2.0,
+    maxCells: 1800,
+    labelDistance: 12000000,
+  },
+  {
+    id: 'regional',
+    minHeight: 3000000,
+    mode: 'cells',
+    gridDegrees: 1.0,
+    maxCells: 3600,
+    labelDistance: 8500000,
+  },
+  {
+    id: 'local',
+    minHeight: 750000,
+    mode: 'detections',
+    maxDetections: 2500,
+    labelDistance: 4500000,
+  },
+  {
+    id: 'close',
+    minHeight: 0,
+    mode: 'detections',
+    maxDetections: 3000,
+    labelDistance: 1800000,
+  },
 ];
 const LOD_CHECK_MS = 650;
 /** +/-10% hysteresis on LOD band edges so slow zooms don't thrash rebuilds. */
@@ -106,7 +132,10 @@ const scratchWindowCoord = new Cesium.Cartesian2();
  */
 export function mapAnalystRecord(fire) {
   const num = (v) => (Number.isFinite(v) ? v : null);
-  const text = (v) => { const t = String(v ?? '').trim(); return t || null; };
+  const text = (v) => {
+    const t = String(v ?? '').trim();
+    return t || null;
+  };
   return {
     id: `FIRE-${String(fire?.index ?? 0).padStart(5, '0')}`,
     lat: num(fire?.lat),
@@ -129,9 +158,8 @@ export function createFirmsHeatmapLayer({
     clearSource: clearOverlaySource,
     hitTest: hitTestWorldOverlay,
   },
-  screenSpaceEventHandlerFactory = (viewer) => (
-    new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas)
-  ),
+  screenSpaceEventHandlerFactory = (viewer) =>
+    new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas),
 }) {
   let _viewer = null;
   let _dataSource = null;
@@ -301,7 +329,9 @@ export function createFirmsHeatmapLayer({
      */
     getStats() {
       const now = Date.now();
-      const staleText = _lastUpdate ? `STALE · cached ${formatAge(now - _lastUpdate) || '<1h'}` : 'STALE';
+      const staleText = _lastUpdate
+        ? `STALE · cached ${formatAge(now - _lastUpdate) || '<1h'}`
+        : 'STALE';
       let loadingLabel = '';
       if (_loading) {
         loadingLabel = _fires.length ? 'refreshing...' : 'loading...';
@@ -323,7 +353,7 @@ export function createFirmsHeatmapLayer({
         // A missing key is its own state in the loading banner, not a failure.
         keyRequired: _keyRequired,
         keySetupId: 'firms',
-        error: _keyRequired ? 'KEY REQUIRED' : (_stale ? staleText : _error),
+        error: _keyRequired ? 'KEY REQUIRED' : _stale ? staleText : _error,
         loadingLabel,
       };
     },
@@ -383,7 +413,9 @@ export function createFirmsHeatmapLayer({
      */
     getAnalystRecords(maxCount = 2000) {
       if (!_enabled || !_firesByFrp.length) return [];
-      const limit = Number.isFinite(maxCount) ? Math.max(1, Math.floor(maxCount)) : 2000;
+      const limit = Number.isFinite(maxCount)
+        ? Math.max(1, Math.floor(maxCount))
+        : 2000;
       const result = [];
       for (const fire of _firesByFrp) {
         result.push(mapAnalystRecord(fire));
@@ -424,12 +456,17 @@ export function createFirmsHeatmapLayer({
     _loading = true;
 
     try {
-      const response = await fetch(FIRMS_API_URL, { cache: 'no-store', signal });
+      const response = await fetch(FIRMS_API_URL, {
+        cache: 'no-store',
+        signal,
+      });
       if (!response.ok) {
         let payload = null;
         try {
           payload = await response.json();
-        } catch { /* non-JSON error body — fall through to the generic error */ }
+        } catch {
+          /* non-JSON error body — fall through to the generic error */
+        }
         if (response.status === 503 && payload?.error === 'no_key') {
           _keyRequired = true;
           _error = null;
@@ -452,7 +489,9 @@ export function createFirmsHeatmapLayer({
       _firesByFrp = [..._fires].sort((a, b) => b.frp - a.frp);
       _count = _fires.length;
       // Data age, not response age: a stale proxy payload truthfully reads old.
-      _lastUpdate = Number.isFinite(payload?.fetchedAt) ? payload.fetchedAt : Date.now();
+      _lastUpdate = Number.isFinite(payload?.fetchedAt)
+        ? payload.fetchedAt
+        : Date.now();
       // Settle the previous selection BEFORE the LOD rebuild. renderCurrentLod
       // runs refreshContextRegistrations(), which deletes every context record
       // not in the new top-N — including the one the store still points at.
@@ -505,7 +544,8 @@ export function createFirmsHeatmapLayer({
     const lodIndex = selectLodIndex(cameraHeight());
     const lod = LOD_LEVELS[lodIndex];
     const viewRect = computeViewRect();
-    if (!force && lodIndex === _currentLodIndex && !viewChangedEnough(viewRect)) return false;
+    if (!force && lodIndex === _currentLodIndex && !viewChangedEnough(viewRect))
+      return false;
     _currentLodIndex = lodIndex;
     _currentLodId = lod.id;
     _lastViewRect = viewRect ? Cesium.Rectangle.clone(viewRect) : null;
@@ -539,7 +579,10 @@ export function createFirmsHeatmapLayer({
         const lonCell = Math.floor(fire.lon / gridDegrees) * gridDegrees;
         const key = `${latCell.toFixed(3)}:${lonCell.toFixed(3)}`;
         // confidence is normalized 0..1 — weight ×4 preserves the old 0..100×0.04 scale.
-        const intensity = Math.max(1, fire.frp * 0.18 + fire.confidence * 4 + fire.brightness * 0.01);
+        const intensity = Math.max(
+          1,
+          fire.frp * 0.18 + fire.confidence * 4 + fire.brightness * 0.01,
+        );
         const existing = cells.get(key) || {
           latCell,
           lonCell,
@@ -607,7 +650,7 @@ export function createFirmsHeatmapLayer({
             cell.lonCell,
             cell.latCell,
             cell.lonCell + lod.gridDegrees,
-            cell.latCell + lod.gridDegrees
+            cell.latCell + lod.gridDegrees,
           ),
           material: new Cesium.ColorMaterialProperty(color),
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
@@ -745,9 +788,8 @@ export function createFirmsHeatmapLayer({
     // Shared with the sprite pass (fireHorizonOccluder) so cards and sprites
     // never disagree about which hemisphere a detection is on.
     const occluder = fireHorizonOccluder();
-    const beyondHorizon = (position) => (
-      occluder ? occluder.isPointVisible(position) !== true : false
-    );
+    const beyondHorizon = (position) =>
+      occluder ? occluder.isPointVisible(position) !== true : false;
     _fireByCardId.clear();
 
     if (_selectedFire) {
@@ -757,7 +799,7 @@ export function createFirmsHeatmapLayer({
       const screen = Cesium.SceneTransforms.worldToWindowCoordinates(
         scene,
         firePosition(_selectedFire),
-        scratchWindowCoord
+        scratchWindowCoord,
       );
       // Seed the accepted list so ambient cards keep clear of the detail card.
       // A selected fire behind the limb is not painted, so it must not reserve
@@ -781,11 +823,16 @@ export function createFirmsHeatmapLayer({
       const screen = Cesium.SceneTransforms.worldToWindowCoordinates(
         scene,
         candidate.position,
-        scratchWindowCoord
+        scratchWindowCoord,
       );
       if (!screen) continue; // projection failed (e.g. behind camera) — drop silently
-      if (screen.x < -LABEL_VIEW_MARGIN_PX || screen.x > width + LABEL_VIEW_MARGIN_PX
-        || screen.y < -LABEL_VIEW_MARGIN_PX || screen.y > height + LABEL_VIEW_MARGIN_PX) continue;
+      if (
+        screen.x < -LABEL_VIEW_MARGIN_PX ||
+        screen.x > width + LABEL_VIEW_MARGIN_PX ||
+        screen.y < -LABEL_VIEW_MARGIN_PX ||
+        screen.y > height + LABEL_VIEW_MARGIN_PX
+      )
+        continue;
       if (!screenSeparated(accepted, screen)) continue;
       accepted.push({ x: screen.x, y: screen.y });
       ambientCount += 1;
@@ -842,9 +889,13 @@ export function createFirmsHeatmapLayer({
         const pickedId = resolvePickId(picked);
         if (pickedId && isOwnedByOtherLayer(id, pickedId)) return;
       }
-      const cardHit = overlayHost.hitTest?.(click.position?.x, click.position?.y, {
-        sourceId: FIRMS_OVERLAY_SOURCE_ID,
-      });
+      const cardHit = overlayHost.hitTest?.(
+        click.position?.x,
+        click.position?.y,
+        {
+          sourceId: FIRMS_OVERLAY_SOURCE_ID,
+        },
+      );
       if (cardHit) {
         const carded = _fireByCardId.get(cardHit.entryId);
         if (carded) selectAndFocusFire(carded);
@@ -1053,7 +1104,9 @@ export function createFirmsHeatmapLayer({
     if (scene && !scene.isDestroyed?.()) {
       try {
         if (_billboards) scene.primitives.remove(_billboards);
-      } catch { /* already torn down */ }
+      } catch {
+        /* already torn down */
+      }
     }
     _billboards = null;
     overlayHost.clearSource(FIRMS_OVERLAY_SOURCE_ID);
@@ -1069,7 +1122,9 @@ export function createFirmsHeatmapLayer({
    * @returns {?Cesium.EllipsoidalOccluder}
    */
   function fireHorizonOccluder() {
-    const camera = _viewer?.camera?.positionWC ? _viewer.camera : _viewer?.scene?.camera;
+    const camera = _viewer?.camera?.positionWC
+      ? _viewer.camera
+      : _viewer?.scene?.camera;
     if (!camera?.positionWC) return null;
     return horizonOccluder(camera);
   }
@@ -1087,7 +1142,9 @@ export function createFirmsHeatmapLayer({
   }
 
   function cameraHeight() {
-    return _viewer?.camera?.positionCartographic?.height ?? Number.POSITIVE_INFINITY;
+    return (
+      _viewer?.camera?.positionCartographic?.height ?? Number.POSITIVE_INFINITY
+    );
   }
 
   /** Raw LOD index for a camera height (0 = global ... 3 = close). */
@@ -1108,9 +1165,17 @@ export function createFirmsHeatmapLayer({
     if (_currentLodIndex < 0 || raw === _currentLodIndex) return raw;
     let index = _currentLodIndex;
     // Zooming out: enter a coarser band only after clearing its floor by +10%.
-    while (index > raw && height >= LOD_LEVELS[index - 1].minHeight * (1 + LOD_HYSTERESIS)) index -= 1;
+    while (
+      index > raw &&
+      height >= LOD_LEVELS[index - 1].minHeight * (1 + LOD_HYSTERESIS)
+    )
+      index -= 1;
     // Zooming in: leave the current band only after dropping 10% below its floor.
-    while (index < raw && height <= LOD_LEVELS[index].minHeight * (1 - LOD_HYSTERESIS)) index += 1;
+    while (
+      index < raw &&
+      height <= LOD_LEVELS[index].minHeight * (1 - LOD_HYSTERESIS)
+    )
+      index += 1;
     return index;
   }
 
@@ -1119,7 +1184,7 @@ export function createFirmsHeatmapLayer({
     try {
       const rect = _viewer?.camera?.computeViewRectangle(
         _viewer?.scene?.globe?.ellipsoid,
-        scratchViewRect
+        scratchViewRect,
       );
       return rect || null;
     } catch {
@@ -1148,7 +1213,10 @@ export function createFirmsHeatmapLayer({
     const latShift = Math.abs(center.latitude - lastCenter.latitude);
     let lonShift = Math.abs(center.longitude - lastCenter.longitude);
     if (lonShift > Math.PI) lonShift = Cesium.Math.TWO_PI - lonShift;
-    return latShift > lastHeight * VIEW_PADDING * 0.6 || lonShift > lastWidth * VIEW_PADDING * 0.6;
+    return (
+      latShift > lastHeight * VIEW_PADDING * 0.6 ||
+      lonShift > lastWidth * VIEW_PADDING * 0.6
+    );
   }
 
   function installLodWatcher() {
@@ -1159,7 +1227,10 @@ export function createFirmsHeatmapLayer({
     if (!_moveEndSettleRemover) {
       _moveEndSettleRemover = _viewer.camera.moveEnd.addEventListener(() => {
         if (!_enabled) return;
-        setTimeout(() => governorRequestRender('firms-lod-settle'), LOD_CHECK_MS + 40);
+        setTimeout(
+          () => governorRequestRender('firms-lod-settle'),
+          LOD_CHECK_MS + 40,
+        );
       });
     }
     _preRenderRemover = _viewer.scene.preRender.addEventListener(() => {
@@ -1174,9 +1245,11 @@ export function createFirmsHeatmapLayer({
       // Idle camera: two scratch compares and out — no view-rect math, no
       // aggregation, no allocation while the user is parked.
       const camera = _viewer.camera;
-      if (_camSnapValid
-        && Cesium.Cartesian3.equalsEpsilon(camera.positionWC, _camPos, 0, 0.5)
-        && Cesium.Cartesian3.equalsEpsilon(camera.directionWC, _camDir, 0, 1e-7)) {
+      if (
+        _camSnapValid &&
+        Cesium.Cartesian3.equalsEpsilon(camera.positionWC, _camPos, 0, 0.5) &&
+        Cesium.Cartesian3.equalsEpsilon(camera.directionWC, _camDir, 0, 1e-7)
+      ) {
         return;
       }
       Cesium.Cartesian3.clone(camera.positionWC, _camPos);
@@ -1189,7 +1262,8 @@ export function createFirmsHeatmapLayer({
       // idle-gate + LOD_CHECK_MS throttle above: a parked camera costs
       // nothing, a moving one pays one ≤maxDetections show-flip walk at
       // ~1.5 Hz.
-      const rebuilt = (_fires.length && !_loading) ? renderCurrentLod(false) : false;
+      const rebuilt =
+        _fires.length && !_loading ? renderCurrentLod(false) : false;
       if (!rebuilt) refreshHorizonCulling();
     });
   }
@@ -1251,7 +1325,8 @@ function boundsContainPoint(bounds, lat, lon) {
 
 /** Cell-rectangle/bounds intersection test in degrees, anti-meridian aware. */
 function cellIntersectsBounds(cell, gridDegrees, bounds) {
-  if (cell.latCell + gridDegrees < bounds.south || cell.latCell > bounds.north) return false;
+  if (cell.latCell + gridDegrees < bounds.south || cell.latCell > bounds.north)
+    return false;
   const west = cell.lonCell;
   const east = cell.lonCell + gridDegrees;
   if (bounds.wraps) return east >= bounds.west || west <= bounds.east;
@@ -1259,7 +1334,9 @@ function cellIntersectsBounds(cell, gridDegrees, bounds) {
 }
 
 function heatScore(cell) {
-  return cell.intensity + cell.count * 0.8 + cell.night * 0.6 + cell.maxFrp * 0.12;
+  return (
+    cell.intensity + cell.count * 0.8 + cell.night * 0.6 + cell.maxFrp * 0.12
+  );
 }
 
 function heatColor(value, alpha) {
@@ -1275,7 +1352,10 @@ function heatColor(value, alpha) {
  * @returns {{name: string, color: Cesium.Color}}
  */
 function detectionColorStop(fire) {
-  const heat = Math.min(1, Math.sqrt(Math.max(0, fire.frp) / 150) * 0.85 + fire.confidence * 0.15);
+  const heat = Math.min(
+    1,
+    Math.sqrt(Math.max(0, fire.frp) / 150) * 0.85 + fire.confidence * 0.15,
+  );
   if (heat > 0.72) return DETECTION_COLOR_STOPS[0];
   if (heat > 0.42) return DETECTION_COLOR_STOPS[1];
   return DETECTION_COLOR_STOPS[2];
@@ -1283,7 +1363,10 @@ function detectionColorStop(fire) {
 
 /** FRP → core marker pixel size, clamped to 8..28px. */
 function frpPixelSize(frp) {
-  return Math.max(8, Math.min(28, Math.round(8 + Math.sqrt(Math.max(0, frp)) * 2)));
+  return Math.max(
+    8,
+    Math.min(28, Math.round(8 + Math.sqrt(Math.max(0, frp)) * 2)),
+  );
 }
 
 /** Quantize a core size to a 2px bucket so the sprite cache stays tiny. */
@@ -1316,7 +1399,14 @@ function glowSprite(stop, corePx) {
     Math.round(stop.color.green * 255),
     Math.round(stop.color.blue * 255),
   ].join(',');
-  const gradient = context.createRadialGradient(radius, radius, 0, radius, radius, radius);
+  const gradient = context.createRadialGradient(
+    radius,
+    radius,
+    0,
+    radius,
+    radius,
+    radius,
+  );
   gradient.addColorStop(0, 'rgba(255,255,235,0.95)');
   gradient.addColorStop(0.25, `rgba(${rgb},0.9)`);
   gradient.addColorStop(0.55, `rgba(${rgb},0.35)`);
@@ -1365,7 +1455,11 @@ export function fireCullPosition(fire) {
   const position = firePosition(fire);
   if (fire.positionHeight >= CULL_LIFT_THRESHOLD_M) return position;
   if (!fire.cullPosition) {
-    fire.cullPosition = Cesium.Cartesian3.fromDegrees(fire.lon, fire.lat, CULL_LIFT_M);
+    fire.cullPosition = Cesium.Cartesian3.fromDegrees(
+      fire.lon,
+      fire.lat,
+      CULL_LIFT_M,
+    );
   }
   return fire.cullPosition;
 }
@@ -1453,7 +1547,9 @@ export function buildSelectedFireCard(fire, nowMs) {
     if (age) meta.push(`${age} ago`);
   }
   const sat = satelliteShortName(fire.satellite);
-  meta.push(sat ? `${fire.sensor || 'VIIRS'} ${sat}` : (fire.sensor || 'sensor n/a'));
+  meta.push(
+    sat ? `${fire.sensor || 'VIIRS'} ${sat}` : fire.sensor || 'sensor n/a',
+  );
   return {
     id: `selected-fire:${fireDetectionKey(fire)}`,
     actionable: true,

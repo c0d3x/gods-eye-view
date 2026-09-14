@@ -211,11 +211,14 @@ export function measureTrackLabel(primary, micro, charWidth) {
  */
 export function rectIntersectsAny(rect, obstacles, padding = 0) {
   if (!rect || !Array.isArray(obstacles)) return false;
-  return obstacles.some((obstacle) => obstacle
-    && rect.x < obstacle.x + obstacle.w + padding
-    && rect.x + rect.w + padding > obstacle.x
-    && rect.y < obstacle.y + obstacle.h + padding
-    && rect.y + rect.h + padding > obstacle.y);
+  return obstacles.some(
+    (obstacle) =>
+      obstacle &&
+      rect.x < obstacle.x + obstacle.w + padding &&
+      rect.x + rect.w + padding > obstacle.x &&
+      rect.y < obstacle.y + obstacle.h + padding &&
+      rect.y + rect.h + padding > obstacle.y,
+  );
 }
 
 /**

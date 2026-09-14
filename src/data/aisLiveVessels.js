@@ -5,7 +5,10 @@ import {
   clearSelectedEntityContextForLayer,
 } from './contextStore.js';
 import { createTrail } from './trailRenderer.js';
-import { screenProjectedRotation, cameraPoseSignature } from './iconOrientation.js';
+import {
+  screenProjectedRotation,
+  cameraPoseSignature,
+} from './iconOrientation.js';
 import { formatKnots } from './detectionDraw.js';
 import {
   isOwnedByOtherLayer,
@@ -44,7 +47,10 @@ import {
   getFocusTarget,
 } from './focusDeemphasis.js';
 import { requestWorldFocus } from '../worldFocus.js';
-import { holdContinuousRender, releaseContinuousRender } from '../renderGovernor.js';
+import {
+  holdContinuousRender,
+  releaseContinuousRender,
+} from '../renderGovernor.js';
 
 const FOCUS_EVIDENCE_DEV = import.meta.env?.DEV === true;
 
@@ -129,7 +135,12 @@ const AIS_HEALTHY_STATUSES = new Set(['live', 'open']);
  * surfaced even while cached vessels are still drawn: rows retained from
  * before the outage must never make a dead feed read as a healthy one.
  */
-const AIS_DEGRADED_STATUSES = new Set(['stale', 'reconnecting', 'down', 'auth-failed']);
+const AIS_DEGRADED_STATUSES = new Set([
+  'stale',
+  'reconnecting',
+  'down',
+  'auth-failed',
+]);
 
 /**
  * Seconds until the server's next reconnect attempt, or 0 when none is
@@ -164,7 +175,8 @@ function describeDegradedAisFeed(status, payload) {
       : 'feed silent — no AIS data';
   }
   const attempt = Number(payload?.reconnectAttempt);
-  const suffix = Number.isFinite(attempt) && attempt >= 1 ? ` (attempt ${attempt})` : '';
+  const suffix =
+    Number.isFinite(attempt) && attempt >= 1 ? ` (attempt ${attempt})` : '';
   return status === 'down'
     ? `feed down — retrying slowly${suffix}`
     : `reconnecting to feed…${suffix}`;
@@ -181,7 +193,8 @@ function describeDegradedAisFeed(status, payload) {
  * @returns {string|null} A short reason for the chip, or null if healthy.
  */
 export function deriveAisFeedError(payload, acceptedRowCount) {
-  const status = payload && typeof payload.status === 'string' ? payload.status : null;
+  const status =
+    payload && typeof payload.status === 'string' ? payload.status : null;
   // A feed the server reports as not delivering outranks the row count: the
   // cached vessels on screen are exactly what makes an outage invisible.
   if (status && AIS_DEGRADED_STATUSES.has(status)) {
@@ -194,9 +207,14 @@ export function deriveAisFeedError(payload, acceptedRowCount) {
       : 'awaiting first AIS message…';
   }
   if (!status) return null;
-  const detail = typeof payload.error === 'string' && payload.error.trim() ? payload.error.trim() : '';
+  const detail =
+    typeof payload.error === 'string' && payload.error.trim()
+      ? payload.error.trim()
+      : '';
   const reason = AIS_STATUS_REASON[status] || 'feed unavailable';
-  return detail && !AIS_STATUS_REASON[status] ? `${reason} (${detail})` : reason;
+  return detail && !AIS_STATUS_REASON[status]
+    ? `${reason} (${detail})`
+    : reason;
 }
 
 /** True when a raw AIS row can enter the production vessel normalizer. */
@@ -214,7 +232,8 @@ function hasUsableVesselCoordinates(row) {
 export function classifyAisFeedSnapshot(payload) {
   const rawRows = Array.isArray(payload?.rows) ? payload.rows : [];
   const acceptedRows = rawRows.filter(hasUsableVesselCoordinates);
-  const transportStatus = typeof payload?.status === 'string' ? payload.status : null;
+  const transportStatus =
+    typeof payload?.status === 'string' ? payload.status : null;
   const lastMessageAt = payload?.lastMessageAt ?? null;
   const acceptedRowCount = acceptedRows.length;
   return {
@@ -224,8 +243,9 @@ export function classifyAisFeedSnapshot(payload) {
     acceptedRows,
     rawRowCount: rawRows.length,
     acceptedRowCount,
-    error: deriveAisFeedError(payload, acceptedRowCount)
-      || (acceptedRowCount === 0 ? 'awaiting usable AIS positions…' : null),
+    error:
+      deriveAisFeedError(payload, acceptedRowCount) ||
+      (acceptedRowCount === 0 ? 'awaiting usable AIS positions…' : null),
   };
 }
 
@@ -243,7 +263,10 @@ export function classifyAisFeedSnapshot(payload) {
  */
 export function mapAnalystRecord(record) {
   const num = (v) => (Number.isFinite(v) ? v : null);
-  const text = (v) => { const t = String(v ?? '').trim(); return t || null; };
+  const text = (v) => {
+    const t = String(v ?? '').trim();
+    return t || null;
+  };
   const mmsi = text(record?.mmsi);
   const name = text(record?.name);
   return {
@@ -298,9 +321,7 @@ export function reduceVesselSelection(input = {}) {
   const gesture = input.gesture || 'click';
 
   if (gesture === 'escape') {
-    return selectedMmsi
-      ? { action: 'deselect' }
-      : { action: 'none' };
+    return selectedMmsi ? { action: 'deselect' } : { action: 'none' };
   }
   if (gesture !== 'click') {
     return { action: 'none' };
@@ -311,9 +332,7 @@ export function reduceVesselSelection(input = {}) {
     }
     return { action: 'select' };
   }
-  return selectedMmsi
-    ? { action: 'deselect' }
-    : { action: 'none' };
+  return selectedMmsi ? { action: 'deselect' } : { action: 'none' };
 }
 
 function normalizeSelectionMmsi(value) {
@@ -372,11 +391,15 @@ const aisLiveVesselsLayer = {
           _geoidReady = true;
           refloorVesselRecords();
         })
-        .catch(() => { /* grid failed to load — anchors stay at ellipsoid 0 */ });
+        .catch(() => {
+          /* grid failed to load — anchors stay at ellipsoid 0 */
+        });
     }
     // Pick-ownership (H2): vessel picks carry the record OBJECT as their id;
     // the registry resolver reduces it to the record's mmsi (a string key).
-    registerPickOwner('ais-live-vessels', (pickedId) => state.vesselMap.has(pickedId));
+    registerPickOwner('ais-live-vessels', (pickedId) =>
+      state.vesselMap.has(pickedId),
+    );
     restoreSpriteOrderOnEnable('ais', activeViewer);
     return loadLivePositions(activeViewer);
   },
@@ -441,7 +464,12 @@ const aisLiveVesselsLayer = {
     }
     if (!record) {
       const lower = q.toLowerCase();
-      record = records.find((r) => String(r.name || '').toLowerCase().includes(lower)) || null;
+      record =
+        records.find((r) =>
+          String(r.name || '')
+            .toLowerCase()
+            .includes(lower),
+        ) || null;
     }
     if (!record) return null;
 
@@ -468,18 +496,26 @@ const aisLiveVesselsLayer = {
    */
   getNearby(centerCartesian, rangeM, maxCount = 25) {
     const records = state.vesselRecords;
-    if (!centerCartesian || !Array.isArray(records) || !records.length) return [];
+    if (!centerCartesian || !Array.isArray(records) || !records.length)
+      return [];
     const range = Number.isFinite(rangeM) && rangeM > 0 ? rangeM : Infinity;
-    const cap = Number.isFinite(maxCount) && maxCount > 0 ? Math.floor(maxCount) : 25;
+    const cap =
+      Number.isFinite(maxCount) && maxCount > 0 ? Math.floor(maxCount) : 25;
 
     const entries = [];
     for (const record of records) {
-      if (!Number.isFinite(record.lat) || !Number.isFinite(record.lon)) continue;
+      if (!Number.isFinite(record.lat) || !Number.isFinite(record.lon))
+        continue;
       const position = record.billboard?.position || record.position;
       if (!position) continue;
       const distanceM = Cesium.Cartesian3.distance(centerCartesian, position);
       if (!Number.isFinite(distanceM) || distanceM > range) continue;
-      entries.push({ mmsi: record.mmsi, name: record.name, position, distanceM });
+      entries.push({
+        mmsi: record.mmsi,
+        name: record.name,
+        position,
+        distanceM,
+      });
     }
     entries.sort((a, b) => a.distanceM - b.distanceM);
     return entries.slice(0, cap);
@@ -502,7 +538,8 @@ const aisLiveVesselsLayer = {
    *   holds no data and therefore cannot answer.
    */
   hasContact(mmsi) {
-    if (!state.enabled || !state.vesselMap || state.vesselMap.size === 0) return null;
+    if (!state.enabled || !state.vesselMap || state.vesselMap.size === 0)
+      return null;
     if (!mmsi) return false;
     return state.vesselMap.has(String(mmsi).trim());
   },
@@ -511,7 +548,8 @@ const aisLiveVesselsLayer = {
     const result = [];
     const records = state.vesselRecords;
     if (!Array.isArray(records)) return result;
-    const cap = Number.isFinite(maxCount) && maxCount > 0 ? Math.floor(maxCount) : 800;
+    const cap =
+      Number.isFinite(maxCount) && maxCount > 0 ? Math.floor(maxCount) : 800;
 
     for (const record of records) {
       if (result.length >= cap) break;
@@ -540,7 +578,9 @@ const aisLiveVesselsLayer = {
     if (!state.enabled) return [];
     const records = state.vesselRecords;
     if (!Array.isArray(records) || !records.length) return [];
-    const limit = Number.isFinite(maxCount) ? Math.max(1, Math.floor(maxCount)) : 2000;
+    const limit = Number.isFinite(maxCount)
+      ? Math.max(1, Math.floor(maxCount))
+      : 2000;
     const result = [];
     for (const record of records) {
       if (result.length >= limit) break;
@@ -602,7 +642,12 @@ const aisLiveVesselsLayer = {
    * @returns {Array<{position: Cesium.Cartesian3, id: string, type: string, skipLabel: boolean}>}
    */
   getDetectableObjects(options = {}) {
-    if (!state.enabled || !state.billboardCollection || !state.billboardCollection.show) return [];
+    if (
+      !state.enabled ||
+      !state.billboardCollection ||
+      !state.billboardCollection.show
+    )
+      return [];
     const records = state.vesselRecords;
     if (!Array.isArray(records) || !records.length) return [];
 
@@ -617,7 +662,7 @@ const aisLiveVesselsLayer = {
     const selected = state.selectedRecord;
     const result = [];
     for (let idx = 0; idx < records.length; idx += 1) {
-      if (((idx - start) % stride) !== 0) continue;
+      if ((idx - start) % stride !== 0) continue;
       const record = records[idx];
       if (record.billboard && !record.billboard.show) continue;
       const position = record.billboard?.position || record.position;
@@ -628,7 +673,9 @@ const aisLiveVesselsLayer = {
         id: record.name || record.mmsi || 'VESSEL',
         type: 'SEA',
         skipLabel: record === selected,
-        klass: record.type ? String(record.type).toUpperCase().slice(0, 14) : undefined,
+        klass: record.type
+          ? String(record.type).toUpperCase().slice(0, 14)
+          : undefined,
         metric: formatKnots(record.speed), // record.speed is knots
       });
       if (result.length >= maxCount) break;
@@ -636,12 +683,14 @@ const aisLiveVesselsLayer = {
     return result;
   },
 
-  ...(FOCUS_EVIDENCE_DEV ? {
-    __focusEvidence: Object.freeze({
-      setVessels: _setFocusEvidenceVessels,
-      snapshot: _focusEvidenceVesselSnapshot,
-    }),
-  } : {}),
+  ...(FOCUS_EVIDENCE_DEV
+    ? {
+        __focusEvidence: Object.freeze({
+          setVessels: _setFocusEvidenceVessels,
+          snapshot: _focusEvidenceVesselSnapshot,
+        }),
+      }
+    : {}),
 
   getStats() {
     const waitingForFirstPosition = state.firstConnectPhase === 'loading';
@@ -654,7 +703,8 @@ const aisLiveVesselsLayer = {
         : state.loadingLabel,
       error: state.error,
       stale: state.stale,
-      status: state.firstConnectPhase === 'unavailable' ? 'unavailable' : undefined,
+      status:
+        state.firstConnectPhase === 'unavailable' ? 'unavailable' : undefined,
       transportStatus: state.transportStatus,
       lastMessageAt: state.lastMessageAt,
       rawRowCount: state.rawRowCount,
@@ -752,7 +802,10 @@ function _focusEvidenceVesselSnapshot() {
   return state.vesselRecords.map((record) => {
     const bb = record.billboard;
     const screen = bb?.position
-      ? Cesium.SceneTransforms.worldToWindowCoordinates(state.viewer.scene, bb.position)
+      ? Cesium.SceneTransforms.worldToWindowCoordinates(
+          state.viewer.scene,
+          bb.position,
+        )
       : null;
     return {
       id: record.mmsi,
@@ -796,10 +849,11 @@ function beginAisSession() {
 function scheduleFirstConnectExpiry(sessionId, delayMs) {
   state.firstConnectTimer = _aisRuntime.setTimeout(() => {
     if (
-      !state.enabled
-      || state.sessionId !== sessionId
-      || state.firstConnectPhase !== 'loading'
-    ) return;
+      !state.enabled ||
+      state.sessionId !== sessionId ||
+      state.firstConnectPhase !== 'loading'
+    )
+      return;
     const remainingMs = state.firstConnectDeadline - _aisRuntime.now();
     if (remainingMs > 0) {
       scheduleFirstConnectExpiry(sessionId, remainingMs);
@@ -847,9 +901,13 @@ async function loadLivePositions(viewer) {
     const url = liveApiUrl();
     // Combine the layer's teardown-abort with a hard timeout so a hung upstream
     // can't wedge the poll indefinitely (parity with the track fetch + flights).
-    const signal = typeof AbortSignal.any === 'function'
-      ? AbortSignal.any([requestController.signal, AbortSignal.timeout(10000)])
-      : requestController.signal;
+    const signal =
+      typeof AbortSignal.any === 'function'
+        ? AbortSignal.any([
+            requestController.signal,
+            AbortSignal.timeout(10000),
+          ])
+        : requestController.signal;
     const response = await fetch(url, {
       signal,
       cache: 'no-store',
@@ -862,9 +920,13 @@ async function loadLivePositions(viewer) {
       try {
         const errPayload = await response.json();
         if (!ownsAisRequest(requestController, requestSessionId)) return;
-        reason = deriveAisFeedError(errPayload, 0)
-          || (typeof errPayload?.error === 'string' && errPayload.error.trim()) || reason;
-      } catch { /* non-JSON body — keep the HTTP status reason */ }
+        reason =
+          deriveAisFeedError(errPayload, 0) ||
+          (typeof errPayload?.error === 'string' && errPayload.error.trim()) ||
+          reason;
+      } catch {
+        /* non-JSON body — keep the HTTP status reason */
+      }
       throw new Error(reason);
     }
 
@@ -872,16 +934,21 @@ async function loadLivePositions(viewer) {
     if (!ownsAisRequest(requestController, requestSessionId)) return;
     applyAisFeedSnapshot(viewer, payload);
   } catch (error) {
-    if (ownsAisRequest(requestController, requestSessionId) && error?.name !== 'AbortError') {
+    if (
+      ownsAisRequest(requestController, requestSessionId) &&
+      error?.name !== 'AbortError'
+    ) {
       markAisUnavailable(error?.message || 'AIS live load failed');
       console.warn('[Data:ais-live-vessels]', state.error, error);
     }
   } finally {
-    if (state.abort === requestController && state.sessionId === requestSessionId) {
+    if (
+      state.abort === requestController &&
+      state.sessionId === requestSessionId
+    ) {
       state.loading = false;
-      state.loadingLabel = state.firstConnectPhase === 'loading'
-        ? AIS_FIRST_CONNECT_LABEL
-        : '';
+      state.loadingLabel =
+        state.firstConnectPhase === 'loading' ? AIS_FIRST_CONNECT_LABEL : '';
       state.abort = null;
     }
   }
@@ -889,10 +956,12 @@ async function loadLivePositions(viewer) {
 
 /** True while a request still owns this enabled layer lifecycle. */
 function ownsAisRequest(controller, sessionId) {
-  return state.enabled
-    && state.sessionId === sessionId
-    && state.abort === controller
-    && !controller.signal.aborted;
+  return (
+    state.enabled &&
+    state.sessionId === sessionId &&
+    state.abort === controller &&
+    !controller.signal.aborted
+  );
 }
 
 /** Apply a classified snapshot while preserving warm state on zero accepted rows. */
@@ -914,8 +983,8 @@ function applyAisFeedSnapshot(viewer, payload) {
       return { reconciled: false, ...snapshot };
     }
     if (
-      state.firstConnectPhase === 'loading'
-      && isGraceEligibleTransport(snapshot.transportStatus)
+      state.firstConnectPhase === 'loading' &&
+      isGraceEligibleTransport(snapshot.transportStatus)
     ) {
       state.error = null;
       state.loadingLabel = AIS_FIRST_CONNECT_LABEL;
@@ -1139,11 +1208,20 @@ function normalizeVessel(row) {
   const position = Cesium.Cartesian3.fromDegrees(lon, lat, heightM);
   // Surface normal at this position — used as alignedAxis so billboard
   // rotation operates in the local tangent plane (true world heading)
-  const normal = Cesium.Ellipsoid.WGS84.geodeticSurfaceNormal(position, new Cesium.Cartesian3());
+  const normal = Cesium.Ellipsoid.WGS84.geodeticSurfaceNormal(
+    position,
+    new Cesium.Cartesian3(),
+  );
   return {
     lat,
     lon,
-    name: String(row.name || row.input_name || row.mmsi || row.input_identifier || 'VESSEL'),
+    name: String(
+      row.name ||
+        row.input_name ||
+        row.mmsi ||
+        row.input_identifier ||
+        'VESSEL',
+    ),
     mmsi: String(row.mmsi || row.input_identifier || '').trim(),
     imo: String(row.imo || ''),
     type: String(row.type_specific || row.type || ''),
@@ -1216,16 +1294,20 @@ function shipIcon(record, selected) {
 
 function installRuntime(viewer) {
   if (state.preRenderRemover || !viewer) return;
-  state.preRenderRemover = viewer.scene.preRender.addEventListener(() => updateVisibility());
+  state.preRenderRemover = viewer.scene.preRender.addEventListener(() =>
+    updateVisibility(),
+  );
 }
 
 function updateVisibility(force = false) {
   if (!state.enabled) return;
   const now = focusNowMs(performance.now());
   const focusTarget = getFocusTarget();
-  const regularPass = force || now - state.lastVisibilityUpdate >= VISIBILITY_UPDATE_MS;
-  const focusPass = focusPassIsNeeded(focusTarget, state.activeFocusCount)
-    && (force || now - state.lastFocusUpdate >= FOCUS_UPDATE_MS);
+  const regularPass =
+    force || now - state.lastVisibilityUpdate >= VISIBILITY_UPDATE_MS;
+  const focusPass =
+    focusPassIsNeeded(focusTarget, state.activeFocusCount) &&
+    (force || now - state.lastFocusUpdate >= FOCUS_UPDATE_MS);
   if (!regularPass && !focusPass) return;
   if (regularPass) state.lastVisibilityUpdate = now;
   if (focusPass) state.lastFocusUpdate = now;
@@ -1252,9 +1334,15 @@ function updateVisibility(force = false) {
         record.billboard.show = visible;
         if (visible && doRotations && scene) {
           const rot = screenProjectedRotation(
-            scene, record.position, vesselCourseDeg(record), record.billboard.rotation
+            scene,
+            record.position,
+            vesselCourseDeg(record),
+            record.billboard.rotation,
           );
-          if (rot !== null && Math.abs(rot - record.billboard.rotation) > 0.002) {
+          if (
+            rot !== null &&
+            Math.abs(rot - record.billboard.rotation) > 0.002
+          ) {
             record.billboard.rotation = rot;
           }
         }
@@ -1269,10 +1357,14 @@ function updateVisibility(force = false) {
       target: focusTarget,
       previousActiveCount: state.activeFocusCount,
       nowMs: now,
-      screenPositionFor: (position) => (
-        Cesium.SceneTransforms.worldToWindowCoordinates(scene, position, _scratchFocusScreen)
-      ),
-      cameraDistanceFor: (position) => Cesium.Cartesian3.distance(camera.positionWC, position),
+      screenPositionFor: (position) =>
+        Cesium.SceneTransforms.worldToWindowCoordinates(
+          scene,
+          position,
+          _scratchFocusScreen,
+        ),
+      cameraDistanceFor: (position) =>
+        Cesium.Cartesian3.distance(camera.positionWC, position),
     });
     state.activeFocusCount = result.activeCount;
   }
@@ -1368,10 +1460,18 @@ function updateClusteredLabels(records) {
   const cells = new Map();
   for (const record of records) {
     if (record === selected) continue;
-    const screen = Cesium.SceneTransforms.worldToWindowCoordinates(scene, record.position);
+    const screen = Cesium.SceneTransforms.worldToWindowCoordinates(
+      scene,
+      record.position,
+    );
     if (!screen) continue;
     const key = `${Math.floor(screen.x / LABEL_GRID_PX)}:${Math.floor(screen.y / LABEL_GRID_PX)}`;
-    const candidate = { record, score: labelPriority(record, selected), x: screen.x, y: screen.y };
+    const candidate = {
+      record,
+      score: labelPriority(record, selected),
+      x: screen.x,
+      y: screen.y,
+    };
     const existing = cells.get(key);
     if (!existing || candidate.score > existing.score) {
       cells.set(key, candidate);
@@ -1383,7 +1483,8 @@ function updateClusteredLabels(records) {
   const accepted = [];
   if (selected) {
     const screen = Cesium.SceneTransforms.worldToWindowCoordinates(
-      scene, selected.billboard?.position || selected.position
+      scene,
+      selected.billboard?.position || selected.position,
     );
     if (screen) accepted.push({ x: screen.x, y: screen.y });
   }
@@ -1440,7 +1541,8 @@ function labelPriority(record, selected) {
   if (record === selected) return 100000;
   let score = 0;
   if (hasUsefulName(record)) score += 1000;
-  if (record.speed !== null) score += Math.min(400, Math.max(0, record.speed) * 20);
+  if (record.speed !== null)
+    score += Math.min(400, Math.max(0, record.speed) * 20);
   if (record.heading !== null || record.course !== null) score += 80;
   if (record.type) score += 40;
   return score;
@@ -1448,7 +1550,12 @@ function labelPriority(record, selected) {
 
 function hasUsefulName(record) {
   const text = String(record.name || '').trim();
-  return Boolean(text && text !== 'VESSEL' && !/^MMSI\s*\d+$/i.test(text) && text !== record.mmsi);
+  return Boolean(
+    text &&
+      text !== 'VESSEL' &&
+      !/^MMSI\s*\d+$/i.test(text) &&
+      text !== record.mmsi,
+  );
 }
 
 function installInteraction(viewer) {
@@ -1456,7 +1563,11 @@ function installInteraction(viewer) {
   const handler = state.interactionHandlerFactory
     ? state.interactionHandlerFactory(viewer)
     : new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-  bindVesselInteraction(viewer, handler, state.interactionKeyTarget || document);
+  bindVesselInteraction(
+    viewer,
+    handler,
+    state.interactionKeyTarget || document,
+  );
 }
 
 function bindVesselInteraction(viewer, handler, keyTarget) {
@@ -1467,14 +1578,16 @@ function bindVesselInteraction(viewer, handler, keyTarget) {
     const pickedId = resolvePickId(picked);
     let record = pickedId ? state.vesselMap.get(pickedId) : null;
     const rawId = picked?.id ?? picked?.primitive?.id;
-    const ownRecordPick = rawId && typeof rawId === 'object' && Object.hasOwn(rawId, 'mmsi');
+    const ownRecordPick =
+      rawId && typeof rawId === 'object' && Object.hasOwn(rawId, 'mmsi');
 
     // An own-layer record without a live map key is a strict no-op (FB-1
     // residual). Trails carry no layer identity and hug their contacts, so any
     // `gev-trail:*` pick is also a no-op. Every other non-vessel pick — sibling
     // unowned scene picks dismiss the current vessel inspection.
     if (ownRecordPick && (!pickedId || !record)) return;
-    if (pickedId && !record && String(pickedId).startsWith('gev-trail:')) return;
+    if (pickedId && !record && String(pickedId).startsWith('gev-trail:'))
+      return;
 
     // A sibling layer already owns this click. Preserve the current vessel
     // selection and do not compete with its camera command.
@@ -1485,8 +1598,8 @@ function bindVesselInteraction(viewer, handler, keyTarget) {
     // actionable hit rectangles before treating the click as empty space.
     const cardHit = !record
       ? _vesselOverlayHost.hitTest?.(click.position?.x, click.position?.y, {
-        sourceId: VESSEL_OVERLAY_SOURCE_ID,
-      })
+          sourceId: VESSEL_OVERLAY_SOURCE_ID,
+        })
       : null;
     if (!record && cardHit) {
       const mmsi = String(cardHit.entryId || '').startsWith('vessel:')
@@ -1516,9 +1629,11 @@ function bindVesselInteraction(viewer, handler, keyTarget) {
   keyTarget.addEventListener('keydown', state.keydownHandler);
   // Vessels never set viewer.trackedEntity, so any new tracked entity belongs
   // to another layer and takes interaction ownership of the scene.
-  state.trackedEntityRemover = viewer.trackedEntityChanged.addEventListener(() => {
-    if (viewer.trackedEntity && state.selectedRecord) clearVesselInspection();
-  });
+  state.trackedEntityRemover = viewer.trackedEntityChanged.addEventListener(
+    () => {
+      if (viewer.trackedEntity && state.selectedRecord) clearVesselInspection();
+    },
+  );
 }
 
 /** Select one live vessel and request one UI-owned camera transfer. */
@@ -1600,8 +1715,12 @@ function selectVessel(record) {
  * @returns {Cesium.Cartesian3|null} Lifted position, or null without a fix.
  */
 function vesselTrailPosition(record) {
-  if (!Number.isFinite(record?.lat) || !Number.isFinite(record?.lon)) return null;
-  const heightM = vesselDatumHeightM(currentGeoidN(record.lat, record.lon), TRAIL_HEIGHT_M);
+  if (!Number.isFinite(record?.lat) || !Number.isFinite(record?.lon))
+    return null;
+  const heightM = vesselDatumHeightM(
+    currentGeoidN(record.lat, record.lon),
+    TRAIL_HEIGHT_M,
+  );
   return Cesium.Cartesian3.fromDegrees(record.lon, record.lat, heightM);
 }
 
@@ -1617,8 +1736,15 @@ function refloorVesselRecords() {
   if (!state.vesselRecords.length) return;
   for (const record of state.vesselRecords) {
     if (!Number.isFinite(record.lat) || !Number.isFinite(record.lon)) continue;
-    const heightM = vesselDatumHeightM(currentGeoidN(record.lat, record.lon), VESSEL_LIFT_M);
-    record.position = Cesium.Cartesian3.fromDegrees(record.lon, record.lat, heightM);
+    const heightM = vesselDatumHeightM(
+      currentGeoidN(record.lat, record.lon),
+      VESSEL_LIFT_M,
+    );
+    record.position = Cesium.Cartesian3.fromDegrees(
+      record.lon,
+      record.lat,
+      heightM,
+    );
     if (record.billboard) record.billboard.position = record.position;
   }
 }
@@ -1654,9 +1780,12 @@ function startSelectedVesselTrail(record) {
 async function backfillVesselTrail(mmsi, token) {
   let samples = null;
   try {
-    const response = await fetch('/api/ais-live/track?mmsi=' + encodeURIComponent(mmsi), {
-      signal: AbortSignal.timeout(8000),
-    });
+    const response = await fetch(
+      '/api/ais-live/track?mmsi=' + encodeURIComponent(mmsi),
+      {
+        signal: AbortSignal.timeout(8000),
+      },
+    );
     if (!response.ok) return;
     const payload = await response.json();
     samples = Array.isArray(payload?.samples) ? payload.samples : null;
@@ -1680,7 +1809,9 @@ async function backfillVesselTrail(mmsi, token) {
 
   state.trailPositions = older.concat(state.trailPositions);
   if (state.trailPositions.length > TRAIL_MAX_POINTS) {
-    state.trailPositions = state.trailPositions.slice(state.trailPositions.length - TRAIL_MAX_POINTS);
+    state.trailPositions = state.trailPositions.slice(
+      state.trailPositions.length - TRAIL_MAX_POINTS,
+    );
   }
   if (state.trail) state.trail.setPositions(state.trailPositions);
 }
@@ -1695,9 +1826,11 @@ function appendSelectedVesselTrailFix(record) {
   const next = vesselTrailPosition(record);
   if (!next) return;
   const last = state.trailPositions[state.trailPositions.length - 1];
-  if (last && Cesium.Cartesian3.distance(last, next) <= TRAIL_MIN_MOVE_M) return;
+  if (last && Cesium.Cartesian3.distance(last, next) <= TRAIL_MIN_MOVE_M)
+    return;
   state.trailPositions.push(next);
-  if (state.trailPositions.length > TRAIL_MAX_POINTS) state.trailPositions.shift();
+  if (state.trailPositions.length > TRAIL_MAX_POINTS)
+    state.trailPositions.shift();
   state.trail.setPositions(state.trailPositions);
 }
 
@@ -1819,7 +1952,8 @@ export function buildVesselCard(record) {
   const parts = [];
   const type = vesselTypeShort(record);
   if (type) parts.push(type);
-  if (record.speed !== null && record.speed !== undefined) parts.push(formatSpeed(record.speed));
+  if (record.speed !== null && record.speed !== undefined)
+    parts.push(formatSpeed(record.speed));
   const direction = record.heading ?? record.course;
   if (Number.isFinite(direction)) parts.push(`${Math.round(direction)}°`);
   return {
@@ -1845,15 +1979,19 @@ export function buildVesselCard(record) {
  */
 export function buildSelectedVesselCard(record) {
   const direction = record.heading ?? record.course;
-  const details = [[
-    vesselTypeShort(record) || 'VESSEL',
-    formatSpeed(record.speed),
-    Number.isFinite(direction) ? `${Math.round(direction)}°` : '--°',
-  ].join(' · ')];
+  const details = [
+    [
+      vesselTypeShort(record) || 'VESSEL',
+      formatSpeed(record.speed),
+      Number.isFinite(direction) ? `${Math.round(direction)}°` : '--°',
+    ].join(' · '),
+  ];
   const destination = String(record.destination || '').trim();
   if (destination) details.push(`→ ${trimHudValue(destination, 24)}`);
   const stale = (record.missedRefreshes || 0) > 0;
-  details.push(`MMSI ${record.mmsi || '--'} · ${formatPositionTime(record)}${stale ? ' · STALE' : ''}`);
+  details.push(
+    `MMSI ${record.mmsi || '--'} · ${formatPositionTime(record)}${stale ? ' · STALE' : ''}`,
+  );
   return {
     id: vesselOverlayEntryId(record),
     actionable: Boolean(record?.mmsi),
@@ -2004,17 +2142,25 @@ export function _setVesselStateForTest(options = {}) {
   state.vesselRecords = records;
   state.count = records.length;
   state.vesselMap = new Map(
-    records.filter((record) => record?.mmsi).map((record) => [record.mmsi, record])
+    records
+      .filter((record) => record?.mmsi)
+      .map((record) => [record.mmsi, record]),
   );
   state.selectedRecord = options.selectedRecord || null;
   state.billboardCollection = options.billboardCollection || { remove() {} };
   state.trail = options.trail || null;
   state.trailMmsi = options.trailMmsi || null;
-  state.trailPositions = Array.isArray(options.trailPositions) ? [...options.trailPositions] : [];
+  state.trailPositions = Array.isArray(options.trailPositions)
+    ? [...options.trailPositions]
+    : [];
   state.transportStatus = options.transportStatus || null;
   state.lastMessageAt = options.lastMessageAt ?? null;
-  state.rawRowCount = Number.isFinite(options.rawRowCount) ? options.rawRowCount : 0;
-  state.acceptedRowCount = Number.isFinite(options.acceptedRowCount) ? options.acceptedRowCount : records.length;
+  state.rawRowCount = Number.isFinite(options.rawRowCount)
+    ? options.rawRowCount
+    : 0;
+  state.acceptedRowCount = Number.isFinite(options.acceptedRowCount)
+    ? options.acceptedRowCount
+    : records.length;
   state.firstConnectPhase = options.firstConnectPhase || 'idle';
   state.firstConnectStartedAt = options.firstConnectStartedAt ?? null;
   state.firstConnectDeadline = options.firstConnectDeadline ?? null;
@@ -2062,10 +2208,10 @@ export function _setAisRuntimeForTest(runtime = null) {
   clearFirstConnectTimer();
   _aisRuntime = runtime
     ? {
-      now: runtime.now,
-      setTimeout: runtime.setTimeout,
-      clearTimeout: runtime.clearTimeout,
-    }
+        now: runtime.now,
+        setTimeout: runtime.setTimeout,
+        clearTimeout: runtime.clearTimeout,
+      }
     : DEFAULT_AIS_RUNTIME;
 }
 

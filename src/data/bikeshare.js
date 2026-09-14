@@ -68,7 +68,8 @@ const COLOR_YELLOW = Cesium.Color.fromCssColorString('#ffaa00').withAlpha(0.94);
 /** Station has <30% bikes available. */
 const COLOR_RED = Cesium.Color.fromCssColorString('#ff4444').withAlpha(0.94);
 /** No status data available for station. */
-const COLOR_NEUTRAL = Cesium.Color.fromCssColorString('#91a4b4').withAlpha(0.62);
+const COLOR_NEUTRAL =
+  Cesium.Color.fromCssColorString('#91a4b4').withAlpha(0.62);
 /** Station is offline (not installed, not renting, or not returning). */
 const COLOR_MUTED = Cesium.Color.fromCssColorString('#687581').withAlpha(0.48);
 /** Outline color for all station points. */
@@ -99,7 +100,15 @@ function buildBcycleUrls(systemId) {
  * @param {string} [opts.provider='BCycle'] - Display provider name.
  * @returns {Object} Raw registry entry suitable for RAW_GBFS_CITY_REGISTRY.
  */
-function bcycleEntry({ id, city, centerLat, centerLon, systemId, loadRadiusKm = 100, provider = 'BCycle' }) {
+function bcycleEntry({
+  id,
+  city,
+  centerLat,
+  centerLon,
+  systemId,
+  loadRadiusKm = 100,
+  provider = 'BCycle',
+}) {
   return {
     id,
     city,
@@ -124,8 +133,10 @@ const RAW_GBFS_CITY_REGISTRY = [
     centerLat: 40.7484,
     centerLon: -73.9967,
     loadRadiusKm: 140,
-    stationInformationUrl: 'https://gbfs.lyft.com/gbfs/2.3/bkn/en/station_information.json',
-    stationStatusUrl: 'https://gbfs.lyft.com/gbfs/2.3/bkn/en/station_status.json',
+    stationInformationUrl:
+      'https://gbfs.lyft.com/gbfs/2.3/bkn/en/station_information.json',
+    stationStatusUrl:
+      'https://gbfs.lyft.com/gbfs/2.3/bkn/en/station_status.json',
     provider: 'Citi Bike',
   },
   {
@@ -134,8 +145,10 @@ const RAW_GBFS_CITY_REGISTRY = [
     centerLat: 41.8781,
     centerLon: -87.6298,
     loadRadiusKm: 120,
-    stationInformationUrl: 'https://gbfs.lyft.com/gbfs/2.3/chi/en/station_information.json',
-    stationStatusUrl: 'https://gbfs.lyft.com/gbfs/2.3/chi/en/station_status.json',
+    stationInformationUrl:
+      'https://gbfs.lyft.com/gbfs/2.3/chi/en/station_information.json',
+    stationStatusUrl:
+      'https://gbfs.lyft.com/gbfs/2.3/chi/en/station_status.json',
     provider: 'Divvy',
   },
   {
@@ -144,8 +157,10 @@ const RAW_GBFS_CITY_REGISTRY = [
     centerLat: 38.9072,
     centerLon: -77.0369,
     loadRadiusKm: 120,
-    stationInformationUrl: 'https://gbfs.lyft.com/gbfs/2.3/dca-cabi/en/station_information.json',
-    stationStatusUrl: 'https://gbfs.lyft.com/gbfs/2.3/dca-cabi/en/station_status.json',
+    stationInformationUrl:
+      'https://gbfs.lyft.com/gbfs/2.3/dca-cabi/en/station_information.json',
+    stationStatusUrl:
+      'https://gbfs.lyft.com/gbfs/2.3/dca-cabi/en/station_status.json',
     provider: 'Capital Bikeshare',
   },
   {
@@ -154,8 +169,10 @@ const RAW_GBFS_CITY_REGISTRY = [
     centerLat: 37.7749,
     centerLon: -122.4194,
     loadRadiusKm: 110,
-    stationInformationUrl: 'https://gbfs.lyft.com/gbfs/2.3/bay/en/station_information.json',
-    stationStatusUrl: 'https://gbfs.lyft.com/gbfs/2.3/bay/en/station_status.json',
+    stationInformationUrl:
+      'https://gbfs.lyft.com/gbfs/2.3/bay/en/station_information.json',
+    stationStatusUrl:
+      'https://gbfs.lyft.com/gbfs/2.3/bay/en/station_status.json',
     provider: 'Bay Wheels',
   },
   {
@@ -164,7 +181,8 @@ const RAW_GBFS_CITY_REGISTRY = [
     centerLat: 42.3601,
     centerLon: -71.0589,
     loadRadiusKm: 100,
-    stationInformationUrl: 'https://gbfs.bluebikes.com/gbfs/en/station_information.json',
+    stationInformationUrl:
+      'https://gbfs.bluebikes.com/gbfs/en/station_information.json',
     stationStatusUrl: 'https://gbfs.bluebikes.com/gbfs/en/station_status.json',
     provider: 'Blue Bikes',
   },
@@ -174,8 +192,10 @@ const RAW_GBFS_CITY_REGISTRY = [
     centerLat: 39.9526,
     centerLon: -75.1652,
     loadRadiusKm: 100,
-    stationInformationUrl: 'https://gbfs.bcycle.com/bcycle_indego/station_information.json',
-    stationStatusUrl: 'https://gbfs.bcycle.com/bcycle_indego/station_status.json',
+    stationInformationUrl:
+      'https://gbfs.bcycle.com/bcycle_indego/station_information.json',
+    stationStatusUrl:
+      'https://gbfs.bcycle.com/bcycle_indego/station_status.json',
     provider: 'Indego',
   },
   {
@@ -184,8 +204,10 @@ const RAW_GBFS_CITY_REGISTRY = [
     centerLat: 45.5152,
     centerLon: -122.6784,
     loadRadiusKm: 95,
-    stationInformationUrl: 'https://gbfs.biketownpdx.com/gbfs/2.3/en/station_information.json',
-    stationStatusUrl: 'https://gbfs.biketownpdx.com/gbfs/2.3/en/station_status.json',
+    stationInformationUrl:
+      'https://gbfs.biketownpdx.com/gbfs/2.3/en/station_information.json',
+    stationStatusUrl:
+      'https://gbfs.biketownpdx.com/gbfs/2.3/en/station_status.json',
     provider: 'BIKETOWN',
   },
   {
@@ -194,8 +216,10 @@ const RAW_GBFS_CITY_REGISTRY = [
     centerLat: 34.0522,
     centerLon: -118.2437,
     loadRadiusKm: 120,
-    stationInformationUrl: 'https://gbfs.bcycle.com/bcycle_lametro/station_information.json',
-    stationStatusUrl: 'https://gbfs.bcycle.com/bcycle_lametro/station_status.json',
+    stationInformationUrl:
+      'https://gbfs.bcycle.com/bcycle_lametro/station_information.json',
+    stationStatusUrl:
+      'https://gbfs.bcycle.com/bcycle_lametro/station_status.json',
     provider: 'Metro Bike',
   },
   {
@@ -204,8 +228,10 @@ const RAW_GBFS_CITY_REGISTRY = [
     centerLat: 30.2672,
     centerLon: -97.7431,
     loadRadiusKm: 90,
-    stationInformationUrl: 'https://austin.publicbikesystem.net/customer/gbfs/v2/en/station_information.json',
-    stationStatusUrl: 'https://austin.publicbikesystem.net/customer/gbfs/v2/en/station_status.json',
+    stationInformationUrl:
+      'https://austin.publicbikesystem.net/customer/gbfs/v2/en/station_information.json',
+    stationStatusUrl:
+      'https://austin.publicbikesystem.net/customer/gbfs/v2/en/station_status.json',
     provider: 'CapMetro',
   },
   {
@@ -214,8 +240,10 @@ const RAW_GBFS_CITY_REGISTRY = [
     centerLat: 21.3069,
     centerLon: -157.8583,
     loadRadiusKm: 90,
-    stationInformationUrl: 'https://hon.publicbikesystem.net/customer/gbfs/v2/en/station_information.json',
-    stationStatusUrl: 'https://hon.publicbikesystem.net/customer/gbfs/v2/en/station_status.json',
+    stationInformationUrl:
+      'https://hon.publicbikesystem.net/customer/gbfs/v2/en/station_information.json',
+    stationStatusUrl:
+      'https://hon.publicbikesystem.net/customer/gbfs/v2/en/station_status.json',
     provider: 'Biki',
   },
   {
@@ -224,8 +252,10 @@ const RAW_GBFS_CITY_REGISTRY = [
     centerLat: 39.9612,
     centerLon: -82.9988,
     loadRadiusKm: 90,
-    stationInformationUrl: 'https://gbfs.cogobikeshare.com/gbfs/2.3/en/station_information.json',
-    stationStatusUrl: 'https://gbfs.cogobikeshare.com/gbfs/2.3/en/station_status.json',
+    stationInformationUrl:
+      'https://gbfs.cogobikeshare.com/gbfs/2.3/en/station_information.json',
+    stationStatusUrl:
+      'https://gbfs.cogobikeshare.com/gbfs/2.3/en/station_status.json',
     provider: 'CoGo',
   },
   {
@@ -234,14 +264,16 @@ const RAW_GBFS_CITY_REGISTRY = [
     centerLat: 35.0456,
     centerLon: -85.3097,
     loadRadiusKm: 90,
-    stationInformationUrl: 'https://chat.publicbikesystem.net/customer/gbfs/v2/en/station_information.json',
-    stationStatusUrl: 'https://chat.publicbikesystem.net/customer/gbfs/v2/en/station_status.json',
+    stationInformationUrl:
+      'https://chat.publicbikesystem.net/customer/gbfs/v2/en/station_information.json',
+    stationStatusUrl:
+      'https://chat.publicbikesystem.net/customer/gbfs/v2/en/station_status.json',
     provider: 'Bike Chattanooga',
   },
   bcycleEntry({
     id: 'boulder-bcycle',
     city: 'Boulder, CO',
-    centerLat: 40.0150,
+    centerLat: 40.015,
     centerLon: -105.2705,
     systemId: 'bcycle_boulder',
   }),
@@ -271,7 +303,7 @@ const RAW_GBFS_CITY_REGISTRY = [
     id: 'salt-lake-greenbike',
     city: 'Salt Lake City, UT',
     centerLat: 40.7608,
-    centerLon: -111.8910,
+    centerLon: -111.891,
     systemId: 'bcycle_greenbikeslc',
     provider: 'GREENbike',
   }),
@@ -286,7 +318,7 @@ const RAW_GBFS_CITY_REGISTRY = [
     id: 'cincinnati-red-bike',
     city: 'Cincinnati, OH',
     centerLat: 39.1031,
-    centerLon: -84.5120,
+    centerLon: -84.512,
     systemId: 'bcycle_cincyredbike',
     provider: 'Red Bike',
   }),
@@ -294,7 +326,7 @@ const RAW_GBFS_CITY_REGISTRY = [
     id: 'el-paso-bcycle',
     city: 'El Paso, TX',
     centerLat: 31.7619,
-    centerLon: -106.4850,
+    centerLon: -106.485,
     systemId: 'bcycle_elpaso',
   }),
   bcycleEntry({
@@ -317,14 +349,14 @@ const RAW_GBFS_CITY_REGISTRY = [
     id: 'memphis-bcycle',
     city: 'Memphis, TN',
     centerLat: 35.1495,
-    centerLon: -90.0490,
+    centerLon: -90.049,
     systemId: 'bcycle_memphis',
   }),
   bcycleEntry({
     id: 'des-moines-bcycle',
     city: 'Des Moines, IA',
     centerLat: 41.5868,
-    centerLon: -93.6250,
+    centerLon: -93.625,
     systemId: 'bcycle_desmoines',
   }),
   bcycleEntry({
@@ -363,7 +395,7 @@ const RAW_GBFS_CITY_REGISTRY = [
     id: 'greenville-sc-bcycle',
     city: 'Greenville, SC',
     centerLat: 34.8526,
-    centerLon: -82.3940,
+    centerLon: -82.394,
     systemId: 'bcycle_greenville',
   }),
   bcycleEntry({
@@ -400,13 +432,19 @@ const RAW_GBFS_CITY_REGISTRY = [
  * @throws {Error} If any required field is missing or invalid.
  */
 function normalizeRegistryEntry(entry) {
-  const id = String(entry?.id || '').trim().toLowerCase();
+  const id = String(entry?.id || '')
+    .trim()
+    .toLowerCase();
   const city = String(entry?.city || '').trim();
   const centerLat = Number(entry?.centerLat);
   const centerLon = Number(entry?.centerLon);
   const loadRadiusKm = Number(entry?.loadRadiusKm);
-  const stationInformationUrl = new URL(String(entry?.stationInformationUrl || '').trim());
-  const stationStatusUrl = new URL(String(entry?.stationStatusUrl || '').trim());
+  const stationInformationUrl = new URL(
+    String(entry?.stationInformationUrl || '').trim(),
+  );
+  const stationStatusUrl = new URL(
+    String(entry?.stationStatusUrl || '').trim(),
+  );
 
   if (!id) throw new Error('GBFS entry id is required');
   if (!city) throw new Error(`GBFS entry "${id}" city is required`);
@@ -414,7 +452,10 @@ function normalizeRegistryEntry(entry) {
     throw new Error(`GBFS entry "${id}" has invalid center coordinates`);
   }
   // Enforce HTTPS-only for GBFS feeds
-  if (stationInformationUrl.protocol !== 'https:' || stationStatusUrl.protocol !== 'https:') {
+  if (
+    stationInformationUrl.protocol !== 'https:' ||
+    stationStatusUrl.protocol !== 'https:'
+  ) {
     throw new Error(`GBFS entry "${id}" must use https URLs`);
   }
   // Validate that URLs end with expected GBFS endpoint filenames
@@ -427,7 +468,10 @@ function normalizeRegistryEntry(entry) {
 
   // Deduplicate hostnames across both feed URLs for proxy allowlisting
   const hosts = Array.from(
-    new Set([stationInformationUrl.hostname.toLowerCase(), stationStatusUrl.hostname.toLowerCase()])
+    new Set([
+      stationInformationUrl.hostname.toLowerCase(),
+      stationStatusUrl.hostname.toLowerCase(),
+    ]),
   );
 
   return {
@@ -435,7 +479,10 @@ function normalizeRegistryEntry(entry) {
     city,
     centerLat,
     centerLon,
-    loadRadiusKm: Number.isFinite(loadRadiusKm) && loadRadiusKm > 0 ? loadRadiusKm : CITY_RANGE_BASE_KM,
+    loadRadiusKm:
+      Number.isFinite(loadRadiusKm) && loadRadiusKm > 0
+        ? loadRadiusKm
+        : CITY_RANGE_BASE_KM,
     stationInformationUrl: stationInformationUrl.toString(),
     stationStatusUrl: stationStatusUrl.toString(),
     provider: String(entry?.provider || 'GBFS').trim() || 'GBFS',
@@ -461,7 +508,9 @@ const GBFS_CITY_REGISTRY = (() => {
 })();
 
 /** Lookup map from city id to its normalized registry entry. */
-const CITY_BY_ID = new Map(GBFS_CITY_REGISTRY.map((entry) => [entry.id, entry]));
+const CITY_BY_ID = new Map(
+  GBFS_CITY_REGISTRY.map((entry) => [entry.id, entry]),
+);
 
 // ---------------------------------------------------------------------------
 // Module-level mutable state
@@ -599,7 +648,9 @@ function getCameraAltitude(viewer) {
  */
 function getCameraCenterLatLon(viewer) {
   // Try view rectangle center first (more accurate for tilted views)
-  const rect = viewer?.camera?.computeViewRectangle?.(viewer.scene.globe?.ellipsoid);
+  const rect = viewer?.camera?.computeViewRectangle?.(
+    viewer.scene.globe?.ellipsoid,
+  );
   if (rect) {
     const center = Cesium.Rectangle.center(rect);
     return {
@@ -629,12 +680,14 @@ function getCameraCenterLatLon(viewer) {
  * @returns {number} Distance in kilometers.
  */
 function haversineKm(aLat, aLon, bLat, bLon) {
-  const toRad = (value) => value * Math.PI / 180;
+  const toRad = (value) => (value * Math.PI) / 180;
   const dLat = toRad(bLat - aLat);
   const dLon = toRad(bLon - aLon);
   const p1 = toRad(aLat);
   const p2 = toRad(bLat);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dLon / 2) ** 2;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(p1) * Math.cos(p2) * Math.sin(dLon / 2) ** 2;
   return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -672,7 +725,12 @@ function computeInRangeCities(center) {
   if (!center) return active;
 
   for (const city of GBFS_CITY_REGISTRY) {
-    const distance = haversineKm(center.lat, center.lon, city.centerLat, city.centerLon);
+    const distance = haversineKm(
+      center.lat,
+      center.lon,
+      city.centerLat,
+      city.centerLon,
+    );
     const radius = Math.max(CITY_RANGE_BASE_KM, city.loadRadiusKm);
     if (distance <= radius) active.add(city.id);
   }
@@ -808,8 +866,10 @@ function abortInFlight(map, cityId) {
 
 /** Abort all in-flight station info and status requests across all cities. */
 function abortAllInFlight() {
-  for (const cityId of _inFlightInfo.keys()) abortInFlight(_inFlightInfo, cityId);
-  for (const cityId of _inFlightStatus.keys()) abortInFlight(_inFlightStatus, cityId);
+  for (const cityId of _inFlightInfo.keys())
+    abortInFlight(_inFlightInfo, cityId);
+  for (const cityId of _inFlightStatus.keys())
+    abortInFlight(_inFlightStatus, cityId);
 }
 
 /**
@@ -834,7 +894,9 @@ async function loadCityStationInfo(cityId, generation) {
   const promise = (async () => {
     beginLoading();
     try {
-      const payload = await fetchGbfsJson(city.stationInformationUrl, { signal: controller.signal });
+      const payload = await fetchGbfsJson(city.stationInformationUrl, {
+        signal: controller.signal,
+      });
       const stationMap = parseStationInformation(payload);
       if (stationMap.size === 0) {
         throw new Error(`No station information for ${city.city}`);
@@ -847,7 +909,8 @@ async function loadCityStationInfo(cityId, generation) {
   })().finally(() => {
     // Clean up in-flight entry only if it is still ours (not replaced by a newer request)
     const current = _inFlightInfo.get(cityId);
-    if (current && current.controller === controller) _inFlightInfo.delete(cityId);
+    if (current && current.controller === controller)
+      _inFlightInfo.delete(cityId);
   });
 
   _inFlightInfo.set(cityId, { promise, controller, generation });
@@ -874,7 +937,9 @@ async function loadCityStationStatus(cityId, generation) {
   const promise = (async () => {
     beginLoading();
     try {
-      const payload = await fetchGbfsJson(city.stationStatusUrl, { signal: controller.signal });
+      const payload = await fetchGbfsJson(city.stationStatusUrl, {
+        signal: controller.signal,
+      });
       const statusMap = parseStationStatus(payload);
       _statusCache.set(cityId, {
         statusMap,
@@ -886,7 +951,8 @@ async function loadCityStationStatus(cityId, generation) {
     }
   })().finally(() => {
     const current = _inFlightStatus.get(cityId);
-    if (current && current.controller === controller) _inFlightStatus.delete(cityId);
+    if (current && current.controller === controller)
+      _inFlightStatus.delete(cityId);
   });
 
   _inFlightStatus.set(cityId, { promise, controller, generation });
@@ -941,7 +1007,8 @@ function capacityToPixelSize(capacity) {
  */
 function statusToColor(status, capacity) {
   if (!status) return COLOR_NEUTRAL;
-  if (!status.isInstalled || !status.isRenting || !status.isReturning) return COLOR_MUTED;
+  if (!status.isInstalled || !status.isRenting || !status.isReturning)
+    return COLOR_MUTED;
 
   const bikes = toNonNegativeInteger(status.bikesAvailable);
   if (!Number.isFinite(bikes)) return COLOR_NEUTRAL;
@@ -961,9 +1028,15 @@ function statusToColor(status, capacity) {
  */
 function buildSelectionLabel(record) {
   const stationName = String(record?.stationName || '').trim();
-  const stationLabel = stationName || (record?.stationId ? `Station ${record.stationId}` : 'Station');
-  const bikes = Number.isFinite(record?.bikesAvailable) ? record.bikesAvailable : '?';
-  const docks = Number.isFinite(record?.docksAvailable) ? record.docksAvailable : '?';
+  const stationLabel =
+    stationName ||
+    (record?.stationId ? `Station ${record.stationId}` : 'Station');
+  const bikes = Number.isFinite(record?.bikesAvailable)
+    ? record.bikesAvailable
+    : '?';
+  const docks = Number.isFinite(record?.docksAvailable)
+    ? record.docksAvailable
+    : '?';
   const capacity = Number.isFinite(record?.capacity) ? record.capacity : '?';
 
   const lines = [
@@ -1091,7 +1164,11 @@ function _installClickHandler(viewer) {
 
       // Check if the picked primitive or entity id matches a station key
       const primitive = picked.primitive;
-      if (primitive && typeof primitive.id === 'string' && _stationRenderMap.has(primitive.id)) {
+      if (
+        primitive &&
+        typeof primitive.id === 'string' &&
+        _stationRenderMap.has(primitive.id)
+      ) {
         _selectStation(primitive.id);
         return;
       }
@@ -1168,7 +1245,9 @@ function ensureCityPoints(cityId, stationMap) {
     if (_stationRenderMap.size >= MAX_TOTAL_POINTS) {
       if (!_limitWarned) {
         _limitWarned = true;
-        console.warn(`[Data:Bikeshare] Point cap reached (${MAX_TOTAL_POINTS}).`);
+        console.warn(
+          `[Data:Bikeshare] Point cap reached (${MAX_TOTAL_POINTS}).`,
+        );
       }
       break;
     }
@@ -1273,7 +1352,9 @@ function applyStatusToPoints(cityId, statusMap) {
  * @returns {string} Formatted label like "Station Name [5/20]".
  */
 function buildDetectionId(record) {
-  const bikes = Number.isFinite(record.bikesAvailable) ? record.bikesAvailable : '?';
+  const bikes = Number.isFinite(record.bikesAvailable)
+    ? record.bikesAvailable
+    : '?';
   const capacity = Number.isFinite(record.capacity) ? record.capacity : '?';
   // Render record stores the station name under `stationName` (see the render-map
   // shape), so `record.name` was always undefined → every label read "Dock N".
@@ -1293,13 +1374,20 @@ function buildDetectionId(record) {
  * @returns {Array<{ position: Cesium.Cartesian3, id: string, type: string, skipLabel: boolean }>}
  */
 function collectDetectableStations(options = {}) {
-  if (!_enabled || !_pointCollection || !_pointCollection.show || _stationRenderMap.size === 0) return [];
+  if (
+    !_enabled ||
+    !_pointCollection ||
+    !_pointCollection.show ||
+    _stationRenderMap.size === 0
+  )
+    return [];
 
   // Gather all visible station records (include selected even though its point is hidden)
   const records = [];
   for (const record of _stationRenderMap.values()) {
     const isSelected = record.key === _selectedKey;
-    if ((!record.point?.show && !isSelected) || !record.point?.position) continue;
+    if ((!record.point?.show && !isSelected) || !record.point?.position)
+      continue;
     records.push(record);
   }
   if (records.length === 0) return [];
@@ -1359,7 +1447,12 @@ async function activateCity(cityId, generation) {
   try {
     const stationMap = await loadCityStationInfo(cityId, generation);
     // Bail if context changed during fetch
-    if (!_enabled || !_activeCityIds.has(cityId) || generation !== _proximityGeneration) return;
+    if (
+      !_enabled ||
+      !_activeCityIds.has(cityId) ||
+      generation !== _proximityGeneration
+    )
+      return;
 
     ensureCityPoints(cityId, stationMap);
 
@@ -1370,7 +1463,12 @@ async function activateCity(cityId, generation) {
     }
 
     const statusMap = await loadCityStationStatus(cityId, generation);
-    if (!_enabled || !_activeCityIds.has(cityId) || generation !== _proximityGeneration) return;
+    if (
+      !_enabled ||
+      !_activeCityIds.has(cityId) ||
+      generation !== _proximityGeneration
+    )
+      return;
     applyStatusToPoints(cityId, statusMap);
     _lastUpdate = Date.now();
     _error = null;
@@ -1426,7 +1524,9 @@ async function runProximityCheck() {
   }
   if (toActivate.length === 0) return;
 
-  await Promise.all(toActivate.map((cityId) => activateCity(cityId, generation)));
+  await Promise.all(
+    toActivate.map((cityId) => activateCity(cityId, generation)),
+  );
 }
 
 /** Schedule a debounced proximity check after camera movement. */
@@ -1500,7 +1600,9 @@ const bikeshareLayer = {
 
     restoreSpriteOrder(viewer);
 
-    console.log(`[Data:Bikeshare] Initialized with ${GBFS_CITY_REGISTRY.length} cities`);
+    console.log(
+      `[Data:Bikeshare] Initialized with ${GBFS_CITY_REGISTRY.length} cities`,
+    );
   },
 
   /**
@@ -1515,11 +1617,16 @@ const bikeshareLayer = {
     _overlayHost.setVisible(BIKESHARE_SELECTED_OVERLAY_SOURCE_ID, true);
     _installClickHandler(viewer);
     // Pick-ownership (H2): station point ids are string render-map keys.
-    registerPickOwner('bikeshare', (pickedId) => _stationRenderMap.has(pickedId));
+    registerPickOwner('bikeshare', (pickedId) =>
+      _stationRenderMap.has(pickedId),
+    );
 
     if (!_cameraChangedAttached) {
       viewer.camera.changed.addEventListener(onCameraChanged);
-      viewer.camera.percentageChanged = Math.min(viewer.camera.percentageChanged || 1, 0.05);
+      viewer.camera.percentageChanged = Math.min(
+        viewer.camera.percentageChanged || 1,
+        0.05,
+      );
       _cameraChangedAttached = true;
     }
 
@@ -1573,17 +1680,27 @@ const bikeshareLayer = {
 
     const generation = _proximityGeneration;
     const cityIds = Array.from(_activeCityIds);
-    await Promise.all(cityIds.map(async (cityId) => {
-      try {
-        const statusMap = await loadCityStationStatus(cityId, generation);
-        if (!_enabled || !_activeCityIds.has(cityId) || generation !== _proximityGeneration) return;
-        applyStatusToPoints(cityId, statusMap);
-      } catch (error) {
-        if (error?.name === 'AbortError') return;
-        console.warn(`[Data:Bikeshare] ${cityId} status update error:`, error);
-        _error = 'GBFS status update failed';
-      }
-    }));
+    await Promise.all(
+      cityIds.map(async (cityId) => {
+        try {
+          const statusMap = await loadCityStationStatus(cityId, generation);
+          if (
+            !_enabled ||
+            !_activeCityIds.has(cityId) ||
+            generation !== _proximityGeneration
+          )
+            return;
+          applyStatusToPoints(cityId, statusMap);
+        } catch (error) {
+          if (error?.name === 'AbortError') return;
+          console.warn(
+            `[Data:Bikeshare] ${cityId} status update error:`,
+            error,
+          );
+          _error = 'GBFS status update failed';
+        }
+      }),
+    );
 
     _count = _stationRenderMap.size;
     if (_count > 0) _lastUpdate = Date.now();
@@ -1609,9 +1726,10 @@ const bikeshareLayer = {
       loading: _loading,
     };
     if (_loading) {
-      stats.loadingLabel = _activeCityIds.size > 0
-        ? `syncing ${_activeCityIds.size} city feeds...`
-        : 'scanning nearby systems...';
+      stats.loadingLabel =
+        _activeCityIds.size > 0
+          ? `syncing ${_activeCityIds.size} city feeds...`
+          : 'scanning nearby systems...';
     }
     if (_error) stats.error = _error;
     return stats;
@@ -1654,7 +1772,12 @@ function _onKeyDown(e) {
 }
 
 /** Seed a selected-station runtime record while still exercising real select/clear paths. */
-export function _setBikeshareSelectionStateForTest({ viewer, key, record, overlayHost }) {
+export function _setBikeshareSelectionStateForTest({
+  viewer,
+  key,
+  record,
+  overlayHost,
+}) {
   _viewer = viewer;
   _stationRenderMap = new Map([[key, record]]);
   _selectedKey = null;

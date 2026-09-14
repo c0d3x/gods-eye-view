@@ -55,7 +55,10 @@ export function warmFireAnchorFloors(points) {
   if (!cold.length) return Promise.resolve(false);
   const prev = _chain;
   const run = prev ? prev.then(() => resolveBatch(cold)) : resolveBatch(cold);
-  _chain = run.then(() => true, () => false);
+  _chain = run.then(
+    () => true,
+    () => false,
+  );
   return run;
 }
 
@@ -77,7 +80,9 @@ async function resolveBatch(points) {
   if (!cold.length) return false;
   try {
     await resolveGroundFloorCells(cold);
-  } catch { /* resolver is best-effort and never throws; belt and braces */ }
+  } catch {
+    /* resolver is best-effort and never throws; belt and braces */
+  }
   return cold.some((p) => cachedGroundFloor(p.lat, p.lon) != null);
 }
 
