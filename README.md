@@ -357,8 +357,8 @@ src/                        # The browser app
 ├── main.js                 # Entry point: starts the local edition
 ├── app/                    # Application lifecycle and the Cesium viewer
 ├── editions/local/         # The local edition: scene, controls, data and tools
-├── ui.js                   # Runtime UI — panels, HUD, styles, control facade
-├── ui/                     # Panels and views moved out of ui.js
+├── ui.js                   # StyleManager: builds the UI and wires its panels
+├── ui/                     # One module per panel, view or control
 ├── hud.js                  # Intelligence HUD + AI scene summary
 ├── keySetup.js             # POWER UP panel — in-app provider keys (dev server only)
 ├── mapStackController.js   # Basemap switching — Google 3D / Esri / OSM / ion stacks

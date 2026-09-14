@@ -56,20 +56,23 @@ standard Cesium viewer configuration in `src/app/viewer.js`; Cesium stays extern
 Neither export imports standalone UI, layers, tools or configuration. See
 [application construction](APPLICATION.md) for the contracts and current limits.
 
-UI panels are moving out of `src/ui.js` into modules under `src/ui/` (#46),
-one panel per commit, with the code unchanged. `src/ui/cockpitView.js` holds
-the Cockpit view: StyleManager constructs its controller and disposes of it.
-A StyleManager panel moves as a class of its own that is never constructed,
-such as `RadioPanel` in `src/ui/radioPanel.js`: `adoptMethods()` from
-`src/ui/adoptMethods.js` copies its methods onto StyleManager, where they run
-on StyleManager's state as before. A panel's setup sits in its module, and so
-does any teardown of its own, such as `_initRadioPanel()` and
-`_disposeRadioPanel()`.
+The UI's panels live in modules under `src/ui/`, and `src/ui.js` holds
+StyleManager's construction and wiring: its constructor, `_initUI()`,
+`attachDataManager()` and `dispose()`. `src/ui/cockpitView.js` holds the
+Cockpit view, a controller StyleManager constructs and disposes of. Every other
+panel module declares a class that is never constructed, such as `RadioPanel`
+in `src/ui/radioPanel.js`: `adoptMethods()` from `src/ui/adoptMethods.js`
+copies its methods onto StyleManager, where they run on StyleManager's state.
+A panel's setup sits in its module, and so does any teardown of its own, such
+as `_initRadioPanel()` and `_disposeRadioPanel()`. Settings several panels
+share, such as the style presets, live in `src/ui/styleConfig.js`.
+
 Tests that read UI code as text call `readUiSource()` from
 `src/testing/uiSources.mjs`, which joins `ui.js` with every module in its
-`UI_SOURCE_FILES` list; add each new module there. Individual source adapters
-remain future extractions, to become smaller modules with explicit lifecycle
-owners as their callers migrate.
+`UI_SOURCE_FILES` list, and cut one member out with `memberSource()`, which
+ends it at its own closing brace; add a new module to the list. Individual
+source adapters remain future extractions, to become smaller modules with
+explicit lifecycle owners as their callers migrate.
 
 ## Server boundary
 

@@ -116,8 +116,9 @@ demand with square-root demand scaling and semantic layer weights
 (`labelArbiter.js:181`). First-run default: ELASTIC.
 
 **A default has THREE surfaces, and a PARSE fallback that is not one of them.**
-The value literals (engine constant, markup value, markup readout, `ui.js`
-`GLOBAL_POST_DEFAULTS`, the share generator's starting state) must all move
+The value literals (engine constant, markup value, markup readout,
+`GLOBAL_POST_DEFAULTS` in `src/ui/styleConfig.js`, the share generator's
+starting state) must all move
 together, because a fresh boot runs no restore and those literals ARE the startup
 state. The `scf` / `ko` PARSE fallbacks deliberately do NOT move: they answer
 what an OLD LINK that omits the field meant, and such a link was authored under
@@ -164,7 +165,7 @@ easier to meet (detection is now on more often), but does not create it.
 - **Detection OUTSIDE opacity: `1%`** (moved `5% → 3% → 1%` on 2026-08-24).
   `KEYHOLE_OUTSIDE_OPACITY_DEFAULT` in `src/celestialRing.js`, mirrored by
   `#detection-opacity-slider`'s markup value AND readout,
-  `GLOBAL_POST_DEFAULTS.detectionOutsideOpacityPct` in `ui.js`, and
+  `GLOBAL_POST_DEFAULTS.detectionOutsideOpacityPct` in `src/ui/styleConfig.js`, and
   `_detectionOutsideOpacityPct` in `sharelink.js`. The slider's `step` is now
   `1`, so 1–4 % are reachable at all (at the previous step of 5 the entire
   sub-default range was one stop wide). `AIRCRAFT_BRACKET_FLOOR_ANCHOR` in

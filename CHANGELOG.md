@@ -27,12 +27,11 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Changed
 
-- `src/ui.js` is being split into modules under `src/ui/`, one panel at a
-  time with the code unchanged: so far the Cockpit view, the Radio and
-  CCTV panels, the layout of the panel stacks, the chrome every panel
-  shares, the Location bar, camera navigation, the visual styles and the
-  detection controls. The cockpit signal tests now drive the real Cockpit
-  controller instead of code cut out of `ui.js` as text.
+- `src/ui.js` is split into modules under `src/ui/`, one per panel, view
+  or control, with the code unchanged. `ui.js` keeps StyleManager's
+  construction and wiring, and goes from 10,513 lines to 1,308. The cockpit
+  signal tests now drive the real Cockpit controller instead of code cut
+  out of `ui.js` as text.
 
 - The EGM96 geoid grid behind the app's height corrections loads as a
   0.9 MB compressed data file instead of a 2.8 MB JavaScript module, and the

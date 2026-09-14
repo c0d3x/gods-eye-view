@@ -19,7 +19,8 @@ describes how the app behaves now; `CHANGELOG.md` records how it got here.
 ## Runtime Stack
 
 - Vite + CesiumJS app with Google Photorealistic 3D Tiles
-- Scene/HUD/style systems in `src/ui.js` and `src/hud.js`
+- Scene/HUD/style systems in `src/ui.js`, the panel modules under `src/ui/`,
+  and `src/hud.js`
 - Layer management in `src/data/manager.js`
 - Map stack switching in `src/mapStackController.js`
 - Voice control in `src/voice/` (OpenAI Realtime over WebRTC)
