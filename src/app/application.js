@@ -1,6 +1,23 @@
 // @ts-check
+/**
+ * A startup phase. Each has one constructor.
+ * @typedef {'scene' | 'controls' | 'data' | 'tools'} ApplicationPhase
+ */
+
+/**
+ * The components the constructors built, by phase.
+ * @typedef {Partial<Record<ApplicationPhase, unknown>>} ApplicationComponents
+ */
+
+/**
+ * The state a subscriber receives.
+ * @typedef {Readonly<{ status: string, phase: string | null }>} ApplicationState
+ */
+
+/** @type {ApplicationPhase[]} */
 const START_ORDER = ['scene', 'controls', 'data', 'tools'];
 // Controls cancel restoration while the data manager and viewer still exist.
+/** @type {ApplicationPhase[]} */
 const STOP_ORDER = ['tools', 'controls', 'data', 'scene'];
 
 /**
@@ -27,15 +44,25 @@ export function createApplication({
       throw new TypeError(`Missing ${phase} constructor`);
   }
   const controller = new AbortController();
+  /** @type {Record<string, Array<() => unknown>>} */
   const cleanups = Object.fromEntries(START_ORDER.map((phase) => [phase, []]));
+  /** @type {ApplicationComponents} */
   const components = {};
+  /** @type {Set<(state: ApplicationState) => void>} */
   const listeners = new Set();
-  /** @type {Readonly<{ status: string, phase: string | null }>} */
+  /** @type {ApplicationState} */
   let state = Object.freeze({ status: 'created', phase: null });
+  /** @type {Promise<Readonly<ApplicationComponents>> | undefined} */
   let startPromise;
+  /** @type {Promise<void> | undefined} */
   let destroyPromise;
+  /** @type {Promise<void> | undefined} */
   let cleanupPromise;
 
+  /**
+   * @param {string} status
+   * @param {ApplicationPhase | null} [phase]
+   */
   function publish(status, phase = null) {
     state = Object.freeze({ status, phase });
     for (const listener of [...listeners]) {
@@ -53,7 +80,7 @@ export function createApplication({
       for (const phase of STOP_ORDER) {
         while (cleanups[phase].length) {
           try {
-            await cleanups[phase].pop()();
+            await /** @type {() => unknown} */ (cleanups[phase].pop())();
           } catch (error) {
             errors.push(error);
           }
@@ -77,6 +104,7 @@ export function createApplication({
           components[phase] = await factories[phase]({
             ...components,
             signal: controller.signal,
+            /** @param {() => unknown} dispose */
             defer(dispose) {
               if (!acceptingCleanup || typeof dispose !== 'function') {
                 throw new TypeError(
@@ -138,6 +166,7 @@ export function createApplication({
     },
     getState: () => state,
     getComponents: () => Object.freeze({ ...components }),
+    /** @param {(state: ApplicationState) => void} listener */
     subscribe(listener) {
       if (typeof listener !== 'function')
         throw new TypeError('Expected a state listener');

@@ -729,6 +729,11 @@ test('a bundled-dataset failure reduces to a short, honest reason', () => {
   );
   assert.equal(localDatasetError(new Error('')), 'dataset unavailable');
   assert.equal(localDatasetError(undefined), 'dataset unavailable');
+  // Only an Error is trusted to carry a name and message.
+  assert.equal(
+    localDatasetError({ name: 'SyntaxError', message: 'not an Error' }),
+    'dataset unavailable',
+  );
 });
 
 test('a missing dataset reports UNAVAILABLE instead of a silent empty layer', async () => {

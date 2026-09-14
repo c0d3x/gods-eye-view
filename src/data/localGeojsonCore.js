@@ -122,7 +122,7 @@ export function localInfrastructureOverlayCopy(properties, layerId) {
  * @param {object} options.properties Unwrapped feature properties.
  * @param {number} options.priority Source-owned importance score.
  * @param {string} options.accent Source accent color.
- * @returns {object}
+ * @returns {LocalOverlayEntry}
  */
 export function createLocalInfrastructureOverlayEntry({
   id,
@@ -172,7 +172,7 @@ export function createLocalInfrastructureOverlayEntry({
  * @param {number} options.gridPx Legacy screen grid size.
  * @param {number} options.width Viewport width in CSS pixels.
  * @param {number} options.height Viewport height in CSS pixels.
- * @param {(record: LocalOverlayRecord) => ({ x: number, y: number } | null)} options.project
+ * @param {(record: LocalOverlayRecord) => ({ x: number, y: number } | null | undefined)} options.project
  *   Projection callback.
  * @param {number} [options.cohortLimit=Infinity] Host-safe materialization cap.
  * @returns {LocalOverlayEntry[]} Bounded overlay entries for shared-host
@@ -208,7 +208,8 @@ export function selectLocalInfrastructureOverlayCohort(
   const padding = cellSize;
   for (const record of records) {
     const screen = project(record);
-    if (!Number.isFinite(screen?.x) || !Number.isFinite(screen?.y)) continue;
+    if (!screen || !Number.isFinite(screen.x) || !Number.isFinite(screen.y))
+      continue;
     if (
       screen.x < -padding ||
       screen.x > width + padding ||
@@ -263,8 +264,8 @@ export function selectLocalInfrastructureOverlayCohort(
  * Bind a local layer's visibility and entry lifecycle to the shared host.
  * @param {object} options
  * @param {string} options.sourceId Local layer id.
- * @param {LocalOverlayHost} [options.host] Test seam for the three host
- *   lifecycle calls.
+ * @param {LocalOverlayHost} options.host The shared host's three lifecycle
+ *   calls.
  * @returns {{ show: () => void, publish: (entries: LocalOverlayEntry[]) => void, hide: () => void, destroy: () => void }}
  */
 export function createLocalInfrastructureOverlayPublisher({ sourceId, host }) {
@@ -275,6 +276,7 @@ export function createLocalInfrastructureOverlayPublisher({ sourceId, host }) {
   // Snapshot coordinates: retaining only the entry reference would miss a
   // stem tip moving in place. Republishing an unchanged cohort invalidates
   // the host and can sustain a render loop when frames exceed the 450 ms walk.
+  /** @type {Array<{ entry: LocalOverlayEntry, x?: number, y?: number, z?: number }> | null} */
   let lastPublication = null;
   const sourceOptions = {
     cohortLimit: LOCAL_OVERLAY_COHORT_LIMIT,
@@ -290,11 +292,12 @@ export function createLocalInfrastructureOverlayPublisher({ sourceId, host }) {
     },
     publish(entries) {
       if (destroyed || !visible) return;
+      const last = lastPublication;
       if (
-        lastPublication &&
-        entries.length === lastPublication.length &&
+        last &&
+        entries.length === last.length &&
         entries.every((entry, index) => {
-          const previous = lastPublication[index];
+          const previous = last[index];
           return (
             entry === previous.entry &&
             entry.position?.x === previous.x &&
@@ -341,14 +344,27 @@ export function createLocalInfrastructureOverlayPublisher({ sourceId, host }) {
  * must reach the user's chip; the raw parser message is console-only because
  * a truncated JSON blob is not a status line.
  *
- * @param {Error|{name?:string, message?:string}|null|undefined} error - The thrown load failure.
+ * @param {unknown} error - The thrown load failure. Only an Error is trusted
+ *   to carry a name and message.
  * @returns {string} Short reason for getStats().error.
  */
 export function localDatasetError(error) {
-  if (error?.name === 'SyntaxError') return 'dataset is malformed';
-  const message = String(error?.message || '').trim();
+  if (!(error instanceof Error)) return 'dataset unavailable';
+  if (error.name === 'SyntaxError') return 'dataset is malformed';
+  const message = String(error.message || '').trim();
   return message ? `dataset unavailable (${message})` : 'dataset unavailable';
 }
+
+/**
+ * The part of Cesium's ScreenSpaceEventHandler a layer uses: one click
+ * action, and teardown.
+ * @typedef {object} LocalClickHandler
+ * @property {(
+ *   action: (click: Cesium.ScreenSpaceEventHandler.PositionedEvent) => void,
+ *   type: Cesium.ScreenSpaceEventType,
+ * ) => void} setInputAction
+ * @property {() => void} destroy
+ */
 
 /**
  * What one local GeoJSON layer shows, and the Cesium adapters tests replace.
@@ -362,7 +378,7 @@ export function localDatasetError(error) {
  * @property {boolean} [labels] Whether features are labeled.
  * @property {number} [labelMax] Most labels on screen.
  * @property {number} [labelGridPx] Label declutter grid, in CSS pixels.
- * @property {(canvas: HTMLCanvasElement) => Cesium.ScreenSpaceEventHandler} [screenSpaceEventHandlerFactory]
+ * @property {(canvas: HTMLCanvasElement) => LocalClickHandler} [screenSpaceEventHandlerFactory]
  * @property {(scene: Cesium.Scene, position: Cesium.Cartesian3) => Cesium.Cartesian2 | undefined} [projectToWindow]
  * @property {number} [loadSliceSize] Features parsed per slice while loading.
  * @property {() => Promise<void>} [yieldDuringLoad] Yields to the main thread
@@ -379,6 +395,51 @@ export function localDatasetError(error) {
  * @property {typeof import('./contextStore.js').clearSelectedEntityContextForLayer} clearSelectedEntityContextForLayer
  * @property {typeof import('./contextStore.js').removeEntityContextsForLayer} removeEntityContextsForLayer
  * @property {(reason?: string) => void} governorRequestRender
+ */
+
+/**
+ * A feature entity, tagged with the layer that owns it and the ground point
+ * its stem stands on.
+ * @typedef {Cesium.Entity & {
+ *   __localLayerId?: string,
+ *   __localBaseCarto?: Cesium.Cartographic,
+ *   __localBaseCartesian?: Cesium.Cartesian3,
+ * }} LocalFeatureEntity
+ */
+
+/**
+ * A feature entity rebuilt as a stem. Cesium's setters wrapped its tip and
+ * stem ends in constant properties, which the walk updates in place.
+ * @typedef {LocalFeatureEntity & {
+ *   position: Cesium.ConstantPositionProperty,
+ *   polyline: Cesium.PolylineGraphics & { positions: Cesium.ConstantProperty },
+ * }} LocalStemEntity
+ */
+
+/**
+ * One feature's stem, as the pre-render walk sizes and grounds it.
+ * @typedef {object} LocalStemRecord
+ * @property {string} id Feature id within the layer.
+ * @property {LocalStemEntity} entity
+ * @property {Cesium.Cartographic} carto Where the feature stands.
+ * @property {Cesium.Cartesian3} base The stem's foot, at the ground height.
+ * @property {Cesium.Cartesian3} tip The stem's top, sized to the camera.
+ * @property {Cesium.Cartesian3} nextTip Scratch space for the next tip.
+ * @property {Cesium.Cartesian3[][]} stemPositionBuffers The two stem
+ *   position arrays the walk alternates between.
+ * @property {number} stemPositionBufferIndex
+ * @property {number} groundHeight Ellipsoid height of the base, in metres.
+ * @property {boolean} groundSampled
+ * @property {number} lastGroundSampleMs
+ * @property {number} priority Label priority.
+ * @property {LocalOverlayEntry | null} entry The feature's card, when the
+ *   layer has labels.
+ */
+
+/**
+ * Feature properties, read to plain values. GeoJSON properties can hold
+ * anything.
+ * @typedef {Record<string, any>} LocalFeatureProperties
  */
 
 /**
@@ -425,21 +486,28 @@ export function createLocalGeoJsonLayer(
     Math.max(1, Math.floor(Number(loadSliceSize) || LOCAL_LOAD_SLICE_SIZE)),
     Number.MAX_SAFE_INTEGER,
   );
+  /** @type {Cesium.GeoJsonDataSource | null} */
   let _dataSource = null;
   let _enabled = false;
+  /** @type {LocalClickHandler | null} */
   let _clickHandler = null;
   let _count = 0;
   /** @type {number|null} Timestamp of the last successful dataset load. */
   let _lastUpdate = null;
   /** @type {string|null} Short reason the bundled dataset failed to load. */
   let _error = null;
+  /** @type {(() => void) | null} */
   let _preRenderRemover = null;
+  /** @type {(() => void) | null} */
   let _cameraMoveEndRemover = null;
+  /** @type {LocalStemRecord[]} */
   let _stemRecords = [];
   let _stemGeometryDirty = true;
   let _lastVisibilityUpdate = 0;
   let _destroyed = false;
+  /** @type {Promise<void> | null} */
   let _loadPromise = null;
+  /** @type {AbortController | null} */
   let _loadController = null;
   /**
    * Globe-LOD active set: the record ids allowed to carry a live stem right
@@ -472,10 +540,14 @@ export function createLocalGeoJsonLayer(
   const _lastLodCameraPos = new Cesium.Cartesian3();
   /** Last time the motion-fallback probe window opened (or a selection ran). */
   let _lastLodProbeMs = Number.NEGATIVE_INFINITY;
+  /** @type {ReturnType<typeof setTimeout> | null} */
   let _groundRetryTimer = null;
   /** Consecutive self-armed retries since the last grounding/camera motion. */
   let _groundRetryArms = 0;
-  /** Last observed scene.sampleHeightSupported; null until the first walk. */
+  /**
+   * Last observed scene.sampleHeightSupported; null until the first walk.
+   * @type {boolean | null}
+   */
   let _lastGroundSampleCapability = null;
 
   /**
@@ -519,6 +591,10 @@ export function createLocalGeoJsonLayer(
     host: overlayHost,
   });
 
+  /**
+   * @param {Cesium.Viewer & { selectedEntity?: LocalFeatureEntity }} [viewer]
+   *   Its selected entity may be one of this layer's.
+   */
   const disableLayer = (viewer) => {
     _enabled = false;
     clearGroundRetryRender();
@@ -551,10 +627,12 @@ export function createLocalGeoJsonLayer(
     updateInterval: 0,
     statsRefreshInterval: 1000,
 
+    /** @param {Cesium.Viewer} _viewer */
     init: async (_viewer) => {
       // DataLayerManager calls this once
     },
 
+    /** @param {Cesium.Viewer} _viewer */
     update: async (_viewer) => {
       // DataLayerManager calls this when enabled
     },
@@ -584,6 +662,7 @@ export function createLocalGeoJsonLayer(
       computed: _lodComputed,
     }),
 
+    /** @param {Cesium.Viewer} viewer */
     enable: async (viewer) => {
       if (_destroyed) return;
       _enabled = true;
@@ -632,6 +711,7 @@ export function createLocalGeoJsonLayer(
               // A large dataset loads in slices and yields to the browser
               // between them, so no single step blocks input or rendering.
               // Every line is parsed exactly as before, in order.
+              /** @param {number} count */
               const slices = (count) =>
                 Math.max(1, Math.ceil(count / sliceSize));
               const features = [];
@@ -705,6 +785,7 @@ export function createLocalGeoJsonLayer(
                     return;
                   }
                 }
+                /** @type {LocalFeatureEntity} */
                 const feature = entities[i];
                 feature.__localLayerId = id; // Tag it so our click handler knows it belongs to this layer
 
@@ -713,7 +794,9 @@ export function createLocalGeoJsonLayer(
                 if (!pos) {
                   // It's a polygon or line
                   if (feature.polygon) {
+                    // @ts-expect-error Cesium's setter wraps it in a ConstantProperty.
                     feature.polygon.outline = true;
+                    // @ts-expect-error Cesium's setter wraps it in a ConstantProperty.
                     feature.polygon.outlineColor = baseColor;
 
                     // Calculate center point for the stem
@@ -772,6 +855,7 @@ export function createLocalGeoJsonLayer(
                 // Constant properties are refreshed on the existing 450 ms source
                 // cadence. Cesium no longer evaluates 2-3 callbacks per entity on
                 // every frame, while the point/stem pick surface stays native.
+                // @ts-expect-error Cesium's setter wraps it in a ConstantPositionProperty.
                 feature.position = tip;
                 const stemPositionBuffers = [
                   [base, tip],
@@ -795,7 +879,7 @@ export function createLocalGeoJsonLayer(
                 const priority = labelPriorityFromProperties(properties, id);
                 _stemRecords.push({
                   id: recordId,
-                  entity: feature,
+                  entity: /** @type {LocalStemEntity} */ (feature),
                   carto,
                   base,
                   tip,
@@ -830,7 +914,7 @@ export function createLocalGeoJsonLayer(
               // post-add window has something in the scene to remove: a failure
               // before (or inside) add() never reached the collection, and
               // removing then would race Cesium's pending insert.
-              if (addedToScene) {
+              if (addedToScene && loaded) {
                 try {
                   viewer?.dataSources?.remove(loaded, true);
                 } catch {
@@ -1121,6 +1205,7 @@ export function createLocalGeoJsonLayer(
 
     disable: disableLayer,
 
+    /** @param {Cesium.Viewer} [viewer] */
     destroy: (viewer) => {
       if (_destroyed) return;
       _destroyed = true;
@@ -1146,10 +1231,22 @@ export function createLocalGeoJsonLayer(
   };
 }
 
+/**
+ * Higher priority first, then id.
+ * @param {LocalOverlayRecord} a
+ * @param {LocalOverlayRecord} b
+ * @returns {number}
+ */
 function compareLocalOverlayRecords(a, b) {
   return b.priority - a.priority || String(a.id).localeCompare(String(b.id));
 }
 
+/**
+ * Insert a record into its cell's ranked contenders, keeping the best
+ * LOCAL_OVERLAY_CELL_SURPLUS.
+ * @param {LocalOverlayRecord[]} contenders
+ * @param {LocalOverlayRecord} record
+ */
 function insertLocalCellContender(contenders, record) {
   let index = 0;
   while (
@@ -1163,6 +1260,12 @@ function insertLocalCellContender(contenders, record) {
     contenders.length = LOCAL_OVERLAY_CELL_SURPLUS;
 }
 
+/**
+ * Raise a grounded stem onto terrain the globe has loaded since its sample.
+ * @param {Cesium.Viewer} viewer
+ * @param {LocalStemRecord} record
+ * @returns {boolean} True when the ground height rose.
+ */
 function refreshLocalTerrainFloor(viewer, record) {
   const globe = viewer.scene.globe;
   if (!record.groundSampled || !globe?.show || globe.tilesLoaded === false)
@@ -1177,6 +1280,7 @@ function refreshLocalTerrainFloor(viewer, record) {
   // another GPU readback just to maintain this floor. Keep roof elevations.
   const height = globe.getHeight?.(record.carto);
   if (
+    typeof height !== 'number' ||
     !Number.isFinite(height) ||
     Math.abs(height) > GROUND_SAMPLE_MAX_ABS_HEIGHT_M ||
     height <= record.groundHeight
@@ -1186,6 +1290,14 @@ function refreshLocalTerrainFloor(viewer, record) {
   return true;
 }
 
+/**
+ * Sample the surface height under a record, at most once per retry window,
+ * and lift its stem onto it.
+ * @param {Cesium.Viewer} viewer
+ * @param {LocalStemRecord} record
+ * @param {number} now Current time, in ms.
+ * @returns {boolean} True when the record is newly grounded.
+ */
 function sampleLocalGroundHeight(viewer, record, now) {
   if (record.groundSampled || !viewer.scene.sampleHeightSupported) return false;
   if (now - record.lastGroundSampleMs < GROUND_SAMPLE_RETRY_MS) return false;
@@ -1199,6 +1311,7 @@ function sampleLocalGroundHeight(viewer, record, now) {
     return false; // tiles not ready; retry on a later bounded update
   }
   if (
+    typeof sampled !== 'number' ||
     !Number.isFinite(sampled) ||
     Math.abs(sampled) > GROUND_SAMPLE_MAX_ABS_HEIGHT_M
   )
@@ -1211,6 +1324,7 @@ function sampleLocalGroundHeight(viewer, record, now) {
     ? globe.getHeight?.(record.carto)
     : undefined;
   if (
+    typeof terrainHeight === 'number' &&
     Number.isFinite(terrainHeight) &&
     Math.abs(terrainHeight) <= GROUND_SAMPLE_MAX_ABS_HEIGHT_M
   ) {
@@ -1221,6 +1335,11 @@ function sampleLocalGroundHeight(viewer, record, now) {
   return true;
 }
 
+/**
+ * Move a stem's base to a new ground height.
+ * @param {LocalStemRecord} record
+ * @param {number} height Ellipsoid height, in metres.
+ */
 function setLocalGroundHeight(record, height) {
   record.groundHeight = height;
   Cesium.Cartesian3.fromRadians(
@@ -1233,17 +1352,30 @@ function setLocalGroundHeight(record, height) {
   record.entity.__localBaseCartesian = record.base;
 }
 
+/**
+ * Size a stem to the camera, so its tip stands about 65 px above its base on
+ * screen. A close camera samples the ground under it first.
+ * @param {Cesium.Viewer} viewer
+ * @param {LocalStemRecord} record
+ * @param {number} now Current time, in ms.
+ * @param {number | null} [knownDistance=null] The camera's distance to the
+ *   base, when the caller has it.
+ * @returns {boolean} True when the tip moved.
+ */
 function updateLocalStemGeometry(viewer, record, now, knownDistance = null) {
-  const distance = Number.isFinite(knownDistance)
-    ? knownDistance
-    : Cesium.Cartesian3.distance(viewer.camera.positionWC, record.base);
+  const distance =
+    typeof knownDistance === 'number' && Number.isFinite(knownDistance)
+      ? knownDistance
+      : Cesium.Cartesian3.distance(viewer.camera.positionWC, record.base);
   if (distance < GROUND_SAMPLE_MAX_DISTANCE_M)
     sampleLocalGroundHeight(viewer, record, now);
   // Keep the intended screen-size scaling in close-up views too. A 5 km
   // minimum made a marker hundreds of metres tall beside a nearby building.
   const effectiveDistance = Math.max(distance, 1);
   const canvasHeight = viewer.scene.canvas.clientHeight || 1080;
-  const fov = viewer.camera.frustum.fov || Math.PI / 3;
+  // An orthographic frustum has no field of view.
+  const fov =
+    /** @type {{ fov?: number }} */ (viewer.camera.frustum).fov || Math.PI / 3;
   const targetPx = 65;
   const fovFactor = 2 * Math.tan(fov / 2) * (targetPx / canvasHeight);
   const tipHeight = record.groundHeight + effectiveDistance * fovFactor;
@@ -1271,6 +1403,13 @@ function updateLocalStemGeometry(viewer, record, now, knownDistance = null) {
   return true;
 }
 
+/**
+ * A feature's label: its name, else its operator or output, else the layer's
+ * generic title.
+ * @param {LocalFeatureProperties} props
+ * @param {string} layerId
+ * @returns {string}
+ */
 function featureLabelFromProperties(props, layerId) {
   const tags = props.tags || {};
 
@@ -1290,6 +1429,12 @@ function featureLabelFromProperties(props, layerId) {
   return clampLabel(text || layerTitle(layerId));
 }
 
+/**
+ * A feature's label priority: named features first.
+ * @param {LocalFeatureProperties} props
+ * @param {string} layerId
+ * @returns {number}
+ */
 function labelPriorityFromProperties(props, layerId) {
   const tags = props.tags || {};
 
@@ -1303,6 +1448,11 @@ function labelPriorityFromProperties(props, layerId) {
   return score;
 }
 
+/**
+ * A feature entity's properties, read to plain values.
+ * @param {Cesium.Entity} entity
+ * @returns {LocalFeatureProperties}
+ */
 function propertyObject(entity) {
   const source = entity?.properties;
   const raw =
@@ -1312,9 +1462,16 @@ function propertyObject(entity) {
   return unwrapProperties(raw);
 }
 
+/**
+ * Read Cesium properties to their current values, through nested objects and
+ * arrays.
+ * @param {unknown} value
+ * @returns {any} The same shape, holding plain values.
+ */
 function unwrapProperties(value) {
   if (!value || typeof value !== 'object') return value;
   if (Array.isArray(value)) return value.map(unwrapProperties);
+  /** @type {Record<string, unknown>} */
   const out = {};
   for (const [key, entry] of Object.entries(value)) {
     out[key] =
@@ -1325,26 +1482,51 @@ function unwrapProperties(value) {
   return out;
 }
 
+/**
+ * A trimmed label, or '' for an empty or missing value.
+ * @param {unknown} value
+ * @returns {string}
+ */
 function cleanLabel(value) {
   const text = String(value || '').trim();
   if (!text || text === 'undefined' || text === 'null') return '';
   return text;
 }
 
+/**
+ * The first value that makes a clean label, or ''.
+ * @param {unknown[]} values
+ * @returns {string}
+ */
 function firstClean(values) {
   return values.map(cleanLabel).find(Boolean) || '';
 }
 
+/**
+ * A clean label, cut to 34 characters.
+ * @param {unknown} value
+ * @returns {string}
+ */
 function clampLabel(value) {
   const text = cleanLabel(value);
   return text.length > 34 ? `${text.slice(0, 31)}...` : text;
 }
 
+/**
+ * A clean card line, cut to 48 characters.
+ * @param {unknown} value
+ * @returns {string}
+ */
 function clampCardLine(value) {
   const text = cleanLabel(value);
   return text.length > 48 ? `${text.slice(0, 45)}...` : text;
 }
 
+/**
+ * The generic title for a layer's features.
+ * @param {string} layerId
+ * @returns {string}
+ */
 function layerTitle(layerId) {
   if (layerId === 'local-datacenters') return 'Datacenter';
   if (layerId === 'local-dams') return 'Dam';

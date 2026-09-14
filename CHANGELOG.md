@@ -39,8 +39,10 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 - `pnpm run typecheck` also checks the server: every module under `server/`,
   `vite.config.js`, and the shared browser modules they import, against Node's
   type declarations (`@types/node`, pinned to the Node 24 line the app
-  supports), in strict mode. The fixes for what it found change types, not
-  behavior.
+  supports). Both projects check in strict mode. The fixes for what they found
+  change types, not behavior, with one exception: the infrastructure package's
+  `localDatasetError` now reads a name and message only from an `Error`, and
+  reports any other thrown value as `dataset unavailable`.
 
 - The nightly QA run covers the first-run launcher and Map Source tray
   harnesses again. Their timing-sensitive checks now hold under

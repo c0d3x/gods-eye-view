@@ -52,13 +52,14 @@ export const INFRA_LOD_REGIONAL_HEIGHT_M = 200_000;
  * resolves to the GLOBAL band (fewest stems) — the safe default for a value we
  * could not read is the cheapest one, not the most expensive.
  *
- * @param {number} cameraHeightM
+ * @param {number | undefined} cameraHeightM
  * @returns {{activeLimit:number}}
  */
 export function infraLodBudget(cameraHeightM) {
-  const height = Number.isFinite(cameraHeightM)
-    ? Math.max(0, cameraHeightM)
-    : INFRA_LOD_GLOBAL_HEIGHT_M;
+  const height =
+    typeof cameraHeightM === 'number' && Number.isFinite(cameraHeightM)
+      ? Math.max(0, cameraHeightM)
+      : INFRA_LOD_GLOBAL_HEIGHT_M;
   if (height >= INFRA_LOD_GLOBAL_HEIGHT_M)
     return { activeLimit: INFRA_LOD_ACTIVE_MIN };
   if (height >= INFRA_LOD_REGIONAL_HEIGHT_M)
@@ -98,8 +99,8 @@ export const INFRA_LOD_MAX_DISTANCE_PENALTY = 200;
  * (callers only compare it), but every input is normalized so the output is
  * always a finite number.
  *
- * @param {number} priority Existing label-priority score (localGeojson.js).
- * @param {number} distanceM Camera→feature distance in metres.
+ * @param {number | undefined} priority Existing label-priority score (localGeojson.js).
+ * @param {number | undefined} distanceM Camera→feature distance in metres.
  * @param {boolean} isIncumbent Record currently holds an active stem.
  * @param {object} [options]
  * @param {number} [options.incumbentBonus]
@@ -117,9 +118,15 @@ export function infraRankScore(
     maxDistancePenalty = INFRA_LOD_MAX_DISTANCE_PENALTY,
   } = {},
 ) {
-  const p = Number.isFinite(priority) ? priority : 0;
+  const p =
+    typeof priority === 'number' && Number.isFinite(priority) ? priority : 0;
   const far = Number.isFinite(farM) && farM > 0 ? farM : INFRA_LOD_FAR_M;
-  const d = Number.isFinite(distanceM) && distanceM >= 0 ? distanceM : far;
+  const d =
+    typeof distanceM === 'number' &&
+    Number.isFinite(distanceM) &&
+    distanceM >= 0
+      ? distanceM
+      : far;
   const penaltyCap =
     Number.isFinite(maxDistancePenalty) && maxDistancePenalty >= 0
       ? maxDistancePenalty
@@ -129,7 +136,11 @@ export function infraRankScore(
   return p + bonus - penaltyCap * Math.min(1, d / far);
 }
 
-/** Infinity-safe distance for a total sort order. */
+/**
+ * Infinity-safe distance for a total sort order.
+ * @param {number} distanceM
+ * @returns {number}
+ */
 function sortableDistance(distanceM) {
   return Number.isFinite(distanceM) && distanceM >= 0
     ? distanceM
@@ -168,7 +179,9 @@ export function selectInfraLod(
       continue;
     if (candidate.inView !== true) continue;
     const distanceM =
-      Number.isFinite(candidate.distanceM) && candidate.distanceM >= 0
+      typeof candidate.distanceM === 'number' &&
+      Number.isFinite(candidate.distanceM) &&
+      candidate.distanceM >= 0
         ? candidate.distanceM
         : Number.POSITIVE_INFINITY;
     const normalized = {
@@ -259,7 +272,10 @@ export function applyInfraEvictionGrace({
     if (typeof id !== 'string' || !id || selectedSet.has(id)) continue;
     const prior = graceState instanceof Map ? graceState.get(id) : undefined;
     const misses = (prior?.misses || 0) + 1;
-    const since = Number.isFinite(prior?.since) ? prior.since : nowMs;
+    const since =
+      typeof prior?.since === 'number' && Number.isFinite(prior.since)
+        ? prior.since
+        : nowMs;
     if (misses > gracePasses || nowMs - since >= graceMs) {
       evictIds.push(id);
     } else {
@@ -337,7 +353,7 @@ export const INFRA_LOD_MOTION_EPSILON_MIN_M = 250;
  * could not read must not buy the most expensive band; here, a missed
  * recompute empties the layer while a surplus one costs a single bounded pass.
  *
- * @param {number} cameraHeightM
+ * @param {number | undefined} cameraHeightM
  * @param {object} [options]
  * @param {number} [options.ratio]
  * @param {number} [options.minM]
@@ -357,7 +373,11 @@ export function infraLodMotionEpsilonM(
       ? ratio
       : INFRA_LOD_MOTION_EPSILON_RATIO;
   const height =
-    Number.isFinite(cameraHeightM) && cameraHeightM > 0 ? cameraHeightM : 0;
+    typeof cameraHeightM === 'number' &&
+    Number.isFinite(cameraHeightM) &&
+    cameraHeightM > 0
+      ? cameraHeightM
+      : 0;
   return Math.max(floor, height * scale);
 }
 
@@ -410,7 +430,9 @@ export function shouldRecomputeInfraLod({
 
   const movedSq = Number.isFinite(movedSqM) && movedSqM > 0 ? movedSqM : 0;
   const epsilon =
-    Number.isFinite(motionEpsilonM) && motionEpsilonM >= 0
+    typeof motionEpsilonM === 'number' &&
+    Number.isFinite(motionEpsilonM) &&
+    motionEpsilonM >= 0
       ? motionEpsilonM
       : infraLodMotionEpsilonM(cameraHeightM);
   return { recompute: movedSq > epsilon * epsilon, lastProbeMs: now };

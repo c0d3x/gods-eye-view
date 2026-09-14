@@ -1,7 +1,12 @@
 // @ts-check
 import * as Cesium from 'cesium';
 
-/** Create the standard globe viewer in caller-owned, visible containers. */
+/**
+ * Create the standard globe viewer in caller-owned, visible containers.
+ * @param {{ container: Element | string, creditContainer: Element | string }} containers
+ *   The viewer's container, and the one that holds its credits.
+ * @returns {Cesium.Viewer}
+ */
 export function createApplicationViewer({ container, creditContainer }) {
   if (!container || !creditContainer)
     throw new TypeError('Viewer and credit containers are required');
@@ -25,10 +30,15 @@ export function createApplicationViewer({ container, creditContainer }) {
   try {
     viewer.targetFrameRate = 60;
     viewer.scene.globe.show = false;
-    viewer.scene.skyAtmosphere.show = true;
-    viewer.scene.skyAtmosphere.atmosphereLightIntensity = 18;
-    viewer.scene.skyAtmosphere.saturationShift = -0.12;
-    viewer.scene.skyAtmosphere.brightnessShift = -0.08;
+    // The viewer always creates a sky atmosphere, since the options above
+    // don't set `skyAtmosphere: false`.
+    const skyAtmosphere = /** @type {Cesium.SkyAtmosphere} */ (
+      viewer.scene.skyAtmosphere
+    );
+    skyAtmosphere.show = true;
+    skyAtmosphere.atmosphereLightIntensity = 18;
+    skyAtmosphere.saturationShift = -0.12;
+    skyAtmosphere.brightnessShift = -0.08;
     return viewer;
   } catch (error) {
     viewer.destroy();

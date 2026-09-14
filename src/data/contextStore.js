@@ -29,6 +29,12 @@ const STORE_KEY = '__gevContextStore';
  * @typedef {{ id: string, layerId?: string } & Record<string, unknown>} ContextMetadata
  */
 
+/**
+ * The part of the data manager that says whether a record's layer is on.
+ * @typedef {object} ContextLayerManager
+ * @property {(layerId: string) => boolean} isEnabled
+ */
+
 /** @returns {ContextStore} */
 function createStore() {
   return {
@@ -40,10 +46,13 @@ function createStore() {
 
 /** @returns {ContextStore} */
 export function getContextStore() {
-  if (!window[STORE_KEY]) {
-    window[STORE_KEY] = createStore();
+  const host = /** @type {Window & { __gevContextStore?: ContextStore }} */ (
+    window
+  );
+  if (!host[STORE_KEY]) {
+    host[STORE_KEY] = createStore();
   }
-  return window[STORE_KEY];
+  return host[STORE_KEY];
 }
 
 /**
@@ -80,13 +89,21 @@ export function registerEntityContext(entity, metadata) {
   return record;
 }
 
+/**
+ * Select an entity's context record and announce it with
+ * `gev:entity-selected`.
+ * @param {ContextRecord['entity'] | null | undefined} entity The picked
+ *   entity.
+ * @returns {ContextRecord | null} The selected record, or null when the entity
+ *   has none.
+ */
 export function selectEntityContext(entity) {
   const store = getContextStore();
   const contextId = entity?.__gevContextId;
   if (!contextId || !store.entities.has(contextId)) return null;
   store.selectedEntityId = contextId;
   store.selectedAt = Date.now();
-  const record = store.entities.get(contextId);
+  const record = /** @type {ContextRecord} */ (store.entities.get(contextId));
   window.dispatchEvent(
     new CustomEvent('gev:entity-selected', { detail: record }),
   );
@@ -170,6 +187,13 @@ export function clearTrackedSubjectContext(layerId) {
   }
 }
 
+/**
+ * The selected context record while it is still active. A selection that is
+ * no longer active is cleared.
+ * @param {{ dataManager?: ContextLayerManager | null }} [options]
+ *   `dataManager` says whether the record's layer is enabled.
+ * @returns {ContextRecord | null}
+ */
 export function getSelectedEntityContext({ dataManager = null } = {}) {
   const store = getContextStore();
   if (!store.selectedEntityId) return null;
@@ -208,7 +232,10 @@ export function clearSelectedEntityContextForLayer(
   }
 }
 
-/** Remove obsolete context records when a viewport-scoped layer refreshes. */
+/**
+ * Remove obsolete context records when a viewport-scoped layer refreshes.
+ * @param {string} layerId Owning layer.
+ */
 export function removeEntityContextsForLayer(layerId) {
   const store = getContextStore();
   for (const [id, record] of store.entities) {
@@ -227,6 +254,14 @@ export function removeEntityContextsForLayer(layerId) {
   }
 }
 
+/**
+ * Is a record still live: its entity and data source shown, and its layer
+ * enabled?
+ * @param {ContextRecord | null | undefined} record
+ * @param {ContextLayerManager | null} [dataManager=null] Without it, the
+ *   layer is not checked.
+ * @returns {boolean}
+ */
 export function isContextRecordActive(record, dataManager = null) {
   if (!record) return false;
   if (record.entity?.show === false) return false;
