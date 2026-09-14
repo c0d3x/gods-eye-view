@@ -20,52 +20,94 @@ import { readUiSource } from '../testing/uiSources.mjs';
 
 /** The layer registry as main.js builds it (src/main.js dataManager.register calls). */
 const REGISTERED = [
-  'flights', 'military', 'earthquakes', 'satellites', 'rocket-launches', 'traffic',
-  'cctv', 'radio', 'bikeshare', 'ais-live-vessels', 'military-installations',
-  'military-awareness', 'local-datacenters', 'local-dams',
-  'telegeography-submarine-cables', 'local-firms',
+  'flights',
+  'military',
+  'earthquakes',
+  'satellites',
+  'rocket-launches',
+  'traffic',
+  'cctv',
+  'radio',
+  'bikeshare',
+  'ais-live-vessels',
+  'military-installations',
+  'military-awareness',
+  'local-datacenters',
+  'local-dams',
+  'telegeography-submarine-cables',
+  'local-firms',
 ];
 
 /** Layers Space Missions permits while it isolates the globe (contextModePolicy). */
-const SPACE_MISSIONS_ALLOWED = new Set(['rocket-launches', 'satellites', 'radio']);
+const SPACE_MISSIONS_ALLOWED = new Set([
+  'rocket-launches',
+  'satellites',
+  'radio',
+]);
 
 const PROJECT_FIXTURE = {
   version: 3,
-  scenes: [{
-    id: 'scene-1',
-    title: 'Fixture Scene',
-    shots: [
-      {
-        id: 'shot-a',
-        title: 'Shot A',
-        durationSec: 0.2,
-        holdSec: 0,
-        camera: { lat: 10, lon: 20, alt: 500000, heading: 0, pitch: -40, roll: 0 },
-        visual: { style: 'normal' },
-        layers: { flights: { enabled: true } },
-      },
-      {
-        id: 'shot-b',
-        title: 'Shot B',
-        durationSec: 0.2,
-        holdSec: 0,
-        camera: { lat: -30, lon: 140, alt: 900000, heading: 0, pitch: -40, roll: 0 },
-        visual: { style: 'retro' },
-        layers: { traffic: { enabled: true } },
-      },
-    ],
-  }],
+  scenes: [
+    {
+      id: 'scene-1',
+      title: 'Fixture Scene',
+      shots: [
+        {
+          id: 'shot-a',
+          title: 'Shot A',
+          durationSec: 0.2,
+          holdSec: 0,
+          camera: {
+            lat: 10,
+            lon: 20,
+            alt: 500000,
+            heading: 0,
+            pitch: -40,
+            roll: 0,
+          },
+          visual: { style: 'normal' },
+          layers: { flights: { enabled: true } },
+        },
+        {
+          id: 'shot-b',
+          title: 'Shot B',
+          durationSec: 0.2,
+          holdSec: 0,
+          camera: {
+            lat: -30,
+            lon: 140,
+            alt: 900000,
+            heading: 0,
+            pitch: -40,
+            roll: 0,
+          },
+          visual: { style: 'retro' },
+          layers: { traffic: { enabled: true } },
+        },
+      ],
+    },
+  ],
 };
 
 /** Stub the browser globals the director touches, headlessly. */
 function installSceneRuntime(project = PROJECT_FIXTURE) {
   const originalDocument = globalThis.document;
   const originalLocalStorage = globalThis.localStorage;
-  const noopClassList = { add() {}, remove() {}, toggle() {}, contains: () => false };
+  const noopClassList = {
+    add() {},
+    remove() {},
+    toggle() {},
+    contains: () => false,
+  };
 
   globalThis.document = {
     getElementById: () => null,
-    createElement: () => ({ classList: noopClassList, style: {}, appendChild() {}, remove() {} }),
+    createElement: () => ({
+      classList: noopClassList,
+      style: {},
+      appendChild() {},
+      remove() {},
+    }),
     addEventListener() {},
     removeEventListener() {},
     body: { classList: noopClassList, appendChild() {} },
@@ -90,7 +132,10 @@ function installSceneRuntime(project = PROJECT_FIXTURE) {
  * abort leaves NO half-applied layer — which is the whole point of passing the
  * signal rather than only checking a boolean afterwards.
  */
-function fakeDataManager({ registered = REGISTERED, refuse = () => false } = {}) {
+function fakeDataManager({
+  registered = REGISTERED,
+  refuse = () => false,
+} = {}) {
   const enabled = new Map();
   const setEnabledCalls = [];
   const setParamsCalls = [];
@@ -131,7 +176,14 @@ function fakeStyleManager({ contextMode = null, exitFails = false } = {}) {
       manager.visualCalls.push({ visual, isCurrent: options.isCurrent });
       return true;
     },
-    getCameraState: () => ({ lat: 0, lon: 0, alt: 1000, heading: 0, pitch: -40, roll: 0 }),
+    getCameraState: () => ({
+      lat: 0,
+      lon: 0,
+      alt: 1000,
+      heading: 0,
+      pitch: -40,
+      roll: 0,
+    }),
     getVisualState: () => ({ style: 'normal' }),
     setRecordingMode() {},
     getContextModeState: () => ({ mode: manager.contextMode, entering: null }),
@@ -151,13 +203,17 @@ function fakeViewer() {
   let cancelled = 0;
   return {
     flights,
-    get cancelledFlights() { return cancelled; },
+    get cancelledFlights() {
+      return cancelled;
+    },
     camera: {
       flyTo(options) {
         flights.push(options);
         Promise.resolve().then(() => options.complete?.());
       },
-      cancelFlight() { cancelled++; },
+      cancelFlight() {
+        cancelled++;
+      },
     },
   };
 }
@@ -194,7 +250,10 @@ test('the director reconciles only the layers a shot declares', async () => {
   // Pinned here rather than only on the helper, because the walk lived here.
   const { director, dataManager, restore } = makeDirector();
   try {
-    await director._applyLayerStates({ flights: { enabled: true }, satellites: { enabled: false } });
+    await director._applyLayerStates({
+      flights: { enabled: true },
+      satellites: { enabled: false },
+    });
     assert.deepEqual(
       dataManager.setEnabledCalls.map(({ id, enabled }) => ({ id, enabled })),
       [
@@ -214,19 +273,34 @@ test('a shot captured while tracking never re-establishes tracking on playback',
   const { director, dataManager, restore } = makeDirector();
   try {
     await director._applyLayerStates({
-      flights: { enabled: true, params: { models3d: true, selectedFlightsTrackingId: 'a835af' } },
-      military: { enabled: true, params: { selectedMilitaryTrackingId: 'ae1460' } },
-      satellites: { enabled: true, params: { catalog: 'dense', selectedSatTrackingId: 25544 } },
+      flights: {
+        enabled: true,
+        params: { models3d: true, selectedFlightsTrackingId: 'a835af' },
+      },
+      military: {
+        enabled: true,
+        params: { selectedMilitaryTrackingId: 'ae1460' },
+      },
+      satellites: {
+        enabled: true,
+        params: { catalog: 'dense', selectedSatTrackingId: 25544 },
+      },
     });
 
-    const pushed = Object.fromEntries(dataManager.setParamsCalls.map((call) => [call.id, call.params]));
+    const pushed = Object.fromEntries(
+      dataManager.setParamsCalls.map((call) => [call.id, call.params]),
+    );
     assert.deepEqual(pushed.flights, { models3d: true });
     assert.deepEqual(pushed.satellites, { catalog: 'dense' });
     // Nothing survived military's params, so nothing is pushed at all.
     assert.equal(Object.hasOwn(pushed, 'military'), false);
     for (const call of dataManager.setParamsCalls) {
       for (const key of SCENE_TRACKING_PARAM_KEYS) {
-        assert.equal(Object.hasOwn(call.params, key), false, `${call.id} leaked ${key}`);
+        assert.equal(
+          Object.hasOwn(call.params, key),
+          false,
+          `${call.id} leaked ${key}`,
+        );
       }
     }
   } finally {
@@ -241,21 +315,29 @@ test('a dirty Space Missions state is exited before a recipe applies its layers'
   const style = { contextMode: 'space-missions' };
   const holder = {};
   const data = {
-    refuse: (id, on) => on
-      && holder.styleManager?.contextMode === 'space-missions'
-      && !SPACE_MISSIONS_ALLOWED.has(id),
+    refuse: (id, on) =>
+      on &&
+      holder.styleManager?.contextMode === 'space-missions' &&
+      !SPACE_MISSIONS_ALLOWED.has(id),
   };
-  const { director, styleManager, dataManager, restore } = makeDirector({ style, data });
+  const { director, styleManager, dataManager, restore } = makeDirector({
+    style,
+    data,
+  });
   holder.styleManager = styleManager;
   try {
-    const result = await director._applyLayerStates(recipeLayers('flights-radar'));
+    const result = await director._applyLayerStates(
+      recipeLayers('flights-radar'),
+    );
 
     assert.deepEqual(styleManager.contextExits, ['off']);
     assert.equal(styleManager.contextMode, null);
     assert.deepEqual(result.refused, []);
     assert.ok(result.applied.includes('flights'));
     assert.deepEqual(
-      dataManager.setEnabledCalls.filter((call) => call.enabled).map((call) => call.id),
+      dataManager.setEnabledCalls
+        .filter((call) => call.enabled)
+        .map((call) => call.id),
       ['flights'],
     );
   } finally {
@@ -285,10 +367,16 @@ test('Orbital Watch does not compose over a Space Missions replay', async () => 
 
 test('a non-isolating context mode is left alone', async () => {
   for (const contextMode of [null, 'flights']) {
-    const { director, styleManager, restore } = makeDirector({ style: { contextMode } });
+    const { director, styleManager, restore } = makeDirector({
+      style: { contextMode },
+    });
     try {
       await director._applyLayerStates({ flights: { enabled: true } });
-      assert.deepEqual(styleManager.contextExits, [], `${contextMode} must not be exited`);
+      assert.deepEqual(
+        styleManager.contextExits,
+        [],
+        `${contextMode} must not be exited`,
+      );
     } finally {
       restore();
     }
@@ -309,7 +397,9 @@ test('a refused layer is reported, never counted as applied', async () => {
     assert.deepEqual(result.applied, ['traffic']);
     // Params must not be pushed at a layer whose transition was vetoed.
     assert.deepEqual(dataManager.setParamsCalls, []);
-    const refusals = director._activeRun.events.filter((event) => event.type === 'shot_layers_refused');
+    const refusals = director._activeRun.events.filter(
+      (event) => event.type === 'shot_layers_refused',
+    );
     assert.equal(refusals.length, 1);
     assert.deepEqual(refusals[0].payload, { layerIds: ['flights'] });
   } finally {
@@ -327,13 +417,19 @@ test('cancellation between two layers ends the reconcile where it stands', async
     return settled;
   };
   try {
-    const result = await director._applyLayerStates({
-      flights: { enabled: true },
-      satellites: { enabled: true },
-      traffic: { enabled: true },
-    }, token);
+    const result = await director._applyLayerStates(
+      {
+        flights: { enabled: true },
+        satellites: { enabled: true },
+        traffic: { enabled: true },
+      },
+      token,
+    );
 
-    assert.deepEqual(dataManager.setEnabledCalls.map((call) => call.id), ['flights']);
+    assert.deepEqual(
+      dataManager.setEnabledCalls.map((call) => call.id),
+      ['flights'],
+    );
     assert.equal(result.cancelled, true);
   } finally {
     restore();
@@ -343,16 +439,23 @@ test('cancellation between two layers ends the reconcile where it stands', async
 test('STOP during a suspended visual transition lands no layer changes', async () => {
   // Repro shape from review: applyVisualState suspends (a map-stack switch),
   // STOP arrives, the visual resolves — and the shot's layer pass still ran.
-  const { director, viewer, styleManager, dataManager, restore } = makeDirector();
+  const { director, viewer, styleManager, dataManager, restore } =
+    makeDirector();
   let releaseVisual;
   styleManager.applyVisualState = (visual) => {
     styleManager.visualStates.push(visual);
-    return new Promise((resolve) => { releaseVisual = resolve; });
+    return new Promise((resolve) => {
+      releaseVisual = resolve;
+    });
   };
   try {
     const run = director.startScene('scene-1', { single: true });
     await settle();
-    assert.equal(styleManager.visualStates.length, 1, 'the run must be parked on the visual await');
+    assert.equal(
+      styleManager.visualStates.length,
+      1,
+      'the run must be parked on the visual await',
+    );
 
     director.stopScene('Stopped (Esc)');
     releaseVisual();
@@ -370,19 +473,34 @@ test('STOP between two layers lands no further layer changes', async () => {
   const { director, dataManager, restore } = makeDirector({
     project: {
       version: 3,
-      scenes: [{
-        id: 'scene-1',
-        title: 'Fixture Scene',
-        shots: [{
-          id: 'shot-a',
-          title: 'Shot A',
-          durationSec: 0.2,
-          holdSec: 0,
-          camera: { lat: 10, lon: 20, alt: 500000, heading: 0, pitch: -40, roll: 0 },
-          visual: { style: 'normal' },
-          layers: { flights: { enabled: true }, satellites: { enabled: true }, traffic: { enabled: true } },
-        }],
-      }],
+      scenes: [
+        {
+          id: 'scene-1',
+          title: 'Fixture Scene',
+          shots: [
+            {
+              id: 'shot-a',
+              title: 'Shot A',
+              durationSec: 0.2,
+              holdSec: 0,
+              camera: {
+                lat: 10,
+                lon: 20,
+                alt: 500000,
+                heading: 0,
+                pitch: -40,
+                roll: 0,
+              },
+              visual: { style: 'normal' },
+              layers: {
+                flights: { enabled: true },
+                satellites: { enabled: true },
+                traffic: { enabled: true },
+              },
+            },
+          ],
+        },
+      ],
     },
   });
   const inner = dataManager.setEnabled.bind(dataManager);
@@ -393,7 +511,10 @@ test('STOP between two layers lands no further layer changes', async () => {
   };
   try {
     await director.startScene('scene-1', { single: true });
-    assert.deepEqual(dataManager.setEnabledCalls.map((call) => call.id), ['flights']);
+    assert.deepEqual(
+      dataManager.setEnabledCalls.map((call) => call.id),
+      ['flights'],
+    );
   } finally {
     restore();
   }
@@ -407,22 +528,33 @@ test('STOP aborts the layer transition in flight, not merely the next one', asyn
   const { director, dataManager, restore } = makeDirector({
     project: {
       version: 3,
-      scenes: [{
-        id: 'scene-1',
-        title: 'Fixture Scene',
-        shots: [{
-          id: 'shot-a',
-          title: 'Shot A',
-          durationSec: 0.2,
-          holdSec: 0,
-          camera: { lat: 10, lon: 20, alt: 500000, heading: 0, pitch: -40, roll: 0 },
-          visual: { style: 'normal' },
-          layers: {
-            flights: { enabled: true, params: { models3d: true } },
-            satellites: { enabled: true },
-          },
-        }],
-      }],
+      scenes: [
+        {
+          id: 'scene-1',
+          title: 'Fixture Scene',
+          shots: [
+            {
+              id: 'shot-a',
+              title: 'Shot A',
+              durationSec: 0.2,
+              holdSec: 0,
+              camera: {
+                lat: 10,
+                lon: 20,
+                alt: 500000,
+                heading: 0,
+                pitch: -40,
+                roll: 0,
+              },
+              visual: { style: 'normal' },
+              layers: {
+                flights: { enabled: true, params: { models3d: true } },
+                satellites: { enabled: true },
+              },
+            },
+          ],
+        },
+      ],
     },
   });
   const inner = dataManager.setEnabled.bind(dataManager);
@@ -434,14 +566,30 @@ test('STOP aborts the layer transition in flight, not merely the next one', asyn
   try {
     await director.startScene('scene-1', { single: true });
 
-    assert.equal(dataManager.setEnabledCalls.length, 1, 'only the in-flight layer is touched');
+    assert.equal(
+      dataManager.setEnabledCalls.length,
+      1,
+      'only the in-flight layer is touched',
+    );
     assert.ok(
       dataManager.setEnabledCalls[0].signal instanceof AbortSignal,
       'the run must hand its abort signal to every transition',
     );
-    assert.equal(dataManager.setEnabledCalls[0].signal.aborted, true, 'STOP must abort that signal');
-    assert.deepEqual(dataManager.committed, [], 'an aborted transition must not commit');
-    assert.deepEqual(dataManager.setParamsCalls, [], 'no params for a layer that never moved');
+    assert.equal(
+      dataManager.setEnabledCalls[0].signal.aborted,
+      true,
+      'STOP must abort that signal',
+    );
+    assert.deepEqual(
+      dataManager.committed,
+      [],
+      'an aborted transition must not commit',
+    );
+    assert.deepEqual(
+      dataManager.setParamsCalls,
+      [],
+      'no params for a layer that never moved',
+    );
   } finally {
     restore();
   }
@@ -452,7 +600,9 @@ test('a newer LOAD aborts the previous LOAD transition rather than disowning it'
   const gates = [];
   styleManager.applyVisualState = (visual, options = {}) => {
     styleManager.visualCalls.push({ visual, isCurrent: options.isCurrent });
-    return new Promise((resolve) => { gates.push(resolve); });
+    return new Promise((resolve) => {
+      gates.push(resolve);
+    });
   };
   try {
     const first = director.loadShot('scene-1', 'shot-a');
@@ -463,7 +613,10 @@ test('a newer LOAD aborts the previous LOAD transition rather than disowning it'
     await Promise.all([first, second]);
 
     // Only the newer LOAD reconciled, and it carried a live (unaborted) signal.
-    assert.deepEqual(dataManager.setEnabledCalls.map((call) => call.id), ['traffic']);
+    assert.deepEqual(
+      dataManager.setEnabledCalls.map((call) => call.id),
+      ['traffic'],
+    );
     assert.ok(dataManager.setEnabledCalls[0].signal instanceof AbortSignal);
     assert.equal(dataManager.setEnabledCalls[0].signal.aborted, false);
   } finally {
@@ -484,12 +637,22 @@ test('applyVisualState gates the map-stack switch on both sides of its await', (
   // never issues one — every normalized scene shot omits it — so a stale
   // switch would otherwise stand on the globe.
   const source = readUiSource();
-  const method = source.match(/\n {2}async applyVisualState\([\s\S]*?\n {2}\}\n/);
+  const method = source.match(
+    /\n {2}async applyVisualState\([\s\S]*?\n {2}\}\n/,
+  );
   assert.ok(method, 'applyVisualState is missing from ui.js');
-  assert.match(method[0], /async applyVisualState\(state = \{\}, \{ isCurrent = null \} = \{\}\)/);
+  assert.match(
+    method[0],
+    /async applyVisualState\(state = \{\}, \{ isCurrent = null \} = \{\}\)/,
+  );
 
-  const mapStackBlock = method[0].match(/if \(state\.mapStack\) \{[\s\S]*?\n {4}\}/);
-  assert.ok(mapStackBlock, 'the map-stack block is missing from applyVisualState');
+  const mapStackBlock = method[0].match(
+    /if \(state\.mapStack\) \{[\s\S]*?\n {4}\}/,
+  );
+  assert.ok(
+    mapStackBlock,
+    'the map-stack block is missing from applyVisualState',
+  );
   const block = mapStackBlock[0];
 
   // Before: an already-superseded caller must not start the switch at all.
@@ -505,7 +668,11 @@ test('applyVisualState gates the map-stack switch on both sides of its await', (
     'a switch superseded mid-flight must be reverted to the stack the winner inherited',
   );
   // And only what is still ours — a newer switch owns the globe, never revert it.
-  assert.match(block, /getSwitchGeneration/, 'the revert must consult the switch generation');
+  assert.match(
+    block,
+    /getSwitchGeneration/,
+    'the revert must consult the switch generation',
+  );
   assert.match(
     block,
     /if \(globeIsStillOurs && stackBefore && landed !== stackBefore\) \{\s*await this\._setMapStack\(stackBefore/,
@@ -522,7 +689,9 @@ test('a superseded LOAD is refused its visual commit', async () => {
   const gates = [];
   styleManager.applyVisualState = (visual, options = {}) => {
     styleManager.visualCalls.push({ visual, isCurrent: options.isCurrent });
-    return new Promise((resolve) => { gates.push(resolve); });
+    return new Promise((resolve) => {
+      gates.push(resolve);
+    });
   };
   try {
     const first = director.loadShot('scene-1', 'shot-a');
@@ -533,9 +702,21 @@ test('a superseded LOAD is refused its visual commit', async () => {
     await Promise.all([first, second]);
 
     const [stale, live] = styleManager.visualCalls;
-    assert.equal(typeof stale.isCurrent, 'function', 'the visual call must carry a liveness predicate');
-    assert.equal(stale.isCurrent(), false, 'the superseded LOAD must be refused its commit');
-    assert.equal(live.isCurrent(), true, 'the live LOAD must still be allowed to commit');
+    assert.equal(
+      typeof stale.isCurrent,
+      'function',
+      'the visual call must carry a liveness predicate',
+    );
+    assert.equal(
+      stale.isCurrent(),
+      false,
+      'the superseded LOAD must be refused its commit',
+    );
+    assert.equal(
+      live.isCurrent(),
+      true,
+      'the live LOAD must still be allowed to commit',
+    );
   } finally {
     restore();
   }
@@ -546,17 +727,27 @@ test('a run refuses the visual commit of a shot cancelled mid-transition', async
   let releaseVisual;
   styleManager.applyVisualState = (visual, options = {}) => {
     styleManager.visualCalls.push({ visual, isCurrent: options.isCurrent });
-    return new Promise((resolve) => { releaseVisual = resolve; });
+    return new Promise((resolve) => {
+      releaseVisual = resolve;
+    });
   };
   const run = director.startScene('scene-1', { single: true });
   try {
     await settle();
     const call = styleManager.visualCalls[0];
-    assert.equal(typeof call.isCurrent, 'function', 'the visual call must carry a liveness predicate');
+    assert.equal(
+      typeof call.isCurrent,
+      'function',
+      'the visual call must carry a liveness predicate',
+    );
     assert.equal(call.isCurrent(), true, 'live while the run owns the shot');
 
     director.stopScene('Stopped (Esc)');
-    assert.equal(call.isCurrent(), false, 'STOP must revoke the pending commit');
+    assert.equal(
+      call.isCurrent(),
+      false,
+      'STOP must revoke the pending commit',
+    );
   } finally {
     // Always let the run finish: _finishRun() owns the progress interval, so a
     // failed assertion that skipped this would leave a live timer behind and
@@ -571,11 +762,14 @@ test('a run refuses the visual commit of a shot cancelled mid-transition', async
 test('the newest LOAD wins when two loads race', async () => {
   // Both loads suspend on their visual await; the OLDER one resolves second.
   // Without a generation it completes last and overwrites the newer intent.
-  const { director, viewer, styleManager, dataManager, restore } = makeDirector();
+  const { director, viewer, styleManager, dataManager, restore } =
+    makeDirector();
   const gates = [];
   styleManager.applyVisualState = (visual) => {
     styleManager.visualStates.push(visual);
-    return new Promise((resolve) => { gates.push(resolve); });
+    return new Promise((resolve) => {
+      gates.push(resolve);
+    });
   };
   try {
     const first = director.loadShot('scene-1', 'shot-a');
@@ -604,7 +798,10 @@ test('a scene run supersedes a LOAD still suspended on its visual await', async 
   let calls = 0;
   styleManager.applyVisualState = (visual) => {
     styleManager.visualStates.push(visual);
-    if (++calls === 1) return new Promise((resolve) => { releaseLoadVisual = resolve; });
+    if (++calls === 1)
+      return new Promise((resolve) => {
+        releaseLoadVisual = resolve;
+      });
     return Promise.resolve();
   };
   try {
@@ -630,12 +827,21 @@ test('destroy drains cancelled LOAD work before its viewer can be discarded', as
   let finishVisual;
   const dataManager = fakeDataManager();
   const viewer = { camera: { cancelFlight() {} } };
-  const director = new SceneDirector(viewer, {
-    applyVisualState: () => new Promise((resolve) => { finishVisual = resolve; }),
-  }, dataManager);
+  const director = new SceneDirector(
+    viewer,
+    {
+      applyVisualState: () =>
+        new Promise((resolve) => {
+          finishVisual = resolve;
+        }),
+    },
+    dataManager,
+  );
   const loading = director.loadShot('scene-1', 'shot-a');
   let destroyed = false;
-  const stopping = director.destroy().then(() => { destroyed = true; });
+  const stopping = director.destroy().then(() => {
+    destroyed = true;
+  });
   await Promise.resolve();
   assert.equal(destroyed, false);
   finishVisual();
