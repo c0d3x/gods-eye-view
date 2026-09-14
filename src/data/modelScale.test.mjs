@@ -392,6 +392,7 @@ const LAYERS = [
   {
     name: 'military',
     source: 'src/data/militaryFlights.js',
+    billboardSource: 'src/data/aircraftLayerCore.js',
     asset: (() => {
       const src = fs.readFileSync(path.join(ROOT, 'src/data/militaryFlights.js'), 'utf8');
       const m = src.match(/\bconst JET_MODEL_URL = '([^']+)';/);

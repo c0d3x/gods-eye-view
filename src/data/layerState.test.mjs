@@ -364,8 +364,8 @@ test('a fresh boot starts 3D aircraft ON in proximity — codec, both layers, an
   // The other three surfaces, read from source, because each is the literal a
   // first-run session actually boots from.
   const { readFile } = await import('node:fs/promises');
-  // The flights layer's state lives inside the aircraft layer core's factory.
-  for (const name of ['aircraftLayerCore.js', 'militaryFlights.js']) {
+  // Both flight layers' state lives inside the aircraft layer core's factory.
+  for (const name of ['aircraftLayerCore.js']) {
     const source = await readFile(new URL(`./${name}`, import.meta.url), 'utf8');
     assert.match(source, /^\s*let _models3dEnabled = true;$/m,
       `${name}: the fleet starts armed, matching the codec default`);

@@ -110,8 +110,8 @@ test('slow clean sprite clicks select, while long presses and orbit nudges canno
 
 test('civilian and military click handlers apply duration only at the deselect branch', () => {
   const sources = [
+    // Both flight layers are built by the aircraft layer core.
     readFileSync(new URL('./aircraftLayerCore.js', import.meta.url), 'utf8'),
-    readFileSync(new URL('./militaryFlights.js', import.meta.url), 'utf8'),
   ];
   for (const source of sources) {
     assert.match(source, /isTrackingSelectionGesture\(gesture\)[\s\S]+scene\.pick/);

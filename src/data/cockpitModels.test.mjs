@@ -12,10 +12,9 @@ import { readFileSync } from 'node:fs';
  * regression would silently revert. These assertions pin the decisions.
  */
 
+// Both flight layers are built by the aircraft layer core.
 const LAYERS = [
-  // The flights layer is built by the aircraft layer core.
-  { name: 'flights', path: new URL('./aircraftLayerCore.js', import.meta.url) },
-  { name: 'militaryFlights', path: new URL('./militaryFlights.js', import.meta.url) },
+  { name: 'aircraft layer core', path: new URL('./aircraftLayerCore.js', import.meta.url) },
 ];
 
 /** Read a `const NAME = <number>;` declaration out of a module's source. */

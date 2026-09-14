@@ -24,8 +24,8 @@ describes how the app behaves now; `CHANGELOG.md` records how it got here.
 - Map stack switching in `src/mapStackController.js`
 - Voice control in `src/voice/` (OpenAI Realtime over WebRTC)
 - Voice map whiteboard annotations in `src/annotations/`
-- 3D aircraft/model tracking surfaces in `src/data/aircraftLayerCore.js` (the flights layer, built by
-  `src/data/flights.js`) and `src/data/militaryFlights.js`
+- 3D aircraft/model tracking surfaces in `src/data/aircraftLayerCore.js`, which `src/data/flights.js`
+  and `src/data/militaryFlights.js` configure for their feeds
 - Detection overlay and tracked-target readout in `src/data/detection.js`, `src/data/detectionDraw.js`, and `src/data/trackedReadout.js`
 - API wiring in `vite.config.js`; the routes live under `server/` (`proxies/`, `ais/`, `realtime/`)
   and the helpers they share in `server/lib/`

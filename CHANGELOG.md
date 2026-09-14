@@ -27,6 +27,13 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Changed
 
+- The Live Flights and Military Flights layers share one implementation,
+  `src/data/aircraftLayerCore.js`, which `flights.js` and `militaryFlights.js`
+  configure for their feeds. The two files had been near-copies of each
+  other, 9,214 lines between them, so a fix to one often missed the other.
+  The core and both configurations are 6,360 lines, and both layers behave
+  as before.
+
 - Turning on the Datacenters or Dams layer no longer freezes the globe. The
   layer read its bundled dataset and built every feature in one step, which
   blocked input and rendering for about 180 ms with the 4,351 datacenters. It

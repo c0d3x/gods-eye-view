@@ -930,7 +930,8 @@ for (const fixture of LAYERS) {
 
 test('both layers gate the tracked-model load and record its failures', async () => {
   const { readFile } = await import('node:fs/promises');
-  for (const name of ['aircraftLayerCore.js', 'militaryFlights.js']) {
+  // Both flight layers are built by the aircraft layer core.
+  for (const name of ['aircraftLayerCore.js']) {
     const source = await readFile(new URL(`./${name}`, import.meta.url), 'utf8');
     assert.match(source, /!_trackedModel && !_trackedModelLoading && _trackedModelLoadAllowed\(\)/,
       `${name}: the driver asks permission before starting another tracked-model load`);
@@ -946,7 +947,8 @@ test('both layers gate the tracked-model load and record its failures', async ()
 
 test('the tracked regime never consults the fleet models3d toggle', async () => {
   const { readFile } = await import('node:fs/promises');
-  for (const name of ['aircraftLayerCore.js', 'militaryFlights.js']) {
+  // Both flight layers are built by the aircraft layer core.
+  for (const name of ['aircraftLayerCore.js']) {
     const source = await readFile(new URL(`./${name}`, import.meta.url), 'utf8');
     const regime = /^( *)function _trackedModelRegimeActive\(\) \{[\s\S]*?\n\1\}/m.exec(source)?.[0];
     assert.ok(regime, `${name}: _trackedModelRegimeActive is defined`);

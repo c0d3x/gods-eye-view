@@ -426,7 +426,8 @@ test('the render-governor gate covers the parked case, with teeth on the painter
 // holds the way it stripped detection's — a reasonable-looking change — bracket
 // promptness goes with them, silently. This test is where that shows up.
 test('aircraft brackets stay prompt because the aircraft layers hold the render loop', async () => {
-  for (const file of ['./aircraftLayerCore.js', './militaryFlights.js']) {
+  // Both flight layers are built by the aircraft layer core.
+  for (const file of ['./aircraftLayerCore.js']) {
     const source = await readFile(new URL(file, import.meta.url), 'utf8');
     const enable = /\n( +)enable\([\s\S]*?\n\1\},/.exec(source)?.[0];
     assert.ok(enable, `${file}: enable() is still identifiable`);

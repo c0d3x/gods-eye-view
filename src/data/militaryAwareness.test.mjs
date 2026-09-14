@@ -1352,9 +1352,8 @@ test('hasContact declines while a layer is disabled, whatever its maps still hol
   // disable() hides the collection but keeps the records, so a map lookup
   // alone would report a preserved subject as FRESH from hidden stale data.
   for (const [name, source, guard] of [
-    ['flights', fs.readFileSync(new URL('./aircraftLayerCore.js', import.meta.url), 'utf8'),
-      /hasContact\(icao24\) \{\s*\n\s*if \(!_billboardCollection \|\| !_billboardCollection\.show \|\| _billboards\.size === 0\) return null;/],
-    ['militaryFlights', fs.readFileSync(new URL('./militaryFlights.js', import.meta.url), 'utf8'),
+    // Both flight layers are built by the aircraft layer core.
+    ['aircraftLayerCore', fs.readFileSync(new URL('./aircraftLayerCore.js', import.meta.url), 'utf8'),
       /hasContact\(icao24\) \{\s*\n\s*if \(!_billboardCollection \|\| !_billboardCollection\.show \|\| _billboards\.size === 0\) return null;/],
     ['aisLiveVessels', fs.readFileSync(new URL('./aisLiveVessels.js', import.meta.url), 'utf8'),
       /hasContact\(mmsi\) \{\s*\n\s*if \(!state\.enabled \|\| !state\.vesselMap \|\| state\.vesselMap\.size === 0\) return null;/],
@@ -1526,12 +1525,12 @@ test('a deliberate source clear still fully clears the subject', () => {
 
 test('production eviction sites actually tag their clears', () => {
   // The event contract above is worthless if the real cull paths never set the
-  // origin, so pin the three production call sites.
-  const flightsSource = fs.readFileSync(new URL('./aircraftLayerCore.js', import.meta.url), 'utf8');
-  const militarySource = fs.readFileSync(new URL('./militaryFlights.js', import.meta.url), 'utf8');
+  // origin, so pin the production call sites. Both flight layers are built
+  // by the aircraft layer core.
+  const aircraftSource = fs.readFileSync(new URL('./aircraftLayerCore.js', import.meta.url), 'utf8');
   const vesselsSource = fs.readFileSync(new URL('./aisLiveVessels.js', import.meta.url), 'utf8');
 
-  for (const [name, source] of [['flights', flightsSource], ['militaryFlights', militarySource]]) {
+  for (const [name, source] of [['aircraftLayerCore', aircraftSource]]) {
     assert.match(
       source,
       /if \(icao24 === _trackedIcao\) \{\s*\n\s*_clearTracking\(false, \{ evicted: true \}\);/,

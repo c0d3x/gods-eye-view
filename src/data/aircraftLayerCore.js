@@ -3,7 +3,9 @@
  * @description createAircraftLayer() builds a live aircraft layer: the billboard
  * fleet, dead reckoning between polls, 3D models, click-to-track with its follow
  * camera, trail and readout, Cockpit contacts, and the selection and awareness
- * events. `flights.js` builds the OpenSky flights layer from it.
+ * events. `flights.js` (OpenSky) and `militaryFlights.js` (adsb.lol's military
+ * feed) configure it: the feed, the records it builds, and each layer's
+ * presentation and wording.
  */
 import * as Cesium from 'cesium';
 import { aircraftIncludedInNearby } from './aircraftNearbyPolicy.js';
@@ -135,9 +137,83 @@ export {
 };
 
 /**
+ * What a layer supplies to createAircraftLayer(). Required unless marked
+ * optional; the feature flags default to off.
+ * @typedef {object} AircraftLayerConfig
+ * @property {string} id - Layer id: pick owner, sprite collection, render hold,
+ *   awareness events and Context layerId.
+ * @property {string} name - Layer and Context layer name.
+ * @property {string} icon
+ * @property {string} focusOwner - Focus de-emphasis owner id.
+ * @property {string} logLabel - Console tag, as in `[Data:Flights]`.
+ * @property {string} feedName - Feed name in errors, as in 'OpenSky network error'.
+ * @property {string} sourceName - Source reported in stats, outcomes and Context.
+ * @property {string} [sourceCoverage] - Coverage reported until the feed reports
+ *   its own; layers without it report no coverage.
+ * @property {number} updateInterval - Poll interval (ms).
+ * @property {number} renderDelaySec - Render-behind delay, one poll interval.
+ * @property {string} trackingParam - Layer param the tracked id is published under.
+ * @property {string} trailColor
+ * @property {string} trailHeadIdPrefix - Trail head entity id prefix.
+ * @property {string} trackedLabelColor - Tracked readout accent.
+ * @property {(icao24: string) => Cesium.Color} fleetColor - Untracked billboard
+ *   and model tint.
+ * @property {(icao24: string) => Cesium.Color} cockpitFarColor - Tint of a
+ *   Cockpit contact beyond the near band.
+ * @property {Cesium.Color} trackedColor
+ * @property {Cesium.Color} trackedFadeColor - The tracked billboard's color once
+ *   its model owns the visual.
+ * @property {number} billboardScale - Base billboard scale.
+ * @property {(klass: string) => object} modelSpec - GLB `url`, `scale`,
+ *   `nativeRadiusM`, `bellyM`, `visualCenterNative` and `trailAnchorNative`
+ *   for an aircraft class.
+ * @property {string} preloadModelUrl - GLB preloaded at init.
+ * @property {(viewer: Cesium.Viewer) => string} feedUrl
+ * @property {(response: Response, options: {signal: AbortSignal}) => Promise<object>} readSnapshot -
+ *   `{ failure: { longBackoff, error } }`, or
+ *   `{ rows, sourceEpochMs?, staleError?, source?, coverage? }`.
+ * @property {(row: *) => {icao24: string, lat: number, lon: number}} parseRow
+ * @property {(contact: object, prevMeta: (object|undefined), context: object) => {meta: object, fixEpochMs: number}} buildRecord -
+ *   The contact's record, which carries at least onGround, renderAltitudeM,
+ *   klass, rawLat and rawLon, and the epoch of its fix. `context` holds
+ *   geoidN, isTracked, modelOwnsVisual(), viewerLatDeg, viewerLonDeg,
+ *   floorWarmPoints and receiptNowMs.
+ * @property {(icao24: string) => Promise<object|null>} fetchTrack - Trail backfill:
+ *   `{ points: [{t, lat, lon, baroAltM}], leadingAltM, thinToBudget? }`.
+ * @property {(info: object) => (number|undefined)} speedMpsOf
+ * @property {(info: object) => (number|undefined)} trackDegOf
+ * @property {(info: object) => (number|null|undefined)} altitudeMOf - Aviation
+ *   (barometric) altitude in meters.
+ * @property {(info: object) => (number|null|undefined)} verticalRateMpsOf
+ * @property {(info: object) => boolean} isLowAndSlow - Landed fast-cull thresholds.
+ * @property {(icao24: string, info: (object|undefined), cues: {stale: boolean, route: (object|null)}) => string} trackedLabelText
+ * @property {(icao24: string, described: object, info: object) => object} contextProperties -
+ *   Context `operator`, `type`, `altitude` and, for layers with routes, `route`.
+ * @property {(icao24: string, info: object) => object} nearbyFields - Layer
+ *   fields for getNearby() records.
+ * @property {object} [detectionFields] - Fields every detection object starts with.
+ * @property {(object: object, icao24: string, info: object) => void} labelDetection -
+ *   Sets a detection object's card class and altitude metric.
+ * @property {(icao24: string, info: object, verdicts: {routeOk: boolean}) => object} analystRecord
+ * @property {object} [statsFields] - Extra getStats() fields.
+ * @property {boolean} [enrichment] - adsbdb type and route enrichment.
+ * @property {boolean} [displayFloor] - Display-time ground floor for grounded contacts.
+ * @property {boolean} [yieldsMilitaryContacts] - Drop contacts the military layer renders.
+ * @property {boolean} [focusEvidence] - The DEV focus-evidence seam.
+ * @property {(position: Cesium.Cartesian3) => Cesium.Cartesian3} [trailFloor] -
+ *   Floors trail-bound positions at the warm ground cell.
+ * @property {boolean} [groundFloorYieldsToModels] - The stale re-floor skips
+ *   contacts whose 3D model owns the visual.
+ * @property {() => void} [onEnable]
+ * @property {() => void} [onDisable]
+ * @property {(currentIcaos: Set<string>) => void} [afterPoll]
+ */
+
+/**
  * Build a live aircraft layer.
- * @returns {{layer: object, exports: object}} The layer, and the constants,
- *   helpers and test hooks its module exports.
+ * @param {AircraftLayerConfig} config
+ * @returns {{layer: object, exports: object}} The layer, and the constants and
+ *   test hooks its module exports.
  */
 export function createAircraftLayer(config) {
   const FOCUS_EVIDENCE_DEV = import.meta.env?.DEV === true;
@@ -4545,7 +4621,7 @@ export function createAircraftLayer(config) {
 
     /**
      * Find aircraft near a given ECEF position, sorted ascending by distance.
-     * Return shape mirrors militaryFlightsLayer.getNearby (id/icao24/position/distance).
+     * Records carry id/icao24/position/distance plus the layer configuration's nearbyFields().
      * @param {Cesium.Cartesian3} center - Reference position in ECEF coordinates.
      * @param {number} range - Maximum distance in meters (Infinity if not finite).
      * @param {number} [maxCount=50] - Maximum number of results to return.

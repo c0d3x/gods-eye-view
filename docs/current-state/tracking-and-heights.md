@@ -316,7 +316,7 @@ Part of the [runtime reference](../CURRENT-STATE.md): motion and symbology, 3D a
   defects, each reverted individually and required to go red) and
   `scripts/qa-floor-hold.mjs` (live, real GPU — the proxy is failed mid-run and
   the contact is measured against `scene.sampleHeight`). This floor-hold path
-  currently applies to the flights layer; `militaryFlights.js` does not use it.
+  currently applies to the flights layer; the military layer does not enable it.
 - **2026-08-19 — display-time ground floor (flights layer).** A grounded
   contact's render height is picked once per poll from the floor of its FIX
   cell, but what renders is the dead-reckoned position, which drifts across
@@ -388,7 +388,7 @@ Part of the [runtime reference](../CURRENT-STATE.md): motion and symbology, 3D a
   position that stopped updating, and Previous/Next stay operable so the
   operator can step off. It fires on two paths, and both retain the snapshot:
   an eviction-origin selection clear (`reason: 'evicted'` — the aged-out
-  branches in `aircraftLayerCore.js` / `militaryFlights.js`, AIS pin exhaustion, and a
+  branch in `aircraftLayerCore.js` (both flight layers), AIS pin exhaustion, and a
   viewport refresh that drops a selected record), and a refresh whose
   presence check comes back absent. A DELIBERATE clear (click-away, Escape,
   voice stop, layer disable) still clears the subject and takes the panel
