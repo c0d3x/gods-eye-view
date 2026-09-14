@@ -271,7 +271,10 @@ async function fetchRegionalWeather(point) {
   }
 }
 
-/** True when at least one regional source produced usable data. */
+/**
+ * True when at least one regional source produced usable data.
+ * @param {{place?: unknown, weather?: unknown, news?: {status?: string}|null}} [sources]
+ */
 export function regionalBriefHasAnySource({ place, weather, news } = {}) {
   return Boolean(place || weather || (news && news.status !== 'unavailable'));
 }

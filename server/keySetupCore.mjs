@@ -122,7 +122,18 @@ export function parseWindowsUserSid(stdout) {
  *    CORS off, and its /api guard refuses cross-site requests), closing the
  *    simple-request CSRF write primitive.
  *
- * @returns {{ok: true} | {ok: false, status: number, error: string}}
+ * @param {object} [request]
+ * @param {string} [request.method]
+ * @param {string} [request.remoteAddress] The socket's peer address.
+ * @param {string} [request.hostHeader]
+ * @param {string} [request.protocol] 'http:' or 'https:'.
+ * @param {string} [request.origin]
+ * @param {string} [request.contentType]
+ * @param {Record<string, string|string[]|undefined>} [request.proxyHeaders]
+ *   The request headers, checked for reverse-proxy and CDN forwarding.
+ * @param {Record<string, string|undefined>} [request.env] e.g. process.env
+ * @returns {{ok: boolean, status?: number, error?: string}} A refusal
+ *   carries the status and error to answer with.
  */
 export function admitKeySetupRequest({
   method,
@@ -249,7 +260,7 @@ export function admitKeySetupRequest({
  * provenance without carrying the credential itself; it closes the otherwise
  * undecidable case where an exported value and a dotenv assignment happen to
  * contain the same bytes.
- * @param {{effectiveValue: unknown, storedValue: unknown, wasExternalAtBoot?: boolean}} input
+ * @param {{effectiveValue?: unknown, storedValue?: unknown, wasExternalAtBoot?: boolean}} [input]
  */
 export function isKeySetupExternallyManaged({
   effectiveValue,
@@ -262,10 +273,27 @@ export function isKeySetupExternallyManaged({
 }
 
 /**
+ * One key in the status payload. The endpoint adds `managed` once it knows
+ * where a set value comes from.
+ * @typedef {object} KeySetupKeyStatus
+ * @property {string} id
+ * @property {string} title
+ * @property {string} unlocks
+ * @property {string} getUrl
+ * @property {string[]} envVars
+ * @property {'metered'|'free'} tier
+ * @property {boolean} clientExposed
+ * @property {boolean} set
+ * @property {'file'|'external'|null} [managed] Whether this panel's store or
+ *   something outside it supplies the value; null when the key is not set.
+ */
+
+/**
  * Build the status payload the panel renders from: the registry, plus
  * per-entry `set` resolved against the given environment. It never includes
  * a value, suffix, or other credential material.
  * @param {Record<string, string|undefined>} env e.g. process.env
+ * @returns {{keys: KeySetupKeyStatus[], setCount: number, total: number}}
  */
 export function keySetupStatus(env = {}) {
   const keys = KEY_SETUP_KEYS.map((entry) => {

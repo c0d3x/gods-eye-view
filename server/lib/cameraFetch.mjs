@@ -93,7 +93,12 @@ export async function fetchCameraResponse(
     if (target.username || target.password) {
       throw new CameraRedirectError('Camera URL carries credentials');
     }
-    const init = { method: 'GET', headers, signal, redirect: 'manual' };
+    const init = {
+      method: 'GET',
+      headers,
+      signal,
+      redirect: /** @type {const} */ ('manual'),
+    };
     let response;
     if (localConfig && target.origin === registered.origin) {
       response = await (fetchImpl ?? fetch)(target, init);

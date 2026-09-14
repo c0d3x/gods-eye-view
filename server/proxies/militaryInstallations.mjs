@@ -109,6 +109,13 @@ export function militaryInstallationCacheKey(box, decimals = 3) {
 }
 
 /**
+ * A cached installation answer and when it was fetched.
+ * @typedef {object} MilitaryInstallationEntry
+ * @property {Record<string, any>} payload
+ * @property {number} cachedAt
+ */
+
+/**
  * Resolve the READ tiers for one installation request, in order: fresh memory,
  * then disk. Returns UPSTREAM when neither can answer.
  *
@@ -119,12 +126,12 @@ export function militaryInstallationCacheKey(box, decimals = 3) {
  *
  * @param {object} options
  * @param {string} options.cacheKey
- * @param {Map<string, {payload: object, cachedAt: number}>} options.memoryCache
+ * @param {Map<string, MilitaryInstallationEntry>} options.memoryCache
  * @param {Map<string, Promise>} options.inFlight
- * @param {() => Promise<?{payload: object, cachedAt: number}>} options.readDisk
+ * @param {() => Promise<?MilitaryInstallationEntry>} options.readDisk
  * @param {number} [options.now]
  * @param {number} [options.cacheMs]
- * @returns {Promise<{source: 'HIT'|'DISK'|'UPSTREAM', entry: ?object}>}
+ * @returns {Promise<{source: 'HIT'|'DISK'|'UPSTREAM', entry: ?MilitaryInstallationEntry}>}
  */
 export async function resolveMilitaryInstallationTier({
   cacheKey,
@@ -153,8 +160,8 @@ export async function resolveMilitaryInstallationTier({
  * a month, quietly starving in-view sites. Saturation is DERIVED from the
  * element count rather than invalidating those entries, so warm caches survive
  * the upgrade.
- * @param {?{payload: object, cachedAt: number}} entry
- * @returns {?{payload: object, cachedAt: number}}
+ * @param {?MilitaryInstallationEntry} entry
+ * @returns {?MilitaryInstallationEntry}
  */
 export function migrateMilitaryInstallationEntry(entry) {
   if (!entry?.payload || typeof entry.payload.saturated === 'boolean')

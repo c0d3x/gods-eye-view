@@ -94,7 +94,7 @@ export const VOICE_TIERS = Object.freeze(Object.keys(VOICE_MODELS));
  * fallback happened compare `entry.tier` to what they asked for.
  *
  * @param {unknown} tier
- * @returns {{tier: VoiceModelTier, id: string, label: string, rates: object}}
+ * @returns {{tier: VoiceModelTier, id: string, label: string, rates: Record<string, number>}}
  */
 export function resolveVoiceModel(tier) {
   // Own-property check, NOT `VOICE_MODELS[key] || default`: inherited keys
@@ -136,7 +136,7 @@ export function mostExpensiveVoiceModel() {
  * guessing cheap — under-metering is what lets a cap be overrun.
  *
  * @param {unknown} modelId
- * @returns {{tier: string, id: string, label: string, rates: object, recognized: boolean}}
+ * @returns {{tier: string, id: string, label: string, rates: Record<string, number>, recognized: boolean}}
  */
 export function resolveVoiceModelById(modelId) {
   const id = typeof modelId === 'string' ? modelId.trim() : '';
@@ -245,7 +245,7 @@ const nonNegative = (value) => {
  * exactly the direction that lets a cap be overrun. Any aggregate-minus-details
  * residual is therefore attributed to audio rates.
  *
- * @param {object|null|undefined} usage - `response.usage` from `response.done`.
+ * @param {Record<string, any>|null|undefined} usage - `response.usage` from `response.done`.
  */
 export function splitUsageTokens(usage) {
   const inDetails = usage?.input_token_details || null;
@@ -320,8 +320,8 @@ export function splitUsageTokens(usage) {
 /**
  * Estimate the USD cost of one Realtime response's usage.
  *
- * @param {object|null|undefined} usage - `response.usage` from `response.done`.
- * @param {object} rates - a `VOICE_MODELS[tier].rates` table (USD per 1M).
+ * @param {Record<string, any>|null|undefined} usage - `response.usage` from `response.done`.
+ * @param {Record<string, number>} rates - a `VOICE_MODELS[tier].rates` table (USD per 1M).
  * @returns {number} USD, always finite and >= 0.
  */
 export function estimateUsageCostUsd(usage, rates) {
@@ -424,7 +424,7 @@ export function createVoiceCostTracker(options = {}) {
     limits,
     /**
      * Fold one response's usage into the session total.
-     * @param {object} usage - `response.usage`
+     * @param {Record<string, any>} usage - `response.usage`
      */
     record(usage) {
       const usd = estimateUsageCostUsd(usage, model.rates);

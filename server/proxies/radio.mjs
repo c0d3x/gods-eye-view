@@ -465,22 +465,24 @@ export function createRadioProxyMiddleware({
       coverage,
     };
     if (degraded && catalogCache) {
-      const error = new Error(
-        'Radio Browser catalog refresh did not meet health policy',
+      throw Object.assign(
+        new Error('Radio Browser catalog refresh did not meet health policy'),
+        {
+          radioCatalogDegraded: true,
+          radioDegradedReason: nextCatalog.degradedReason,
+          radioCoverage: coverage,
+        },
       );
-      error.radioCatalogDegraded = true;
-      error.radioDegradedReason = nextCatalog.degradedReason;
-      error.radioCoverage = coverage;
-      throw error;
     }
     if (degraded && !selected.length) {
-      const error = new Error(
-        'Radio Browser catalog refresh returned no usable stations',
+      throw Object.assign(
+        new Error('Radio Browser catalog refresh returned no usable stations'),
+        {
+          radioCatalogDegraded: true,
+          radioDegradedReason: nextCatalog.degradedReason,
+          radioCoverage: coverage,
+        },
       );
-      error.radioCatalogDegraded = true;
-      error.radioDegradedReason = nextCatalog.degradedReason;
-      error.radioCoverage = coverage;
-      throw error;
     }
     if (degraded) {
       servedStationIds = nextCatalog.stationIds;

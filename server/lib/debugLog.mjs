@@ -57,7 +57,10 @@ export function createDebugLogWriter({
      * @param {Record<string, unknown>} record
      */
     append(record) {
-      const entry = { loggedAt: '', ...sanitizeDebugValue(record) };
+      const entry = {
+        loggedAt: '',
+        .../** @type {Record<string, unknown>} */ (sanitizeDebugValue(record)),
+      };
       entry.loggedAt = now().toISOString();
       const line = `${JSON.stringify(entry)}\n`;
 

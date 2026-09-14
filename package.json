@@ -49,7 +49,7 @@
     "qa:setup": "node scripts/qa-setup.mjs",
     "qa:map-source-tray": "node scripts/qa-map-source-tray.mjs",
     "check:boundaries": "node scripts/check-package-boundaries.mjs",
-    "typecheck": "tsc --noEmit -p jsconfig.json",
+    "typecheck": "tsc --noEmit -p jsconfig.json && tsc --noEmit -p server/jsconfig.json",
     "knip": "knip"
   },
   "dependencies": {
@@ -63,6 +63,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.13",
+    "@types/node": "24.13.4",
     "knip": "6.35.1",
     "lefthook": "^2.1.12",
     "puppeteer": "^25.10.0",

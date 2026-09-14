@@ -32,25 +32,32 @@ function clientGoneSignal(response) {
 }
 
 /**
+ * fetch() options with the headers as a plain object, the way the proxies
+ * build them.
+ * @typedef {RequestInit & {headers?: Record<string, string>}} UpstreamInit
+ */
+
+/**
  * fetch() with a deadline. Given the client's `response`, it is also aborted
  * when that client disconnects first. The deadline covers the whole exchange,
  * body included, unless `headersOnly` stops the clock once the headers
  * arrive, for streamed media.
  *
  * @param {string | URL} url
- * @param {RequestInit} [init]
+ * @param {UpstreamInit} init
  * @param {object} options
  * @param {number} options.timeoutMs
  * @param {import('node:http').ServerResponse} [options.response]
  * @param {boolean} [options.headersOnly]
- * @param {typeof fetch} [options.fetchImpl] Makes the request; fetch() by
- *   default. It gets the combined signal, and is abandoned once that aborts.
+ * @param {(url: string | URL, init: UpstreamInit) => Promise<Response>} [options.fetchImpl]
+ *   Makes the request; fetch() by default. It gets the combined signal, and
+ *   is abandoned once that aborts.
  * @returns {Promise<Response>}
  */
 export async function fetchWithTimeout(
   url,
   init = {},
-  { timeoutMs, response, headersOnly = false, fetchImpl = fetch } = {},
+  { timeoutMs, response, headersOnly = false, fetchImpl = fetch },
 ) {
   const deadline = new AbortController();
   const timer = setTimeout(

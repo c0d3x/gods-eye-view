@@ -16,6 +16,12 @@ updates:
     commit-message:
       prefix: chore
       include: scope
+    # @types/node follows the oldest Node line the app supports (engines in
+    # package.json, and .node-version), so its majors wait for that line.
+    ignore:
+      - dependency-name: '@types/node'
+        update-types:
+          - version-update:semver-major
     # A dependency joins the first group it matches. Major updates outside the
     # Biome and Cesium groups arrive as individual pull requests.
     groups:

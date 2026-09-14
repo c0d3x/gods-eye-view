@@ -55,9 +55,20 @@ const OVERPASS_DISK_DIR = DISK_CACHE_LIMITS.overpass.directory;
 const OVERPASS_TIMEOUT_MS = 22000;
 /** Max entries in the Overpass response cache (LRU-like, oldest evicted first). */
 const OVERPASS_CACHE_MAX_ENTRIES = 120;
-/** @type {Map<string,{status:number,body:string,contentType:string,endpoint:string,cachedAt:number}>} */
+/**
+ * One Overpass answer as the proxy caches and serves it.
+ * @typedef {object} OverpassPayload
+ * @property {number} status
+ * @property {string} body
+ * @property {string} contentType
+ * @property {string} endpoint
+ * @property {boolean} [rateLimited]
+ * @property {boolean} [runtimeError]
+ * @property {number} [cachedAt] When it was cached, for the TTL checks.
+ */
+/** @type {Map<string, OverpassPayload>} */
 const _overpassCache = new Map();
-/** @type {Map<string,Promise>} In-flight Overpass requests keyed by normalized query body. */
+/** @type {Map<string, Promise<OverpassPayload>>} In-flight Overpass requests keyed by normalized query body. */
 const _overpassInFlight = new Map();
 
 /**
@@ -228,13 +239,13 @@ function writeOverpassDisk(cacheKey, payload) {
  *
  * @param {object} options
  * @param {string} options.cacheKey
- * @param {Map<string, object>} options.memoryCache
- * @param {Map<string, Promise<object>>} options.inFlight
- * @param {()=>Promise<object|null>} options.readDisk
+ * @param {Map<string, OverpassPayload>} options.memoryCache
+ * @param {Map<string, Promise<OverpassPayload>>} options.inFlight
+ * @param {()=>Promise<OverpassPayload|null>} options.readDisk
  * @param {()=>boolean} options.allowUpstream
  * @param {number} [options.now]
  * @param {number} [options.cacheMs]
- * @returns {Promise<{source:'HIT'|'INFLIGHT'|'DISK'|'UPSTREAM'|'RATE_LIMITED', payload:object|null}>}
+ * @returns {Promise<{source:'HIT'|'INFLIGHT'|'DISK'|'UPSTREAM'|'RATE_LIMITED', payload:OverpassPayload|null}>}
  */
 export async function resolveOverpassPreflight({
   cacheKey,
@@ -608,7 +619,11 @@ export function overpassPayloadIsData(payload) {
  * @param {string} body URL-encoded Overpass QL query body.
  * @param {number} [maxResponseBytes] Endpoint-specific response cap.
  * @param {object} [options] Server-only endpoint and I/O overrides for tests.
- * @returns {Promise<{status:number,body:string,contentType:string,endpoint:string,rateLimited:boolean}>}
+ * @param {readonly string[]} [options.endpoints]
+ * @param {typeof fetch} [options.fetchImpl]
+ * @param {typeof readResponseTextCapped} [options.readBody]
+ * @param {typeof simplifyOverpassPayloadBody} [options.simplify]
+ * @returns {Promise<OverpassPayload>}
  */
 export async function fetchOverpassPayload(
   body,

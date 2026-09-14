@@ -153,7 +153,12 @@ export function regionalDistanceM(from, to) {
   return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-/** Fetch a bounded regional brief through the same-origin dev/preview proxy. */
+/**
+ * Fetch a bounded regional brief through the same-origin dev/preview proxy.
+ * @param {number} latitude
+ * @param {number} longitude
+ * @param {{signal?: AbortSignal}} [options]
+ */
 export async function fetchRegionalBrief(latitude, longitude, { signal } = {}) {
   if (![latitude, longitude].every(Number.isFinite))
     throw new Error('Valid coordinates are required');

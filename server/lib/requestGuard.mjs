@@ -134,7 +134,9 @@ export function isExactOrigin(origin, expected) {
  * @param {boolean} [request.encrypted] Whether the request arrived over TLS.
  * @param {object} [options]
  * @param {readonly string[]} [options.formEncodedPaths]
- * @returns {{ok: true} | {ok: false, status: number, reason: string, error: string}}
+ * @returns {{ok: boolean, status?: number, reason?: string, error?: string}}
+ *   A refusal carries the status and error to answer with, and the reason to
+ *   log.
  */
 export function checkApiRequest(
   { method = 'GET', path = '', headers = {}, encrypted = false } = {},

@@ -151,9 +151,13 @@ its recommended lint rules and import sorting, on every JavaScript file and the
 config JSON (globs in `biome.json`; the bundled data in `src/data/local_data`
 stays out), and a Lefthook pre-commit hook formats, lints and sorts the imports
 of staged files.
-`pnpm run typecheck` runs `tsc --noEmit` with `jsconfig.json` over the files
-that opt in with `// @ts-check`: the package boundaries and the shared context
-store. `checkJs` stays off, so other files are parsed but not checked.
+`pnpm run typecheck` runs `tsc --noEmit` on two projects. `jsconfig.json`
+covers the browser code and checks the files that opt in with `// @ts-check`:
+the package boundaries and the shared context store. `checkJs` stays off
+there, so other files are parsed but not checked. `server/jsconfig.json`
+checks every server module and `vite.config.js`, with the shared `src/`
+modules they import, against Node's types from `@types/node`, pinned to the
+Node 24 line the app supports.
 `pnpm run knip` follows the imports from the app entry, the overlay worker,
 the scripts, tools, Pinokio launchers and tests (`knip.json`) and fails on
 files, exports and dependencies nothing uses. CI runs both checks on Linux.

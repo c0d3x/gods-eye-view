@@ -82,9 +82,9 @@ export function rocketLaunchesProxy() {
     });
     const body = await readResponseTextCapped(upstream, maxResponseBytes);
     if (!upstream.ok) {
-      const error = new Error(`upstream HTTP ${upstream.status}`);
-      error.upstreamStatus = upstream.status;
-      throw error;
+      throw Object.assign(new Error(`upstream HTTP ${upstream.status}`), {
+        upstreamStatus: upstream.status,
+      });
     }
     const parsed = JSON.parse(body);
     if (!Array.isArray(parsed?.results))

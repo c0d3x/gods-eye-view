@@ -87,9 +87,11 @@ update; the bundled data in `src/data/local_data` is left as it is.
 `pnpm install` also installs a Lefthook pre-commit hook that formats, lints and
 sorts the imports of staged files; set `LEFTHOOK=0` to skip it for one commit.
 CI checks formatting, lint and package boundaries on Linux and Windows.
-`pnpm run typecheck` runs TypeScript over the JSDoc types of the files that
-opt in with `// @ts-check`; add the comment to a module once its types hold,
-and CI keeps them holding.
+`pnpm run typecheck` runs TypeScript over the JSDoc types in two projects.
+In the browser code (`jsconfig.json`) it checks the files that opt in with
+`// @ts-check`; add the comment to a module once its types hold, and CI keeps
+them holding. `server/jsconfig.json` checks every server module,
+`vite.config.js` and the shared modules they import, against Node's types.
 `pnpm run knip` fails on files, exports and dependencies that nothing uses;
 delete dead code, or tag an export kept on purpose with `/** @public */`.
 

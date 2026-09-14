@@ -9,11 +9,23 @@
  */
 
 /**
+ * @typedef {object} KeySetupEntry
+ * @property {string} id
+ * @property {string} title
+ * @property {string} unlocks What the key turns on.
+ * @property {string} getUrl Where to get the key.
+ * @property {readonly string[]} envVars
+ * @property {'metered'|'free'} tier
+ * @property {boolean} [clientExposed]
+ */
+
+/**
  * Every key the panel offers, in the order it offers them — most magic per
  * minute first. `tier` mirrors the README's color legend: 'metered' (🔴) is a
  * billing-enabled account, 'free' (🟡) is a register-and-paste key.
  * `clientExposed` marks the two keys that are injected into the browser
  * bundle by design (restrict them at the provider, per SECURITY.md).
+ * @type {readonly KeySetupEntry[]}
  */
 export const KEY_SETUP_KEYS = Object.freeze([
   Object.freeze({

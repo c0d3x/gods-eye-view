@@ -128,11 +128,12 @@ export function keySetupEndpoint() {
       return fs.readFileSync(storePath(), 'utf8');
     } catch (error) {
       if (error?.code === 'ENOENT') return ''; // The first saved key births the file.
-      const unreadable = new Error(
-        'the existing configuration could not be read, so nothing was changed',
+      throw Object.assign(
+        new Error(
+          'the existing configuration could not be read, so nothing was changed',
+        ),
+        { code: 'GEV_STORE_UNREADABLE' },
       );
-      unreadable.code = 'GEV_STORE_UNREADABLE';
-      throw unreadable;
     }
   };
   // Status must never fail because the store is unreadable — it reports the
@@ -225,11 +226,12 @@ export function keySetupEndpoint() {
         console.warn(
           `[KeySetup] Could not restrict ${path.basename(tmp)} (${hardening.step}): ${hardening.detail}`,
         );
-        const error = new Error(
-          'could not restrict the credential file to your account; nothing was saved',
+        throw Object.assign(
+          new Error(
+            'could not restrict the credential file to your account; nothing was saved',
+          ),
+          { code: 'GEV_HARDEN_FAILED' },
         );
-        error.code = 'GEV_HARDEN_FAILED';
-        throw error;
       }
       // writeSync may write fewer bytes than asked; loop until the whole
       // buffer lands or a truncated store gets fsynced and renamed into place.

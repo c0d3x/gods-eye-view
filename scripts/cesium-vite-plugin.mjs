@@ -39,7 +39,7 @@ export function rewriteCesiumImports(code, id = 'module.js') {
     edits.push({ node, text: text + '\n'.repeat(lines) });
   };
   for (const node of ast.body) {
-    if (node.source?.value !== 'cesium') continue;
+    if (!('source' in node) || node.source?.value !== 'cesium') continue;
     if (node.type !== 'ImportDeclaration') {
       throw new Error(
         `${id}: export a local binding instead of re-exporting cesium`,
@@ -198,6 +198,7 @@ export default function cesium() {
       );
     },
     transformIndexHtml() {
+      /** @type {import('vite').HtmlTagDescriptor[]} */
       const tags = [
         {
           tag: 'link',

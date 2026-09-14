@@ -6,6 +6,13 @@
 /** The cap on a provider's JSON answer: OpenSky tokens, OpenAI and Google Places. */
 export const PROVIDER_JSON_MAX_BYTES = 2 * 1024 * 1024;
 
+/** The error a capped reader throws for an oversized body. */
+function responseTooLarge() {
+  return Object.assign(new Error('Upstream response too large'), {
+    code: 'RESPONSE_TOO_LARGE',
+  });
+}
+
 /**
  * Read a fetch() Response body as text with a hard byte cap. Rejects early on an
  * oversized Content-Length, then streams with a running cap so a chunked or
@@ -19,17 +26,13 @@ export async function readResponseTextCapped(response, maxBytes) {
     } catch {
       /* no-op */
     }
-    const err = new Error('Upstream response too large');
-    err.code = 'RESPONSE_TOO_LARGE';
-    throw err;
+    throw responseTooLarge();
   }
   const reader = response.body?.getReader?.();
   if (!reader) {
     const text = await response.text();
     if (Buffer.byteLength(text) > maxBytes) {
-      const err = new Error('Upstream response too large');
-      err.code = 'RESPONSE_TOO_LARGE';
-      throw err;
+      throw responseTooLarge();
     }
     return text;
   }
@@ -46,9 +49,7 @@ export async function readResponseTextCapped(response, maxBytes) {
       } catch {
         /* no-op */
       }
-      const err = new Error('Upstream response too large');
-      err.code = 'RESPONSE_TOO_LARGE';
-      throw err;
+      throw responseTooLarge();
     }
     out += decoder.decode(value, { stream: true });
   }
@@ -92,11 +93,6 @@ export function parseJsonObject(text) {
  * readResponseTextCapped reads text. Throws { code:'RESPONSE_TOO_LARGE' }.
  */
 export async function readResponseBytesCapped(response, maxBytes) {
-  const tooLarge = () => {
-    const err = new Error('Upstream response too large');
-    err.code = 'RESPONSE_TOO_LARGE';
-    return err;
-  };
   const declared = Number(response.headers.get('content-length'));
   if (Number.isFinite(declared) && declared > maxBytes) {
     try {
@@ -104,12 +100,12 @@ export async function readResponseBytesCapped(response, maxBytes) {
     } catch {
       /* no-op */
     }
-    throw tooLarge();
+    throw responseTooLarge();
   }
   const reader = response.body?.getReader?.();
   if (!reader) {
     const bytes = Buffer.from(await response.arrayBuffer());
-    if (bytes.length > maxBytes) throw tooLarge();
+    if (bytes.length > maxBytes) throw responseTooLarge();
     return bytes;
   }
   const chunks = [];
@@ -124,7 +120,7 @@ export async function readResponseBytesCapped(response, maxBytes) {
       } catch {
         /* no-op */
       }
-      throw tooLarge();
+      throw responseTooLarge();
     }
     chunks.push(value);
   }

@@ -189,11 +189,11 @@ function cameraFailureMessage(error, status) {
 export const CCTV_STREET_VIEW_CACHE_TTL_MS = 30 * 60 * 1000;
 /** Street View frames kept at once, about 10 MB of 960x540 JPEGs. */
 export const CCTV_STREET_VIEW_CACHE_MAX_ENTRIES = 64;
-/** @type {Array<object>} Cached merged + normalized CCTV source list. */
+/** @type {Array<CctvSource>} Cached merged + normalized CCTV source list. */
 let _cctvSourceCache = [];
 /** @type {number} Epoch-ms when the source cache was last refreshed. */
 let _cctvSourceCacheAt = 0;
-/** @type {Promise<Array<object>>|null} In-flight refresh, shared by concurrent
+/** @type {Promise<Array<CctvSource>>|null} In-flight refresh, shared by concurrent
  * callers so a post-TTL burst launches ONE refetch, not one per request. */
 let _cctvSourceInflight = null;
 
@@ -289,7 +289,7 @@ function parsePointString(value) {
  * Handles WKT POINT strings, and objects with latitude/lat/y or
  * longitude/lon/lng/x properties (various casing).
  *
- * @param {string|object|null} value
+ * @param {string|Record<string, any>|null} value
  * @returns {{lat:number, lon:number}}
  */
 function coerceLatLon(value) {
@@ -326,7 +326,7 @@ function coerceLatLon(value) {
  * point, geocoded_column) via coerceLatLon, then falls back to
  * explicit latitude/longitude scalar fields.
  *
- * @param {object} record - Flattened camera record.
+ * @param {Record<string, any>} record - Flattened camera record.
  * @returns {{lat:number, lon:number}}
  */
 function extractAustinCoords(record) {
@@ -367,7 +367,7 @@ function extractAustinCoords(record) {
  * Tries well-known field names first, then scans any field whose key
  * contains "camera"/"cam"/"device" + "id".
  *
- * @param {object} record - Flattened camera record.
+ * @param {Record<string, any>} record - Flattened camera record.
  * @returns {string} Numeric ID string, or '' if none found.
  */
 function extractAustinCameraId(record) {
@@ -401,7 +401,7 @@ function extractAustinCameraId(record) {
 /**
  * Extract a human-readable camera name from an Austin record.
  *
- * @param {object} record - Flattened camera record.
+ * @param {Record<string, any>} record - Flattened camera record.
  * @param {string} cameraId - Fallback identifier if no name field found.
  * @returns {string}
  */
@@ -430,7 +430,7 @@ function extractAustinName(record, cameraId) {
  * Tries explicit numeric heading fields first, then direction-keyword
  * fields, then infers from the camera name/description text.
  *
- * @param {object} record - Flattened camera record.
+ * @param {Record<string, any>} record - Flattened camera record.
  * @returns {number} Heading in degrees [0..360), or NaN if unknown.
  */
 function extractAustinHeading(record) {
@@ -501,7 +501,7 @@ function fallbackHeadingFromId(cameraId) {
  *
  * @param {Array} row - Array of cell values from the Socrata payload.
  * @param {Array<{fieldName?:string, name?:string}>} columns - Column descriptors.
- * @returns {object} Keyed record with normalized snake_case keys.
+ * @returns {Record<string, any>} Keyed record with normalized snake_case keys.
  */
 function rowArrayToObject(row, columns) {
   const record = {};
@@ -521,10 +521,10 @@ function rowArrayToObject(row, columns) {
  * downtown anchor; Caltrans: one anchor per major CA metro; TfL: central
  * London) so a cap always keeps the densest, most interesting cores.
  *
- * @param {Array<object>} cameras - Normalized camera source objects.
+ * @param {Array<Record<string, any>>} cameras - Normalized camera source objects.
  * @param {number} maxCount - Cap (<=0 or >= length disables).
  * @param {Array<{lat:number,lon:number}>} anchors - At least one anchor.
- * @returns {Array<object>} Capped, priority-ordered camera list.
+ * @returns {Array<Record<string, any>>} Capped, priority-ordered camera list.
  */
 function prioritizeSources(cameras, maxCount, anchors) {
   const list = Array.isArray(cameras) ? cameras : [];
@@ -883,8 +883,8 @@ async function loadTflSourcesFromOpenData() {
 /**
  * Normalize a raw CCTV source item into a canonical shape with safe defaults.
  *
- * @param {object} item - Raw source from file, env, or Austin Open Data.
- * @returns {object} Normalized source with all expected fields populated.
+ * @param {Record<string, any>} item - Raw source from file, env, or Austin Open Data.
+ * @returns Normalized source with all expected fields populated.
  */
 function normalizeSourceItem(item) {
   return {
@@ -919,13 +919,19 @@ function normalizeSourceItem(item) {
 }
 
 /**
+ * A camera source as the proxy serves it: normalized, and marked when it
+ * came from the operator's own file or env config.
+ * @typedef {ReturnType<typeof normalizeSourceItem> & {localConfig?: boolean}} CctvSource
+ */
+
+/**
  * Assemble and cache the merged CCTV source list.
  *
  * Merges sources from three origins (Austin Open Data, local file,
  * env variable), deduplicates by ID, applies the global max cap, and
  * caches for CCTV_SOURCE_CACHE_MS.
  *
- * @returns {Promise<Array<object>>} Deduplicated, capped source list.
+ * @returns {Promise<Array<CctvSource>>} Deduplicated, capped source list.
  */
 async function getCctvSources() {
   const now = Date.now();
@@ -950,7 +956,7 @@ async function getCctvSources() {
  * Always resolves (loaders self-catch to []); on a fully-empty refresh with a
  * good prior catalog it serves stale rather than blanking the CCTV layer.
  *
- * @returns {Promise<Array<object>>} Deduplicated, capped source list.
+ * @returns {Promise<Array<CctvSource>>} Deduplicated, capped source list.
  */
 async function refreshCctvSources() {
   const fromFile = loadSourcesFromFile();
@@ -998,6 +1004,7 @@ async function refreshCctvSources() {
   const byId = new Map();
   for (const item of merged) {
     if (!item || typeof item !== 'object') continue;
+    /** @type {CctvSource} */
     const normalized = normalizeSourceItem(item);
     if (!normalized.id) continue;
     normalized.localConfig = localEntries.has(item);
@@ -1108,9 +1115,10 @@ function buildSyntheticCctvSvg({ cameraId, label, city, status }) {
 /**
  * Coerce a fetch() response body to a Node.js Readable stream.
  *
- * Handles both Node-native streams (.pipe) and web ReadableStreams (.getReader).
+ * Handles both Node-native streams (.pipe) and web ReadableStreams (.getReader),
+ * telling them apart by duck typing.
  *
- * @param {ReadableStream|NodeJS.ReadableStream|null} body
+ * @param {*} body A web ReadableStream, a Node stream, or null.
  * @returns {import('stream').Readable|null}
  */
 function toReadable(body) {
@@ -1210,7 +1218,8 @@ async function proxyMediaResponse(
  * @param {number} [options.timeoutMs=CCTV_FRAME_FETCH_TIMEOUT_MS] - Abort timeout.
  * @param {boolean} [options.localConfig=false] - The URL is from the local
  *   camera config, so it may point at a private address.
- * @param {Function} [options.lookup] - DNS lookup for the address checks.
+ * @param {typeof import('node:dns/promises').lookup} [options.lookup] - DNS
+ *   lookup for the address checks.
  * @returns {Promise<{ok:true,body:Buffer,contentType:string}|null>}
  */
 export async function fetchCctvImageFromUpstream(
@@ -1287,6 +1296,7 @@ export function cctvProxy() {
       const oldest = health.keys().next().value;
       health.delete(oldest);
     }
+    /** @type {Partial<{status: string, sourceKind: string, label: string, message: string}>} */
     const prev = health.get(cameraId) || {};
     health.set(cameraId, {
       id: cameraId,

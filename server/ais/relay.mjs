@@ -69,7 +69,7 @@ const AISSTREAM_TICK_MS = 15_000;
  * optional dependency degrades the vessel feed honestly instead of breaking
  * the whole dev server and build.
  *
- * @returns {Function}
+ * @returns {new (url: string, options?: object) => any}
  */
 function requireWs() {
   return createRequire(import.meta.url)('ws');
@@ -86,7 +86,7 @@ function requireWs() {
  *
  * @param {object} [options]
  * @param {Record<string, string|undefined>} [options.env] process.env by default.
- * @param {() => Function} [options.loadWebSocket] Returns the `ws`
+ * @param {() => (new (url: string, options?: object) => any)} [options.loadWebSocket] Returns the `ws`
  *   constructor, and throws when it is unavailable.
  * @param {{wall: () => number, mono: () => number}} [options.clock] The
  *   watchdog's clock.
@@ -117,11 +117,11 @@ export function createAisRelay({
   let _aisStreamTickTimer = null;
   /** Set by dispose so the next ensure() re-derives budgets from a reloaded .env. */
   let _aisNeedsRearm = false;
-  /** @type {Function|null|undefined} `ws` constructor; null = unavailable, undefined = not yet probed. */
+  /** @type {(new (url: string, options?: object) => any)|null|undefined} `ws` constructor; null = unavailable, undefined = not yet probed. */
   let _aisWebSocketImpl;
-  /** @type {Map<string,object>} */
+  /** @type {Map<string, Record<string, any>>} */
   const _aisStreamVessels = new Map();
-  /** @type {Map<string,object>} */
+  /** @type {Map<string, Record<string, any>>} */
   const _aisStreamStatic = new Map();
   /** @type {Map<string,{lats:Float32Array,lons:Float32Array,times:Uint32Array,head:number,len:number}>} mmsi -> track ring buffer */
   const _aisStreamTracks = new Map();

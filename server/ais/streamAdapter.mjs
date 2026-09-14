@@ -116,8 +116,11 @@ export function decodeAisFrameSync(data) {
   if (typeof data === 'string') return data;
   if (data instanceof ArrayBuffer) return new TextDecoder().decode(data);
   if (ArrayBuffer.isView(data)) {
+    // ws hands over Buffers, never views of a SharedArrayBuffer.
     return new TextDecoder().decode(
-      data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength),
+      /** @type {ArrayBuffer} */ (
+        data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+      ),
     );
   }
   if (Array.isArray(data)) {

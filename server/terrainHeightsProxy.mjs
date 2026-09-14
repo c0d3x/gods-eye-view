@@ -85,6 +85,15 @@ function terrainRetryAfterMs(value, nowMs = Date.now()) {
  * passes a `readJson` that caps the response size.
  * @param {Array<[number, number]>} points
  * @param {object} [options]
+ * @param {typeof fetch} [options.fetchImpl]
+ * @param {(ms: number) => Promise<void>} [options.sleep]
+ * @param {() => number} [options.random]
+ * @param {() => number} [options.now]
+ * @param {(timeoutMs: number) => AbortSignal|null} [options.makeSignal]
+ * @param {(res: Response) => Promise<any>} [options.readJson]
+ * @param {number} [options.attemptTimeoutMs]
+ * @param {number} [options.retryBudgetMs]
+ * @param {number} [options.maxAttempts]
  * @returns {Promise<Array<object>>}
  */
 export async function fetchTerrainChunkWithRetry(
@@ -118,18 +127,17 @@ export async function fetchTerrainChunkWithRetry(
       const signal = makeSignal(timeoutMs);
       const res = await fetchImpl(url, signal ? { signal } : {});
       if (!res.ok) {
-        const error = new Error(`HTTP ${res.status}`);
-        error.retryable = res.status === 429 || res.status >= 500;
-        error.retryAfter = res.headers?.get?.('retry-after') ?? null;
-        throw error;
+        throw Object.assign(new Error(`HTTP ${res.status}`), {
+          retryable: res.status === 429 || res.status >= 500,
+          retryAfter: res.headers?.get?.('retry-after') ?? null,
+        });
       }
       const json = await readJson(res);
       if (!Array.isArray(json?.results)) {
-        const error = new Error(
-          'malformed upstream response (no results array)',
+        throw Object.assign(
+          new Error('malformed upstream response (no results array)'),
+          { retryable: false },
         );
-        error.retryable = false;
-        throw error;
       }
       return json.results;
     } catch (error) {
@@ -163,7 +171,8 @@ export async function fetchTerrainChunkWithRetry(
  *
  * @param {object} options
  * @param {Array<[number, number]>} options.points
- * @param {Map<string, {at:number, result:object}>} options.cache
+ * @param {{get: (key: string) => ?{at: number, result: object}, set: (key: string, value: {at: number, result: object}) => unknown}} options.cache
+ *   A Map, or the proxy's bounded cache.
  * @param {(points:Array<[number, number]>)=>Promise<Array<object>>} options.fetchMissing
  * @param {number} options.ttlMs
  * @param {()=>number} [options.now]
