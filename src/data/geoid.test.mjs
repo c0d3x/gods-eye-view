@@ -12,6 +12,7 @@
 // spread rather than asserting exact agreement.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { gunzipSync } from 'node:zlib';
 import {
   ellipsoidalToMslDisplayM,
   ensureGeoidReady,
@@ -108,6 +109,78 @@ test('geoidHeight wraps longitude consistently (359.87 === -0.13)', async () => 
     Math.abs(wrapped - normal) < 1e-9,
     `geoidHeight(51.5, 359.87) = ${wrapped}, geoidHeight(51.5, -0.13) = ${normal}`
   );
+});
+
+test('the grid asset reproduces the egm96-universal lookup it replaced, value for value', async () => {
+  await ensureGeoidReady();
+  // egm96-universal 1.1.1's meanSeaLevel() at the same points, captured before
+  // the package was removed. The asset was also compared at every grid node and
+  // 200 000 random points, with no difference at all.
+  for (const [lat, lon, n] of [
+    [51.5, -0.12, 45.95440000000002],
+    [37.62, -122.38, -32.29729599999996],
+    [0, 0, 17.16],
+    [-8, 147, 84.23],
+    [27, 86.9, -51.52999999999999],
+  ]) {
+    assert.equal(geoidHeight(lat, lon), n, `geoidHeight(${lat}, ${lon})`);
+  }
+});
+
+test('every grid node reads back the undulation the asset stores', async () => {
+  await ensureGeoidReady();
+  // 721 rows from 90°N to 90°S and 1440 columns eastward from 0°, 15′ apart.
+  // At a node the interpolation lands on that node, so the rounded values sum
+  // to the grid's own sum, in centimetres.
+  let sumCm = 0;
+  for (let row = 0; row < 721; row++) {
+    for (let col = 0; col < 1440; col++) {
+      sumCm += Math.round(geoidHeight(90 - row * 0.25, col * 0.25) * 100);
+    }
+  }
+  assert.equal(sumCm, -149_932_197);
+});
+
+test('a point off the globe has no undulation', async () => {
+  await ensureGeoidReady();
+  assert.ok(Number.isNaN(geoidHeight(Number.NaN, 0)));
+  assert.ok(Number.isNaN(geoidHeight(0, Number.POSITIVE_INFINITY)));
+  assert.ok(Number.isNaN(geoidHeight(undefined, 10)));
+  // Past a pole, where egm96-universal threw a RangeError.
+  assert.ok(Number.isNaN(geoidHeight(90.1, 0)));
+  assert.ok(Number.isNaN(geoidHeight(-91, 0)));
+});
+
+test('coordinates are read as numbers, the way egm96-universal read them', async () => {
+  await ensureGeoidReady();
+  assert.equal(geoidHeight('51.5', '-0.12'), 45.95440000000002);
+  assert.equal(geoidHeight(null, 0), 17.16);
+});
+
+test('a grid the server already unpacked decodes to the same values', async (t) => {
+  // Vite serves a .gz file with Content-Encoding: gzip, so in the browser the
+  // grid can arrive decompressed.
+  const fs = process.getBuiltinModule('node:fs');
+  const file = fs.readFileSync(new URL('./local_data/egm96/egm96-15.bin.gz', import.meta.url));
+  const fresh = await import('./geoid.js?server-unpacked');
+  const readFileSync = t.mock.method(fs, 'readFileSync', () => gunzipSync(file));
+  await fresh.ensureGeoidReady();
+  readFileSync.mock.restore();
+  await ensureGeoidReady();
+  for (const [lat, lon] of [[51.5, -0.12], [-8, 147], [90, 0], [-90, 180]]) {
+    assert.equal(fresh.geoidHeight(lat, lon), geoidHeight(lat, lon), `geoidHeight(${lat}, ${lon})`);
+  }
+});
+
+test('a failed grid load is not cached: the next caller tries again', async (t) => {
+  const fs = process.getBuiltinModule('node:fs');
+  const fresh = await import('./geoid.js?retry-after-failure');
+  const readFileSync = t.mock.method(fs, 'readFileSync', () => new Uint8Array(10));
+  await assert.rejects(fresh.ensureGeoidReady(), /the grid is 10 bytes, not 2076480/);
+  assert.equal(fresh.isGeoidReady(), false);
+  readFileSync.mock.restore();
+  await fresh.ensureGeoidReady();
+  assert.equal(fresh.isGeoidReady(), true);
 });
 
 // ── ellipsoidalToMslDisplayM — the ALT-readout datum correction ─────────────

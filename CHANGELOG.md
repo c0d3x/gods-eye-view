@@ -27,6 +27,13 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Changed
 
+- The EGM96 geoid grid behind the app's height corrections loads as a
+  0.9 MB compressed data file instead of a 2.8 MB JavaScript module, and the
+  Natural Earth region and marine outlines and the San Francisco
+  neighborhoods load as data files too. The browser no longer parses 5.6 MB
+  of data as JavaScript. Geoid heights are the same as before, and the
+  `egm96-universal` dependency is gone.
+
 - The Live Flights and Military Flights layers share one implementation,
   `src/data/aircraftLayerCore.js`, which `flights.js` and `militaryFlights.js`
   configure for their feeds. The two files had been near-copies of each

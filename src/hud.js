@@ -92,8 +92,8 @@ export class IntelHUD {
     this._firstMetricsShown = false;
     this._firstSummaryKicked = false;
     // ALT readout datum: the camera height Cesium reports is ELLIPSOIDAL, the
-    // number a viewer reads is MSL. N comes from the same lazy ~2.7 MB EGM96
-    // chunk the flight layers use — requested on the first telemetry tick of a
+    // number a viewer reads is MSL. N comes from the same lazily fetched EGM96
+    // grid the flight layers use — requested on the first telemetry tick of a
     // VISIBLE HUD, never at construction, so a hidden HUD costs nothing — and
     // cached per coarse cell. Until it resolves, or if it never does,
     // `ellipsoidalToMslDisplayM` passes the raw height straight through.

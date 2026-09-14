@@ -10,11 +10,12 @@
  * touching this module — see `local_data/neighborhoods/SOURCE.md`.
  */
 
+import { readLocalJson } from './localAsset.js';
 import { createRetryableLoader } from './retryableLoad.js';
 
 // bbox = [west, south, east, north]; only load a city file when the point falls in its box.
 const CITY_FILES = [
-  { id: 'san-francisco', bbox: [-122.55, 37.70, -122.35, 37.84], loader: () => import('./local_data/neighborhoods/san-francisco.json', { with: { type: 'json' } }) },
+  { id: 'san-francisco', bbox: [-122.55, 37.70, -122.35, 37.84], url: new URL('./local_data/neighborhoods/san-francisco.json', import.meta.url) },
 ];
 
 /**
@@ -91,10 +92,8 @@ function cityLoader(city) {
   let loader = _cityLoaders.get(city.id);
   if (!loader) {
     loader = createRetryableLoader(async () => {
-      // One path for both runtimes: Vite bundles the JSON as a module, and the
-      // import attribute is what Node needs to load the same file under node:test.
-      const mod = await city.loader();
-      const fc = mod.default || mod;
+      // A static asset: fetched in the browser, read from disk under Node.
+      const fc = await readLocalJson(city.url);
       return Array.isArray(fc.features) ? fc.features : [];
     });
     _cityLoaders.set(city.id, loader);

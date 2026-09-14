@@ -65,6 +65,7 @@ Static datasets shipped in the repo for an out-of-the-box experience. **None are
 | **TeleGeography Submarine Cable Map** (712 cables + 1,917 landing points) | `telegeography_submarine_cables/` | **CC BY-NC-SA 3.0** | ❌ **NonCommercial — remove for commercial use** | "© TeleGeography — submarinecablemap.com" |
 | **Natural Earth physical regions** (1,046 land + 292 marine named polygons) | `natural_earth/` | **Public domain** | ✅ (no restrictions) | "Made with Natural Earth" (courtesy credit — not legally required) |
 | **DataSF Analysis Neighborhoods** (41 SF neighborhood polygons) | `neighborhoods/` | **PDDL 1.0** (public domain) | ✅ (no restrictions) | "City & County of San Francisco — DataSF" (courtesy — not legally required) |
+| **EGM96 geoid grid** (721 × 1440 undulations, 15′ apart) | `egm96/` | **Public domain** (NGA / NASA) | ✅ (no restrictions) | None required |
 
 ### ⚠️ TeleGeography is bundled but NonCommercial
 
@@ -124,6 +125,17 @@ is legally required; we note the source here and in the folder's `SOURCE.md`, wh
 the retrieval date (2026-07-30), exact download URL, license evidence, and the
 deterministic transform (`scripts/build-sf-neighborhoods.mjs`: `nhood` → `name`, ~2 m
 Douglas-Peucker simplification, 6-decimal rounding).
+
+### EGM96 geoid grid (`egm96/`)
+
+`egm96/egm96-15.bin.gz` is the **EGM96** geoid by NGA and NASA (public domain) on its
+standard 15-arc-minute grid: 721 × 1440 undulations, in centimetres. `src/data/geoid.js`
+interpolates it to convert between heights above mean sea level and the ellipsoidal
+heights the globe uses, for aircraft altitudes, camera placement and the ALT readout.
+The grid is the one the MIT-licensed `egm96-universal` 1.1.1 npm package embeds, which the
+app used until September 2026. The folder's README describes the compact format (each row
+as little-endian 16-bit differences, gzipped: 2.1 MB → 0.9 MB) and records the decoded
+grid's SHA-256.
 
 ---
 

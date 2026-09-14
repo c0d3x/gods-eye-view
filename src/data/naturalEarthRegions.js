@@ -11,11 +11,13 @@
  *
  * PURE data module — no Cesium imports, node-testable. The packs are lazy-
  * loaded on first lookup and cached in module scope (bbox/area computed once
- * at load). In the browser Vite bundles the JSON via dynamic import; under
- * node the same files are read from disk. A failed load is retried on the
- * next lookup rather than cached (see `createRetryableLoader`).
+ * at load). In the browser the packs are fetched as static assets; under
+ * node the same files are read from disk (see localAsset.js). A failed load
+ * is retried on the next lookup rather than cached (see
+ * `createRetryableLoader`).
  */
 
+import { readLocalJson } from './localAsset.js';
 import { createRetryableLoader } from './retryableLoad.js';
 
 const EARTH_RADIUS_KM = 6371;
@@ -113,14 +115,13 @@ function suffixVariants(norm) {
 /** @type {Array|null} flat entry list for listRegions() */
 let _entries = null;
 
+// Static assets: Vite emits each pack as a file the browser fetches on first
+// lookup, so neither is ever parsed as JavaScript.
+const REGIONS_URL = new URL('./local_data/natural_earth/regions.json', import.meta.url);
+const MARINE_URL = new URL('./local_data/natural_earth/marine.json', import.meta.url);
+
 async function loadPackFile(base) {
-  // Vite bundles these JSON files as modules; the import attribute is what Node
-  // needs to load the same files under node:test (same pattern as
-  // neighborhoodPolygons.js). One path, so no node: import reaches the browser.
-  const mod = base === 'regions'
-    ? await import('./local_data/natural_earth/regions.json', { with: { type: 'json' } })
-    : await import('./local_data/natural_earth/marine.json', { with: { type: 'json' } });
-  return mod.default || mod;
+  return readLocalJson(base === 'regions' ? REGIONS_URL : MARINE_URL);
 }
 
 function buildEntries(pack, kind) {

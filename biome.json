@@ -19,6 +19,8 @@
       "src/data/aircraftLayerCore.js",
       "src/data/flights.js",
       "src/data/militaryFlights.js",
+      "src/data/localAsset.js",
+      "src/data/localAsset.test.mjs",
       "src/main.js",
       "scripts/qa-application.mjs",
       "src/app/application.js",

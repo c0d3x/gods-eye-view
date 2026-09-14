@@ -161,9 +161,10 @@ export default defineConfig(({ mode }) => {
       ),
     },
     build: {
-      // The Cesium engine bundle is inherently large; raise the warning ceiling
-      // so the build log isn't dominated by an expected chunk-size notice.
-      chunkSizeWarningLimit: 1500,
+      // The startup chunks carry every data layer until the layers load on
+      // first use (#42). The ceiling sits just above them, so a new oversized
+      // chunk still warns.
+      chunkSizeWarningLimit: 700,
     },
     // satellite.js ships an optional WASM propagator whose worker uses
     // top-level await, which only module workers support.
