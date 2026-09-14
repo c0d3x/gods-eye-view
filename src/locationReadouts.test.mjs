@@ -45,7 +45,7 @@ test('a free-text search records its destination for the LOCATION mini-status', 
 });
 
 test('the mini-status reads its copy from the shared formatter', () => {
-  assert.match(ui, /import \{ locationMiniStatus \} from '\.\/locationStatus\.js';/);
+  assert.match(ui, /import \{ locationMiniStatus \} from '(?:\.\.?\/)+locationStatus\.js';/);
   const start = ui.indexOf('  _updateLocationMiniStatus() {');
   assert.ok(start > 0, '_updateLocationMiniStatus is missing');
   const body = ui.slice(start, ui.indexOf('\n  }', start));

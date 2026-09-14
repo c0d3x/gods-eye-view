@@ -11,6 +11,7 @@ export const UI_SOURCE_FILES = Object.freeze([
   'ui/cctvPanel.js',
   'ui/panelLayout.js',
   'ui/panelChrome.js',
+  'ui/locationBar.js',
 ]);
 
 /**
