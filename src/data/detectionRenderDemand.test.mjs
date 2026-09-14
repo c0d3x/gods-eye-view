@@ -432,13 +432,13 @@ test('aircraft brackets stay prompt because the aircraft layers hold the render 
     assert.ok(enable, `${file}: enable() is still identifiable`);
     assert.match(
       enable,
-      /holdContinuousRender\('(flights|military)'\)/,
+      /holdContinuousRender\((config\.id|'(flights|military)')\)/,
       `${file}: enabling the layer must hold continuous render — detection no longer ` +
       'holds one, so this is what keeps its AIR brackets repainting on a parked scene',
     );
     assert.match(
       source,
-      /releaseContinuousRender\('(flights|military)'\)/,
+      /releaseContinuousRender\((config\.id|'(flights|military)')\)/,
       `${file}: and the hold must be released, or the governor can never idle`,
     );
   }

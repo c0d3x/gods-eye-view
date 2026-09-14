@@ -378,8 +378,9 @@ function normalBillboardScaleByDistance(sourceFile) {
 const LAYERS = [
   {
     name: 'flights',
-    // The flights layer is built by the aircraft layer core.
-    source: 'src/data/aircraftLayerCore.js',
+    source: 'src/data/flights.js',
+    // Its billboard sizing lives in the aircraft layer core it is built from.
+    billboardSource: 'src/data/aircraftLayerCore.js',
     // All classes share one GLB today (see CLASS_MODEL_URL) — assert that, so
     // a real per-class asset drop-in forces this test to grow with it.
     asset: (() => {
@@ -920,7 +921,7 @@ test('real per-class models remain origin-centred for visual anchoring', () => {
 test('civilian and military globe-view aircraft retain the established 3.0 near scale and 0.5 floor', () => {
   for (const layer of LAYERS) {
     assert.deepEqual(
-      normalBillboardScaleByDistance(layer.source),
+      normalBillboardScaleByDistance(layer.billboardSource ?? layer.source),
       [1000, 3, 8000000, 0.5],
       `${layer.name}: owner-established close sizing and the orbital floor must remain readable`,
     );

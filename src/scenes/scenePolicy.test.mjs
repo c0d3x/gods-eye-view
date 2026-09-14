@@ -30,11 +30,15 @@ function sweepLayerParamKeys() {
     // (two spaces at module level, deeper inside a layer factory) and read
     // the keys it publishes.
     const body = source.match(/\n( +)getParams\(\)\s*\{[\s\S]*?\n\1\},/);
-    if (!body) continue;
     // A key always follows `{` or `,` — which matches both the multi-line
     // returns and the single-line `return { passive: … }` form, while a
     // ternary's `? x : y` (no brace or comma before the identifier) does not.
-    const keys = [...body[0].matchAll(/[{,]\s*([A-Za-z_$][\w$]*)\s*:/g)].map((match) => match[1]);
+    const keys = body
+      ? [...body[0].matchAll(/[{,]\s*([A-Za-z_$][\w$]*)\s*:/g)].map((match) => match[1])
+      : [];
+    // An aircraft layer's configuration names the param its tracked contact
+    // is published under; the aircraft layer core's getParams() publishes it.
+    for (const match of source.matchAll(/\btrackingParam:\s*'([A-Za-z_$][\w$]*)'/g)) keys.push(match[1]);
     if (keys.length) byFile.set(entry, keys);
   }
   return byFile;
