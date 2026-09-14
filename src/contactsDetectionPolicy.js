@@ -1,3 +1,4 @@
+// @ts-check
 // src/contactsDetectionPolicy.js — Contacts-scoped detection policy.
 //
 // Owner playtest 2026-08-18: "when you click on Contacts, detections should just
@@ -31,7 +32,7 @@
  * Activation applies the tactical preset, which writes density as well — so a
  * mode-only snapshot restored OFF @ 25% as OFF @ 75%, and the operator's next
  * manual enable came back Dense instead of the Sparse they had been using.
- * @param {?{mode?: string, densityPct?: number}} state
+ * @param {?{mode?: string, densityPct?: ?number}} state
  * @returns {{mode: string, densityPct: ?number}}
  */
 function normalizeDetectionState(state) {
@@ -154,9 +155,10 @@ export function shareableDetectionState({ owned, liveMode, liveDensityPct }) {
   if (!owned) return { mode: liveMode, densityPct: liveDensityPct };
   return {
     mode: owned.mode ?? liveMode,
-    densityPct: Number.isFinite(owned.densityPct)
-      ? owned.densityPct
-      : liveDensityPct,
+    densityPct:
+      typeof owned.densityPct === 'number' && Number.isFinite(owned.densityPct)
+        ? owned.densityPct
+        : liveDensityPct,
   };
 }
 

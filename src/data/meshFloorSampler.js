@@ -1,3 +1,4 @@
+// @ts-check
 // src/data/meshFloorSampler.js — rendered-surface (mesh) floor sampling
 // (field-test round 4, 2026-07-06).
 //
@@ -49,7 +50,7 @@ const _scratchProbe = new Cesium.Cartographic();
 // bundle, and the subscription is idempotent for the app's lifetime.
 if (typeof window !== 'undefined') {
   window.addEventListener('gev:map-stack-changed', (event) => {
-    const activeId = event?.detail?.activeId;
+    const activeId = /** @type {CustomEvent} */ (event)?.detail?.activeId;
     if (activeId) setMeshFloorPreferred(activeId === 'photoreal');
   });
 }
@@ -78,6 +79,11 @@ function _visibleTilesetLoaded(scene) {
 
 /**
  * Equirectangular distance (km) — same approximation the flights clamp uses.
+ * @param {number} lat1
+ * @param {number} lon1
+ * @param {number} lat2
+ * @param {number} lon2
+ * @returns {number}
  */
 function _approxKm(lat1, lon1, lat2, lon2) {
   const dLat = (lat2 - lat1) * 111.32;
@@ -128,6 +134,8 @@ export function sampleMeshFloorCells(
     attempted.add(key);
     if (cachedMeshFloor(cell.lat, cell.lon) != null) continue; // one-shot latch
     if (
+      typeof viewerLat === 'number' &&
+      typeof viewerLon === 'number' &&
       Number.isFinite(viewerLat) &&
       Number.isFinite(viewerLon) &&
       _approxKm(viewerLat, viewerLon, cell.lat, cell.lon) > MAX_SAMPLE_DIST_KM

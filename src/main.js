@@ -1,3 +1,4 @@
+// @ts-check
 import { createLocalApplication } from './editions/local/application.js';
 import { describeError } from './editions/local/errors.js';
 
@@ -9,7 +10,9 @@ const application = createLocalApplication({
 
 application.start().catch((error) => {
   console.error("God's Eye View initialization failed:", error);
-  const loaderStatus = document.querySelector('#loading-screen .loader-status');
+  const loaderStatus = /** @type {HTMLElement} */ (
+    document.querySelector('#loading-screen .loader-status')
+  );
   loaderStatus.textContent = `Error: ${describeError(error)}`;
   loaderStatus.style.color = '#ff4444';
 });

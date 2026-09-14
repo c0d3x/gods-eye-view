@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Client fetch helpers for the app's own API calls. Both check the status and
  * apply a deadline, and both reject on a non-2xx status (the error carries
@@ -25,9 +26,9 @@ export async function fetchChecked(
     signal: signal ? AbortSignal.any([signal, deadline]) : deadline,
   });
   if (!response.ok) {
-    const error = new Error(`HTTP ${response.status}`);
-    error.status = response.status;
-    throw error;
+    throw Object.assign(new Error(`HTTP ${response.status}`), {
+      status: response.status,
+    });
   }
   return response;
 }

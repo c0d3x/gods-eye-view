@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module firmsLabels
  * @description FIRMS-specific presentation formatting retained after the
@@ -8,12 +9,27 @@
 export const FIRMS_AMBIENT_COHORT_LIMIT = 18;
 export const FIRMS_OVERLAY_SOURCE_ID = 'firms';
 
-/** Refetch-stable identity for one FIRMS detection, including its source feed. */
+/**
+ * Refetch-stable identity for one FIRMS detection, including its source feed.
+ * @param {{ lat?: number, lon?: number, acqMs?: number, satellite?: unknown,
+ *   sensor?: unknown } | null | undefined} fire
+ * @returns {string}
+ */
 export function fireDetectionKey(fire) {
-  const lat = Number.isFinite(fire?.lat) ? fire.lat.toFixed(4) : 'x';
-  const lon = Number.isFinite(fire?.lon) ? fire.lon.toFixed(4) : 'x';
+  const lat =
+    typeof fire?.lat === 'number' && Number.isFinite(fire.lat)
+      ? fire.lat.toFixed(4)
+      : 'x';
+  const lon =
+    typeof fire?.lon === 'number' && Number.isFinite(fire.lon)
+      ? fire.lon.toFixed(4)
+      : 'x';
   const acq =
-    Number.isFinite(fire?.acqMs) && fire.acqMs > 0 ? String(fire.acqMs) : '0';
+    typeof fire?.acqMs === 'number' &&
+    Number.isFinite(fire.acqMs) &&
+    fire.acqMs > 0
+      ? String(fire.acqMs)
+      : '0';
   const source =
     satelliteShortName(fire?.satellite) ||
     String(fire?.sensor || '')
@@ -23,7 +39,10 @@ export function fireDetectionKey(fire) {
   return `firms:${lat}:${lon}:${acq}:${source}`;
 }
 
-/** Severity accent palette — matches the FIRMS glow-sprite color stops. */
+/**
+ * Severity accent palette — matches the FIRMS glow-sprite color stops.
+ * @type {Readonly<Record<string, string>>}
+ */
 const ACCENT_RGB = Object.freeze({
   red: '224, 82, 82',
   orange: '240, 178, 62',
@@ -39,7 +58,11 @@ export function accentForSeverity(stopName) {
   return ACCENT_RGB[stopName] || ACCENT_RGB.yellow;
 }
 
-/** Raw FIRMS satellite code → short display name (N = Suomi NPP). */
+/**
+ * Raw FIRMS satellite code → short display name (N = Suomi NPP).
+ * @param {unknown} satellite
+ * @returns {string}
+ */
 export function satelliteShortName(satellite) {
   const s = String(satellite || '')
     .trim()

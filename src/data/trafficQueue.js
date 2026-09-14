@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @file Queue-spawn helpers for jammed roads — platoon position math only.
  * Cesium-free so bumper-to-bumper spacing is unit-testable; the traffic
@@ -32,6 +33,7 @@ const GAP_SPREAD_M = 6;
  *   across platoons is `count` (empty on degenerate input).
  */
 export function queuePlatoons(totalLen, count, rng = Math.random) {
+  /** @type {number[][]} */
   const platoons = [];
   if (!Number.isFinite(totalLen) || totalLen <= 0 || !(count > 0))
     return platoons;

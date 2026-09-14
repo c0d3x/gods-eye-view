@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Data files that ship with the app, read by URL in the browser and under Node
  * alike. A module names its file with
@@ -18,6 +19,7 @@
  */
 export async function readLocalAsset(url) {
   if (url.protocol === 'file:') {
+    // @ts-expect-error Node only; the browser project has no Node types.
     const { readFileSync } = globalThis.process.getBuiltinModule('node:fs');
     return new Uint8Array(readFileSync(url));
   }

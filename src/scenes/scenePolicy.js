@@ -1,3 +1,4 @@
+// @ts-check
 // src/scenes/scenePolicy.js — pure decisions for cinematic scene playback.
 //
 // The scene director was written when the app shipped four data layers, and its
@@ -83,6 +84,7 @@ export function stripSceneTrackingParams(params) {
   if (!SCENE_TRACKING_PARAM_KEYS.some((key) => Object.hasOwn(params, key)))
     return params;
 
+  /** @type {Record<string, unknown>} */
   const kept = {};
   for (const [key, value] of Object.entries(params)) {
     if (SCENE_TRACKING_PARAM_KEYS.includes(key)) continue;

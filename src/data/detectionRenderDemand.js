@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Detection's render demand — when the overlay actually needs another frame.
  *
@@ -96,10 +97,10 @@ export function scanlineOffsetPx(nowMs) {
  * own frame through `invalidateHost()`, and asking here as well would turn a
  * bounded chain into a permanent one.
  *
- * @param {object} input
- * @param {boolean} input.active - Detection is on and not suspended.
- * @param {number} input.nowMs - The frame's monotonic timestamp (see header).
- * @param {number} input.enabledAtMs - When detection last (re)activated, same clock.
+ * @param {object} [input] Missing values answer false.
+ * @param {boolean} [input.active] - Detection is on and not suspended.
+ * @param {number} [input.nowMs] - The frame's monotonic timestamp (see header).
+ * @param {number} [input.enabledAtMs] - When detection last (re)activated, same clock.
  * @param {number} [input.fadeMs] - Enable fade-in duration.
  * @param {number} [input.animatingLabelCount] - Labels mid-fade, IN or out.
  * @param {boolean} [input.solvePending] - A label solve is owed but did not run.
@@ -116,7 +117,13 @@ export function detectionNeedsFollowUpFrame({
   if (!active) return false;
   if (Number(animatingLabelCount) > 0) return true;
   if (solvePending === true) return true;
-  if (!Number.isFinite(nowMs) || !Number.isFinite(enabledAtMs)) return false;
+  if (
+    typeof nowMs !== 'number' ||
+    typeof enabledAtMs !== 'number' ||
+    !Number.isFinite(nowMs) ||
+    !Number.isFinite(enabledAtMs)
+  )
+    return false;
   const age = nowMs - enabledAtMs;
   // `age >= 0` is the fail-toward-idle guard. It cannot trip on the monotonic
   // clock this is fed, but if a caller ever mixes clocks the wrong answer must
@@ -145,10 +152,10 @@ export const DETECTION_PAINT_SKIP_THRESHOLD_MS = 22;
  * invariant worth pinning — a wrapper cannot skip without re-requesting, because
  * the same decision produces both.
  *
- * @param {object} input
- * @param {boolean} input.layoutChanged - The host's layout revision moved this frame.
- * @param {number} input.lastPaintMs - Cost of the previous detection paint.
- * @param {number} input.frameCount - Monotonic detection frame counter.
+ * @param {object} [input] Missing values never skip.
+ * @param {boolean} [input.layoutChanged] - The host's layout revision moved this frame.
+ * @param {number} [input.lastPaintMs] - Cost of the previous detection paint.
+ * @param {number} [input.frameCount] - Monotonic detection frame counter.
  * @param {number} [input.thresholdMs]
  * @returns {{skip: boolean, requestFollowUp: boolean}}
  */

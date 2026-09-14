@@ -1,3 +1,4 @@
+// @ts-check
 // src/data/terrainHeights.js — batched, cached client terrain-height resolver
 // (docs/plans/2026-07-05-entity-height-datum-fix.md Task 3).
 //
@@ -140,7 +141,10 @@ async function fetchChunk(chunk) {
  */
 function geoidFallback(lat, lon, sourceOrthometricM) {
   const n = geoidHeight(lat, lon);
-  return Number.isFinite(sourceOrthometricM) ? sourceOrthometricM + n : n;
+  return typeof sourceOrthometricM === 'number' &&
+    Number.isFinite(sourceOrthometricM)
+    ? sourceOrthometricM + n
+    : n;
 }
 
 /**
@@ -161,8 +165,11 @@ function geoidFallback(lat, lon, sourceOrthometricM) {
  *   with a real proxy round-trip pending — sees a warm hit.
  *
  * @param {Array<{lat:number, lon:number, sourceOrthometricM?:number}>} coords
- * @returns {Promise<Array<{ellipsoid:number, source:'reearth'|'geoid-fallback'}>>}
- *   Same length and order as `coords`.
+ * @returns {Promise<Array<
+ *   | {ellipsoid: number, source: 'reearth'|'geoid-fallback'}
+ *   | {ellipsoid: null, source: 'unresolved'}
+ * >>} Same length and order as `coords`; a point the upstream omitted reads
+ *   as unresolved.
  */
 export async function resolveEllipsoidalGround(coords) {
   if (!Array.isArray(coords) || coords.length === 0) return [];
@@ -193,6 +200,7 @@ export async function resolveEllipsoidalGround(coords) {
     const entry = cache.get(item.key);
     const fallbackCooling =
       entry?.source === 'geoid-fallback' &&
+      typeof entry.retryAt === 'number' &&
       Number.isFinite(entry.retryAt) &&
       now < entry.retryAt;
     if (
@@ -220,7 +228,7 @@ export async function resolveEllipsoidalGround(coords) {
         // read null forever and every later warm skipped it (ATL verify:
         // one contact frozen at the geoid while its neighbors resolved).
         // An omitted point now caches nothing and retries on the next warm.
-        if (Number.isFinite(ellipsoid)) {
+        if (typeof ellipsoid === 'number' && Number.isFinite(ellipsoid)) {
           cache.set(item.key, { ellipsoid, source: 'reearth' });
         }
       }

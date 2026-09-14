@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Panel positions are saved in localStorage under a versioned key,
  * `godsEyeView.v<N>.panelPos.<panelId>`. Raising N resets every panel to the
@@ -34,7 +35,8 @@ export function retireSupersededPanelPositions(storage, currentVersion) {
   let hadOldPositions = false;
   for (let index = 0; index < storage.length; index++) {
     const key = storage.key(index);
-    const match = key === null ? null : VERSIONED_KEY.exec(key);
+    if (key === null) continue;
+    const match = VERSIONED_KEY.exec(key);
     if (!match || Number(match[1]) >= current) continue;
     removed.push(key);
     if (match[2]) hadOldPositions = true;

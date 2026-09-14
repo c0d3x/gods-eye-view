@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Shared military-aircraft ICAO24 registry (2026-06-10 playtest fix).
  *
@@ -82,7 +83,8 @@ export function onMilitaryLayerActiveChange(listener) {
  * hex stays until no poll has listed it for MILITARY_REGISTRY_TTL_MS. Past
  * MILITARY_REGISTRY_MAX_ENTRIES the least recently seen go first, so a long
  * session can't grow the registry without bound.
- * @param {Iterable<string>} icaos - ICAO24 hexes from a /v2/mil response.
+ * @param {Iterable<string | null | undefined>} icaos - ICAO24 hexes from a
+ *   /v2/mil response; empty entries are skipped.
  * @param {number} [now] - Epoch ms of the poll.
  * @returns {void}
  */
@@ -142,6 +144,7 @@ export function refreshMilitaryRegistryIfStale() {
       });
       if (!response.ok) return;
       const data = await response.json();
+      /** @type {Array<{ hex?: string } | null>} */
       const aircraft = Array.isArray(data?.ac) ? data.ac : [];
       registerMilitaryIcaos(aircraft.map((entry) => entry?.hex));
     } catch {

@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * bloom.js — Bloom intensity normalization and version migration.
  *
@@ -54,8 +55,8 @@ function legacyBloomToV2(value) {
 /**
  * Decode a bloom intensity from a share link or saved project.
  * Handles both v1 (0–100, inverted) and v2 (0–200) scales.
- * @param {number} value — persisted intensity
- * @param {number} [version=1] — bloom scale version from the saved state
+ * @param {number} value - persisted intensity
+ * @param {number} [version=1] - bloom scale version from the saved state
  * @returns {number} v2-scale intensity in [0, 200]
  */
 export function decodeBloomIntensity(value, version = 1) {

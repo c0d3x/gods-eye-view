@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @module cctvCards
  * @description Screen-space thumbnail cards for the citywide ambient CCTV
@@ -108,7 +109,7 @@ export const CCTV_THUMBNAIL_ALTITUDE_SCALE = Object.freeze({
  * @param {boolean} [input.pinned=false]
  * @returns {boolean}
  */
-export function isCctvCardAnchorSafe({ sy, viewH, pinned = false } = {}) {
+export function isCctvCardAnchorSafe({ sy, viewH, pinned = false }) {
   if (pinned) return Number.isFinite(sy);
   if (!Number.isFinite(sy) || !Number.isFinite(viewH) || viewH <= 0)
     return false;
@@ -360,7 +361,7 @@ export function createCctvThumbnailOverlayEntry({
   pinned = false,
   active = false,
   gapPx = 16,
-} = {}) {
+}) {
   const hostGap = Math.max(14, (Number(gapPx) || 14) + 6);
   return {
     id,

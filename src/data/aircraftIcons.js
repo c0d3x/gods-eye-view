@@ -1,3 +1,4 @@
+// @ts-check
 // src/data/aircraftIcons.js
 /**
  * Nose-up white aircraft silhouettes, one per classifyAircraft() kind, as SVG
@@ -46,6 +47,7 @@ const DISC = 'fill="white" fill-opacity="0.5"';
 
 // Each body is drawn in a centred coordinate frame (origin 0,0 = glyph centre),
 // nose toward -Y. Numbers are in the 96-unit space (half-extent up to ~45).
+/** @type {Record<string, string>} */
 const BODIES = {
   // ── Airliner: slender swept-wing narrow-body, two underwing engine pods,
   //    swept tailplane. The canonical jet; everything else reads against it.
@@ -240,10 +242,12 @@ const BODIES = {
 
 const _iconCache = new Map();
 
+/** @param {string} s */
 const _b64 = (s) =>
   typeof btoa === 'function'
     ? btoa(s)
-    : Buffer.from(s, 'utf8').toString('base64');
+    : // @ts-expect-error Node's Buffer; the browser project has no Node types.
+      Buffer.from(s, 'utf8').toString('base64');
 
 /** Fleet raster: billboards render at ~40–58 DEVICE px (width 20–24 CSS ×
  *  Retina × class scale). Cesium's billboard atlas has no mipmaps, so a big
@@ -261,6 +265,11 @@ const TRACKED_RASTER_PX = 192;
  *  Default size serves the fleet; pass `aircraftIcon(kind, TRACKED_ICON_PX)`
  *  (re-exported below) for the tracked billboard. */
 export const TRACKED_ICON_PX = TRACKED_RASTER_PX;
+/**
+ * @param {string} kind Aircraft class; an unknown class draws an airliner.
+ * @param {number} [px] Raster size in pixels.
+ * @returns {string}
+ */
 export function aircraftIcon(kind, px = FLEET_RASTER_PX) {
   const k = BODIES[kind] ? kind : 'airliner';
   const key = `${k}@${px}`;

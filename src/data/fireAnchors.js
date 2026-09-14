@@ -1,3 +1,4 @@
+// @ts-check
 // src/data/fireAnchors.js — DEM ground anchors for rendered FIRMS detections
 // (owner field finding 2026-07-21: at close/oblique zoom over high country,
 // fire dots anchored at ellipsoid height 0 read as buried inside the terrain
@@ -62,7 +63,10 @@ export function warmFireAnchorFloors(points) {
   return run;
 }
 
-/** @returns {Array<{lat: number, lon: number}>} Points with no warm floor. */
+/**
+ * @param {Array<{lat: number, lon: number}>} points - Rendered detections.
+ * @returns {Array<{lat: number, lon: number}>} Points with no warm floor.
+ */
 function collectCold(points) {
   if (!Array.isArray(points)) return [];
   const cold = [];
@@ -74,7 +78,11 @@ function collectCold(points) {
   return cold;
 }
 
-/** Resolves one batch (re-filtered at run time) and reports whether it warmed anything. */
+/**
+ * Resolves one batch (re-filtered at run time) and reports whether it warmed anything.
+ * @param {Array<{lat: number, lon: number}>} points
+ * @returns {Promise<boolean>}
+ */
 async function resolveBatch(points) {
   const cold = points.filter((p) => cachedGroundFloor(p.lat, p.lon) == null);
   if (!cold.length) return false;

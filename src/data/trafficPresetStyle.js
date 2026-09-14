@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * @file Preset-aware traffic dot styling — pure lookup tables mapping the
  * active post-FX style (StyleManager preset name) + congestion bucket to a
@@ -33,7 +34,7 @@
  * @module data/trafficPresetStyle
  */
 
-/** @const {Object<string,'mono'|'crt'>} Style name → non-normal profile. */
+/** @type {Record<string, 'mono'|'crt'>} Style name → non-normal profile. */
 const PROFILE_BY_STYLE = {
   surveillance: 'mono', // NVG — P43 phosphor × luma
   thermal: 'mono', // FLIR — grayscale/ironbow × luma
@@ -45,7 +46,8 @@ const PROFILE_BY_STYLE = {
  * Per-profile bucket treatments: rgba ([r,g,b] 0–255 + alpha 0–1) and the
  * pixel-size delta added ON TOP of the shipped sizing (which already gives
  * jam +1). Mono luma: jam 1.00 / slow 0.70 / free 0.36.
- * @const {Object<string, Object<string, {rgba:number[], sizeDelta:number}>>}
+ * @type {Record<string, Record<string, {rgba: number[], sizeDelta: number,
+ *   outline: {rgba: number[], width: number} | null}>>}
  */
 const DOT_STYLE = {
   mono: {
@@ -86,7 +88,8 @@ const DOT_STYLE = {
  * @returns {'normal'|'mono'|'crt'} Styling profile; unknown → 'normal'.
  */
 export function trafficStyleProfile(styleName) {
-  return PROFILE_BY_STYLE[styleName] || 'normal';
+  // A null or undefined name reads as a key no style has.
+  return PROFILE_BY_STYLE[/** @type {string} */ (styleName)] || 'normal';
 }
 
 /**
@@ -97,7 +100,8 @@ export function trafficStyleProfile(styleName) {
  * @returns {number[]|null} [r,g,b,a] with rgb 0–255, alpha 0–1, or null.
  */
 export function presetDotRgba(styleName, bucket) {
-  const entry = DOT_STYLE[trafficStyleProfile(styleName)]?.[bucket];
+  const entry =
+    DOT_STYLE[trafficStyleProfile(styleName)]?.[/** @type {string} */ (bucket)];
   return entry ? entry.rgba : null;
 }
 
@@ -108,7 +112,8 @@ export function presetDotRgba(styleName, bucket) {
  * @returns {number} Pixels to add (0 under the normal profile / sim dots).
  */
 export function presetSizeDelta(styleName, bucket) {
-  const entry = DOT_STYLE[trafficStyleProfile(styleName)]?.[bucket];
+  const entry =
+    DOT_STYLE[trafficStyleProfile(styleName)]?.[/** @type {string} */ (bucket)];
   return entry ? entry.sizeDelta : 0;
 }
 
@@ -123,7 +128,8 @@ export function presetSizeDelta(styleName, bucket) {
  * @returns {{rgba:number[], width:number}|null} Outline spec or null.
  */
 export function presetDotOutline(styleName, bucket) {
-  const entry = DOT_STYLE[trafficStyleProfile(styleName)]?.[bucket];
+  const entry =
+    DOT_STYLE[trafficStyleProfile(styleName)]?.[/** @type {string} */ (bucket)];
   return entry?.outline || null;
 }
 

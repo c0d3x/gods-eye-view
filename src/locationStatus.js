@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Copy for the collapsed LOCATION panel's two-line mini-status.
  *
@@ -12,7 +13,11 @@
 
 const EMPTY = Object.freeze({ city: '📍 Location: --', poi: 'Landmark: --' });
 
-/** Split a geocoder `formatted_address` into its trimmed, non-empty segments. */
+/**
+ * Split a geocoder `formatted_address` into its trimmed, non-empty segments.
+ * @param {unknown} label
+ * @returns {string[]}
+ */
 export function addressSegments(label) {
   return String(label ?? '')
     .split(',')

@@ -1,7 +1,9 @@
+// @ts-check
 import * as Cesium from 'cesium';
 
 /**
  * Set camera to Austin on load with a cinematic fly-in.
+ * @param {Cesium.Viewer} viewer
  * @returns {Function} Cancels the pending or active startup flight.
  */
 export function flyToAustin(viewer) {

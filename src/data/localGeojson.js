@@ -1,3 +1,4 @@
+// @ts-check
 import {
   clearOverlaySource,
   setOverlayEntries,
@@ -31,7 +32,12 @@ export const localGeoJsonServices = Object.freeze({
   governorRequestRender,
 });
 
-/** Create a layer using the standalone app's operations; retain overlay overrides. */
+/**
+ * Create a layer using the standalone app's operations; retain overlay overrides.
+ * @param {import('./localGeojsonCore.js').LocalGeoJsonLayerOptions & {
+ *   overlayHost?: import('./localGeojsonCore.js').LocalOverlayHost,
+ * }} options
+ */
 export function createLocalGeoJsonLayer(options) {
   return createLayer(options, {
     ...localGeoJsonServices,
@@ -42,7 +48,13 @@ export function createLocalGeoJsonLayer(options) {
   });
 }
 
-/** Create an overlay publisher using the standalone app's host by default. */
+/**
+ * Create an overlay publisher using the standalone app's host by default.
+ * @param {{
+ *   sourceId: string,
+ *   host?: import('./localGeojsonCore.js').LocalOverlayHost,
+ * }} options
+ */
 export function createLocalInfrastructureOverlayPublisher(options) {
   return createPublisher({
     ...options,

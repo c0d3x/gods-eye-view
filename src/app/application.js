@@ -25,7 +25,13 @@ const STOP_ORDER = ['tools', 'controls', 'data', 'scene'];
  * Constructors receive earlier components, an AbortSignal and defer(cleanup).
  * Register cleanup immediately after acquiring each resource, before any await.
  * @param {{createScene:Function,createControls:Function,createData:Function,createTools:Function}} constructors
- * @returns {{start:Function,destroy:Function,subscribe:Function,getState:Function,getComponents:Function}}
+ * @returns {{
+ *   start: () => Promise<Readonly<ApplicationComponents>>,
+ *   destroy: () => Promise<void>,
+ *   subscribe: (listener: (state: ApplicationState) => void) => () => void,
+ *   getState: () => ApplicationState,
+ *   getComponents: () => Readonly<ApplicationComponents>,
+ * }}
  */
 export function createApplication({
   createScene,
