@@ -198,7 +198,14 @@
       "src/overlays/worldOverlayAllocation.worker.mjs",
       "src/overlays/worldOverlayDraw.js",
       "src/overlays/worldOverlayDraw.test.mjs",
-      "src/overlays/worldOverlayTokens.js"
+      "src/overlays/worldOverlayTokens.js",
+      "src/voice/aircraftIdentityNarration.test.mjs",
+      "src/voice/gevActions.js",
+      "src/voice/gevActions.test.mjs",
+      "src/voice/gevRealtime.js",
+      "src/voice/gevRealtime.test.mjs",
+      "src/voice/voiceCost.js",
+      "src/voice/voiceCost.test.mjs"
     ]
   },
   "formatter": {

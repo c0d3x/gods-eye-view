@@ -1,4 +1,30 @@
 import * as Cesium from 'cesium';
+import { resolveRegionRingForQuery } from '../annotations/annotationResolver.js';
+import {
+  adjustOrbitRange,
+  flyRoute,
+  initCameraVerbs,
+  interruptCameraMotion,
+  moveCamera,
+} from '../cameraVerbs.js';
+import { contextModeWord } from '../contextModePolicy.js';
+import { createAnalystEngine } from '../data/analystEngine.js';
+import { CCTV_FOCUS_RESULT } from '../data/cctv.js';
+import {
+  getContextStore,
+  getSelectedEntityContext,
+  isContextRecordActive,
+} from '../data/contextStore.js';
+import { cachedGroundFloor, warmGroundFloor } from '../data/groundFloor.js';
+import { layerFeedState } from '../data/manager.js';
+import militaryAwarenessLayer, {
+  collectAircraftProximityWindow,
+  contactsWindowFromSnapshot,
+} from '../data/militaryAwareness.js';
+import { normalizeRadioCountryInput } from '../data/radioCountry.js';
+import { getNextIssPass } from '../data/satellites.js';
+import { isPickedWorldPosition } from '../data/scenePick.js';
+import { TR3B_CLASS } from '../data/tr3bRegistry.js';
 import {
   CITY_POIS,
   findPoiByName,
@@ -9,32 +35,6 @@ import {
   GLOBE_VIEW,
   searchAndFlyTo,
 } from '../locations.js';
-import {
-  getContextStore,
-  getSelectedEntityContext,
-  isContextRecordActive,
-} from '../data/contextStore.js';
-import { getNextIssPass } from '../data/satellites.js';
-import { CCTV_FOCUS_RESULT } from '../data/cctv.js';
-import { contextModeWord } from '../contextModePolicy.js';
-import { createAnalystEngine } from '../data/analystEngine.js';
-import { layerFeedState } from '../data/manager.js';
-import militaryAwarenessLayer, {
-  collectAircraftProximityWindow,
-  contactsWindowFromSnapshot,
-} from '../data/militaryAwareness.js';
-import {
-  initCameraVerbs,
-  moveCamera,
-  flyRoute,
-  interruptCameraMotion,
-  adjustOrbitRange,
-} from '../cameraVerbs.js';
-import { cachedGroundFloor, warmGroundFloor } from '../data/groundFloor.js';
-import { isPickedWorldPosition } from '../data/scenePick.js';
-import { resolveRegionRingForQuery } from '../annotations/annotationResolver.js';
-import { normalizeRadioCountryInput } from '../data/radioCountry.js';
-import { TR3B_CLASS } from '../data/tr3bRegistry.js';
 
 const ALLOWED_STYLES = new Set([
   'normal',
@@ -1627,7 +1627,7 @@ async function resolveRadioLocation(
 
 /** Voice Radio controls over the Radio layer's public player surface. */
 export async function controlRadio(
-  viewer,
+  _viewer,
   dataManager,
   args = {},
   options = {},
@@ -3955,46 +3955,6 @@ function dominantValue(values) {
   };
 }
 
-function summarizeEntity(viewer, entity, { includeProperties = false } = {}) {
-  const now = Cesium.JulianDate.now();
-  if (entity.__gevContextId) {
-    const store = window.__gevContextStore;
-    const record = store?.entities?.get(entity.__gevContextId);
-    if (record) return summarizeContextRecord(record, { includeProperties });
-  }
-  const props = propertyObject(entity);
-  const layerId = entity.__localLayerId || props.layerId || null;
-  const tags = props.tags || {};
-  const label = cleanText(
-    props.name ||
-      tags.name ||
-      tags['name:en'] ||
-      tags.official_name ||
-      tags.operator ||
-      props.operator ||
-      entity.name ||
-      layerTitle(layerId),
-  );
-  const position =
-    entity.__localBaseCartesian ||
-    entity.position?.getValue?.(now) ||
-    polygonCenter(entity, now);
-  const carto = position ? Cesium.Cartographic.fromCartesian(position) : null;
-  return {
-    id: String(entity.id || ''),
-    name: label || layerTitle(layerId),
-    layerId,
-    layerName: layerTitle(layerId),
-    latitude: carto
-      ? Number(Cesium.Math.toDegrees(carto.latitude).toFixed(6))
-      : null,
-    longitude: carto
-      ? Number(Cesium.Math.toDegrees(carto.longitude).toFixed(6))
-      : null,
-    properties: includeProperties ? compactProperties(props) : undefined,
-  };
-}
-
 function summarizeContextRecord(record, { includeProperties = false } = {}) {
   return {
     id: String(record.id || ''),
@@ -4011,31 +3971,6 @@ function summarizeContextRecord(record, { includeProperties = false } = {}) {
       : undefined,
     active: isContextRecordActive(record),
   };
-}
-
-function polygonCenter(entity, now) {
-  const hierarchy = entity.polygon?.hierarchy?.getValue?.(now);
-  const positions = hierarchy?.positions;
-  if (!positions?.length) return null;
-  return Cesium.BoundingSphere.fromPoints(positions).center;
-}
-
-function propertyObject(entity) {
-  const raw = entity?.properties?.getValue?.(Cesium.JulianDate.now()) || {};
-  return unwrapProperties(raw);
-}
-
-function unwrapProperties(value) {
-  if (!value || typeof value !== 'object') return value;
-  if (Array.isArray(value)) return value.map(unwrapProperties);
-  const out = {};
-  for (const [key, entry] of Object.entries(value)) {
-    out[key] =
-      entry && typeof entry.getValue === 'function'
-        ? unwrapProperties(entry.getValue(Cesium.JulianDate.now()))
-        : unwrapProperties(entry);
-  }
-  return out;
 }
 
 function compactProperties(props) {

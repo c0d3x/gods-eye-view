@@ -1,34 +1,33 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import * as Cesium from 'cesium';
+import { GEV_REALTIME_TOOLS } from '../../server/realtime/tools.mjs';
+import {
+  getActiveCameraMotion,
+  interruptCameraMotion,
+  moveCamera,
+} from '../cameraVerbs.js';
 import { CCTV_FOCUS_RESULT } from '../data/cctv.js';
 import {
   getContextStore,
   registerEntityContext,
 } from '../data/contextStore.js';
 import { DataLayerManager } from '../data/manager.js';
-import {
-  getActiveCameraMotion,
-  interruptCameraMotion,
-  moveCamera,
-} from '../cameraVerbs.js';
+import { TR3B_CLASS } from '../data/tr3bRegistry.js';
+import { MAP_STACKS } from '../mapStackController.js';
 import {
   reassertNavigationHandoff,
   runExplicitNavigation,
 } from '../navigationPolicy.js';
-import { TR3B_CLASS } from '../data/tr3bRegistry.js';
 import {
+  cctvVoiceFocusOutcome,
   controlCctv,
   controlRadio,
   createGevActionRunner,
-  cctvVoiceFocusOutcome,
   formatTrackedEntityLabel,
   knownRadioLocation,
   normalizeStackId,
 } from './gevActions.js';
-import { MAP_STACKS } from '../mapStackController.js';
-import { GEV_REALTIME_TOOLS } from '../../server/realtime/tools.mjs';
-import { readFileSync } from 'node:fs';
 
 test('every live basemap is reachable by its own id — no enum value without a voice alias', () => {
   // B1 regression: a stack added to MAP_STACKS (and the set_map_stack enum)
@@ -1712,7 +1711,7 @@ test('control_cockpit resolves spoken TR-3B spellings to the tr3b class id', asy
   };
   const calls = [];
   const styleManager = {
-    controlCockpit(action, options) {
+    controlCockpit(_action, options) {
       calls.push(options);
       return {
         ok: true,
@@ -3219,7 +3218,7 @@ test('voice Radio reconciliation failures leave gated player state unchanged', a
         getLayerLifecycleState: () => ({ ...lifecycle }),
         async setEnabled() {
           if (reconcileMode === 'reject') throw new Error('lifecycle failed');
-          return reconcileMode === 'false' ? false : true;
+          return reconcileMode !== 'false';
         },
       };
 

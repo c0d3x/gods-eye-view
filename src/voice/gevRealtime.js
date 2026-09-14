@@ -4,9 +4,8 @@ import {
   readLayerLifecycleSummary,
 } from './gevActions.js';
 import {
-  DEFAULT_VOICE_TIER,
-  VOICE_COST_LIMITS,
   createVoiceCostTracker,
+  DEFAULT_VOICE_TIER,
   formatCostUsd,
   isKnownVoiceTier,
   normalizeCostLimits,
@@ -466,7 +465,9 @@ export class GevRealtimeController {
 
       document
         .querySelectorAll('audio[data-gev-realtime-audio="true"]')
-        .forEach((el) => el.remove());
+        .forEach((el) => {
+          el.remove();
+        });
       this.audioEl = document.createElement('audio');
       this.audioEl.autoplay = true;
       this.audioEl.dataset.gevRealtimeAudio = 'true';
@@ -497,9 +498,9 @@ export class GevRealtimeController {
           ...this.connectionDiagnostics(),
         });
       };
-      this.stream
-        .getTracks()
-        .forEach((track) => this.pc.addTrack(track, this.stream));
+      this.stream.getTracks().forEach((track) => {
+        this.pc.addTrack(track, this.stream);
+      });
 
       const dataChannel = this.pc.createDataChannel('oai-events');
       this.dc = dataChannel;
@@ -863,10 +864,7 @@ export class GevRealtimeController {
             this.visualizerSpeaker === 'ai'
               ? ASSISTANT_VISUALIZER_GATE
               : MICROPHONE_VISUALIZER_GATE;
-          const shaped = Math.pow(
-            gateVoiceVisualizerLevel(normalized, gate),
-            0.72,
-          );
+          const shaped = gateVoiceVisualizerLevel(normalized, gate) ** 0.72;
           bar.style.setProperty(
             '--audio-level',
             `${Math.round(5 + shaped * 29)}px`,
@@ -1026,7 +1024,9 @@ export class GevRealtimeController {
     this._tearingDown = false;
     if (this.stream) {
       this.stopVoiceVisualizer();
-      this.stream.getTracks().forEach((track) => track.stop());
+      this.stream.getTracks().forEach((track) => {
+        track.stop();
+      });
       this.stream = null;
     } else {
       this.stopVoiceVisualizer();
@@ -1120,7 +1120,7 @@ export class GevRealtimeController {
    * injection hygiene as failedLabels), never instruction-bearing prose.
    */
   notifyMapEvent(payload) {
-    if (!this.dc || this.dc.readyState !== 'open') return false;
+    if (this.dc?.readyState !== 'open') return false;
     return this.sendRealtimeEvent(
       {
         type: 'conversation.item.create',
@@ -1135,7 +1135,7 @@ export class GevRealtimeController {
   }
 
   sendTextCommand(text) {
-    if (!this.dc || this.dc.readyState !== 'open') {
+    if (this.dc?.readyState !== 'open') {
       throw new Error('GEV voice is not connected');
     }
     const cleanText = String(text || '').trim();
@@ -1213,7 +1213,7 @@ export class GevRealtimeController {
       });
       return;
     }
-    if (!this.dc || this.dc.readyState !== 'open') return;
+    if (this.dc?.readyState !== 'open') return;
     this.pendingUserTextResponse = false;
     this.responseCreatePending = true;
     const sent = this.sendRealtimeEvent(
@@ -1354,7 +1354,9 @@ export class GevRealtimeController {
       for (const call of calls) {
         const keys = callDedupeKeys(call);
         if (keys.some((key) => this.processedCalls.has(key))) continue;
-        keys.forEach((key) => this.processedCalls.set(key, performance.now()));
+        keys.forEach((key) => {
+          this.processedCalls.set(key, performance.now());
+        });
         this.sendToolOutput(call.call_id || call.id, {
           ok: false,
           action: call.name,
@@ -1382,7 +1384,9 @@ export class GevRealtimeController {
       // multiple calls.
       const keys = callDedupeKeys(call);
       if (keys.some((key) => this.processedCalls.has(key))) continue;
-      keys.forEach((key) => this.processedCalls.set(key, performance.now()));
+      keys.forEach((key) => {
+        this.processedCalls.set(key, performance.now());
+      });
 
       let result;
       const resultChannel = this.dc;
@@ -1979,7 +1983,7 @@ export class GevRealtimeController {
   }
 
   sendRealtimeEvent(message, logEventName = 'client.event') {
-    if (!this.dc || this.dc.readyState !== 'open') return false;
+    if (this.dc?.readyState !== 'open') return false;
     this.debugLog(logEventName, {
       type: message?.type || null,
       message,
@@ -2473,7 +2477,9 @@ function createDebugSessionId() {
 function releaseStartResources({ localStream = null, localPc = null } = {}) {
   if (localStream) {
     try {
-      localStream.getTracks().forEach((track) => track.stop());
+      localStream.getTracks().forEach((track) => {
+        track.stop();
+      });
     } catch {
       /* no-op */
     }
@@ -2518,7 +2524,7 @@ async function captureViewportImage() {
   const source =
     viewer?.scene?.canvas ||
     document.querySelector('#cesiumContainer .cesium-widget canvas');
-  if (!source || !source.width || !source.height) return null;
+  if (!source?.width || !source.height) return null;
   // No fresh frame (hidden, or the bounded render wait timed out) → no
   // capture. The caller labels this image "Current"; a stale preserved
   // frame would feed the model old entities as current context. (perf
@@ -2721,10 +2727,9 @@ function extractFunctionCalls(event) {
 // The event_id match narrows the code-only whitelist so an unrelated
 // item_not_found (should one ever arise) still surfaces normally.
 export function isBenignViewportDeleteError(payload, pendingDeleteIds = null) {
-  if (!payload || payload.type !== 'error') return false;
+  if (payload?.type !== 'error') return false;
   const echoedId = payload.event_id;
-  if (echoedId && pendingDeleteIds && pendingDeleteIds.has(echoedId))
-    return true;
+  if (echoedId && pendingDeleteIds?.has(echoedId)) return true;
   const code = payload.error?.code;
   return code === 'item_not_found';
 }

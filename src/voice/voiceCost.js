@@ -111,7 +111,7 @@ export function resolveVoiceModel(tier) {
 /** True only for a tier name this build knows (own properties only). */
 export function isKnownVoiceTier(tier) {
   const key = typeof tier === 'string' ? tier.trim().toLowerCase() : '';
-  return Object.prototype.hasOwnProperty.call(VOICE_MODELS, key);
+  return Object.hasOwn(VOICE_MODELS, key);
 }
 
 /**
