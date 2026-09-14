@@ -10,6 +10,11 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Added
 
+- `pnpm run typecheck` runs TypeScript over the JSDoc types of the files that
+  opt in with `// @ts-check`, for now the package boundaries and the shared
+  context store, and CI runs it. The data layer contract and the context store
+  have typedefs.
+
 - Bug report and task templates on the New issue page, with a link to
   private vulnerability reporting. CONTRIBUTING explains how to run one test
   file and how to set up the QA harnesses, the README's project tree matches

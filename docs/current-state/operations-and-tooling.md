@@ -151,6 +151,9 @@ its recommended lint rules and import sorting, on every JavaScript file and the
 config JSON (globs in `biome.json`; the bundled data in `src/data/local_data`
 stays out), and a Lefthook pre-commit hook formats, lints and sorts the imports
 of staged files.
+`pnpm run typecheck` runs `tsc --noEmit` with `jsconfig.json` over the files
+that opt in with `// @ts-check`: the package boundaries and the shared context
+store. `checkJs` stays off, so other files are parsed but not checked.
 `pnpm run check:boundaries` checks the browser dependency graph of all current
 package exports; infrastructure owns its three implementation modules and takes
 Cesium from the consumer. CI runs these checks on Linux and Windows. The

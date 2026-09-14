@@ -55,6 +55,9 @@ jobs:
       - name: Check package boundaries
         run: pnpm run check:boundaries
 
+      - name: Type-check
+        run: pnpm run typecheck
+
       # The allocation microbenchmarks run in their own job, in parallel.
       - name: Run unit tests
         if: matrix.node != '24.14.0'

@@ -1,5 +1,35 @@
+// @ts-check
 const STORE_KEY = '__gevContextStore';
 
+/**
+ * One selectable thing that voice and the Cockpit can talk about: the metadata
+ * its layer registered, plus the Cesium entity, or a stand-in carrier for a
+ * tracking layer's subject.
+ * @typedef {object} ContextRecord
+ * @property {string} id Stable id, also written to `entity.__gevContextId`.
+ * @property {string} [layerId] The layer that owns the record.
+ * @property {{ show?: boolean, __gevContextId?: string }} entity
+ * @property {{ show?: boolean }} [dataSource] A hidden source reads as
+ *   inactive.
+ * @property {number} updatedAt When the record was last registered, in ms.
+ */
+
+/**
+ * The shared context store. It lives on `window`, so every module and the
+ * voice tools see one copy.
+ * @typedef {object} ContextStore
+ * @property {Map<string, ContextRecord>} entities Records by id.
+ * @property {string | null} selectedEntityId
+ * @property {number | null} selectedAt When the selection was made, in ms.
+ */
+
+/**
+ * Fields a layer registers for one entity. `id` is required; a record keeps
+ * any other field it is given.
+ * @typedef {{ id: string, layerId?: string } & Record<string, unknown>} ContextMetadata
+ */
+
+/** @returns {ContextStore} */
 function createStore() {
   return {
     entities: new Map(),
@@ -8,6 +38,7 @@ function createStore() {
   };
 }
 
+/** @returns {ContextStore} */
 export function getContextStore() {
   if (!window[STORE_KEY]) {
     window[STORE_KEY] = createStore();
@@ -28,6 +59,14 @@ function hasContextHost() {
   return typeof window !== 'undefined' && Boolean(window);
 }
 
+/**
+ * Register one entity's context record, replacing an earlier record with the
+ * same id.
+ * @param {{ __gevContextId?: string, show?: boolean }} entity A Cesium entity,
+ *   or a stand-in carrier for a tracking layer's subject.
+ * @param {ContextMetadata} metadata
+ * @returns {ContextRecord | null}
+ */
 export function registerEntityContext(entity, metadata) {
   if (!entity || !metadata?.id) return null;
   const store = getContextStore();
@@ -72,8 +111,9 @@ export function selectEntityContext(entity) {
  * behind is dropped — its feed refreshes continuously and a frozen snapshot
  * must never reach the visible-entity scan.
  *
- * @param {object} metadata Record fields; `id` and `layerId` required.
- * @returns {object|null} The stored record, or null when identity is missing.
+ * @param {ContextMetadata} metadata Record fields; `id` and `layerId` required.
+ * @returns {ContextRecord | null} The stored record, or null when identity is
+ *   missing.
  */
 export function selectTrackedSubjectContext(metadata) {
   if (!hasContextHost() || !metadata?.id || !metadata?.layerId) return null;
@@ -97,8 +137,9 @@ export function selectTrackedSubjectContext(metadata) {
  *
  * The per-poll position/identity refresh must not resurrect a subject the
  * operator has since replaced by clicking something else.
- * @param {object} metadata Record fields; `id` and `layerId` required.
- * @returns {object|null} The stored record, or null when it is not registered.
+ * @param {ContextMetadata} metadata Record fields; `id` and `layerId` required.
+ * @returns {ContextRecord | null} The stored record, or null when it is not
+ *   registered.
  */
 export function refreshTrackedSubjectContext(metadata) {
   if (!hasContextHost() || !metadata?.id || !metadata?.layerId) return null;

@@ -1,3 +1,4 @@
+// @ts-check
 import * as Cesium from 'cesium';
 
 /** Create the standard globe viewer in caller-owned, visible containers. */

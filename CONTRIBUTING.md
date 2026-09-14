@@ -87,6 +87,9 @@ update; the bundled data in `src/data/local_data` is left as it is.
 `pnpm install` also installs a Lefthook pre-commit hook that formats, lints and
 sorts the imports of staged files; set `LEFTHOOK=0` to skip it for one commit.
 CI checks formatting, lint and package boundaries on Linux and Windows.
+`pnpm run typecheck` runs TypeScript over the JSDoc types of the files that
+opt in with `// @ts-check`; add the comment to a module once its types hold,
+and CI keeps them holding.
 
 Reusable package exports own their state and receive application operations
 through explicit callbacks. They must not import the standalone bootstrap or

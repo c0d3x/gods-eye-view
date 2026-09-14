@@ -48,7 +48,8 @@
     "test:track": "node scripts/track-regression.mjs",
     "qa:setup": "node scripts/qa-setup.mjs",
     "qa:map-source-tray": "node scripts/qa-map-source-tray.mjs",
-    "check:boundaries": "node scripts/check-package-boundaries.mjs"
+    "check:boundaries": "node scripts/check-package-boundaries.mjs",
+    "typecheck": "tsc --noEmit -p jsconfig.json"
   },
   "dependencies": {
     "@mapbox/vector-tile": "^3.0.0",
@@ -63,7 +64,8 @@
     "@biomejs/biome": "2.5.13",
     "lefthook": "^2.1.12",
     "puppeteer": "^25.10.0",
-    "sharp": "^0.35.4"
+    "sharp": "^0.35.4",
+    "typescript": "7.0.2"
   },
   "exports": {
     "./infrastructure": "./src/data/infrastructure.js",

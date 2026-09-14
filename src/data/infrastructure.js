@@ -1,3 +1,4 @@
+// @ts-check
 import { createLocalGeoJsonLayer } from './localGeojsonCore.js';
 
 // Resolved by Vite in builds and relative to this module in other consumers.
@@ -10,7 +11,8 @@ const damsUrl = new URL('./local_data/dams/dams.geojsonl', import.meta.url)
 
 /**
  * Create fresh datacenter and dam layers without starting or loading them.
- * @param {object} services Caller-owned context, overlay and render operations.
+ * @param {import('./localGeojsonCore.js').LocalGeoJsonLayerServices} services
+ *   Caller-owned context, overlay and render operations.
  * @returns {object[]} Datacenters then dams, with stable standalone identities.
  */
 export function createInfrastructureLayers(services) {

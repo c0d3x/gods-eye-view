@@ -1,3 +1,4 @@
+// @ts-check
 import * as Cesium from 'cesium';
 import {
   applyInfraEvictionGrace,
@@ -165,15 +166,17 @@ export function createLocalInfrastructureOverlayEntry({
  * Retain a bounded screen-grid surplus for the host's final rectangle arbiter.
  * Two deterministic contenders per legacy grid cell preserve the old density
  * while giving the shared solver an alternative when the first card collides.
- * @param {object[]} records Local stem/entry records.
+ * @param {LocalOverlayRecord[]} records Local stem/entry records.
  * @param {object} options
  * @param {number} options.maxEntries Legacy source cap.
  * @param {number} options.gridPx Legacy screen grid size.
  * @param {number} options.width Viewport width in CSS pixels.
  * @param {number} options.height Viewport height in CSS pixels.
- * @param {function(object):({x:number,y:number}|null)} options.project Projection callback.
+ * @param {(record: LocalOverlayRecord) => ({ x: number, y: number } | null)} options.project
+ *   Projection callback.
  * @param {number} [options.cohortLimit=Infinity] Host-safe materialization cap.
- * @returns {object[]} Bounded overlay entries for shared-host arbitration.
+ * @returns {LocalOverlayEntry[]} Bounded overlay entries for shared-host
+ *   arbitration.
  */
 export function selectLocalInfrastructureOverlayCohort(
   records,
@@ -237,11 +240,32 @@ export function selectLocalInfrastructureOverlayCohort(
 }
 
 /**
+ * A stem or entry record the cohort selector ranks. It stays opaque here:
+ * only the caller's projection reads it.
+ * @typedef {Record<string, any>} LocalOverlayRecord
+ */
+
+/**
+ * An overlay entry handed to the shared host. Its position may move in place,
+ * which is why publications compare coordinates.
+ * @typedef {{ position?: { x: number, y: number, z: number } } & Record<string, any>} LocalOverlayEntry
+ */
+
+/**
+ * The three shared overlay host calls a local layer makes.
+ * @typedef {object} LocalOverlayHost
+ * @property {(sourceId: string, visible: boolean) => void} setVisible
+ * @property {(sourceId: string, entries: LocalOverlayEntry[], options?: object) => void} setEntries
+ * @property {(sourceId: string) => void} clearSource
+ */
+
+/**
  * Bind a local layer's visibility and entry lifecycle to the shared host.
  * @param {object} options
  * @param {string} options.sourceId Local layer id.
- * @param {object} [options.host] Test seam for the three host lifecycle calls.
- * @returns {{show:function():void,publish:function(object[]):void,hide:function():void,destroy:function():void}}
+ * @param {LocalOverlayHost} [options.host] Test seam for the three host
+ *   lifecycle calls.
+ * @returns {{ show: () => void, publish: (entries: LocalOverlayEntry[]) => void, hide: () => void, destroy: () => void }}
  */
 export function createLocalInfrastructureOverlayPublisher({ sourceId, host }) {
   let visible = false;
@@ -327,11 +351,44 @@ export function localDatasetError(error) {
 }
 
 /**
+ * What one local GeoJSON layer shows, and the Cesium adapters tests replace.
+ * @typedef {object} LocalGeoJsonLayerOptions
+ * @property {string} id Layer id.
+ * @property {string} url JSON Lines dataset URL.
+ * @property {string} name Display name.
+ * @property {string} color CSS color of the stems and labels.
+ * @property {string} [icon]
+ * @property {string} [source] Data credit.
+ * @property {boolean} [labels] Whether features are labeled.
+ * @property {number} [labelMax] Most labels on screen.
+ * @property {number} [labelGridPx] Label declutter grid, in CSS pixels.
+ * @property {(canvas: HTMLCanvasElement) => Cesium.ScreenSpaceEventHandler} [screenSpaceEventHandlerFactory]
+ * @property {(scene: Cesium.Scene, position: Cesium.Cartesian3) => Cesium.Cartesian2 | undefined} [projectToWindow]
+ * @property {number} [loadSliceSize] Features parsed per slice while loading.
+ * @property {() => Promise<void>} [yieldDuringLoad] Yields to the main thread
+ *   between slices.
+ */
+
+/**
+ * The caller-owned operations a local layer uses; see
+ * docs/INFRASTRUCTURE-LAYERS.md.
+ * @typedef {object} LocalGeoJsonLayerServices
+ * @property {LocalOverlayHost} overlayHost
+ * @property {typeof import('./contextStore.js').registerEntityContext} registerEntityContext
+ * @property {typeof import('./contextStore.js').selectEntityContext} selectEntityContext
+ * @property {typeof import('./contextStore.js').clearSelectedEntityContextForLayer} clearSelectedEntityContextForLayer
+ * @property {typeof import('./contextStore.js').removeEntityContextsForLayer} removeEntityContextsForLayer
+ * @property {(reason?: string) => void} governorRequestRender
+ */
+
+/**
  * A minimal, rock-solid native implementation for loading local GeoJSON Data.
  * Draws 3D stems (polylines) attached to Point entities and ensures
  * standard scene.pick natively clicks them.
- * @param {object} options Dataset URL, identity, appearance and optional Cesium adapters.
- * @param {object} services Caller-owned operations; see docs/INFRASTRUCTURE-LAYERS.md.
+ * @param {LocalGeoJsonLayerOptions} options Dataset URL, identity, appearance
+ *   and optional Cesium adapters.
+ * @param {LocalGeoJsonLayerServices} services Caller-owned operations; see
+ *   docs/INFRASTRUCTURE-LAYERS.md.
  * @returns {object} A fresh layer implementing init/enable/disable/update/destroy/getStats.
  * One live instance per layer id is allowed in a given viewer/context/overlay host.
  * Destroy the previous instance before replacing it. Importing creates no layers.
@@ -895,6 +952,7 @@ export function createLocalGeoJsonLayer(
             if (probe.recompute) _stemGeometryDirty = true;
           }
 
+          // @ts-expect-error EllipsoidalOccluder is public at runtime but private in Cesium's typings.
           const occluder = new Cesium.EllipsoidalOccluder(
             Cesium.Ellipsoid.WGS84,
             cameraPos,

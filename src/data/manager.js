@@ -1,6 +1,74 @@
 import { governorRequestRender } from '../renderGovernor.js';
 import { markDetectionSourcesChanged } from './detection.js';
 
+/**
+ * Where a layer is in its enable/disable lifecycle. `enabled` is settled
+ * visibility; the -ing states cover the awaited work between.
+ * @typedef {'disabled' | 'enabling' | 'enabled' | 'disabling'} LayerLifecycleState
+ */
+
+/**
+ * Passed to a layer's lifecycle and refresh calls.
+ * @typedef {object} LayerLifecycleOptions
+ * @property {AbortSignal | null} [signal] Aborted when a newer request
+ *   supersedes this one or the layer is being turned off.
+ */
+
+/**
+ * @typedef {object} LayerLifecyclePresentation
+ * @property {LayerLifecycleState} lifecycleState
+ * @property {boolean} enabled Settled visibility.
+ * @property {boolean} uncertain A lifecycle call failed and left the real
+ *   state unknown.
+ */
+
+/**
+ * @typedef {object} LayerParamsOptions
+ * @property {string} origin Who asked, such as 'user', 'voice' or
+ *   'programmatic'.
+ * @property {number} paramsIntentEpoch The manager's intent counter for this
+ *   change; a newer change supersedes it.
+ */
+
+/**
+ * @typedef {object} TrackingRestoreOptions
+ * @property {AbortSignal | null} signal
+ * @property {string} origin
+ * @property {boolean} refreshSucceeded Whether the refresh before the restore
+ *   succeeded.
+ */
+
+/**
+ * A data layer module, as passed to {@link DataLayerManager#register}. It is a
+ * plain object: everything but `id` is optional, and the manager checks for a
+ * method before calling it. `enable`, `disable` and `setParams` refuse by
+ * returning `false`.
+ * @typedef {object} DataLayer
+ * @property {string} id Stable id: the key in share links and the layer
+ *   state registry.
+ * @property {string} [name] Display name; the id stands in without one.
+ * @property {string} [icon]
+ * @property {string} [source] Data credit shown in the layer row.
+ * @property {boolean} [showInTogglePanel] `false` keeps the layer out of the
+ *   toggle panel.
+ * @property {number} [refreshInterval] Milliseconds between periodic updates.
+ * @property {number} [updateInterval] Older name for `refreshInterval`, read
+ *   when that is unset.
+ * @property {number} [statsRefreshInterval] Milliseconds between stats polls;
+ *   1000 when unset.
+ * @property {(viewer: import('cesium').Viewer, options?: LayerLifecycleOptions) => unknown} [init]
+ * @property {(viewer: import('cesium').Viewer, options?: LayerLifecycleOptions) => unknown} [enable]
+ * @property {(viewer: import('cesium').Viewer, options?: LayerLifecycleOptions) => unknown} [disable]
+ * @property {(viewer: import('cesium').Viewer, options?: LayerLifecycleOptions) => unknown} [update]
+ * @property {(viewer: import('cesium').Viewer) => unknown} [destroy]
+ * @property {() => object} [getStats]
+ * @property {() => object} [getParams]
+ * @property {(params: object, options: LayerParamsOptions) => unknown} [setParams]
+ * @property {(presentation: LayerLifecyclePresentation) => void} [setLifecyclePresentation]
+ * @property {() => object | null} [getRowControls]
+ * @property {(targetId: string, options: TrackingRestoreOptions) => Promise<object>} [resolveTrackingRestoreTarget]
+ */
+
 function cloneLayerParams(value) {
   if (Array.isArray(value)) return value.map(cloneLayerParams);
   if (value && typeof value === 'object') {
@@ -148,6 +216,11 @@ export class DataLayerManager {
     this._qaLayerIds = new Set();
   }
 
+  /**
+   * Register a data layer. Registration closes when finalizeRegistrations()
+   * seals the catalog.
+   * @param {DataLayer} layerModule
+   */
   register(layerModule) {
     if (this._registrationsFinalized) {
       throw new Error('Data-layer registrations are finalized');

@@ -1,3 +1,4 @@
+// @ts-check
 const START_ORDER = ['scene', 'controls', 'data', 'tools'];
 // Controls cancel restoration while the data manager and viewer still exist.
 const STOP_ORDER = ['tools', 'controls', 'data', 'scene'];
@@ -29,6 +30,7 @@ export function createApplication({
   const cleanups = Object.fromEntries(START_ORDER.map((phase) => [phase, []]));
   const components = {};
   const listeners = new Set();
+  /** @type {Readonly<{ status: string, phase: string | null }>} */
   let state = Object.freeze({ status: 'created', phase: null });
   let startPromise;
   let destroyPromise;

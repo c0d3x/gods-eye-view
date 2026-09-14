@@ -1,3 +1,4 @@
+// @ts-check
 // src/data/localGeojsonLod.js
 /**
  * @module localGeojsonLod
