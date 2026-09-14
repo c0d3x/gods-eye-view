@@ -13,7 +13,11 @@ import { createHybridAnnotationRenderer } from './hybridAnnotationRenderer.js';
 export function initAnnotations({ viewer, tileset = null }) {
   // World-space footprint draping; clamped marks can use the photoreal tiles.
   if (tileset) {
-    try { tileset.enableCollision = true; } catch { /* older tileset */ }
+    try {
+      tileset.enableCollision = true;
+    } catch {
+      /* older tileset */
+    }
   }
   const renderer = createHybridAnnotationRenderer(viewer);
   const engine = createAnnotationEngine({ viewer, renderer });

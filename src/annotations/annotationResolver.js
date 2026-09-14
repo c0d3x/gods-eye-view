@@ -1,7 +1,13 @@
 import * as Cesium from 'cesium';
 import { lookupNeighborhoodRing } from '../data/neighborhoodPolygons.js';
-import { lookupNaturalRegionOutline, findNaturalRegion } from '../data/naturalEarthRegions.js';
-import { registerDynamicCredit, NATURAL_EARTH_CREDIT } from '../data/dataCredits.js';
+import {
+  lookupNaturalRegionOutline,
+  findNaturalRegion,
+} from '../data/naturalEarthRegions.js';
+import {
+  registerDynamicCredit,
+  NATURAL_EARTH_CREDIT,
+} from '../data/dataCredits.js';
 import { isPickedWorldPosition } from '../data/scenePick.js';
 
 /**
@@ -59,7 +65,10 @@ function negCache(cache, key, signal, definitive = true) {
 /** Wire an external AbortSignal to a local controller; returns a detach fn. */
 function linkAbort(controller, externalSignal) {
   if (!externalSignal) return () => {};
-  if (externalSignal.aborted) { controller.abort(); return () => {}; }
+  if (externalSignal.aborted) {
+    controller.abort();
+    return () => {};
+  }
   const onAbort = () => controller.abort();
   externalSignal.addEventListener('abort', onAbort, { once: true });
   return () => externalSignal.removeEventListener('abort', onAbort);
@@ -90,8 +99,18 @@ function linkAbort(controller, externalSignal) {
  * }>}
  */
 export async function resolveAnnotationTarget({
-  viewer, target, latitude, longitude, footprint = false, intent = 'the_thing',
-  entityKind = null, labelHint = null, deferFootprint = false, screenX, screenY, signal,
+  viewer,
+  target,
+  latitude,
+  longitude,
+  footprint = false,
+  intent = 'the_thing',
+  entityKind = null,
+  labelHint = null,
+  deferFootprint = false,
+  screenX,
+  screenY,
+  signal,
 }) {
   let lon = Number(longitude);
   let lat = Number(latitude);
@@ -109,7 +128,12 @@ export async function resolveAnnotationTarget({
   let placesPrimary = null;
   let placeTypes = [];
   // Instrumentation (logged once per target at the end): which sources were tried and what they returned.
-  const trace = { query: String(target || '').trim(), places: 'skipped', geocode: 'none', osmSnap: 'skipped' };
+  const trace = {
+    query: String(target || '').trim(),
+    places: 'skipped',
+    geocode: 'none',
+    osmSnap: 'skipped',
+  };
   // Guard bypass is an ASK-SIDE fact. A returned admin type can be a wrong match
   // ("the Texas Capitol" → the state), so geocode types must never grant it.
   const bypassNearViewGuards = Boolean(adminScopeFromAsk(target, entityKind));
@@ -117,13 +141,25 @@ export async function resolveAnnotationTarget({
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
     const query = String(target || '').trim();
     if (query) {
-      const center = pickWorldFromScreen(viewer, 0.5, 0.5) || viewportProximity(viewer);
+      const center =
+        pickWorldFromScreen(viewer, 0.5, 0.5) || viewportProximity(viewer);
       // Monument / grounds names scatter under Geocoding — try a view-biased Places Text Search FIRST.
       // A hit near the view centre is trusted (skips the proximity gate, like the osm-local snap); on a
       // miss we fall through to geocode + fetchLocalMonument below. The model's entityKind counts too:
       // a point_feature by fact ("Heroes of the Alamo" — no monument word) deserves the same path.
-      if (center && (isMonumentLikeQuery(query) || isGroundsLikeQuery(query) || entityKind === 'point_feature')) {
-        const placeHit = await placesTextSearch(query, center.lat, center.lon, 6000, signal);
+      if (
+        center &&
+        (isMonumentLikeQuery(query) ||
+          isGroundsLikeQuery(query) ||
+          entityKind === 'point_feature')
+      ) {
+        const placeHit = await placesTextSearch(
+          query,
+          center.lat,
+          center.lon,
+          6000,
+          signal,
+        );
         if (placeHit) {
           trace.places = `${placeHit.lat.toFixed(5)},${placeHit.lon.toFixed(5)}`;
           if (placeHit.distanceM <= PLACES_MAX_DISTANCE_M) {
@@ -140,7 +176,11 @@ export async function resolveAnnotationTarget({
         }
       }
       if (source !== 'places') {
-        const geocoded = await geocodePlace(query, viewportBias(viewer), signal);
+        const geocoded = await geocodePlace(
+          query,
+          viewportBias(viewer),
+          signal,
+        );
         if (geocoded) {
           lat = geocoded.lat;
           lon = geocoded.lon;
@@ -158,11 +198,21 @@ export async function resolveAnnotationTarget({
         // (neighborhoods, nearby buildings) are NOT far, so they keep the geocode + scope/polygon path.
         if (center && trace.places === 'skipped' && !bypassNearViewGuards) {
           let geocodeFar = source !== 'geocode';
-          if (source === 'geocode' && approximateDistanceM(center.lat, center.lon, lat, lon) / 1000 > MIN_DRIFT_FLOOR_KM) {
+          if (
+            source === 'geocode' &&
+            approximateDistanceM(center.lat, center.lon, lat, lon) / 1000 >
+              MIN_DRIFT_FLOOR_KM
+          ) {
             geocodeFar = true;
           }
           if (geocodeFar) {
-            const placeHit = await placesTextSearch(query, center.lat, center.lon, 6000, signal);
+            const placeHit = await placesTextSearch(
+              query,
+              center.lat,
+              center.lon,
+              6000,
+              signal,
+            );
             if (placeHit && placeHit.distanceM <= PLACES_MAX_DISTANCE_M) {
               lat = placeHit.lat;
               lon = placeHit.lon;
@@ -188,9 +238,16 @@ export async function resolveAnnotationTarget({
   // coordinate via the depth-aware pick cascade, so the mark is STILL
   // world-anchored (it persists and occludes like any other) rather than a
   // transient frame-bound overlay.
-  if ((!Number.isFinite(lat) || !Number.isFinite(lon))
-      && Number.isFinite(Number(screenX)) && Number.isFinite(Number(screenY))) {
-    const picked = pickWorldFromScreen(viewer, Number(screenX), Number(screenY));
+  if (
+    (!Number.isFinite(lat) || !Number.isFinite(lon)) &&
+    Number.isFinite(Number(screenX)) &&
+    Number.isFinite(Number(screenY))
+  ) {
+    const picked = pickWorldFromScreen(
+      viewer,
+      Number(screenX),
+      Number(screenY),
+    );
     if (picked) {
       lat = picked.lat;
       lon = picked.lon;
@@ -205,10 +262,19 @@ export async function resolveAnnotationTarget({
   // the target reads like a monument AND the anchor came from a NAME, snap to the actual OSM feature
   // near what the user is LOOKING AT (screen-centre), not the scattered geocode point. A hit becomes
   // an 'osm-local' anchor (near the view by construction, so it skips the proximity gate below).
-  if (source === 'geocode' && (isMonumentLikeQuery(target) || entityKind === 'point_feature')) {
-    const center = pickWorldFromScreen(viewer, 0.5, 0.5) || viewportProximity(viewer);
+  if (
+    source === 'geocode' &&
+    (isMonumentLikeQuery(target) || entityKind === 'point_feature')
+  ) {
+    const center =
+      pickWorldFromScreen(viewer, 0.5, 0.5) || viewportProximity(viewer);
     if (center) {
-      const mon = await fetchLocalMonument(center.lat, center.lon, target, signal);
+      const mon = await fetchLocalMonument(
+        center.lat,
+        center.lon,
+        target,
+        signal,
+      );
       if (mon) {
         lat = mon.lat;
         lon = mon.lon;
@@ -237,8 +303,12 @@ export async function resolveAnnotationTarget({
   const vpGate = viewportProximity(viewer);
   const gateDrift = (gLat, gLon) => {
     if (!vpGate) return null; // no camera info → pass
-    const driftKm = approximateDistanceM(vpGate.lat, vpGate.lon, gLat, gLon) / 1000;
-    const limitKm = Math.max(VIEWPORT_DRIFT_FACTOR * vpGate.radiusKm, MIN_DRIFT_FLOOR_KM);
+    const driftKm =
+      approximateDistanceM(vpGate.lat, vpGate.lon, gLat, gLon) / 1000;
+    const limitKm = Math.max(
+      VIEWPORT_DRIFT_FACTOR * vpGate.radiusKm,
+      MIN_DRIFT_FLOOR_KM,
+    );
     return driftKm > limitKm ? { driftKm, limitKm } : null;
   };
   if (fromGeocode && !bypassNearViewGuards) {
@@ -246,8 +316,8 @@ export async function resolveAnnotationTarget({
     if (drift) {
       if (trace.query) {
         console.log(
-          `[Resolver] "${trace.query}": places=${trace.places} geocode=${trace.geocode} `
-          + `osmSnap=${trace.osmSnap} → FINAL source=rejected (proximity gate, ${drift.driftKm.toFixed(0)}km > ${drift.limitKm.toFixed(0)}km)`,
+          `[Resolver] "${trace.query}": places=${trace.places} geocode=${trace.geocode} ` +
+            `osmSnap=${trace.osmSnap} → FINAL source=rejected (proximity gate, ${drift.driftKm.toFixed(0)}km > ${drift.limitKm.toFixed(0)}km)`,
         );
       }
       return null;
@@ -260,9 +330,12 @@ export async function resolveAnnotationTarget({
   // "…, Austin"), so incidental city/state tokens can't win the footprint scoring (the
   // Thompson-Austin bug, field test 7). A POI's canonical name can be a bare street number,
   // so anything without letters falls through.
-  const usablePrimary = geocodePrimary && /[a-z]/i.test(geocodePrimary) ? geocodePrimary : null;
-  const usablePlaces = placesPrimary && /[a-z]/i.test(placesPrimary) ? placesPrimary : null;
-  const matchName = usablePrimary || usablePlaces || String(target || '').trim();
+  const usablePrimary =
+    geocodePrimary && /[a-z]/i.test(geocodePrimary) ? geocodePrimary : null;
+  const usablePlaces =
+    placesPrimary && /[a-z]/i.test(placesPrimary) ? placesPrimary : null;
+  const matchName =
+    usablePrimary || usablePlaces || String(target || '').trim();
   // Scope-route on the geocoder's type so we fetch the RIGHT OSM feature at the right size:
   // an admin boundary for a city/state, the enclosing compound for a mall/campus, a single
   // building for a premise. The voice model's entityKind (an entity FACT) refines an
@@ -271,7 +344,12 @@ export async function resolveAnnotationTarget({
   // Point-like targets (monuments/statues/memorials/…) resolve POINT-FIRST: only an
   // (almost) exactly-named, monument-scale polygon may replace the point; a nearby polygon
   // sharing locality words must not (docs/field-test-rootcause-2026-06-30.md §1).
-  const pointLike = isPointLikeTarget(target, entityKind, placeTypes, labelHint);
+  const pointLike = isPointLikeTarget(
+    target,
+    entityKind,
+    placeTypes,
+    labelHint,
+  );
   // Grounds/compound asks (target OR label wording, or entityKind fact) go outline-first:
   // they reach the real enclosing-polygon sweep even under `around_the_thing` phrasing.
   const groundsLike = isGroundsLikeAsk(target, labelHint, entityKind);
@@ -293,7 +371,11 @@ export async function resolveAnnotationTarget({
    */
   const resolveOutline = async () => {
     let scope = baseScope;
-    const isAdmin = scope === 'country' || scope === 'state' || scope === 'county' || scope === 'city';
+    const isAdmin =
+      scope === 'country' ||
+      scope === 'state' ||
+      scope === 'county' ||
+      scope === 'city';
     const around = intent === 'around_the_thing';
     // FIRST rung: bundled Natural Earth physical region (Alps, Rockies, Sahara,
     // Gulf of Mexico …) — deterministic, OFFLINE, instant; mirrors the
@@ -310,7 +392,9 @@ export async function resolveAnnotationTarget({
     // centroid legitimately sits far from any anchor. Admin and street scopes
     // are excluded — "Texas" must keep resolving as an admin boundary.
     if (!isAdmin && scope !== 'street' && !around) {
-      const ne = await lookupNaturalRegionOutline(target, lat, lon).catch(() => null);
+      const ne = await lookupNaturalRegionOutline(target, lat, lon).catch(
+        () => null,
+      );
       if (ne) {
         registerDynamicCredit(viewer, NATURAL_EARTH_CREDIT);
         const neCentroid = ringCentroid(ne.ring);
@@ -322,12 +406,22 @@ export async function resolveAnnotationTarget({
           naturalRegion: ne.name,
           lat: neCentroid?.lat ?? lat,
           lon: neCentroid?.lon ?? lon,
-          height: sampleGroundHeight(viewer, neCentroid?.lon ?? lon, neCentroid?.lat ?? lat),
+          height: sampleGroundHeight(
+            viewer,
+            neCentroid?.lon ?? lon,
+            neCentroid?.lat ?? lat,
+          ),
         };
       }
     }
     let fp = null;
-    if (around && !groundsLike && !isAdmin && scope !== 'street' && scope !== 'neighborhood') {
+    if (
+      around &&
+      !groundsLike &&
+      !isAdmin &&
+      scope !== 'street' &&
+      scope !== 'neighborhood'
+    ) {
       // "the area AROUND <landmark>" → a buffered zone on the centroid, not the exact
       // footprint (research §3d / §8.5). Only for POI/building scopes — a city's or
       // street's "around" is ill-defined, a neighborhood already synthesizes, and a
@@ -361,7 +455,14 @@ export async function resolveAnnotationTarget({
         } else if (adminFp === null) {
           // Admin/place DEFINITIVELY has no neighborhood polygon → try a NAMED landuse, district-
           // sized (the Presidio, via the STRICT ≥0.3 km² gate).
-          const footFp = await fetchFootprint(lat, lon, matchName, scope, signal, 'strict');
+          const footFp = await fetchFootprint(
+            lat,
+            lon,
+            matchName,
+            scope,
+            signal,
+            'strict',
+          );
           if (footFp) {
             fp = footFp;
           } else if (footFp === null) {
@@ -370,9 +471,17 @@ export async function resolveAnnotationTarget({
             // 0.26 km² NPS park that the strict 0.3 km² floor rejects but Google mis-types as a
             // "neighborhood") is a real outline and beats a disc. Name-match scoring keeps it from
             // grabbing a building; the scope cap below rejects anything oversized.
-            const looseFp = await fetchFootprint(lat, lon, matchName, scope, signal, 'loose');
+            const looseFp = await fetchFootprint(
+              lat,
+              lon,
+              matchName,
+              scope,
+              signal,
+              'loose',
+            );
             if (looseFp && looseFp.kind !== 'building') fp = looseFp;
-            else if (looseFp === null) fp = synthesizeBufferedArea(lat, lon, NEIGHBORHOOD_RADIUS_M);
+            else if (looseFp === null)
+              fp = synthesizeBufferedArea(lat, lon, NEIGHBORHOOD_RADIUS_M);
             else if (looseFp === undefined) fp = undefined; // transient → honest point, retryable
             // a building (wrong feature) → leave fp null (honest point) rather than a
             // misleading blob — a re-run would only return the same cached building.
@@ -395,7 +504,14 @@ export async function resolveAnnotationTarget({
       // (which classifies building-vs-area and stitches compound multipolygons).
       // Point-like targets use the strict 'point' selection: exact-ish name + monument
       // scale, else no polygon at all — the honest point beats a locality-word match.
-      fp = await fetchFootprint(lat, lon, matchName, scope, signal, pointLike ? 'point' : 'loose');
+      fp = await fetchFootprint(
+        lat,
+        lon,
+        matchName,
+        scope,
+        signal,
+        pointLike ? 'point' : 'loose',
+      );
       // A "grounds/compound/campus" phrase ("Texas Capitol grounds") names an ENCLOSING area. The
       // primary footprint above returns the BUILDING (the dome) or null — neither is the grounds. The
       // real enclosing polygon (e.g. "Capitol Square", leisure=park) IS in OSM but only surfaces via a
@@ -419,7 +535,11 @@ export async function resolveAnnotationTarget({
           // progressive dedup an identical building ring would collapse into the building mark
           // and eat its caption. Never on `area === undefined` (transient — a retry may yet
           // find the real outline).
-          fp = synthesizeBufferedArea(lat, lon, groundsRadiusFromViewport(placeViewport));
+          fp = synthesizeBufferedArea(
+            lat,
+            lon,
+            groundsRadiusFromViewport(placeViewport),
+          );
         } else if (fp?.kind === 'building') {
           // Transient sweep failure with only the building in hand → honest point +
           // RETRYABLE (the backoff retry / a re-narration re-runs the sweep), never the
@@ -431,7 +551,13 @@ export async function resolveAnnotationTarget({
     // Scope sanity: reject a real footprint whose area is wildly wrong for the asked
     // scope (a building/compound/neighborhood intent must never draw a state-sized
     // blob). Synthesized discs are deliberately sized and exempt.
-    if (fp && !fp.synthesized && Array.isArray(fp.ring) && fp.ring.length >= 3 && exceedsScopeArea(fp, scope)) {
+    if (
+      fp &&
+      !fp.synthesized &&
+      Array.isArray(fp.ring) &&
+      fp.ring.length >= 3 &&
+      exceedsScopeArea(fp, scope)
+    ) {
       fp = null;
     }
     if (isRateLimitedOutcome(fp)) return fp;
@@ -441,7 +567,12 @@ export async function resolveAnnotationTarget({
     if (!centroid) return null;
     // Same drift bound as the anchor gate: a polygon whose centroid would drag a good
     // anchor out of plausibility is the wrong feature — drop it, keep the point.
-    if (fromGeocode && !bypassNearViewGuards && gateDrift(centroid.lat, centroid.lon)) return null;
+    if (
+      fromGeocode &&
+      !bypassNearViewGuards &&
+      gateDrift(centroid.lat, centroid.lon)
+    )
+      return null;
     return {
       ring: fp.ring,
       footprintKind: fp.kind,
@@ -475,9 +606,9 @@ export async function resolveAnnotationTarget({
   // One concise line per target so the resolution path is visible in the browser console.
   if (trace.query) {
     console.log(
-      `[Resolver] "${trace.query}": places=${trace.places} geocode=${trace.geocode} `
-      + `osmSnap=${trace.osmSnap} → FINAL source=${source} ${lat.toFixed(5)},${lon.toFixed(5)}`
-      + (footprint && deferFootprint ? ' (outline pending)' : ''),
+      `[Resolver] "${trace.query}": places=${trace.places} geocode=${trace.geocode} ` +
+        `osmSnap=${trace.osmSnap} → FINAL source=${source} ${lat.toFixed(5)},${lon.toFixed(5)}` +
+        (footprint && deferFootprint ? ' (outline pending)' : ''),
     );
   }
   return {
@@ -566,11 +697,21 @@ function synthesizeBufferedArea(lat, lon, radiusM) {
 function groundsRadiusFromViewport(viewport) {
   const lo = viewport?.low;
   const hi = viewport?.high;
-  if (!lo || !hi
-    || ![lo.latitude, lo.longitude, hi.latitude, hi.longitude].every(Number.isFinite)) {
+  if (
+    !lo ||
+    !hi ||
+    ![lo.latitude, lo.longitude, hi.latitude, hi.longitude].every(
+      Number.isFinite,
+    )
+  ) {
     return GROUNDS_RADIUS_M;
   }
-  const diagM = approximateDistanceM(lo.latitude, lo.longitude, hi.latitude, hi.longitude);
+  const diagM = approximateDistanceM(
+    lo.latitude,
+    lo.longitude,
+    hi.latitude,
+    hi.longitude,
+  );
   const r = diagM / 2;
   if (!Number.isFinite(r) || r <= 0) return GROUNDS_RADIUS_M;
   return Math.max(GROUNDS_RADIUS_MIN_M, Math.min(GROUNDS_RADIUS_MAX_M, r));
@@ -603,7 +744,8 @@ function ringAreaM2(ring) {
  * viewport so "the marina" resolves near where the user is looking.
  */
 async function geocodePlace(query, biasRect, signal) {
-  const apiKey = window.__GOOGLE_MAPS_API_KEY__ || import.meta.env.GOOGLE_MAPS_API_KEY;
+  const apiKey =
+    window.__GOOGLE_MAPS_API_KEY__ || import.meta.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) return null;
 
   const cacheKey = `${query.toLowerCase()}|${biasRect || ''}`;
@@ -634,7 +776,9 @@ async function geocodePlace(query, biasRect, signal) {
       types: result.types || [],
       // Geocode viewport (sw/ne box framing the feature), normalized to the Places
       // low/high shape — sizes grounds discs and flyTo framing for geocode anchors.
-      viewport: normalizeGeocodeViewport(result.geometry?.bounds || result.geometry?.viewport),
+      viewport: normalizeGeocodeViewport(
+        result.geometry?.bounds || result.geometry?.viewport,
+      ),
     };
     cacheWrite(geocodeCache, cacheKey, place);
     return place;
@@ -671,7 +815,8 @@ const placesCache = new Map(); // Text Search hits, keyed by query + rounded vie
  */
 async function placesTextSearch(query, centerLat, centerLon, radiusM, signal) {
   const q = String(query || '').trim();
-  if (!q || !Number.isFinite(centerLat) || !Number.isFinite(centerLon)) return null;
+  if (!q || !Number.isFinite(centerLat) || !Number.isFinite(centerLon))
+    return null;
 
   const cacheKey = `${q.toLowerCase()}|${centerLat.toFixed(3)},${centerLon.toFixed(3)}|${radiusM}`;
   const cached = cacheRead(placesCache, cacheKey);
@@ -684,18 +829,33 @@ async function placesTextSearch(query, centerLat, centerLon, radiusM, signal) {
     radiusM: String(radiusM),
   });
   try {
-    const response = await fetch(`/api/google/text-search?${params}`, { signal });
-    if (!response.ok) { negCache(placesCache, cacheKey, signal, false); return null; } // transient
+    const response = await fetch(`/api/google/text-search?${params}`, {
+      signal,
+    });
+    if (!response.ok) {
+      negCache(placesCache, cacheKey, signal, false);
+      return null;
+    } // transient
     const data = await response.json();
     const hit = Array.isArray(data?.places)
-      ? data.places.find((p) => Number.isFinite(p?.latitude) && Number.isFinite(p?.longitude))
+      ? data.places.find(
+          (p) => Number.isFinite(p?.latitude) && Number.isFinite(p?.longitude),
+        )
       : null;
-    if (!hit) { negCache(placesCache, cacheKey, signal, true); return null; } // definitive no-match
+    if (!hit) {
+      negCache(placesCache, cacheKey, signal, true);
+      return null;
+    } // definitive no-match
     const place = {
       lat: hit.latitude,
       lon: hit.longitude,
       label: hit.name || null,
-      distanceM: approximateDistanceM(centerLat, centerLon, hit.latitude, hit.longitude),
+      distanceM: approximateDistanceM(
+        centerLat,
+        centerLon,
+        hit.latitude,
+        hit.longitude,
+      ),
       viewport: hit.viewport || null,
       // Entity identity/classification — the proxy already pays for these in its field
       // mask, so keep them: `primaryType`/`types` classify the feature (point-like
@@ -720,14 +880,23 @@ async function placesTextSearch(query, centerLat, centerLon, radiusM, signal) {
  * makes the raw utterance match the wrong-scope OSM feature.
  */
 function extractPrimaryName(result) {
-  const resultTypes = new Set((result.types || []).map((t) => String(t).toLowerCase()));
-  const comps = Array.isArray(result.address_components) ? result.address_components : [];
+  const resultTypes = new Set(
+    (result.types || []).map((t) => String(t).toLowerCase()),
+  );
+  const comps = Array.isArray(result.address_components)
+    ? result.address_components
+    : [];
   for (const c of comps) {
     const ct = (c.types || []).map((t) => String(t).toLowerCase());
-    if (ct.some((t) => t !== 'political' && resultTypes.has(t))) return c.long_name;
+    if (ct.some((t) => t !== 'political' && resultTypes.has(t)))
+      return c.long_name;
   }
   if (comps[0]?.long_name) return comps[0].long_name;
-  return String(result.formatted_address || '').split(',')[0].trim() || null;
+  return (
+    String(result.formatted_address || '')
+      .split(',')[0]
+      .trim() || null
+  );
 }
 
 /**
@@ -739,14 +908,35 @@ function scopeFromTypes(types) {
   const t = new Set((types || []).map((s) => String(s).toLowerCase()));
   if (t.has('country')) return 'country';
   if (t.has('administrative_area_level_1')) return 'state';
-  if (t.has('administrative_area_level_2') || t.has('administrative_area_level_3')) return 'county';
+  if (
+    t.has('administrative_area_level_2') ||
+    t.has('administrative_area_level_3')
+  )
+    return 'county';
   if (t.has('locality') || t.has('postal_town')) return 'city';
-  if (t.has('sublocality') || t.has('sublocality_level_1') || t.has('neighborhood')) return 'neighborhood';
+  if (
+    t.has('sublocality') ||
+    t.has('sublocality_level_1') ||
+    t.has('neighborhood')
+  )
+    return 'neighborhood';
   if (t.has('route') || t.has('intersection')) return 'street';
-  if (t.has('premise') || t.has('subpremise') || t.has('street_address')) return 'building';
-  if (t.has('shopping_mall') || t.has('university') || t.has('hospital') || t.has('airport')
-      || t.has('park') || t.has('stadium') || t.has('amusement_park') || t.has('campus')
-      || t.has('zoo') || t.has('cemetery') || t.has('tourist_attraction')) return 'compound';
+  if (t.has('premise') || t.has('subpremise') || t.has('street_address'))
+    return 'building';
+  if (
+    t.has('shopping_mall') ||
+    t.has('university') ||
+    t.has('hospital') ||
+    t.has('airport') ||
+    t.has('park') ||
+    t.has('stadium') ||
+    t.has('amusement_park') ||
+    t.has('campus') ||
+    t.has('zoo') ||
+    t.has('cemetery') ||
+    t.has('tourist_attraction')
+  )
+    return 'compound';
   // Lakes / reservoirs / mountains: compound-sized natural areas (caps their footprint
   // at the 60 km² compound bound instead of leaving 'auto' uncapped).
   if (t.has('natural_feature')) return 'compound';
@@ -762,10 +952,14 @@ function scopeFromTypes(types) {
 function adminScopeFromAsk(target, entityKind) {
   if (typeof entityKind === 'string' && entityKind.trim()) {
     const kind = entityKind.trim().toLowerCase();
-    return kind === 'country' || kind === 'state' || kind === 'county' ? kind : null;
+    return kind === 'country' || kind === 'state' || kind === 'county'
+      ? kind
+      : null;
   }
 
-  const ask = String(target || '').trim().toLowerCase();
+  const ask = String(target || '')
+    .trim()
+    .toLowerCase();
   if (/\b(?:country|nation)\s+of\s+\S/.test(ask)) return 'country';
   if (/^(?:the\s+)?state\s+of\s+\S/.test(ask)) return 'state';
   if (/\bcounty\s+of\s+\S/.test(ask) || /\bcounty$/.test(ask)) return 'county';
@@ -794,7 +988,11 @@ export function refineScope(scope, entityKind) {
  *  empty result, so callers must not cache it as a definitive not-found. */
 function overpassHasError(data) {
   const remark = String(data?.remark || '').toLowerCase();
-  return remark.includes('runtime error') || remark.includes('timed out') || remark.includes('out of memory');
+  return (
+    remark.includes('runtime error') ||
+    remark.includes('timed out') ||
+    remark.includes('out of memory')
+  );
 }
 
 /** A distinct Overpass throttle result that must not enter the ordinary transient ladder. */
@@ -806,7 +1004,8 @@ export function isRateLimitedOutcome(value) {
 function parseRetryAfterMs(value) {
   if (value == null || String(value).trim() === '') return null;
   const seconds = Number(value);
-  if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds * 1000);
+  if (Number.isFinite(seconds) && seconds >= 0)
+    return Math.ceil(seconds * 1000);
   const at = Date.parse(String(value));
   return Number.isFinite(at) ? Math.max(0, at - Date.now()) : null;
 }
@@ -872,8 +1071,14 @@ async function fetchAdminArea(lat, lon, query, scope, signal) {
     // official_name ("City and County of San Francisco") otherwise DILUTES the real
     // boundary's completeness and lets a less-specific duplicate ("San Francisco County")
     // win — which then has no backing relation and collapses the whole resolution to a dot.
-    const coreWords = normalizedWords([el.tags.name, el.tags['name:en']].filter(Boolean).join(' '));
-    const fullWords = normalizedWords([el.tags.name, el.tags['name:en'], el.tags.official_name].filter(Boolean).join(' '));
+    const coreWords = normalizedWords(
+      [el.tags.name, el.tags['name:en']].filter(Boolean).join(' '),
+    );
+    const fullWords = normalizedWords(
+      [el.tags.name, el.tags['name:en'], el.tags.official_name]
+        .filter(Boolean)
+        .join(' '),
+    );
     const overlap = wordOverlap(queryWords, fullWords);
     if (!overlap) continue;
     const intentCoverage = queryWords.size ? overlap / queryWords.size : 0;
@@ -886,7 +1091,8 @@ async function fetchAdminArea(lat, lon, query, scope, signal) {
     const completeness = coreWords.size ? coreOverlap / coreWords.size : 0;
     // Exact-name bonus: the candidate whose CORE name set EQUALS the query is the real
     // one (decisively outranks a "<name> County" style duplicate).
-    const exactName = coreWords.size === queryWords.size && coreOverlap === queryWords.size;
+    const exactName =
+      coreWords.size === queryWords.size && coreOverlap === queryWords.size;
     const level = Number(el.tags.admin_level) || 99;
     // Bias toward the scope's specificity: city/neighborhood prefer the MORE specific
     // (higher admin_level) match; state/country prefer the broader one.
@@ -894,13 +1100,17 @@ async function fetchAdminArea(lat, lon, query, scope, signal) {
     if (scope === 'city' || scope === 'neighborhood') levelBias = level * 14;
     else if (scope === 'county') levelBias = -Math.abs(level - 6) * 14;
     else levelBias = -level * 14;
-    const score = intentCoverage * 1200 + completeness * 500 + (exactName ? 900 : 0) + levelBias;
+    const score =
+      intentCoverage * 1200 +
+      completeness * 500 +
+      (exactName ? 900 : 0) +
+      levelBias;
     scored.push({ el, score, coverage: intentCoverage });
   }
   // Deterministic order: score desc, then ascending OSM id. Overpass mirrors don't
   // guarantee element order, so without the id tiebreak a score tie could resolve
   // differently per mirror (breaks the "same name → same geometry" invariant).
-  scored.sort((a, b) => (b.score - a.score) || (a.el.id - b.el.id));
+  scored.sort((a, b) => b.score - a.score || a.el.id - b.el.id);
 
   const best = scored.length ? scored[0].el : null;
   const bestCoverage = scored.length ? scored[0].coverage : 0;
@@ -913,7 +1123,10 @@ async function fetchAdminArea(lat, lon, query, scope, signal) {
   if (scope === 'neighborhood' && (!best || bestCoverage < 0.8)) {
     const place = await fetchPlaceArea(lat, lon, query, signal);
     if (isRateLimitedOutcome(place)) return place;
-    if (place) { cacheWrite(footprintCache, cacheKey, place); return place; }
+    if (place) {
+      cacheWrite(footprintCache, cacheKey, place);
+      return place;
+    }
     if (place === undefined) return undefined; // transient place= lookup → don't cache, retry
     // Definitively no place polygon. Do NOT return a partial-match admin (likely the
     // wrong-scope city); let the caller try a named landuse / honest point.
@@ -936,9 +1149,16 @@ async function fetchAdminArea(lat, lon, query, scope, signal) {
     // 16 s turned finishable region pivots (Sicilia's dense coastline) into permanent
     // "transients" — every retry died the same death (field test 2026-07-23). The
     // outline is progressive, so a long budget blocks nothing; repeats are disk-cached.
-    const relEls = await overpassJson(`[out:json][timeout:25];area(${cand.el.id})->.x;rel(pivot.x);out geom;`, 28000, signal);
+    const relEls = await overpassJson(
+      `[out:json][timeout:25];area(${cand.el.id})->.x;rel(pivot.x);out geom;`,
+      28000,
+      signal,
+    );
     if (isRateLimitedOutcome(relEls)) return relEls;
-    if (relEls === null) { transient = true; break; } // network blip — don't definitively fail
+    if (relEls === null) {
+      transient = true;
+      break;
+    } // network blip — don't definitively fail
     const relEl = relEls.find((e) => e.type === 'relation');
     if (!relEl) continue; // no relation backing this area — try the next candidate
     const coords = elementCoordinates(relEl);
@@ -946,7 +1166,14 @@ async function fetchAdminArea(lat, lon, query, scope, signal) {
 
     let ring = closeRing(coords.map((p) => [p.lon, p.lat]));
     // Simplify: tight for small neighborhoods, looser for states/countries.
-    const tolM = scope === 'neighborhood' ? 6 : scope === 'city' ? 12 : scope === 'county' ? 40 : 120;
+    const tolM =
+      scope === 'neighborhood'
+        ? 6
+        : scope === 'city'
+          ? 12
+          : scope === 'county'
+            ? 40
+            : 120;
     ring = simplifyRing(ring, tolM);
     const fp = { ring, kind: 'area', heightM: null };
 
@@ -957,7 +1184,10 @@ async function fetchAdminArea(lat, lon, query, scope, signal) {
       if (scope === 'neighborhood') {
         const place = await fetchPlaceArea(lat, lon, query, signal);
         if (isRateLimitedOutcome(place)) return place;
-        if (place) { cacheWrite(footprintCache, cacheKey, place); return place; }
+        if (place) {
+          cacheWrite(footprintCache, cacheKey, place);
+          return place;
+        }
         if (place === undefined) return undefined; // transient place= lookup → retry
         negCache(footprintCache, cacheKey, signal, true);
         return null;
@@ -977,7 +1207,10 @@ async function fetchAdminArea(lat, lon, query, scope, signal) {
   if (scope === 'neighborhood') {
     const place = await fetchPlaceArea(lat, lon, query, signal);
     if (isRateLimitedOutcome(place)) return place;
-    if (place) { cacheWrite(footprintCache, cacheKey, place); return place; }
+    if (place) {
+      cacheWrite(footprintCache, cacheKey, place);
+      return place;
+    }
     if (place === undefined) return undefined; // transient place= lookup → retry
   }
   negCache(footprintCache, cacheKey, signal, true);
@@ -992,11 +1225,11 @@ async function fetchAdminArea(lat, lon, query, scope, signal) {
 async function fetchPlaceArea(lat, lon, query, signal) {
   const queryWords = normalizedWords(query);
   const els = await overpassJson(
-    `[out:json][timeout:20];(`
-    + `way(around:1500,${lat},${lon})["place"~"neighbourhood|suburb|quarter|borough"]["name"];`
-    + `relation(around:1500,${lat},${lon})["place"~"neighbourhood|suburb|quarter|borough"]["name"];`
-    + `relation(around:1500,${lat},${lon})["boundary"="place"]["name"];`
-    + `);out tags geom;`,
+    `[out:json][timeout:20];(` +
+      `way(around:1500,${lat},${lon})["place"~"neighbourhood|suburb|quarter|borough"]["name"];` +
+      `relation(around:1500,${lat},${lon})["place"~"neighbourhood|suburb|quarter|borough"]["name"];` +
+      `relation(around:1500,${lat},${lon})["boundary"="place"]["name"];` +
+      `);out tags geom;`,
     14000,
     signal,
   );
@@ -1008,7 +1241,9 @@ async function fetchPlaceArea(lat, lon, query, signal) {
     const coords = elementCoordinates(el);
     if (coords.length < 3) continue;
     const tags = el.tags || {};
-    const nameWords = normalizedWords([tags.name, tags['name:en']].filter(Boolean).join(' '));
+    const nameWords = normalizedWords(
+      [tags.name, tags['name:en']].filter(Boolean).join(' '),
+    );
     const overlap = wordOverlap(queryWords, nameWords);
     if (!overlap) continue;
     // The OSM place name is usually just the neighborhood ("Downtown", "Chinatown")
@@ -1018,8 +1253,14 @@ async function fetchPlaceArea(lat, lon, query, signal) {
     const nameCoverage = nameWords.size ? overlap / nameWords.size : 0;
     if (nameCoverage < 0.6) continue;
     if (approximateAreaM2(coords) > 80_000_000) continue; // a neighborhood isn't a city
-    const score = nameCoverage * 1000 + (pointInPolygon(lon, lat, coords) ? 400 : 0) + overlap * 50;
-    if (score > bestScore) { bestScore = score; bestRing = closeRing(coords.map((p) => [p.lon, p.lat])); }
+    const score =
+      nameCoverage * 1000 +
+      (pointInPolygon(lon, lat, coords) ? 400 : 0) +
+      overlap * 50;
+    if (score > bestScore) {
+      bestScore = score;
+      bestRing = closeRing(coords.map((p) => [p.lon, p.lat]));
+    }
   }
   return bestRing ? { ring: bestRing, kind: 'area', heightM: null } : null;
 }
@@ -1038,12 +1279,12 @@ async function fetchStreet(lat, lon, query, signal) {
 
   // Tier C — a same-named district / quarter / named commercial area.
   const areaEls = await overpassJson(
-    `[out:json][timeout:20];(`
-    + `way(around:450,${lat},${lon})["place"~"quarter|neighbourhood|suburb|city_block"];`
-    + `relation(around:450,${lat},${lon})["place"~"quarter|neighbourhood|suburb"];`
-    + `way(around:450,${lat},${lon})["landuse"~"commercial|retail"]["name"];`
-    + `relation(around:450,${lat},${lon})["landuse"~"commercial|retail"]["name"]["type"="multipolygon"];`
-    + `);out tags geom;`,
+    `[out:json][timeout:20];(` +
+      `way(around:450,${lat},${lon})["place"~"quarter|neighbourhood|suburb|city_block"];` +
+      `relation(around:450,${lat},${lon})["place"~"quarter|neighbourhood|suburb"];` +
+      `way(around:450,${lat},${lon})["landuse"~"commercial|retail"]["name"];` +
+      `relation(around:450,${lat},${lon})["landuse"~"commercial|retail"]["name"]["type"="multipolygon"];` +
+      `);out tags geom;`,
     14000,
     signal,
   );
@@ -1055,12 +1296,18 @@ async function fetchStreet(lat, lon, query, signal) {
       const coords = elementCoordinates(el);
       if (coords.length < 3) continue;
       const tags = el.tags || {};
-      const nameWords = normalizedWords([tags.name, tags['name:en']].filter(Boolean).join(' '));
+      const nameWords = normalizedWords(
+        [tags.name, tags['name:en']].filter(Boolean).join(' '),
+      );
       const overlap = wordOverlap(queryWords, nameWords);
       if (!overlap) continue;
       if (approximateAreaM2(coords) > 2_000_000) continue; // a street isn't a whole suburb
-      const score = overlap * 1000 + (pointInPolygon(lon, lat, coords) ? 300 : 0);
-      if (score > bestScore) { bestScore = score; bestRing = closeRing(coords.map((p) => [p.lon, p.lat])); }
+      const score =
+        overlap * 1000 + (pointInPolygon(lon, lat, coords) ? 300 : 0);
+      if (score > bestScore) {
+        bestScore = score;
+        bestRing = closeRing(coords.map((p) => [p.lon, p.lat]));
+      }
     }
     if (bestRing) {
       const fp = { ring: bestRing, kind: 'area', heightM: null };
@@ -1070,21 +1317,33 @@ async function fetchStreet(lat, lon, query, signal) {
   }
 
   // Tier F — buffer the matching centerline into a corridor ribbon (workhorse).
-  const wayEls = await overpassJson(`[out:json][timeout:20];way(around:320,${lat},${lon})["highway"]["name"];out geom;`, 14000, signal);
+  const wayEls = await overpassJson(
+    `[out:json][timeout:20];way(around:320,${lat},${lon})["highway"]["name"];out geom;`,
+    14000,
+    signal,
+  );
   if (isRateLimitedOutcome(wayEls)) return wayEls;
   if (wayEls) {
     const segments = [];
     for (const el of wayEls) {
       const tags = el.tags || {};
-      const nameWords = normalizedWords([tags.name, tags['name:en']].filter(Boolean).join(' '));
+      const nameWords = normalizedWords(
+        [tags.name, tags['name:en']].filter(Boolean).join(' '),
+      );
       if (!wordOverlap(queryWords, nameWords)) continue;
-      const geom = (el.geometry || []).filter((p) => Number.isFinite(p?.lat) && Number.isFinite(p?.lon));
+      const geom = (el.geometry || []).filter(
+        (p) => Number.isFinite(p?.lat) && Number.isFinite(p?.lon),
+      );
       if (geom.length >= 2) segments.push(geom.map((p) => [p.lon, p.lat]));
     }
     if (segments.length) {
       const line = stitchLine(segments);
       if (line.length >= 2) {
-        const fp = { ring: bufferCorridor(line, 11), kind: 'area', heightM: null };
+        const fp = {
+          ring: bufferCorridor(line, 11),
+          kind: 'area',
+          heightM: null,
+        };
         cacheWrite(footprintCache, cacheKey, fp);
         return fp;
       }
@@ -1109,8 +1368,10 @@ function stitchLine(segments) {
     for (let i = 0; i < remaining.length; i++) {
       const s = remaining[i];
       if (same(line[line.length - 1], s[0])) line = line.concat(s.slice(1));
-      else if (same(line[line.length - 1], s[s.length - 1])) line = line.concat(s.slice(0, -1).reverse());
-      else if (same(line[0], s[s.length - 1])) line = s.slice(0, -1).concat(line);
+      else if (same(line[line.length - 1], s[s.length - 1]))
+        line = line.concat(s.slice(0, -1).reverse());
+      else if (same(line[0], s[s.length - 1]))
+        line = s.slice(0, -1).concat(line);
       else if (same(line[0], s[0])) line = s.slice(1).reverse().concat(line);
       else continue;
       remaining.splice(i, 1);
@@ -1135,7 +1396,8 @@ function bufferCorridor(line, halfWidthM) {
     let dx = b[0] - a[0];
     let dy = b[1] - a[1];
     const len = Math.hypot(dx, dy) || 1;
-    dx /= len; dy /= len;
+    dx /= len;
+    dy /= len;
     const nx = -dy;
     const ny = dx;
     left.push([P[i][0] + nx * halfWidthM, P[i][1] + ny * halfWidthM]);
@@ -1182,7 +1444,10 @@ function douglasPeucker(points, tol) {
     const b = points[last];
     for (let i = first + 1; i < last; i += 1) {
       const dist = perpDistance(points[i], a, b);
-      if (dist > maxD) { maxD = dist; index = i; }
+      if (dist > maxD) {
+        maxD = dist;
+        index = i;
+      }
     }
     if (maxD > tol && index > first) {
       keep[index] = 1;
@@ -1342,12 +1607,20 @@ async function fetchEnclosingArea(lat, lon, signal, query = '') {
     // Name-match is a TIEBREAK BONUS, not a filter: at (near-)equal area, prefer a candidate the
     // user's words actually name. Smallest-area still dominates — containment + min-area is what
     // makes the Capitol land on "Capitol Square" even though the user said "grounds".
-    const nameWords = normalizedWords([
-      el.tags?.name, el.tags?.['name:en'], el.tags?.official_name, el.tags?.alt_name,
-    ].filter(Boolean).join(' '));
+    const nameWords = normalizedWords(
+      [
+        el.tags?.name,
+        el.tags?.['name:en'],
+        el.tags?.official_name,
+        el.tags?.alt_name,
+      ]
+        .filter(Boolean)
+        .join(' '),
+    );
     const nameMatch = wordOverlap(queryWords, nameWords) > 0;
-    const better = areaM2 < bestArea * 0.999
-      || (areaM2 <= bestArea * 1.05 && nameMatch && !bestNameMatch); // near-tie: name-match wins
+    const better =
+      areaM2 < bestArea * 0.999 ||
+      (areaM2 <= bestArea * 1.05 && nameMatch && !bestNameMatch); // near-tie: name-match wins
     if (better) {
       best = { ring: ringLonLat, kind: 'area', heightM: null };
       bestArea = areaM2;
@@ -1357,7 +1630,10 @@ async function fetchEnclosingArea(lat, lon, signal, query = '') {
 
   // Cache on ANY definitive outcome (a real footprint OR a clean no-match) so a whole grounds batch
   // makes at most ONE call. A transient (`undefined`) already returned above without caching.
-  if (best) { cacheWrite(enclosingAreaCache, cacheKey, best); return best; }
+  if (best) {
+    cacheWrite(enclosingAreaCache, cacheKey, best);
+    return best;
+  }
   negCache(enclosingAreaCache, cacheKey, signal, true); // got a response, nothing contained → definitive
   return null;
 }
@@ -1365,14 +1641,18 @@ async function fetchEnclosingArea(lat, lon, signal, query = '') {
 const MONUMENT_RADIUS_M = 2500; // search this far from the view centre for a named monument
 /** A target that reads like a fine-grained monument/marker (vs a building/district). */
 function isMonumentLikeQuery(query) {
-  return /\b(monument|memorial|statue|sculpture|fountain|cenotaph|obelisk|plaque|bust)\b/i.test(String(query || ''));
+  return /\b(monument|memorial|statue|sculpture|fountain|cenotaph|obelisk|plaque|bust)\b/i.test(
+    String(query || ''),
+  );
 }
 
 /** A target that reads like an enclosing GROUNDS / COMPOUND / CAMPUS (e.g. "Texas Capitol grounds")
  *  rather than a single building — used to synthesize a loose-footprint disc when OSM has no real
  *  polygon, instead of failing outright. */
 function isGroundsLikeQuery(query) {
-  return /\b(grounds|compound|campus|complex|quad|plaza)\b/i.test(String(query || ''));
+  return /\b(grounds|compound|campus|complex|quad|plaza)\b/i.test(
+    String(query || ''),
+  );
 }
 
 /**
@@ -1444,12 +1724,24 @@ async function fetchLocalMonument(lat, lon, query, signal) {
           // would silently disable the snap for the whole session, field test 7 §1)
           const feats = [];
           for (const el of elements) {
-            const name = el.tags?.name || el.tags?.['name:en'] || el.tags?.official_name || el.tags?.alt_name;
+            const name =
+              el.tags?.name ||
+              el.tags?.['name:en'] ||
+              el.tags?.official_name ||
+              el.tags?.alt_name;
             if (!name) continue;
-            const p = Number.isFinite(el.lat) ? { lat: el.lat, lon: el.lon }
-              : (el.center ? { lat: el.center.lat, lon: el.center.lon } : null);
+            const p = Number.isFinite(el.lat)
+              ? { lat: el.lat, lon: el.lon }
+              : el.center
+                ? { lat: el.center.lat, lon: el.center.lon }
+                : null;
             if (!p) continue;
-            feats.push({ name, lat: p.lat, lon: p.lon, words: normalizedWords(name) });
+            feats.push({
+              name,
+              lat: p.lat,
+              lon: p.lon,
+              words: normalizedWords(name),
+            });
           }
           // Definitive outcome (Overpass answered, possibly with zero features) → cacheable.
           cacheWrite(monumentCache, centerKey, feats);
@@ -1475,7 +1767,10 @@ async function fetchLocalMonument(lat, lon, query, signal) {
     const completeness = f.words.size ? overlap / f.words.size : 0;
     if (completeness < 0.6) continue;
     const score = overlap * 10 + completeness;
-    if (score > bestScore) { bestScore = score; best = f; }
+    if (score > bestScore) {
+      bestScore = score;
+      best = f;
+    }
   }
   return best ? { lat: best.lat, lon: best.lon, label: best.name } : null;
 }
@@ -1490,7 +1785,13 @@ const POINTLIKE_AREA_CAP_M2 = 60_000;
  * acceptance contract ('loose' | 'strict' | 'point' — see fetchFootprint). Exported for
  * the unit tests, which pin the mode contracts with fixtures captured from live data.
  */
-export function selectFootprint(elements, targetLat, targetLon, query, mode = 'loose') {
+export function selectFootprint(
+  elements,
+  targetLat,
+  targetLon,
+  query,
+  mode = 'loose',
+) {
   const requireName = mode === 'strict';
   const queryWords = normalizedWords(query);
   let best = null;
@@ -1504,9 +1805,17 @@ export function selectFootprint(elements, targetLat, targetLon, query, mode = 'l
     const isBuilding = Boolean(tags.building);
     const areaM2 = approximateAreaM2(coords);
 
-    const nameWords = normalizedWords([
-      tags.name, tags['name:en'], tags.official_name, tags.alt_name, tags.short_name,
-    ].filter(Boolean).join(' '));
+    const nameWords = normalizedWords(
+      [
+        tags.name,
+        tags['name:en'],
+        tags.official_name,
+        tags.alt_name,
+        tags.short_name,
+      ]
+        .filter(Boolean)
+        .join(' '),
+    );
     const nameOverlap = wordOverlap(queryWords, nameWords);
     // How completely the query covers this feature's name (1.0 ≈ exact match).
     const completeness = nameWords.size ? nameOverlap / nameWords.size : 0;
@@ -1523,7 +1832,9 @@ export function selectFootprint(elements, targetLat, targetLon, query, mode = 'l
     // token with "Tejano Monument, Austin" and outscored everything under loose scoring
     // (field test 7 §1). No qualifying polygon → null → the honest point anchor stays.
     if (mode === 'point') {
-      const intentCoverage = queryWords.size ? nameOverlap / queryWords.size : 0;
+      const intentCoverage = queryWords.size
+        ? nameOverlap / queryWords.size
+        : 0;
       if (!named || intentCoverage < 0.5 || completeness < 0.6) continue;
       if (areaM2 > POINTLIKE_AREA_CAP_M2) continue;
     }
@@ -1547,11 +1858,12 @@ export function selectFootprint(elements, targetLat, targetLon, query, mode = 'l
     // Name match dominates; completeness breaks ties so the feature literally
     // named "Presidio" beats a building that merely contains the word. Size is
     // only a mild tiebreak now (no hard penalty against large named areas).
-    let score = nameOverlap * 1000
-      + completeness * 600
-      + (contains ? 450 : 0)
-      - distanceM * 0.25
-      - Math.sqrt(areaM2) * 0.05;
+    let score =
+      nameOverlap * 1000 +
+      completeness * 600 +
+      (contains ? 450 : 0) -
+      distanceM * 0.25 -
+      Math.sqrt(areaM2) * 0.05;
 
     // With no name match at all, prefer a precise building over a vague blob.
     if (!named && isBuilding && contains) score += 250;
@@ -1591,7 +1903,9 @@ function parseMeters(value) {
 
 function elementCoordinates(element) {
   if (Array.isArray(element.geometry)) {
-    return element.geometry.filter((p) => Number.isFinite(p?.lat) && Number.isFinite(p?.lon));
+    return element.geometry.filter(
+      (p) => Number.isFinite(p?.lat) && Number.isFinite(p?.lon),
+    );
   }
   if (!Array.isArray(element.members)) return [];
   // For a multipolygon relation the boundary is split across several outer
@@ -1599,7 +1913,11 @@ function elementCoordinates(element) {
   // endpoints rather than taking a single segment.
   const outerWays = element.members
     .filter((m) => (m.role === 'outer' || !m.role) && Array.isArray(m.geometry))
-    .map((m) => m.geometry.filter((p) => Number.isFinite(p?.lat) && Number.isFinite(p?.lon)))
+    .map((m) =>
+      m.geometry.filter(
+        (p) => Number.isFinite(p?.lat) && Number.isFinite(p?.lon),
+      ),
+    )
     .filter((w) => w.length >= 2);
   return stitchRing(outerWays);
 }
@@ -1645,14 +1963,20 @@ function largestByArea(components) {
   let bestArea = approximateAreaM2(best);
   for (let i = 1; i < components.length; i += 1) {
     const area = approximateAreaM2(components[i]);
-    if (area > bestArea) { bestArea = area; best = components[i]; }
+    if (area > bestArea) {
+      bestArea = area;
+      best = components[i];
+    }
   }
   return best;
 }
 
 /** Rough diameter (m) of a chain's bounding box. */
 function ringSpanM(chain) {
-  let minLat = Infinity; let maxLat = -Infinity; let minLon = Infinity; let maxLon = -Infinity;
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLon = Infinity;
+  let maxLon = -Infinity;
   for (const p of chain) {
     if (p.lat < minLat) minLat = p.lat;
     if (p.lat > maxLat) maxLat = p.lat;
@@ -1664,7 +1988,8 @@ function ringSpanM(chain) {
 
 /** Chain ways into maximal connected components by endpoint matching. */
 function buildRingComponents(ways) {
-  const same = (a, b) => Math.abs(a.lon - b.lon) < 1e-7 && Math.abs(a.lat - b.lat) < 1e-7;
+  const same = (a, b) =>
+    Math.abs(a.lon - b.lon) < 1e-7 && Math.abs(a.lat - b.lat) < 1e-7;
   const remaining = ways.map((w) => w.slice());
   const components = [];
   while (remaining.length) {
@@ -1700,7 +2025,6 @@ function endpointGapM(chain) {
   const b = chain[chain.length - 1];
   return approximateDistanceM(a.lat, a.lon, b.lat, b.lon);
 }
-
 
 function closeRing(ring) {
   if (ring.length < 3) return ring;
@@ -1740,7 +2064,8 @@ function approximateAreaM2(coords) {
 
 function approximateDistanceM(latA, lonA, latB, lonB) {
   const latScale = 111_320;
-  const lonScale = latScale * Math.cos(Cesium.Math.toRadians((latA + latB) / 2));
+  const lonScale =
+    latScale * Math.cos(Cesium.Math.toRadians((latA + latB) / 2));
   return Math.hypot((latB - latA) * latScale, (lonB - lonA) * lonScale);
 }
 
@@ -1749,21 +2074,26 @@ function pointInPolygon(lon, lat, coords) {
   for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
     const a = coords[i];
     const b = coords[j];
-    const intersects = ((a.lat > lat) !== (b.lat > lat))
-      && (lon < (b.lon - a.lon) * (lat - a.lat) / ((b.lat - a.lat) || Number.EPSILON) + a.lon);
+    const intersects =
+      a.lat > lat !== b.lat > lat &&
+      lon <
+        ((b.lon - a.lon) * (lat - a.lat)) / (b.lat - a.lat || Number.EPSILON) +
+          a.lon;
     if (intersects) inside = !inside;
   }
   return inside;
 }
 
 function normalizedWords(value) {
-  return new Set(String(value || '')
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim()
-    .split(/\s+/)
-    .filter((word) => word.length > 2));
+  return new Set(
+    String(value || '')
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 2),
+  );
 }
 
 function wordOverlap(left, right) {
@@ -1830,14 +2160,29 @@ export function viewportBias(viewer) {
  * plain geocode path. Returns the Places hit
  * ({ lat, lon, label, types, viewport, distanceM, … }) or null.
  */
-export async function placesNearViewRecovery(viewer, query, geocoded = null, signal = undefined) {
-  const center = pickWorldFromScreen(viewer, 0.5, 0.5) || viewportProximity(viewer);
+export async function placesNearViewRecovery(
+  viewer,
+  query,
+  geocoded = null,
+  signal = undefined,
+) {
+  const center =
+    pickWorldFromScreen(viewer, 0.5, 0.5) || viewportProximity(viewer);
   if (!center) return null;
-  const geocodeFar = !geocoded
-    || approximateDistanceM(center.lat, center.lon, geocoded.lat, geocoded.lon) / 1000 > MIN_DRIFT_FLOOR_KM;
+  const geocodeFar =
+    !geocoded ||
+    approximateDistanceM(center.lat, center.lon, geocoded.lat, geocoded.lon) /
+      1000 >
+      MIN_DRIFT_FLOOR_KM;
   if (!geocodeFar) return null;
-  const hit = await placesTextSearch(query, center.lat, center.lon, 6000, signal);
-  return (hit && hit.distanceM <= PLACES_MAX_DISTANCE_M) ? hit : null;
+  const hit = await placesTextSearch(
+    query,
+    center.lat,
+    center.lon,
+    6000,
+    signal,
+  );
+  return hit && hit.distanceM <= PLACES_MAX_DISTANCE_M ? hit : null;
 }
 
 /**
@@ -1864,16 +2209,32 @@ function pickWorldFromScreen(viewer, nx, ny) {
   // through to the next stage and ultimately to the caller's null.
   let cart = null;
   if (scene.pickPositionSupported && typeof scene.pickPosition === 'function') {
-    try { cart = scene.pickPosition(pos); } catch { cart = null; }
+    try {
+      cart = scene.pickPosition(pos);
+    } catch {
+      cart = null;
+    }
   }
-  if (!isPickedWorldPosition(cart) && typeof viewer.camera.pickEllipsoid === 'function') {
-    try { cart = viewer.camera.pickEllipsoid(pos, Cesium.Ellipsoid.WGS84); } catch { cart = null; }
+  if (
+    !isPickedWorldPosition(cart) &&
+    typeof viewer.camera.pickEllipsoid === 'function'
+  ) {
+    try {
+      cart = viewer.camera.pickEllipsoid(pos, Cesium.Ellipsoid.WGS84);
+    } catch {
+      cart = null;
+    }
   }
-  if (!isPickedWorldPosition(cart) && typeof viewer.camera.getPickRay === 'function') {
+  if (
+    !isPickedWorldPosition(cart) &&
+    typeof viewer.camera.getPickRay === 'function'
+  ) {
     try {
       const ray = viewer.camera.getPickRay(pos);
-      cart = ray ? (scene.globe?.pick(ray, scene) || null) : null;
-    } catch { cart = null; }
+      cart = ray ? scene.globe?.pick(ray, scene) || null : null;
+    } catch {
+      cart = null;
+    }
   }
   if (!isPickedWorldPosition(cart)) return null;
   const carto = Cesium.Cartographic.fromCartesian(cart);
@@ -1893,7 +2254,10 @@ function sampleGroundHeight(viewer, lon, lat) {
   const scene = viewer?.scene;
   if (!scene) return 0;
   try {
-    if (scene.clampToHeightSupported && typeof scene.clampToHeight === 'function') {
+    if (
+      scene.clampToHeightSupported &&
+      typeof scene.clampToHeight === 'function'
+    ) {
       const carto = Cesium.Cartographic.fromDegrees(lon, lat);
       const surface = Cesium.Cartographic.toCartesian(carto);
       const clamped = scene.clampToHeight(surface);
@@ -1905,7 +2269,9 @@ function sampleGroundHeight(viewer, lon, lat) {
   } catch {
     /* tiles not ready — fall through */
   }
-  const globeHeight = scene.globe?.getHeight?.(Cesium.Cartographic.fromDegrees(lon, lat));
+  const globeHeight = scene.globe?.getHeight?.(
+    Cesium.Cartographic.fromDegrees(lon, lat),
+  );
   return Number.isFinite(globeHeight) && globeHeight > 0 ? globeHeight : 0;
 }
 
@@ -1942,7 +2308,9 @@ export async function resolveRegionRingForQuery(name, signal) {
   if (!geo) return null;
   const scope = scopeFromTypes(geo.types);
   if (!['country', 'state', 'county', 'city'].includes(scope)) return null;
-  const fp = await fetchAdminArea(geo.lat, geo.lon, q, scope, signal).catch(() => null);
+  const fp = await fetchAdminArea(geo.lat, geo.lon, q, scope, signal).catch(
+    () => null,
+  );
   if (fp?.ring?.length >= 3) return { name: q, ring: fp.ring };
   return null;
 }
