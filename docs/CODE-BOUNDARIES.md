@@ -56,8 +56,14 @@ standard Cesium viewer configuration in `src/app/viewer.js`; Cesium stays extern
 Neither export imports standalone UI, layers, tools or configuration. See
 [application construction](APPLICATION.md) for the contracts and current limits.
 
-UI panels and individual source adapters remain future extractions. They should
-become smaller modules with explicit lifecycle owners as their callers migrate.
+UI panels are moving out of `src/ui.js` into modules under `src/ui/` (#46),
+one panel per commit, with the code unchanged. `src/ui/cockpitView.js` holds
+the Cockpit view: StyleManager constructs its controller and disposes of it.
+Tests that read UI code as text call `readUiSource()` from
+`src/testing/uiSources.mjs`, which joins `ui.js` with every module in its
+`UI_SOURCE_FILES` list; add each new module there. Individual source adapters
+remain future extractions, to become smaller modules with explicit lifecycle
+owners as their callers migrate.
 
 ## Server boundary
 

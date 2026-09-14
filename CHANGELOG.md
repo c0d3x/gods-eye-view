@@ -27,6 +27,11 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Changed
 
+- `src/ui.js` is being split into modules under `src/ui/`, one panel at a
+  time with the code unchanged. The Cockpit view moved first, and the
+  cockpit signal tests now drive its real controller instead of code cut
+  out of `ui.js` as text.
+
 - The EGM96 geoid grid behind the app's height corrections loads as a
   0.9 MB compressed data file instead of a 2.8 MB JavaScript module, and the
   Natural Earth region and marine outlines and the San Francisco

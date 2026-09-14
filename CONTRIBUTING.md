@@ -65,7 +65,7 @@ The highest-leverage places to jump in:
 ## Architecture in one minute
 
 - **No framework.** Vanilla JS + [CesiumJS](https://cesium.com/platform/cesiumjs/) + [Vite](https://vitejs.dev/).
-- **UI lives in `src/ui.js`** (panels, HUD, styles, the control facade). **Layer logic lives in `src/data/<layer>.js`.** Keep them separate.
+- **UI lives in `src/ui.js` and `src/ui/`** (panels, HUD, styles, the control facade; panels are moving out of `ui.js` into `src/ui/`). **Layer logic lives in `src/data/<layer>.js`.** Keep them separate.
 - **Secrets stay server-side.** Anything needing a private key goes through a server-side proxy under `server/`. The browser only ever sees the Google Maps key (which you restrict) and ephemeral tokens.
 - `docs/CURRENT-STATE.md` indexes the authoritative runtime reference, one page per subsystem under `docs/current-state/` — read it first.
 

@@ -1,18 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { formatAwarenessLabel } from './data/militaryAwarenessEngine.js';
+import { CockpitViewController } from './ui/cockpitView.js';
+import militaryAwarenessLayer from './data/militaryAwareness.js';
 
-const source = readFileSync(new URL('./ui.js', import.meta.url), 'utf8');
-const renderStart = source.indexOf('  renderCockpitSignals() {');
-const renderEnd = source.indexOf('  setContextCollapsed(', renderStart);
-assert.ok(renderStart >= 0 && renderEnd > renderStart);
-const clickSource = source.match(/this\._listen\(this\.signalList, 'click', (\(event\) => \{[\s\S]*?\n    \})\);/)?.[1];
-assert.ok(clickSource, 'the installed signal click route exists');
-
-// Model native focus loss on removal AND on ordinary DOM moves. Keeping an
-// object reference alone is insufficient if reconciliation disconnects it.
-function fixture() {
+// Drives the real CockpitViewController's briefing signal list against a small
+// DOM model. The model loses native focus on removal AND on ordinary DOM
+// moves: keeping an object reference alone is insufficient if reconciliation
+// disconnects it.
+function fixture(t) {
   const document = { activeElement: null };
   let focusLosses = 0;
   let focusCalls = 0;
@@ -23,6 +18,7 @@ function fixture() {
       this.parentNode = null;
       this.dataset = {};
       this.attributes = new Map();
+      this.listeners = new Map();
       this.className = '';
       this._text = '';
       this.classList = {
@@ -36,6 +32,11 @@ function fixture() {
     set textContent(value) { this.replaceChildren(); this._text = String(value); }
     setAttribute(name, value) { this.attributes.set(name, String(value)); }
     getAttribute(name) { return this.attributes.get(name) ?? null; }
+    addEventListener(type, handler) {
+      if (!this.listeners.has(type)) this.listeners.set(type, []);
+      this.listeners.get(type).push(handler);
+    }
+    dispatch(type, event) { for (const handler of this.listeners.get(type) || []) handler(event); }
     contains(node) { return this === node || this.children.some((child) => child.contains(node)); }
     append(...nodes) { for (const node of nodes) this.insertBefore(node, null); }
     insertBefore(node, anchor) {
@@ -84,30 +85,40 @@ function fixture() {
   document.body = new Node('body');
   document.createElement = (tag) => new Node(tag);
   document.activeElement = document.body;
-  const controller = new (new Function('document', 'formatAwarenessLabel',
-    `return class { ${source.slice(renderStart, renderEnd)} };`)(document, formatAwarenessLabel))();
-  controller.signalList = new Node('ol');
-  controller.signalToggle = new Node('button');
-  controller.briefTabs = [new Node('button'), new Node('button'), new Node('button')];
-  controller.briefPageIndex = 0;
-  controller.signalItems = [];
-  controller.signalSignatures = new Map();
+  const signalList = new Node('ol');
+  const signalToggle = new Node('button');
+  const briefTabs = [new Node('button'), new Node('button'), new Node('button')];
+  const byId = new Map([['cockpit-signal-list', signalList], ['cockpit-signal-toggle', signalToggle]]);
+  document.getElementById = (id) => byId.get(id) ?? null;
+  document.querySelectorAll = (selector) => (selector === '[data-cockpit-brief-index]' ? briefTabs : []);
+
+  const globals = { document: globalThis.document, window: globalThis.window };
+  globalThis.document = document;
+  globalThis.window = {};
+  t.after(() => {
+    for (const [name, value] of Object.entries(globals)) {
+      if (value === undefined) delete globalThis[name];
+      else globalThis[name] = value;
+    }
+  });
+  const selected = [];
+  t.mock.method(militaryAwarenessLayer, 'focusTarget', (...args) => { selected.push(args); });
+
+  const listenable = { addEventListener: () => () => {} };
+  const controller = new CockpitViewController({ scene: { preUpdate: listenable }, trackedEntityChanged: listenable });
   controller.scheduleContextLayout = () => {};
   const display = new Node('button');
   const radio = new Node('button');
   const outside = new Node('button');
-  document.body.append(controller.signalToggle, controller.signalList, ...controller.briefTabs, display, radio, outside);
-  const selected = [];
-  const click = new Function('militaryAwarenessLayer', `return ${clickSource};`)({
-    focusTarget: (...args) => selected.push(args),
-  });
-  const buttons = () => controller.signalList.querySelectorAll('button');
+  document.body.append(signalToggle, signalList, ...briefTabs, display, radio, outside);
+  const buttons = () => signalList.querySelectorAll('button');
   const tab = () => {
     const nodes = document.body.querySelectorAll('button');
     const index = nodes.indexOf(document.activeElement);
     nodes[(index + 1) % nodes.length].focus();
   };
-  return { controller, document, buttons, display, radio, outside, selected, click, tab,
+  return { controller, document, buttons, display, radio, outside, selected, tab,
+    click: (event) => signalList.dispatch('click', event),
     losses: () => focusLosses, focusCalls: () => focusCalls };
 }
 
@@ -122,8 +133,8 @@ const snapshot = (distanceM = 2000) => ({
   cohorts: [{ id: 'flights', count: 1, nearest: [{ id: 'nearby', label: 'NEARBY', distanceM }] }],
 });
 
-test('actual Context refresh retains the focused signal button across unchanged and changed details', () => {
-  const f = fixture();
+test('actual Context refresh retains the focused signal button across unchanged and changed details', (t) => {
+  const f = fixture(t);
   f.controller.updateCockpitSignals(snapshot(), 0);
   const target = f.buttons()[1]; target.focus();
   const calls = f.focusCalls();
@@ -135,8 +146,8 @@ test('actual Context refresh retains the focused signal button across unchanged 
   assert.match(f.controller.signalList.textContent, /2\.5 KM/);
 });
 
-test('signal content and accessible name update without replacing the active target', () => {
-  const f = fixture(); render(f, [item('a')]);
+test('signal content and accessible name update without replacing the active target', (t) => {
+  const f = fixture(t); render(f, [item('a')]);
   const target = f.buttons()[0]; target.focus();
   render(f, [item('a', { title: 'RENAMED', tone: 'track', detail: 'CURRENT', timestamp: 1_700_000_001_000 })]);
   assert.equal(f.buttons()[0], target);
@@ -148,8 +159,8 @@ test('signal content and accessible name update without replacing the active tar
   assert.equal(f.losses(), 0);
 });
 
-test('signal ranking changes move surrounding rows without disconnecting the focused row', () => {
-  const f = fixture(); render(f, ['a', 'b', 'c', 'd'].map((id) => item(id)));
+test('signal ranking changes move surrounding rows without disconnecting the focused row', (t) => {
+  const f = fixture(t); render(f, ['a', 'b', 'c', 'd'].map((id) => item(id)));
   const target = f.buttons()[1]; target.focus();
   const calls = f.focusCalls();
   for (const order of [['d', 'c', 'b', 'a'], ['b', 'c', 'd', 'a'], ['a', 'd', 'c', 'b']]) {
@@ -161,8 +172,8 @@ test('signal ranking changes move surrounding rows without disconnecting the foc
   assert.equal(f.focusCalls(), calls);
 });
 
-test('a new pushed signal preserves existing focus and delegated selection reads the current target', () => {
-  const f = fixture(); render(f, [item('a'), item('b')]);
+test('a new pushed signal preserves existing focus and delegated selection reads the current target', (t) => {
+  const f = fixture(t); render(f, [item('a'), item('b')]);
   const target = f.buttons()[1]; target.focus();
   f.controller.pushCockpitSignal('status', 'warning', 'INPUT UNKNOWN', 'SOURCE UNAVAILABLE');
   assert.equal(f.document.activeElement, target);
@@ -173,8 +184,8 @@ test('a new pushed signal preserves existing focus and delegated selection reads
   assert.deepEqual(f.selected, [['flights', 'b', { origin: 'user' }]]);
 });
 
-test('removing the focused identity uses the existing briefing tab once and permits forward traversal', () => {
-  const f = fixture(); render(f, [item('a'), item('b')]);
+test('removing the focused identity uses the existing briefing tab once and permits forward traversal', (t) => {
+  const f = fixture(t); render(f, [item('a'), item('b')]);
   const removed = f.buttons()[1]; removed.focus();
   const calls = f.focusCalls();
   render(f, [item('a')]);
@@ -189,8 +200,8 @@ test('removing the focused identity uses the existing briefing tab once and perm
   assert.equal(f.document.activeElement, f.radio);
 });
 
-test('a changed target cannot reuse a focused action for another flight', () => {
-  const f = fixture(); render(f, [item('a', { key: 'shared-status-key' })]);
+test('a changed target cannot reuse a focused action for another flight', (t) => {
+  const f = fixture(t); render(f, [item('a', { key: 'shared-status-key' })]);
   const removed = f.buttons()[0]; removed.focus();
   render(f, [item('b', { key: 'shared-status-key', target: { layerId: 'military', id: 'b' } })]);
   const target = f.buttons()[0];
@@ -201,8 +212,8 @@ test('a changed target cannot reuse a focused action for another flight', () => 
   assert.deepEqual(f.selected, [['military', 'b', { origin: 'user' }]]);
 });
 
-test('empty, informational and duplicate-key rows have no stale or aliased actions', () => {
-  const f = fixture();
+test('empty, informational and duplicate-key rows have no stale or aliased actions', (t) => {
+  const f = fixture(t);
   render(f, [item('a'), item('a')]);
   const [first, second] = f.buttons();
   assert.notEqual(first, second);
