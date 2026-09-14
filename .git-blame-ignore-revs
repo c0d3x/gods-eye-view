@@ -4,3 +4,6 @@
 
 # Format src/styles and src/scenes with Biome
 09346de203e83ddccdf96a89aa65568a1ec8a73e
+
+# Format src/annotations with Biome
+13fa7c448fc3faee76875034d3de8d0d78ff0490

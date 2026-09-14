@@ -1,9 +1,9 @@
 import * as Cesium from 'cesium';
-import { getOverlayPaintRect } from '../overlays/worldOverlay.js';
 import {
   getActiveTrackedReadoutId,
   TRACKED_OVERLAY_SOURCE_ID,
 } from '../data/trackedReadout.js';
+import { getOverlayPaintRect } from '../overlays/worldOverlay.js';
 
 /**
  * Screen-space annotation renderer (Direction B — the "whiteboard" aesthetic).
@@ -109,7 +109,7 @@ export function createScreenAnnotationRenderer(
   function groundHeight(lon, lat) {
     const key = `${lon.toFixed(5)},${lat.toFixed(5)}`;
     const cached = heightCache.get(key);
-    if (cached && cached.settled) {
+    if (cached?.settled) {
       // Mark hot for this frame + bump to most-recently-used so heights for live
       // marks survive eviction while places we've navigated away from age out.
       cached.gen = projGen;
@@ -589,8 +589,7 @@ export function createScreenAnnotationRenderer(
     for (const rec of records.values()) {
       const cal = rec.parts.label;
       if (
-        cal &&
-        cal.sized &&
+        cal?.sized &&
         rec.group.style.display !== 'none' &&
         Number.isFinite(cal._x)
       ) {

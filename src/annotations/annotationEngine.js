@@ -1289,8 +1289,7 @@ function specTargets(spec) {
  * arrow endpoint) when known; otherwise it derives them from the spec.
  */
 function failResult(spec, error, failedTargets) {
-  const targets =
-    failedTargets && failedTargets.length ? failedTargets : specTargets(spec);
+  const targets = failedTargets?.length ? failedTargets : specTargets(spec);
   return {
     ok: false,
     label: spec?.label || spec?.target || targets[0] || null,

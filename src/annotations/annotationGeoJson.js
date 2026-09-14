@@ -137,12 +137,7 @@ export function annotationToFeature(anno) {
  * @returns {object|null}
  */
 export function featureToAnnotation(feature) {
-  if (
-    !feature ||
-    feature.type !== 'Feature' ||
-    !feature.geometry ||
-    !feature.properties
-  )
+  if (feature?.type !== 'Feature' || !feature.geometry || !feature.properties)
     return null;
   const g = feature.geometry;
   const p = feature.properties;
@@ -257,8 +252,7 @@ export function annotationsToFeatureCollection(annotations) {
  */
 export function featureCollectionToAnnotations(collection) {
   if (
-    !collection ||
-    collection.type !== 'FeatureCollection' ||
+    collection?.type !== 'FeatureCollection' ||
     !Array.isArray(collection.features)
   )
     return [];

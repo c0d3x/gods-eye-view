@@ -1,13 +1,13 @@
 import * as Cesium from 'cesium';
-import { lookupNeighborhoodRing } from '../data/neighborhoodPolygons.js';
 import {
-  lookupNaturalRegionOutline,
-  findNaturalRegion,
-} from '../data/naturalEarthRegions.js';
-import {
-  registerDynamicCredit,
   NATURAL_EARTH_CREDIT,
+  registerDynamicCredit,
 } from '../data/dataCredits.js';
+import {
+  findNaturalRegion,
+  lookupNaturalRegionOutline,
+} from '../data/naturalEarthRegions.js';
+import { lookupNeighborhoodRing } from '../data/neighborhoodPolygons.js';
 import { isPickedWorldPosition } from '../data/scenePick.js';
 
 /**
@@ -1490,7 +1490,7 @@ function perpDistance(p, a, b) {
  *
  * @returns {Promise<null | { ring: Array<[number,number]>, kind: 'building'|'area', heightM: number|null }>}
  */
-async function fetchFootprint(lat, lon, query, scope, signal, mode = 'loose') {
+async function fetchFootprint(lat, lon, query, _scope, signal, mode = 'loose') {
   // The resolution MODE changes what counts as a match, so it must be part of the
   // key — otherwise a loose lookup's building could be returned for a strict
   // neighborhood (or point-like) lookup at the same rounded coord/name, or vice-versa.
@@ -1697,7 +1697,7 @@ export function isGroundsLikeAsk(target, label, entityKind) {
  */
 const monumentInflight = new Map(); // centerKey → in-flight sweep promise (batch dedup)
 
-async function fetchLocalMonument(lat, lon, query, signal) {
+async function fetchLocalMonument(lat, lon, query, _signal) {
   const centerKey = `${lat.toFixed(2)},${lon.toFixed(2)}`; // ~1 km buckets — grounds monuments share one
   let features = cacheRead(monumentCache, centerKey);
   if (features === undefined) {

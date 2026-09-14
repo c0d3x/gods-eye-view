@@ -1,5 +1,5 @@
-import { createWorldAnnotationRenderer } from './worldAnnotationRenderer.js';
 import { createScreenAnnotationRenderer } from './screenAnnotationRenderer.js';
+import { createWorldAnnotationRenderer } from './worldAnnotationRenderer.js';
 
 /**
  * Hybrid annotation renderer (Direction C — the recommended production blend).

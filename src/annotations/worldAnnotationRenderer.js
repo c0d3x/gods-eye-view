@@ -293,7 +293,7 @@ export function createWorldAnnotationRenderer(viewer) {
     });
   }
 
-  function labelGraphic(anno, base) {
+  function labelGraphic(anno, _base) {
     return {
       text: anno.label,
       font: '600 14px "Inter", system-ui, sans-serif',
@@ -423,7 +423,7 @@ Object.defineProperties(FlowMaterialProperty.prototype, {
 FlowMaterialProperty.prototype.getType = function getType() {
   return 'GevRouteFlow';
 };
-FlowMaterialProperty.prototype.getValue = function getValue(time, result) {
+FlowMaterialProperty.prototype.getValue = function getValue(_time, result) {
   // `result` IS the live uniforms object Cesium renders — write into it directly.
   // `time` is read straight from the wall clock so the dashes flow every rendered
   // frame (the scene renders continuously; no requestRenderMode here).

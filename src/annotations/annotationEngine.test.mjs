@@ -10,18 +10,19 @@
 //      (identity is GEOMETRY once resolved; targetKey is only the pending stand-in).
 //
 // Run with: npm test   (node --test)
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import {
+  _resetRenderGovernorForTest,
+  getRenderGovernorDiagnostics,
+} from '../renderGovernor.js';
 import {
   createAnnotationEngine,
-  resolveOutlineWithRetry,
   normalizeTargetKey,
+  resolveOutlineWithRetry,
 } from './annotationEngine.js';
 import { resolveAnnotationTarget } from './annotationResolver.js';
-import {
-  getRenderGovernorDiagnostics,
-  _resetRenderGovernorForTest,
-} from '../renderGovernor.js';
 
 // A resolver that replays a scripted sequence of outcomes (undefined = transient,
 // null = definitive miss, object = footprint) and counts its invocations.

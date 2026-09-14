@@ -9,13 +9,14 @@
 // "Austin" — the monument itself is an OSM node and never even a candidate.
 //
 // Run with: npm test   (node --test)
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
+  isGroundsLikeAsk,
+  refineScope,
   resolveAnnotationTarget,
   selectFootprint,
-  refineScope,
-  isGroundsLikeAsk,
 } from './annotationResolver.js';
 
 // Build a square way of ~`areaM2` centred `dLatM`/`dLonM` metres from an anchor,
@@ -203,7 +204,7 @@ test('loose mode: a named water body beats a shore feature named after it (field
   assert.equal(fp.kind, 'area');
   // Ring centred on the lake fixture, not offset onto the shore park.
   const lat0 = fp.ring[0][1];
-  assert.ok(Math.abs(lat0 - ANCHOR_ON_WATER.lat) < 0.02, 'ring at ' + lat0);
+  assert.ok(Math.abs(lat0 - ANCHOR_ON_WATER.lat) < 0.02, `ring at ${lat0}`);
   assert.ok(
     Math.abs(lat0 - (ANCHOR_ON_WATER.lat + 450 / 111320)) > 0.001,
     'must not be the shore park',

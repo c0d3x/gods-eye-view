@@ -169,7 +169,19 @@
       "src/scenes/director.test.mjs",
       "src/scenes/recipes.js",
       "src/scenes/scenePolicy.js",
-      "src/scenes/scenePolicy.test.mjs"
+      "src/scenes/scenePolicy.test.mjs",
+      "src/annotations/annotationEngine.js",
+      "src/annotations/annotationEngine.test.mjs",
+      "src/annotations/annotationGeoJson.js",
+      "src/annotations/annotationGeoJson.test.mjs",
+      "src/annotations/annotationResolver.js",
+      "src/annotations/annotationResolver.test.mjs",
+      "src/annotations/hybridAnnotationRenderer.js",
+      "src/annotations/hybridAnnotationRenderer.test.mjs",
+      "src/annotations/index.js",
+      "src/annotations/screenAnnotationRenderer.js",
+      "src/annotations/screenAnnotationRenderer.test.mjs",
+      "src/annotations/worldAnnotationRenderer.js"
     ]
   },
   "formatter": {
