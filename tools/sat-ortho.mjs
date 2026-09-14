@@ -30,8 +30,8 @@
  * Dependencies: sharp (devDependency)
  */
 
-import { readFileSync, mkdirSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 

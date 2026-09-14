@@ -45,10 +45,10 @@
  * Dependencies: puppeteer, cesium (for serving assets)
  */
 
-import { readFileSync, mkdirSync } from 'node:fs';
-import { resolve, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));

@@ -7,3 +7,6 @@
 
 # Format src/annotations with Biome
 13fa7c448fc3faee76875034d3de8d0d78ff0490
+
+# Format pinokio/ and tools/ with Biome
+a5da6e4b8d949ea77db98473a39176af258e4076

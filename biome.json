@@ -181,7 +181,17 @@
       "src/annotations/index.js",
       "src/annotations/screenAnnotationRenderer.js",
       "src/annotations/screenAnnotationRenderer.test.mjs",
-      "src/annotations/worldAnnotationRenderer.js"
+      "src/annotations/worldAnnotationRenderer.js",
+      "pinokio/install.js",
+      "pinokio/pinokio.js",
+      "pinokio/reset.js",
+      "pinokio/start.js",
+      "pinokio/update.js",
+      "tools/cesium-render.mjs",
+      "tools/pano-pinhole.mjs",
+      "tools/sat-ortho.mjs",
+      "tools/streetview-headings.mjs",
+      "tools/streetview-panorama.mjs"
     ]
   },
   "formatter": {

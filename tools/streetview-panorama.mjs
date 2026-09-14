@@ -22,8 +22,8 @@
  * Dependencies: sharp (a devDependency; run pnpm install)
  */
 
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
@@ -182,7 +182,7 @@ async function fetchTile(apiKey, session, panoId, z, x, y) {
 // ---------------------------------------------------------------------------
 
 async function stitchPanorama(apiKey, session, panoId, metadata, zoom) {
-  const { imageWidth, imageHeight, tileWidth, tileHeight } = metadata;
+  const { tileWidth, tileHeight } = metadata;
 
   // Street View tile grids follow a fixed power-of-2 scheme:
   //   zoom 0: 1×1    (360° FOV, entire panorama in one tile)
@@ -200,8 +200,8 @@ async function stitchPanorama(apiKey, session, panoId, metadata, zoom) {
   // We use the fixed grid, then let fetchTile silently return null for
   // any tiles that 404 (edge padding). The stitched canvas size is
   // grid × tileSize, and real image content fills the upper-left portion.
-  const tilesX = Math.pow(2, zoom); // cols: 1,2,4,8,16,32
-  const tilesY = Math.max(1, Math.pow(2, zoom - 1)); // rows: 1,1,2,4, 8,16
+  const tilesX = 2 ** zoom; // cols: 1,2,4,8,16,32
+  const tilesY = Math.max(1, 2 ** (zoom - 1)); // rows: 1,1,2,4, 8,16
 
   // The panorama image is an equirectangular projection: width = 360°,
   // height = 180°. The tile grid is always 2:1 aspect (except zoom 0

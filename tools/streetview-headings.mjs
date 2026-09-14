@@ -21,8 +21,8 @@
  *   --neighbors  Also fetch 8 images from each first-order neighbor location
  */
 
-import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
 import { resolveGoogleServerKey } from '../server/lib/googleServerKey.mjs';
@@ -143,7 +143,7 @@ async function getNeighborLocations(lat, lon) {
     for (let i = 1; i < links.length; i++) {
       const link = links[i];
       const coordBlock = link[2];
-      if (!coordBlock || !coordBlock[0]) continue;
+      if (!coordBlock?.[0]) continue;
       const nlat = coordBlock[0][2];
       const nlon = coordBlock[0][3];
       if (nlat === undefined || nlon === undefined) continue;
