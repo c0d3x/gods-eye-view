@@ -36,6 +36,15 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Changed
 
+- The nightly QA run covers the first-run launcher and Map Source tray
+  harnesses again. Their timing-sensitive checks now hold under
+  SwiftShader's software rendering: a longer navigation deadline, a
+  long-Space check that hears the key repeat anywhere on the page and
+  waits for the hold to claim the key, focus-ring checks that wait for
+  the Data Layers list to stop reflowing, and a notice-dwell check that
+  keeps to its own clock. The track regression's corridor check allows
+  for the display clamp's cell hysteresis.
+
 - Biome formats and lints every JavaScript file in the repository, and the
   config JSON. `biome.json` names its scope by glob instead of listing files,
   so new modules are covered as they are added; the bundled data in
