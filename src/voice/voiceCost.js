@@ -102,11 +102,16 @@ export function resolveVoiceModel(tier) {
   // members, which would sail past a `||` fallback and hand the token endpoint
   // a bogus entry whose `.id` is undefined.
   return isKnownVoiceTier(tier)
-    ? VOICE_MODELS[String(tier).trim().toLowerCase()]
+    ? VOICE_MODELS[
+        /** @type {VoiceModelTier} */ (String(tier).trim().toLowerCase())
+      ]
     : VOICE_MODELS[DEFAULT_VOICE_TIER];
 }
 
-/** True only for a tier name this build knows (own properties only). */
+/**
+ * True only for a tier name this build knows (own properties only).
+ * @param {unknown} tier
+ */
 export function isKnownVoiceTier(tier) {
   const key = typeof tier === 'string' ? tier.trim().toLowerCase() : '';
   return Object.hasOwn(VOICE_MODELS, key);
@@ -186,8 +191,14 @@ export const VOICE_COST_LIMIT_OFF = 'off';
  * Accepted "disabled" spellings: the `'off'` sentinel, Infinity, and a
  * 0/negative number. Absent/undefined/null and unparseable values fall back to
  * the default — a corrupt entry must never disarm the cap.
+ *
+ * @param {{warnUsd?: unknown, capUsd?: unknown}|null|undefined} limits
  */
 export function normalizeCostLimits(limits) {
+  /**
+   * @param {unknown} value
+   * @param {number} fallback
+   */
   const clean = (value, fallback) => {
     if (
       typeof value === 'string' &&
@@ -207,9 +218,14 @@ export function normalizeCostLimits(limits) {
   });
 }
 
-/** Convert limits to a JSON-safe shape that round-trips a disabled threshold. */
+/**
+ * Convert limits to a JSON-safe shape that round-trips a disabled threshold.
+ *
+ * @param {{warnUsd?: unknown, capUsd?: unknown}|null|undefined} limits
+ */
 export function serializeCostLimits(limits) {
   const normalized = normalizeCostLimits(limits);
+  /** @param {number} value */
   const encode = (value) =>
     Number.isFinite(value) ? value : VOICE_COST_LIMIT_OFF;
   return {
@@ -222,6 +238,7 @@ export function serializeCostLimits(limits) {
  * USAGE → USD
  * ------------------------------------------------------------------ */
 
+/** @param {unknown} value */
 const nonNegative = (value) => {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : 0;
@@ -340,7 +357,11 @@ export function estimateUsageCostUsd(usage, rates) {
   return Number.isFinite(usd) && usd > 0 ? usd : 0;
 }
 
-/** Format a running cost for the compact UI readout ("~$0.42"). */
+/**
+ * Format a running cost for the compact UI readout ("~$0.42").
+ *
+ * @param {unknown} usd
+ */
 export function formatCostUsd(usd) {
   const n = Number.isFinite(Number(usd)) ? Math.max(0, Number(usd)) : 0;
   if (n > 0 && n < 0.01) return '~$0.01';

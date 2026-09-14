@@ -1,5 +1,10 @@
-/** Resolve server credentials after applying environment overrides per key. */
+/**
+ * Resolve server credentials after applying environment overrides per key.
+ * @param {Record<string, string | undefined>} [environment]
+ * @param {Record<string, string | undefined>} [defaults]
+ */
 export function resolveGoogleServerKey(environment = {}, defaults = {}) {
+  /** @param {string} name */
   const value = (name) =>
     String(environment[name] ?? defaults[name] ?? '').trim();
   return value('GOOGLE_MAPS_SERVER_API_KEY') || value('GOOGLE_MAPS_API_KEY');

@@ -157,9 +157,10 @@ export function acquisitionMsUtc(acqDate, acqTime) {
  * The 2 h forward slack absorbs upstream/local clock skew; records with an
  * unparseable acquisition time are dropped. Timestamps are memoized per
  * unique date:time pair — granule timestamps repeat heavily.
- * @param {Array<{acqDate: string, acqTime: string|number}>} records - Parser records.
+ * @template {{acqDate: string, acqTime: string|number}} T
+ * @param {Array<T>} records - Parser records.
  * @param {number} nowMs - Reference epoch milliseconds.
- * @returns {Array<Object>} Filtered records (original objects, order preserved).
+ * @returns {Array<T>} Filtered records (original objects, order preserved).
  */
 export function filterTrailing24h(records, nowMs) {
   if (!Array.isArray(records) || !Number.isFinite(nowMs)) return [];
@@ -177,13 +178,20 @@ export function filterTrailing24h(records, nowMs) {
   });
 }
 
-/** Trimmed string cell at index, '' for missing columns. */
+/**
+ * Trimmed string cell at index, '' for missing columns.
+ * @param {string[]} parts
+ * @param {number|undefined} index
+ */
 function cell(parts, index) {
   if (index === undefined || parts[index] === undefined) return '';
   return parts[index].trim();
 }
 
-/** Numeric cell → finite number, else 0. */
+/**
+ * Numeric cell → finite number, else 0.
+ * @param {unknown} value
+ */
 function finiteOrZero(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;

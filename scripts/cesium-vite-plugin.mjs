@@ -12,6 +12,7 @@ const CESIUM_BUILD = path.join(
 );
 const SHIPPED = ['Assets', 'ThirdParty', 'Workers', 'Widgets', 'Cesium.js'];
 const GLOBAL = 'globalThis.Cesium';
+/** @type {Record<string, string>} */
 const CONTENT_TYPES = {
   '.cjs': 'application/javascript; charset=UTF-8',
   '.css': 'text/css; charset=UTF-8',
@@ -28,11 +29,17 @@ const CONTENT_TYPES = {
 /**
  * Rewrite one module's `cesium` imports to the global that Cesium.js defines.
  * Returns null when the module does not import cesium.
+ * @param {string} code
  */
 export function rewriteCesiumImports(code, id = 'module.js') {
   if (!code.includes('cesium')) return null;
   const ast = parseAst(code);
+  /** @type {Array<{node: import('vite').ESTree.Span, text: string}>} */
   const edits = [];
+  /**
+   * @param {import('vite').ESTree.Span} node
+   * @param {string} text
+   */
   const replace = (node, text) => {
     // Keep line numbers stable for any later source maps.
     const lines = code.slice(node.start, node.end).split('\n').length - 1;
@@ -49,7 +56,10 @@ export function rewriteCesiumImports(code, id = 'module.js') {
   }
   visit(ast, (node) => {
     if (node.type === 'ImportExpression' && node.source.value === 'cesium') {
-      replace(node, `Promise.resolve(${GLOBAL})`);
+      replace(
+        /** @type {import('vite').ESTree.ImportExpression} */ (node),
+        `Promise.resolve(${GLOBAL})`,
+      );
     }
   });
   if (!edits.length) return null;
@@ -63,6 +73,14 @@ export function rewriteCesiumImports(code, id = 'module.js') {
   return { code: rewritten, map: null };
 }
 
+/**
+ * The fields of an import specifier the rewrite reads. Only a named import
+ * has `imported`: an identifier (`name`) or a string literal (`value`).
+ * @param {{
+ *   local: {name: string},
+ *   imported?: {name?: string, value?: string},
+ * }} specifier
+ */
 function bindGlobal(specifier) {
   const local = specifier.local.name;
   const imported =
@@ -75,6 +93,11 @@ function bindGlobal(specifier) {
   return `const ${local} = ${GLOBAL}[${JSON.stringify(imported)}];`;
 }
 
+/**
+ * @param {Record<string, any> | Array<unknown> | null} node An AST node,
+ *   an array of them, or null.
+ * @param {(node: Record<string, any>) => void} callback
+ */
 function visit(node, callback) {
   if (Array.isArray(node)) {
     for (const child of node) visit(child, callback);
@@ -86,7 +109,19 @@ function visit(node, callback) {
   }
 }
 
-/** Serve a directory's files with the headers serve-static used for Cesium. */
+/**
+ * A request reaching dev-server middleware. Node's HTTP server sets `url` on
+ * the requests it receives; the typings leave it optional only because client
+ * responses share the class.
+ * @typedef {import('vite').Connect.IncomingMessage & {url: string}} DevRequest
+ */
+
+/**
+ * Serve a directory's files with the headers serve-static used for Cesium.
+ * @param {string} dir
+ * @returns {(req: DevRequest, res: import('node:http').ServerResponse,
+ *   next: import('vite').Connect.NextFunction) => void}
+ */
 function serveDirectory(dir) {
   return async (req, res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next();
@@ -148,6 +183,7 @@ function serveDirectory(dir) {
  * Development serves the unminified build at /cesium/ and defines
  * CESIUM_BASE_URL; builds load /cesium/Cesium.js, read `cesium` imports from
  * its global and copy its runtime files into the output directory.
+ * @returns {import('vite').Plugin}
  */
 export default function cesium() {
   let command = 'serve';

@@ -28,6 +28,7 @@ export function createBoundedCache({
   /** @type {Map<string, {value: V, expiresAt: number}>} */
   const items = new Map();
 
+  /** @param {number} at */
   const dropExpired = (at) => {
     for (const [key, item] of items) {
       if (item.expiresAt > at) break;

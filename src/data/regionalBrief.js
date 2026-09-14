@@ -1,5 +1,6 @@
 const MAX_ARTICLES = 5;
 
+/** @param {unknown} value */
 function cleanText(value, maxLength = 180) {
   return String(value || '')
     .replace(/\s+/g, ' ')
@@ -7,6 +8,7 @@ function cleanText(value, maxLength = 180) {
     .slice(0, maxLength);
 }
 
+/** @param {unknown} value */
 function safeHttpUrl(value) {
   try {
     const parsed = new URL(String(value || ''));
@@ -18,7 +20,11 @@ function safeHttpUrl(value) {
   }
 }
 
-/** Normalize a Nominatim reverse-geocode response into cockpit-sized place context. */
+/**
+ * Normalize a Nominatim reverse-geocode response into cockpit-sized place
+ * context.
+ * @param {any} payload Parsed Nominatim JSON; its shape is unvalidated.
+ */
 export function normalizeRegionalPlace(payload) {
   const address = payload?.address || {};
   const locality = cleanText(
@@ -53,7 +59,11 @@ export function normalizeRegionalPlace(payload) {
   };
 }
 
-/** Normalize and deduplicate GDELT ArticleList output without trusting article HTML. */
+/**
+ * Normalize and deduplicate GDELT ArticleList output without trusting
+ * article HTML.
+ * @param {any} payload Parsed GDELT JSON; its shape is unvalidated.
+ */
 export function normalizeRegionalArticles(payload, limit = MAX_ARTICLES) {
   const rows = Array.isArray(payload?.articles) ? payload.articles : [];
   const seen = new Set();
@@ -87,10 +97,14 @@ export function normalizeRegionalArticles(payload, limit = MAX_ARTICLES) {
   return articles;
 }
 
-/** Normalize Open-Meteo current conditions into a small source-stamped record. */
+/**
+ * Normalize Open-Meteo current conditions into a small source-stamped record.
+ * @param {any} payload Parsed Open-Meteo JSON; its shape is unvalidated.
+ */
 export function normalizeRegionalWeather(payload) {
   const current = payload?.current;
   if (!current || !Number.isFinite(Number(current.temperature_2m))) return null;
+  /** @param {unknown} value */
   const numberOrNull = (value) => {
     if (value === null || value === undefined || value === '') return null;
     return Number.isFinite(Number(value)) ? Number(value) : null;
@@ -117,7 +131,10 @@ export function normalizeRegionalWeather(payload) {
   };
 }
 
-/** Translate the WMO weather code used by Open-Meteo into concise cockpit copy. */
+/**
+ * Translate the WMO weather code used by Open-Meteo into concise cockpit copy.
+ * @param {unknown} code
+ */
 export function weatherCodeLabel(code) {
   const value = Number(code);
   if (!Number.isFinite(value)) return 'CONDITIONS UNKNOWN';
@@ -134,9 +151,16 @@ export function weatherCodeLabel(code) {
   return 'MIXED CONDITIONS';
 }
 
-/** Great-circle distance used to avoid refetching a regional brief every animation frame. */
+/**
+ * Great-circle distance used to avoid refetching a regional brief every
+ * animation frame.
+ * @param {{latitude: number, longitude: number}|null|undefined} from
+ * @param {{latitude: number, longitude: number}|null|undefined} to
+ */
 export function regionalDistanceM(from, to) {
   if (
+    !from ||
+    !to ||
     ![from?.latitude, from?.longitude, to?.latitude, to?.longitude].every(
       Number.isFinite,
     )

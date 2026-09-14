@@ -20,6 +20,9 @@
 
 import { createAisWatchdog } from './watchdog.mjs';
 
+/** @typedef {ReturnType<typeof createAisWatchdog>} AisWatchdog */
+/** @typedef {import('./watchdog.mjs').AisWatchdogAction} AisWatchdogAction */
+
 const DEFAULT_CLOCK = Object.freeze({
   wall: () => Date.now(),
   mono: () => performance.now(),
@@ -109,7 +112,7 @@ export function classifyAisFailure(input = {}) {
  * which for an auth error envelope means the rejection is dropped and the
  * generic transport ladder runs instead.
  *
- * @param {*} data
+ * @param {unknown} data
  * @returns {string|null}
  */
 export function decodeAisFrameSync(data) {
@@ -134,7 +137,7 @@ export function decodeAisFrameSync(data) {
 /**
  * Decode one websocket frame to text. Handles the String (built-in WebSocket),
  * Buffer/TypedArray (ws), ArrayBuffer and Blob shapes.
- * @param {*} data
+ * @param {any} data A raw websocket frame, in any of those shapes.
  * @returns {Promise<string>}
  */
 export async function decodeAisFrame(data) {
@@ -157,7 +160,7 @@ export const AIS_MAX_FRAME_BYTES = 1_000_000;
  * Approximate a frame's size without decoding it. String length is in code
  * units rather than UTF-8 bytes, which only ever under-counts — fine for a
  * rejection threshold.
- * @param {*} data
+ * @param {unknown} data
  * @returns {number}
  */
 export function aisFrameByteLength(data) {
@@ -214,8 +217,8 @@ export const AIS_RECOGNIZED_MESSAGE_TYPES = Object.freeze(
 
 /**
  * Resolve an envelope's MMSI, or null.
- * @param {Object} envelope
- * @param {Object} body
+ * @param {Record<string, any>} envelope
+ * @param {Record<string, any>} body
  * @returns {string|null}
  */
 function aisEnvelopeMmsi(envelope, body = {}) {
@@ -233,7 +236,7 @@ function aisEnvelopeMmsi(envelope, body = {}) {
  * MMSI. An envelope carrying nothing but an MMSI is not evidence the feed
  * works: that is exactly the shape a malformed or synthetic frame takes.
  *
- * @param {Object} envelope
+ * @param {any} envelope Parsed upstream JSON, of any shape.
  * @returns {boolean}
  */
 export function isRecognizedAisEnvelope(envelope) {
@@ -254,7 +257,8 @@ export function isRecognizedAisEnvelope(envelope) {
  * Parse a decoded frame into a classified envelope.
  *
  * @param {string} text
- * @returns {{kind: 'malformed'}|{kind: 'error', message: string}|{kind: 'data', envelope: Object}}
+ * @returns {{kind: 'malformed'}|{kind: 'error', message: string}
+ *   |{kind: 'data', envelope: Record<string, any>}}
  */
 export function parseAisEnvelope(text) {
   let envelope;
@@ -271,17 +275,43 @@ export function parseAisEnvelope(text) {
 }
 
 /**
+ * The `ws` events the adapter listens to, with the listener arguments it
+ * reads. `message` carries a raw frame in any shape decodeAisFrame() takes.
+ * @typedef {{
+ *   open: [],
+ *   message: [data: any],
+ *   'unexpected-response': [
+ *     request: import('node:http').ClientRequest,
+ *     response: import('node:http').IncomingMessage
+ *   ],
+ *   error: [error: Error],
+ *   close: []
+ * }} AisSocketEvents
+ */
+
+/**
+ * The part of a `ws` WebSocket the adapter drives.
+ * @typedef {object} AisSocket
+ * @property {<E extends keyof AisSocketEvents>(event: E,
+ *   handler: (...args: AisSocketEvents[E]) => void) => unknown} on
+ * @property {(data: string) => void} send
+ * @property {() => void} terminate
+ */
+
+/**
  * Create the AISStream transport adapter.
  *
  * @param {Object} options
- * @param {(url: string) => Object} options.createSocket Socket factory.
+ * @param {(url: string) => AisSocket} options.createSocket Socket factory.
  * @param {() => string} options.resolveUrl Upstream URL, read per connect.
- * @param {() => Object} options.buildSubscription Subscription payload.
- * @param {(envelope: Object) => boolean} options.ingestEnvelope Returns true
- *   only when the envelope was a real AIS record — the sole liveness proof.
- * @param {{wall: function, mono: function}} [options.clock]
+ * @param {() => Record<string, unknown>} options.buildSubscription
+ *   Subscription payload.
+ * @param {(envelope: Record<string, any>) => boolean} options.ingestEnvelope
+ *   Returns true only when the envelope was a real AIS record — the sole
+ *   liveness proof.
+ * @param {{wall: () => number, mono: () => number}} [options.clock]
  * @param {(message: string) => void} [options.warn]
- * @returns {Object} adapter handle
+ * @returns adapter handle
  */
 export function createAisStreamAdapter(options) {
   const {
@@ -293,7 +323,10 @@ export function createAisStreamAdapter(options) {
     warn = () => {},
   } = options;
 
-  /** generation -> socket. Mutated only through the identity-checked helpers. */
+  /**
+   * @type {Map<number, AisSocket>} generation -> socket. Mutated only through
+   * the identity-checked helpers.
+   */
   const sockets = new Map();
   /** Never reset, including across dispose(). See rule 1 at the top. */
   let generationHighWater = 0;
@@ -316,17 +349,29 @@ export function createAisStreamAdapter(options) {
     return watchdog;
   }
 
-  /** True while `socket` is still the adapter's socket for `generation`. */
+  /**
+   * True while `socket` is still the adapter's socket for `generation`.
+   * @param {number} generation
+   * @param {AisSocket} socket
+   */
   function ownsSocket(generation, socket) {
     return sockets.get(generation) === socket;
   }
 
-  /** Drop the map entry only if it still holds this exact socket. */
+  /**
+   * Drop the map entry only if it still holds this exact socket.
+   * @param {number} generation
+   * @param {AisSocket} socket
+   */
   function releaseSocketEntry(generation, socket) {
     if (sockets.get(generation) === socket) sockets.delete(generation);
   }
 
-  /** Hard-abort a socket. Always terminate(), never close(). */
+  /**
+   * Hard-abort a socket. Always terminate(), never close().
+   * @param {AisSocket} socket
+   * @param {string} reason
+   */
   function abort(socket, reason) {
     try {
       socket.terminate();
@@ -337,7 +382,11 @@ export function createAisStreamAdapter(options) {
     }
   }
 
-  /** Terminate the socket registered for `generation`, if any. */
+  /**
+   * Terminate the socket registered for `generation`, if any.
+   * @param {number} generation
+   * @param {string} reason
+   */
   function terminateGeneration(generation, reason) {
     const socket = sockets.get(generation);
     if (!socket) return;
@@ -347,8 +396,8 @@ export function createAisStreamAdapter(options) {
 
   /**
    * Perform watchdog actions in order.
-   * @param {Object} owner Watchdog instance that produced the actions.
-   * @param {Array<Object>} actions
+   * @param {AisWatchdog} owner Watchdog instance that produced the actions.
+   * @param {Array<AisWatchdogAction>} actions
    */
   function runActions(owner, actions) {
     for (const action of actions || []) {
@@ -358,7 +407,12 @@ export function createAisStreamAdapter(options) {
     }
   }
 
-  /** Fail a generation through its owning watchdog, with classification. */
+  /**
+   * Fail a generation through its owning watchdog, with classification.
+   * @param {AisWatchdog} owner
+   * @param {number} generation
+   * @param {ReturnType<typeof classifyAisFailure>} detail
+   */
   function failGeneration(owner, generation, detail) {
     runActions(owner, owner.onFailure(generation, detail));
   }
@@ -369,6 +423,9 @@ export function createAisStreamAdapter(options) {
    * Handlers capture BOTH the socket object and the watchdog instance that
    * commissioned them, so an event arriving after a dispose cannot reach the
    * replacement machine or a replacement socket.
+   *
+   * @param {AisWatchdog} owner
+   * @param {number} generation
    */
   function openSocket(owner, generation) {
     generationHighWater = Math.max(generationHighWater, generation);
@@ -406,6 +463,7 @@ export function createAisStreamAdapter(options) {
       });
       return;
     }
+    /** @type {AisSocket['on']} */
     const on = (event, handler) => socket.on(event, handler);
 
     on('open', () => {
@@ -503,6 +561,11 @@ export function createAisStreamAdapter(options) {
    * The message pipeline. Ownership is verified before any work AND again
    * after the decode await, because that suspension point is long enough for a
    * terminate to land.
+   *
+   * @param {AisWatchdog} owner
+   * @param {number} generation
+   * @param {AisSocket} socket
+   * @param {any} data A raw websocket frame.
    */
   async function handleMessage(owner, generation, socket, data) {
     if (!ownsSocket(generation, socket)) {
@@ -517,6 +580,11 @@ export function createAisStreamAdapter(options) {
   /**
    * Classify and apply one decoded frame. Ownership is re-verified here because
    * the async path suspends before reaching it.
+   *
+   * @param {AisWatchdog} owner
+   * @param {number} generation
+   * @param {AisSocket} socket
+   * @param {string} text
    */
   function handleDecodedMessage(owner, generation, socket, text) {
     if (!ownsSocket(generation, socket)) {
@@ -545,9 +613,14 @@ export function createAisStreamAdapter(options) {
     runActions(owner, owner.onMessage(generation));
   }
 
-  /** Drive the machine once: re-declare the environment, then advance time. */
+  /**
+   * Drive the machine once: re-declare the environment, then advance time.
+   * setWatchdogOptions() assigns `watchdog` itself; assigning its result here
+   * only lets the checker see that the machine exists.
+   * @param {import('./watchdog.mjs').AisWatchdogEnv} env
+   */
   function ensure(env) {
-    if (!watchdog) setWatchdogOptions();
+    if (!watchdog) watchdog = setWatchdogOptions();
     runActions(watchdog, watchdog.configure(env));
     runActions(watchdog, watchdog.tick());
   }

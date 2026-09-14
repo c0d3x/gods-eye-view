@@ -21,7 +21,11 @@ export function keylessHudSummaryResponse(apiKey) {
   };
 }
 
-/** Return true only for the deliberate, successful no-key capability response. */
+/**
+ * Return true only for the deliberate, successful no-key capability response.
+ * @param {number} status - HTTP status of the summary response.
+ * @param {any} data - Parsed JSON response body; its shape is unvalidated.
+ */
 export function isHudSummaryUnconfigured(status, data) {
   const keys =
     data !== null && typeof data === 'object' && !Array.isArray(data)

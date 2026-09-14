@@ -24,22 +24,27 @@ const FORM_ENCODED_API_PATHS = Object.freeze(['/api/overpass']);
 const REFUSAL_LOG_INTERVAL_MS = 60_000;
 const REFUSAL_LOG_MAX_ROUTES = 100;
 
+/** @param {unknown} value */
 function headerValue(value) {
   return String(Array.isArray(value) ? value[0] : (value ?? '')).trim();
 }
 
+/** @param {unknown} path */
 function pathnameOf(path) {
   return String(path ?? '').split('?')[0];
 }
 
+/** @param {string|string[]|undefined} contentType */
 function mediaTypeOf(contentType) {
   return headerValue(contentType).split(';')[0].trim().toLowerCase();
 }
 
+/** @param {string} type */
 function isJsonMediaType(type) {
   return type === 'application/json' || type.endsWith('+json');
 }
 
+/** @param {Record<string, string|string[]|undefined>} headers */
 function hasBody(headers) {
   return (
     Number(headerValue(headers['content-length']) || 0) > 0 ||
@@ -47,6 +52,10 @@ function hasBody(headers) {
   );
 }
 
+/**
+ * @param {string} path
+ * @param {readonly string[]} formEncodedPaths
+ */
 function acceptsForm(path, formEncodedPaths) {
   const route = pathnameOf(path);
   return formEncodedPaths.some(
@@ -54,13 +63,22 @@ function acceptsForm(path, formEncodedPaths) {
   );
 }
 
-/** Replace anything that could steer a terminal when echoed to the log. */
+/**
+ * Replace anything that could steer a terminal when echoed to the log.
+ * @param {unknown} text
+ * @param {number} [limit]
+ */
 function printable(text, limit = 120) {
   return String(text)
     .slice(0, limit)
     .replace(/[^\x20-\x7e]/g, '?');
 }
 
+/**
+ * @param {number} status
+ * @param {string} reason
+ * @param {string} error
+ */
 function refusal(status, reason, error) {
   return { ok: false, status, reason, error };
 }
@@ -184,6 +202,7 @@ export function checkApiRequest(
  * @param {readonly string[]} [options.formEncodedPaths]
  * @param {(message: string) => void} [options.log]
  * @param {() => number} [options.now]
+ * @returns {import('vite').Connect.NextHandleFunction}
  */
 export function createApiRequestGuard({
   formEncodedPaths = FORM_ENCODED_API_PATHS,
@@ -198,7 +217,9 @@ export function createApiRequestGuard({
         method: req.method,
         path,
         headers: req.headers ?? {},
-        encrypted: Boolean(req.socket?.encrypted),
+        encrypted: Boolean(
+          /** @type {{encrypted?: boolean}} */ (req.socket)?.encrypted,
+        ),
       },
       { formEncodedPaths },
     );
@@ -239,6 +260,7 @@ export function createApiRequestGuard({
  * @returns {import('vite').Plugin}
  */
 export function apiRequestGuard() {
+  /** @param {import('vite').ViteDevServer | import('vite').PreviewServer} server */
   const install = (server) => {
     server.middlewares.use('/api', createApiRequestGuard());
   };

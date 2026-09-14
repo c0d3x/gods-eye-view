@@ -19,7 +19,10 @@ export function launchLibraryRequestHeaders(token = process.env.LL2_API_TOKEN) {
   };
 }
 
-/** Proxy the public Launch Library 2 recent-launch feed server-side. */
+/**
+ * Proxy the public Launch Library 2 recent-launch feed server-side.
+ * @returns {import('vite').Plugin}
+ */
 export function rocketLaunchesProxy() {
   const ttlMs = LL2_CACHE_TTL_MS;
   const maxResponseBytes = 12 * 1024 * 1024;
@@ -51,6 +54,7 @@ export function rocketLaunchesProxy() {
     }
   }
 
+  /** @param {{at: number, body: string}} entry */
   async function saveDiskCache(entry) {
     try {
       await fsp.mkdir(path.dirname(cachePath), { recursive: true });
@@ -60,6 +64,12 @@ export function rocketLaunchesProxy() {
     }
   }
 
+  /**
+   * @param {import('node:http').ServerResponse} res
+   * @param {number} status
+   * @param {string} body
+   * @param {string} cacheState
+   */
   function send(res, status, body, cacheState) {
     res.writeHead(status, {
       'Content-Type': 'application/json',
@@ -96,6 +106,7 @@ export function rocketLaunchesProxy() {
     return fresh;
   }
 
+  /** @param {import('vite').Connect.Server} middlewares */
   function install(middlewares) {
     middlewares.use('/api/launches', async (req, res) => {
       if (req.method !== 'GET') {

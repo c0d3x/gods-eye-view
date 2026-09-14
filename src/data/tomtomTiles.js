@@ -73,7 +73,9 @@ export function lonLatToTile(lon, lat, z) {
  */
 export function tileToBBox(z, x, y) {
   const n = 2 ** z;
+  /** @param {number} col */
   const lonAt = (col) => (col / n) * 360 - 180;
+  /** @param {number} row */
   const latAt = (row) =>
     (Math.atan(Math.sinh(Math.PI * (1 - (2 * row) / n))) * 180) / Math.PI;
   return {

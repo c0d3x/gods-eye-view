@@ -9,10 +9,11 @@
     "noEmit": true,
     "strict": false,
     "strictNullChecks": true,
+    "noImplicitAny": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["**/*.mjs", "../vite.config.js"],
+  "include": ["**/*.mjs", "globals.d.ts", "../vite.config.js"],
   "exclude": ["**/*.test.mjs"]
 }

@@ -23,6 +23,7 @@ export class ClientGoneError extends Error {
   }
 }
 
+/** @param {import('node:http').ServerResponse} response */
 function clientGoneSignal(response) {
   const controller = new AbortController();
   response.once('close', () => {

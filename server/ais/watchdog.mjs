@@ -57,7 +57,10 @@ const AIS_FAILURE_KINDS = Object.freeze(['transport', 'auth', 'rate-limit']);
 /** Statuses that must not flip back to a hopeful 'connecting' on a retry. */
 const QUIET_TERMINAL = new Set(['down', 'auth-failed']);
 
-/** Statuses in which fresh data is genuinely flowing. */
+/**
+ * Statuses in which fresh data is genuinely flowing.
+ * @param {string} status
+ */
 export function isLiveAisStatus(status) {
   return status === 'live';
 }
@@ -98,6 +101,19 @@ const DEFAULT_CLOCK = Object.freeze({
 });
 
 /**
+ * An action for the transport adapter: open a socket for a new generation,
+ * or hard-abort the socket holding `generation`.
+ * @typedef {{type: 'connect', generation: number}
+ *   | {type: 'terminate', generation: number, reason: string}} AisWatchdogAction
+ */
+
+/**
+ * The environment the adapter declares through configure().
+ * @typedef {{hasKey: boolean, hasTransport?: boolean, silenceWatch?: boolean,
+ *   keyFingerprint?: string|null}} AisWatchdogEnv
+ */
+
+/**
  * Create an AISStream watchdog state machine.
  *
  * The caller must invoke `configure()` before the first `tick()` so the
@@ -112,8 +128,8 @@ const DEFAULT_CLOCK = Object.freeze({
  * @param {number} [options.startGeneration] Seed for the socket-generation
  *   counter. MUST be the caller's module-lifetime high-water mark so that a
  *   disposal never re-issues a generation a late handler still refers to.
- * @param {{wall: function, mono: function}} [options.clock]
- * @returns {Object} watchdog handle
+ * @param {{wall: () => number, mono: () => number}} [options.clock]
+ * @returns watchdog handle
  */
 export function createAisWatchdog(options = {}) {
   const staleMs = positiveOr(options.staleMs, AIS_WATCHDOG_DEFAULTS.staleMs);
@@ -213,7 +229,11 @@ export function createAisWatchdog(options = {}) {
     nextAttemptMono = monoNow + backoffMs[reconnectAttempt - 1];
   }
 
-  /** Hard-abort whatever socket we hold, if any. */
+  /**
+   * Hard-abort whatever socket we hold, if any.
+   * @param {string} reason
+   * @returns {Array<AisWatchdogAction>}
+   */
   function terminateOwned(reason) {
     if (owned === null) return [];
     const generationToKill = owned;
@@ -225,9 +245,8 @@ export function createAisWatchdog(options = {}) {
    * Declare the environment. Safe to call repeatedly (the adapter calls it on
    * every request so a key added to .env mid-session is picked up).
    *
-   * @param {{hasKey: boolean, hasTransport?: boolean, silenceWatch?: boolean,
-   *   keyFingerprint?: string|null}} env
-   * @returns {Array<Object>} actions
+   * @param {AisWatchdogEnv} env
+   * @returns {Array<AisWatchdogAction>} actions
    */
   function configure(env) {
     silenceWatchArmed = env.silenceWatch !== false;
@@ -286,7 +305,7 @@ export function createAisWatchdog(options = {}) {
    * releases the slot in the same step it emits a 'terminate' — so a reconnect
    * can only ever follow a terminate, never race it.
    *
-   * @returns {Array<Object>} actions
+   * @returns {Array<AisWatchdogAction>} actions
    */
   function tick() {
     if (status === 'missing-key' || status === 'unsupported') return [];
@@ -337,7 +356,10 @@ export function createAisWatchdog(options = {}) {
     return [{ type: 'connect', generation }];
   }
 
-  /** True when an event belongs to the socket we still own. */
+  /**
+   * True when an event belongs to the socket we still own.
+   * @param {number} eventGeneration
+   */
   function ownsGeneration(eventGeneration) {
     return owned !== null && eventGeneration === owned;
   }
@@ -350,6 +372,9 @@ export function createAisWatchdog(options = {}) {
    * its original schedule. An orphan (a socket we already gave up on, opening
    * late) is told to hang itself up so it cannot hold the one-connection-per-key
    * slot.
+   *
+   * @param {number} eventGeneration
+   * @returns {Array<AisWatchdogAction>} actions
    */
   function onOpen(eventGeneration) {
     if (!ownsGeneration(eventGeneration)) {
@@ -367,6 +392,9 @@ export function createAisWatchdog(options = {}) {
    * The adapter must call this only after the frame has decoded and been
    * recognised as an AIS payload; malformed frames and error envelopes are
    * never liveness.
+   *
+   * @param {number} eventGeneration
+   * @returns {Array<AisWatchdogAction>} actions
    */
   function onMessage(eventGeneration) {
     if (!ownsGeneration(eventGeneration)) {
@@ -383,7 +411,10 @@ export function createAisWatchdog(options = {}) {
     return [];
   }
 
-  /** The socket closed on its own. */
+  /**
+   * The socket closed on its own.
+   * @param {number} eventGeneration
+   */
   function onClose(eventGeneration) {
     if (!ownsGeneration(eventGeneration)) return [];
     release();
@@ -487,12 +518,21 @@ export function createAisWatchdog(options = {}) {
   };
 }
 
+/** @param {string} kind */
 function defaultFailureMessage(kind) {
   if (kind === 'auth') return 'AISStream rejected the API key';
   if (kind === 'rate-limit') return 'AISStream rate-limited this key';
   return 'AISStream websocket error';
 }
 
+/**
+ * `value` if it is a finite positive number, else `fallback`. The casts rely
+ * on Number.isFinite() being false for anything that is not a number.
+ * @param {unknown} value
+ * @param {number} fallback
+ */
 function positiveOr(value, fallback) {
-  return Number.isFinite(value) && value > 0 ? value : fallback;
+  return Number.isFinite(value) && /** @type {number} */ (value) > 0
+    ? /** @type {number} */ (value)
+    : fallback;
 }

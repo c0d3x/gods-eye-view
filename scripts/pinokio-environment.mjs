@@ -24,6 +24,7 @@ export const PINOKIO_CONFIG_FIELDS = Object.freeze([
   'PINOKIO_SHARE_VAR',
 ]);
 
+/** @type {Readonly<Record<string, string>>} */
 const PINOKIO_DEFAULTS = Object.freeze({
   GEV_RATELIMIT_OPENAI_PER_MIN: '30',
   GEV_RATELIMIT_GOOGLE_PER_MIN: '120',
@@ -39,11 +40,16 @@ const PINOKIO_SHARING_FIELDS = Object.freeze([
   'PINOKIO_SHARE_VAR',
 ]);
 
+/**
+ * @param {string} source
+ * @param {string} line
+ */
 function appendEnvironmentLine(source, line) {
   const prefix = source.length > 0 && !source.endsWith('\n') ? '\n' : '';
   return `${source}${prefix}${line}\n`;
 }
 
+/** @param {Buffer} buffer */
 function detectEnvironmentEncoding(buffer) {
   if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe)
     return 'utf-16le';
@@ -64,6 +70,7 @@ function detectEnvironmentEncoding(buffer) {
   return 'utf-8';
 }
 
+/** @param {string} filepath */
 export function readEnvironmentSource(filepath) {
   if (!existsSync(filepath)) return '';
   const buffer = readFileSync(filepath);

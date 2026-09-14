@@ -80,10 +80,17 @@ const DEV_FRESH_EXTERNAL_KEYS_AT_BOOT = new Set(
  * and a guest must be able to neither write the host's .env nor probe which
  * keys exist. Prod builds never register this middleware (apply: 'serve'), so
  * the panel's status fetch fails and the client removes the whole surface.
+ *
+ * @returns {import('vite').Plugin}
  */
 export function keySetupEndpoint() {
   // A Provider Settings request carries a few keys; anything larger is refused.
   const KEY_SETUP_MAX_BODY_BYTES = 8 * 1024;
+  /**
+   * @param {import('node:http').ServerResponse} res
+   * @param {number} statusCode
+   * @param {Record<string, unknown>} payload
+   */
   const respond = (res, statusCode, payload) => {
     res.statusCode = statusCode;
     res.setHeader('Content-Type', 'application/json');
@@ -148,12 +155,15 @@ export function keySetupEndpoint() {
   };
   // The gate itself is pure and unit-tested (admitKeySetupRequest in
   // server/keySetupCore.mjs) — this just feeds it the request.
+  /** @param {import('vite').Connect.IncomingMessage} req */
   const admit = (req) =>
     admitKeySetupRequest({
       method: req.method,
       remoteAddress: req.socket?.remoteAddress,
       hostHeader: req.headers?.host,
-      protocol: req.socket?.encrypted ? 'https:' : 'http:',
+      protocol: /** @type {{encrypted?: boolean}} */ (req.socket)?.encrypted
+        ? 'https:'
+        : 'http:',
       origin: req.headers?.origin,
       contentType: req.headers?.['content-type'],
       proxyHeaders: req.headers || {},
@@ -162,6 +172,10 @@ export function keySetupEndpoint() {
   // Is this env var supplied by a workflow OTHER than this panel's store? Boot
   // provenance closes the equal-value ambiguity: an exported X remains
   // external even when the editable store independently contains X.
+  /**
+   * @param {string} name
+   * @param {Record<string, string | undefined>} inStore The store's values.
+   */
   const isExternallyManaged = (name, inStore) => {
     const wasExternalAtBoot = pinokioManaged()
       ? false
@@ -193,6 +207,7 @@ export function keySetupEndpoint() {
   // with the exclusive flag, fsync, rename over the target. Closes the window
   // where writeFileSync leaves a 0644 file holding a real key before any later
   // chmod, and the truncate-in-place data-loss path.
+  /** @param {string} text */
   const persistStore = (text) => {
     const filepath = storePath();
     // Never write THROUGH a symlink into a credential path.

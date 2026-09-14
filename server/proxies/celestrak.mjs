@@ -14,8 +14,6 @@ import { readResponseTextCapped } from '../lib/upstreamBody.mjs';
  * CelesTrak does not send CORS headers, so this middleware fetches
  * satellite TLE data server-side and forwards it to the browser.
  * Upstream URL: https://celestrak.org/NORAD/elements/gp.php
- *
- * @returns {import('vite').Plugin}
  */
 /**
  * CelesTrak GP/TLE proxy with a memory + disk cache.
@@ -25,6 +23,8 @@ import { readResponseTextCapped } from '../lib/upstreamBody.mjs';
  * 6 h; on upstream failure the freshest stale copy is served (a stale TLE
  * beats an empty satellites layer). Pattern mirrors openSkyProxy's
  * cache+serve-stale. Adapted from skylight's TleStore (MIT).
+ *
+ * @returns {import('vite').Plugin}
  */
 export function celestrakProxy() {
   const TLE_TTL_MS = 6 * 3600_000;
@@ -32,8 +32,10 @@ export function celestrakProxy() {
   const mem = new Map(); // group -> { at: epochMs, body: string }
   const inflight = new Map(); // group -> Promise<{at, body}|null>
 
+  /** @param {string} group */
   const diskPath = (group) => path.join(CACHE_DIR, `celestrak-${group}.json`);
 
+  /** @param {string} group */
   async function readDisk(group) {
     try {
       const parsed = JSON.parse(await fsp.readFile(diskPath(group), 'utf8'));
@@ -45,6 +47,10 @@ export function celestrakProxy() {
     return null;
   }
 
+  /**
+   * @param {string} group
+   * @param {{at: number, body: string}} entry
+   */
   async function writeDisk(group, entry) {
     try {
       await fsp.mkdir(CACHE_DIR, { recursive: true });
@@ -54,6 +60,7 @@ export function celestrakProxy() {
     }
   }
 
+  /** @param {string} group */
   async function fetchUpstream(group) {
     const url = new URL('https://celestrak.org/NORAD/elements/gp.php');
     url.searchParams.set('GROUP', group);
@@ -85,6 +92,11 @@ export function celestrakProxy() {
           res.end('invalid group');
           return;
         }
+        /**
+         * @param {number} status
+         * @param {string} body
+         * @param {string} cacheStatus
+         */
         const send = (status, body, cacheStatus) => {
           // Guard against a double-send (e.g. a throw AFTER a response already
           // went out routing into the catch's send): writeHead after headersSent

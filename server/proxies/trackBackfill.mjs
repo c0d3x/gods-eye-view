@@ -17,6 +17,8 @@ import { getOpenSkyToken } from './opensky.mjs';
  *   (undocumented but live; no browser CORS, hence this proxy). Up to ~24h
  *   of real history per aircraft. Treat as best-effort; data is ODbL —
  *   credit "adsb.lol (ODbL)" in the UI.
+ *
+ * @returns {import('vite').Plugin}
  */
 export function trackBackfillProxies() {
   const TRACK_CACHE_MS = 60000;
@@ -25,6 +27,10 @@ export function trackBackfillProxies() {
   /** @type {Map<string, {at:number,status:number,body:string}>} */
   const cache = new Map();
 
+  /**
+   * @param {string} key
+   * @param {{at:number,status:number,body:string}} entry
+   */
   function cachePut(key, entry) {
     cache.set(key, entry);
     if (cache.size > TRACK_CACHE_MAX) {
@@ -33,6 +39,12 @@ export function trackBackfillProxies() {
     }
   }
 
+  /**
+   * @param {import('node:http').ServerResponse} res
+   * @param {string} key
+   * @param {string} upstreamUrl
+   * @param {Record<string, string>} [headers]
+   */
   async function proxyJson(res, key, upstreamUrl, headers = {}) {
     const cached = cache.get(key);
     if (cached && Date.now() - cached.at < TRACK_CACHE_MS) {
@@ -66,6 +78,7 @@ export function trackBackfillProxies() {
     res.end(body);
   }
 
+  /** @param {import('vite').Connect.Server} middlewares */
   function install(middlewares) {
     middlewares.use('/api/opensky-track', async (req, res) => {
       try {

@@ -242,6 +242,7 @@ function buildOpenSkyHeaders({
   staleSeconds,
   retryAfterSeconds,
 }) {
+  /** @type {Record<string, string>} */
   const headers = {
     'Content-Type': 'application/json',
     'Cache-Control': 'no-store',
@@ -262,6 +263,7 @@ function buildOpenSkyHeaders({
   return headers;
 }
 
+/** @param {{url?: string}} req */
 export function adsbLolFallbackAnchor(req) {
   const incoming = new URL(req?.url || '', 'http://localhost');
   const latitude = requiredFiniteQueryNumber(incoming.searchParams, 'lat');
@@ -271,6 +273,7 @@ export function adsbLolFallbackAnchor(req) {
   return { latitude, longitude };
 }
 
+/** @param {import('vite').Connect.IncomingMessage} req */
 async function fetchAdsbLolPointFallback(req) {
   const anchor = adsbLolFallbackAnchor(req);
   if (!anchor) return null;
@@ -333,6 +336,12 @@ async function fetchAdsbLolPointFallback(req) {
   }
 }
 
+/**
+ * @param {import('vite').Connect.IncomingMessage} req
+ * @param {import('node:http').ServerResponse} res
+ * @param {string} requestedMode
+ * @param {string} reason
+ */
 async function serveAdsbLolPointFallback(req, res, requestedMode, reason) {
   const fallback = await fetchAdsbLolPointFallback(req);
   if (!fallback) return false;
@@ -351,6 +360,7 @@ async function serveAdsbLolPointFallback(req, res, requestedMode, reason) {
   return true;
 }
 
+/** @param {string} body */
 function openSkySourceEpochMs(body) {
   try {
     const seconds = Number(JSON.parse(body)?.time);
@@ -360,16 +370,22 @@ function openSkySourceEpochMs(body) {
   }
 }
 
+/**
+ * @param {number|null} sourceEpochMs
+ * @param {number} [now]
+ */
 function openSkySourceIsStale(sourceEpochMs, now = Date.now()) {
   return (
     Number.isFinite(sourceEpochMs) &&
-    now - sourceEpochMs > OPENSKY_SOURCE_STALE_MS
+    now - /** @type {number} */ (sourceEpochMs) > OPENSKY_SOURCE_STALE_MS
   );
 }
 
 /**
  * A numeric response header, or NaN when it is absent or blank. Number(null)
  * is 0, which would read a missing header as zero credits or a zero wait.
+ * @param {Headers} headers
+ * @param {string} name
  */
 function numericHeader(headers, name) {
   const value = headers.get(name);
@@ -477,6 +493,7 @@ export function openSkyProxy() {
             return;
           }
 
+          /** @type {Record<string, string>} */
           const headers = { Accept: 'application/json' };
           let usedMode = 'anon';
           let reason = 'forced_anonymous';

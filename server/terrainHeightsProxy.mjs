@@ -29,6 +29,7 @@ export function parseTerrainPoints(raw) {
     .map((part) => part.trim())
     .filter(Boolean);
   if (pairs.length === 0) return null;
+  /** @type {Array<[number, number]>} */
   const points = [];
   for (const pair of pairs) {
     const parts = pair.split(',');
@@ -55,7 +56,11 @@ function canonicalTerrainPoint(point) {
   return { key, point: key.split(',').map(Number) };
 }
 
-/** Only a real numeric ellipsoid height is cacheable/servable. */
+/**
+ * Only a real numeric ellipsoid height is cacheable/servable.
+ * @param {any} result One upstream terrain result as parsed from JSON, or
+ *   null/undefined for a missing one; unvalidated.
+ */
 export function validTerrainResult(result) {
   return Boolean(result) && Number.isFinite(result.ellipsoid);
 }

@@ -76,6 +76,10 @@ export function quantizeMilitaryInstallationBox(
 ) {
   // Round the ratio first: 29.9999/0.05 lands a hair under an exact grid line
   // in binary floating point, which would otherwise snap a whole cell too far.
+  /**
+   * @param {number} value
+   * @param {number} grow
+   */
   const snap = (value, grow) => {
     const cells = Number((value / stepDeg).toFixed(9));
     return Number(
@@ -127,7 +131,7 @@ export function militaryInstallationCacheKey(box, decimals = 3) {
  * @param {object} options
  * @param {string} options.cacheKey
  * @param {Map<string, MilitaryInstallationEntry>} options.memoryCache
- * @param {Map<string, Promise>} options.inFlight
+ * @param {Map<string, Promise<unknown>>} options.inFlight
  * @param {() => Promise<?MilitaryInstallationEntry>} options.readDisk
  * @param {number} [options.now]
  * @param {number} [options.cacheMs]
@@ -178,7 +182,12 @@ export function migrateMilitaryInstallationEntry(entry) {
   };
 }
 
-/** Whether a stored installation entry is still inside its TTL. */
+/**
+ * Whether a stored installation entry is still inside its TTL.
+ * @param {any} entry Parsed disk-cache JSON, not yet validated.
+ * @param {number} [maxAgeMs]
+ * @param {number} [now]
+ */
 export function militaryInstallationDiskFresh(
   entry,
   maxAgeMs = MILITARY_INSTALLATION_DISK_TTL_MS,
@@ -193,7 +202,11 @@ export function militaryInstallationDiskFresh(
   return now - entry.cachedAt <= maxAgeMs;
 }
 
-/** Cache key -> stable disk-cache file path. */
+/**
+ * Cache key -> stable disk-cache file path.
+ * @param {string} cacheKey
+ * @param {string} [dir]
+ */
 export function militaryInstallationDiskPath(
   cacheKey,
   dir = MILITARY_INSTALLATION_DISK_DIR,
@@ -207,7 +220,10 @@ export function militaryInstallationDiskPath(
 /**
  * Read a disk-cached installation entry. maxAgeMs Infinity = any age (the
  * serve-stale path when Overpass is down).
- * @returns {Promise<?{payload: object, cachedAt: number}>}
+ * @param {string} cacheKey
+ * @param {number} maxAgeMs
+ * @param {string} [dir]
+ * @returns {Promise<?MilitaryInstallationEntry>}
  */
 export async function readMilitaryInstallationDisk(
   cacheKey,
@@ -230,6 +246,9 @@ export async function readMilitaryInstallationDisk(
  * then rename over the target. A crash or a full disk mid-write leaves the
  * PREVIOUS entry intact — an in-place overwrite would shred the last-good copy
  * and take serve-stale down with it, exactly when it is needed most.
+ * @param {string} cacheKey
+ * @param {MilitaryInstallationEntry} entry
+ * @param {string} [dir]
  * @returns {Promise<boolean>} Whether the entry landed.
  */
 export async function writeMilitaryInstallationDisk(
@@ -257,6 +276,7 @@ export async function writeMilitaryInstallationDisk(
   }
 }
 
+/** @param {URLSearchParams} params */
 export function validMilitaryInstallationBox(params) {
   const south = requiredFiniteQueryNumber(params, 'south');
   const west = requiredFiniteQueryNumber(params, 'west');
@@ -285,7 +305,10 @@ function trimMilitaryInstallationCache() {
   }
 }
 
-/** Safe, evidence-based reason for an installation upstream failure. */
+/**
+ * Safe, evidence-based reason for an installation upstream failure.
+ * @param {any} error Whatever the refresh threw.
+ */
 export function militaryInstallationFailureReason(error) {
   if (
     ['rate_limited', 'timeout', 'query_failed'].includes(
@@ -298,7 +321,12 @@ export function militaryInstallationFailureReason(error) {
     : 'unavailable';
 }
 
+/** @returns {import('vite').Plugin} */
 export function militaryInstallationsProxy() {
+  /**
+   * @param {{south:number, west:number, north:number, east:number}} box
+   * @param {string} key
+   */
   async function refresh(box, key) {
     const bbox = `${box.south},${box.west},${box.north},${box.east}`;
     const ql = `[out:json][timeout:20];(nwr["military"~"^(airfield|naval_base|range|barracks|base)$"](${bbox});nwr["landuse"="military"](${bbox}););out center tags geom ${MILITARY_INSTALLATION_ELEMENT_CAP};`;
@@ -345,6 +373,7 @@ export function militaryInstallationsProxy() {
     return payload;
   }
 
+  /** @param {import('vite').Connect.Server} middlewares */
   function install(middlewares) {
     middlewares.use('/api/military-installations', async (req, res) => {
       if (req.method !== 'GET') {
@@ -360,7 +389,7 @@ export function militaryInstallationsProxy() {
         res.end(JSON.stringify({ error: 'Rate limit exceeded' }));
         return;
       }
-      const url = new URL(req.url, 'http://localhost');
+      const url = new URL(req.url || '', 'http://localhost');
       const requested = validMilitaryInstallationBox(url.searchParams);
       if (!requested) {
         res.writeHead(400, { 'Content-Type': 'application/json' });

@@ -2,16 +2,19 @@ const KNOT_TO_MPS = 0.514444;
 const FOOT_TO_M = 0.3048;
 const FPM_TO_MPS = 0.00508;
 
+/** @param {unknown} value */
 function finiteNumber(value) {
   if (value === null || value === undefined || value === '') return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
 
+/** @param {unknown} value */
 function emitterCategory(value) {
   const category = String(value || '')
     .trim()
     .toUpperCase();
+  /** @type {Record<string, number>} */
   const categories = {
     A1: 2,
     A2: 3,
@@ -31,11 +34,22 @@ function emitterCategory(value) {
 }
 
 /**
+ * One OpenSky state vector, in the OpenSky REST API's field order.
+ * @typedef {[icao24: string, callsign: string|null, originCountry: null,
+ *   timePosition: number, lastContact: number, longitude: number,
+ *   latitude: number, baroAltitude: number|null, onGround: boolean,
+ *   velocity: number|null, trueTrack: number|null, verticalRate: number|null,
+ *   sensors: null, geoAltitude: number|null, squawk: string|null,
+ *   spi: boolean, positionSource: number, category: number]} OpenSkyStateVector
+ */
+
+/**
  * Convert one adsb.lol v2 aircraft record into the OpenSky state-vector shape
  * consumed by the existing Flights renderer.
  * @param {Record<string, any>} aircraft adsb.lol aircraft record.
  * @param {number} nowSeconds Feed response time in epoch seconds.
- * @returns {Array|null} OpenSky-compatible state vector, or null when invalid.
+ * @returns {OpenSkyStateVector|null} OpenSky-compatible state vector, or null
+ *   when invalid.
  */
 export function normalizeAdsbLolAircraftState(aircraft, nowSeconds) {
   const hex = String(aircraft?.hex || '')
@@ -84,7 +98,7 @@ export function normalizeAdsbLolAircraftState(aircraft, nowSeconds) {
  * Normalize an adsb.lol point response to an OpenSky-compatible response.
  * Invalid rows and positionless contacts are intentionally excluded.
  * @param {Record<string, any>} payload adsb.lol v2 response.
- * @returns {{time:number,states:Array[]}}
+ * @returns {{time:number,states:OpenSkyStateVector[]}}
  */
 export function normalizeAdsbLolPointResponse(payload) {
   const responseNow = finiteNumber(payload?.now);

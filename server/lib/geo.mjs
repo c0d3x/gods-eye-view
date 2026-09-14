@@ -8,6 +8,7 @@
  * @returns {number} Distance in kilometers.
  */
 export function haversineKm(lat1, lon1, lat2, lon2) {
+  /** @param {number} value */
   const toRad = (value) => (value * Math.PI) / 180;
   const dLat = toRad(lat2 - lat1);
   const dLon = toRad(lon2 - lon1);

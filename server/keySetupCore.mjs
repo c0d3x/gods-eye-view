@@ -31,7 +31,11 @@ const LOCAL_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 /** Socket addresses that count as this machine. */
 const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 
-/** Parse an exact local request authority from a Host header. */
+/**
+ * Parse an exact local request authority from a Host header.
+ * @param {unknown} hostHeader
+ * @param {unknown} protocol
+ */
 function localAuthority(hostHeader, protocol) {
   const raw = String(hostHeader || '')
     .trim()
@@ -49,12 +53,19 @@ function localAuthority(hostHeader, protocol) {
   }
 }
 
-/** True only for a subprocess that exited normally and successfully. */
+/**
+ * True only for a subprocess that exited normally and successfully.
+ * @param {Pick<import('node:child_process').SpawnSyncReturns<unknown>,
+ *   'error' | 'signal' | 'status'> | null} result A spawnSync() result.
+ */
 export function commandCompletedSuccessfully(result) {
   return !!result && !result.error && !result.signal && result.status === 0;
 }
 
-/** Parse one RFC-4180-shaped CSV record, sufficient for `whoami /fo csv`. */
+/**
+ * Parse one RFC-4180-shaped CSV record, sufficient for `whoami /fo csv`.
+ * @param {unknown} text
+ */
 function parseCsvRecord(text) {
   const source = String(text || '')
     .replace(/^\uFEFF/, '')
@@ -92,6 +103,7 @@ function parseCsvRecord(text) {
  * Extract the current token's user SID from `whoami /user /fo csv /nh`.
  * The SID must be the second CSV field and a user-shaped local/domain or Entra
  * SID; matching an SID-looking account name or a broad group SID is forbidden.
+ * @param {string} stdout
  */
 export function parseWindowsUserSid(stdout) {
   const fields = parseCsvRecord(stdout);

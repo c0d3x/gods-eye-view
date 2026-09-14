@@ -37,6 +37,11 @@ const AISSTREAM_STALE_MS = 30 * 60 * 1000;
 const AIS_TRACK_SAMPLES = 64;
 const AIS_TRACK_MIN_GAP_SEC = 30;
 const AIS_TRACK_MIN_MOVE_M = 25;
+/**
+ * One vessel's track ring buffer: `len` samples, the next written at `head`.
+ * @typedef {{lats: Float32Array, lons: Float32Array, times: Uint32Array,
+ *   head: number, len: number}} AisTrack
+ */
 // Watchdog budgets (policy lives in server/ais/watchdog.mjs). Silence is
 // REPORTED quickly and ACTED ON slowly: a dead feed must read as dead within
 // ~2 min, but recycling the socket is throttled so recovery can never become a
@@ -123,7 +128,7 @@ export function createAisRelay({
   const _aisStreamVessels = new Map();
   /** @type {Map<string, Record<string, any>>} */
   const _aisStreamStatic = new Map();
-  /** @type {Map<string,{lats:Float32Array,lons:Float32Array,times:Uint32Array,head:number,len:number}>} mmsi -> track ring buffer */
+  /** @type {Map<string, AisTrack>} mmsi -> track ring buffer */
   const _aisStreamTracks = new Map();
   /** @type {Map<string,{lat:number,lon:number,epochSec:number}>} mmsi -> first fix awaiting second (lazy buffer allocation) */
   const _aisStreamTrackPending = new Map();
@@ -345,7 +350,7 @@ export function createAisRelay({
    * envelopes never reach here — the adapter classifies those — and a JSON
    * object without an MMSI proves nothing about the feed.
    *
-   * @param {Object} envelope Parsed, non-error AIS envelope.
+   * @param {Record<string, any>} envelope Parsed, non-error AIS envelope.
    * @returns {boolean} True when an AIS record was recognised.
    */
   function ingestAisStreamEnvelope(envelope) {
@@ -384,7 +389,13 @@ export function createAisRelay({
     );
     // A positionless but well-formed record (static data) is still the feed
     // delivering AIS traffic, so it counts as liveness.
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return true;
+    if (
+      lat === null ||
+      lon === null ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lon)
+    )
+      return true;
 
     const staticData = _aisStreamStatic.get(mmsi) || {};
     _aisStreamVessels.set(mmsi, {
@@ -426,6 +437,10 @@ export function createAisRelay({
    * samples are kept only when >=AIS_TRACK_MIN_GAP_SEC and
    * >=AIS_TRACK_MIN_MOVE_M from the previous stored sample, so anchored
    * vessels collapse to a single point.
+   * @param {string} mmsi
+   * @param {number} lat
+   * @param {number} lon
+   * @param {number} epochSec
    */
   function appendAisTrackSample(mmsi, lat, lon, epochSec) {
     let track = _aisStreamTracks.get(mmsi);
@@ -468,6 +483,7 @@ export function createAisRelay({
 
   /**
    * Reads a vessel's accumulated track in chronological order.
+   * @param {string} mmsi
    * @returns {Array<{lat:number,lon:number,t:number}>}
    */
   function readAisTrack(mmsi) {
@@ -487,6 +503,11 @@ export function createAisRelay({
     return samples;
   }
 
+  /**
+   * @param {string} mmsi
+   * @param {{name: string, type: string, destination: string,
+   *   imo: string}} staticData
+   */
   function mergeAisStaticIntoLiveVessel(mmsi, staticData) {
     const existing = _aisStreamVessels.get(mmsi);
     if (!existing) return;
@@ -498,6 +519,7 @@ export function createAisRelay({
     if (staticData.imo && !existing.imo) existing.imo = staticData.imo;
   }
 
+  /** @param {number} maxRows */
   function aisStreamRows(maxRows) {
     const cutoff = now() - AISSTREAM_STALE_MS;
     const rows = [];
@@ -566,8 +588,10 @@ const sharedRelay = createAisRelay();
  * @param {object} [options]
  * @param {ReturnType<typeof createAisRelay>} [options.relay] The shared relay
  *   by default.
+ * @returns {import('vite').Plugin}
  */
 export function aisLiveProxy({ relay = sharedRelay } = {}) {
+  /** @param {import('vite').Connect.Server} middlewares */
   function install(middlewares) {
     middlewares.use('/api/ais-live', async (req, res) => {
       try {
@@ -678,6 +702,7 @@ export function aisKeyFingerprint() {
 
 /**
  * Parses an AISStream UTC timestamp into epoch seconds (fallback: now).
+ * @param {unknown} value
  */
 function aisEpochSeconds(value) {
   const ms = Date.parse(normalizeAisTimestamp(value));
@@ -686,6 +711,12 @@ function aisEpochSeconds(value) {
     : Math.floor(Date.now() / 1000);
 }
 
+/**
+ * @param {AisTrack} track
+ * @param {number} lat
+ * @param {number} lon
+ * @param {number} epochSec
+ */
 function writeAisTrackSample(track, lat, lon, epochSec) {
   track.lats[track.head] = lat;
   track.lons[track.head] = lon;
@@ -694,7 +725,13 @@ function writeAisTrackSample(track, lat, lon, epochSec) {
   track.len = Math.min(track.len + 1, AIS_TRACK_SAMPLES);
 }
 
-/** Equirectangular distance approximation — plenty for 25m thinning. */
+/**
+ * Equirectangular distance approximation — plenty for 25m thinning.
+ * @param {number} lat1
+ * @param {number} lon1
+ * @param {number} lat2
+ * @param {number} lon2
+ */
 function approxMetersBetween(lat1, lon1, lat2, lon2) {
   const dLat = (lat2 - lat1) * 111320;
   const dLon =
@@ -702,6 +739,11 @@ function approxMetersBetween(lat1, lon1, lat2, lon2) {
   return Math.hypot(dLat, dLon);
 }
 
+/**
+ * @param {Record<string, any>} metadata The envelope's MetaData block.
+ * @param {Record<string, any>} message The message body.
+ * @param {Record<string, any>} [staticData] Cached static fields.
+ */
 function vesselNameFromAis(metadata, message, staticData = {}) {
   return stringValue(
     metadata.ShipName ??
@@ -712,6 +754,10 @@ function vesselNameFromAis(metadata, message, staticData = {}) {
   );
 }
 
+/**
+ * @param {Record<string, any>} message The message body.
+ * @param {Record<string, any>} [staticData] Cached static fields.
+ */
 function vesselTypeFromAis(message, staticData = {}) {
   return stringValue(
     message.Type ??
@@ -721,10 +767,17 @@ function vesselTypeFromAis(message, staticData = {}) {
   );
 }
 
+/** @param {Array<Record<string, any>>} rows Newest first. */
 function newestAisPositionAt(rows) {
   return rows[0]?.last_position_UTC || null;
 }
 
+/**
+ * @param {Record<string, string|undefined>} env
+ * @param {string} key
+ * @param {unknown} fallback
+ * @param {(message: string) => void} warn
+ */
 function parseJsonEnv(env, key, fallback, warn) {
   const value = env[key];
   if (!value) return fallback;
@@ -736,6 +789,11 @@ function parseJsonEnv(env, key, fallback, warn) {
   }
 }
 
+/**
+ * @param {Record<string, string|undefined>} env
+ * @param {string} key
+ * @param {Array<string>} fallback
+ */
 function parseCsvOrJsonEnv(env, key, fallback) {
   const value = env[key];
   if (!value) return fallback;
@@ -750,28 +808,38 @@ function parseCsvOrJsonEnv(env, key, fallback) {
   }
 }
 
+/**
+ * @param {unknown} value
+ * @param {number} min
+ * @param {number} max
+ * @param {number} fallback
+ */
 function clampInt(value, min, max, fallback) {
-  const number = Number.parseInt(value, 10);
+  const number = Number.parseInt(String(value), 10);
   if (!Number.isFinite(number)) return fallback;
   return Math.max(min, Math.min(max, number));
 }
 
+/** @param {unknown} value */
 function stringValue(value) {
   if (value === undefined || value === null) return '';
   return String(value).trim();
 }
 
+/** @param {unknown} value */
 function numberValue(value) {
   if (value === null || value === undefined || value === '') return null;
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
 }
 
+/** @param {unknown} value */
 function normalizedHeading(value) {
   const heading = numberValue(value);
   return heading !== null && heading >= 0 && heading <= 360 ? heading : null;
 }
 
+/** @param {unknown} value */
 function normalizeAisTimestamp(value) {
   const text = stringValue(value);
   if (!text) return new Date().toISOString();

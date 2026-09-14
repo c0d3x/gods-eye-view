@@ -17,6 +17,8 @@ function responseTooLarge() {
  * Read a fetch() Response body as text with a hard byte cap. Rejects early on an
  * oversized Content-Length, then streams with a running cap so a chunked or
  * length-omitted response cannot blow past the limit. Throws { code:'RESPONSE_TOO_LARGE' }.
+ * @param {Response} response
+ * @param {number} maxBytes
  */
 export async function readResponseTextCapped(response, maxBytes) {
   const declared = Number(response.headers.get('content-length'));
@@ -60,6 +62,8 @@ export async function readResponseTextCapped(response, maxBytes) {
 /**
  * readResponseTextCapped for a caller that answers an oversized body itself:
  * resolves { tooLarge, text } instead of throwing RESPONSE_TOO_LARGE.
+ * @param {Response} response
+ * @param {number} maxBytes
  */
 export async function readResponseTextWithin(response, maxBytes) {
   try {
@@ -73,12 +77,19 @@ export async function readResponseTextWithin(response, maxBytes) {
   }
 }
 
-/** Parse a fetch() JSON response only after enforcing a hard byte cap. */
+/**
+ * Parse a fetch() JSON response only after enforcing a hard byte cap.
+ * @param {Response} response
+ * @param {number} maxBytes
+ */
 export async function readResponseJsonCapped(response, maxBytes) {
   return JSON.parse(await readResponseTextCapped(response, maxBytes));
 }
 
-/** Parse text as a JSON object; anything else reads as an empty object. */
+/**
+ * Parse text as a JSON object; anything else reads as an empty object.
+ * @param {string} text
+ */
 export function parseJsonObject(text) {
   try {
     const value = JSON.parse(text);
@@ -91,6 +102,8 @@ export function parseJsonObject(text) {
 /**
  * Read a fetch() Response body as bytes with a hard cap, the way
  * readResponseTextCapped reads text. Throws { code:'RESPONSE_TOO_LARGE' }.
+ * @param {Response} response
+ * @param {number} maxBytes
  */
 export async function readResponseBytesCapped(response, maxBytes) {
   const declared = Number(response.headers.get('content-length'));

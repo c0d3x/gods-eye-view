@@ -61,7 +61,9 @@ export function createRateLimiter({
   globalMax,
   now = Date.now,
 }) {
+  /** @type {Map<string, number[]>} */
   const hits = new Map(); // key -> timestamps within the window
+  /** @type {number[]} */
   let globalTimes = []; // every hit within the window, for the global backstop
   return function allow(key) {
     const time = now();

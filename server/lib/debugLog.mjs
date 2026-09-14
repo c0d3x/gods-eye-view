@@ -16,6 +16,10 @@ export function isDebugLogEnabled(value) {
   return /^(?:1|true|on|yes)$/i.test(String(value ?? '').trim());
 }
 
+/**
+ * @param {string} target
+ * @param {number} mode
+ */
 function tighten(target, mode) {
   try {
     fs.chmodSync(target, mode);

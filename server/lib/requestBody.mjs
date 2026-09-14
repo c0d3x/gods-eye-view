@@ -17,8 +17,10 @@ export function readBodyWithin(req, maxBytes) {
     return Promise.resolve({ ok: false, tooLarge: true });
   }
   return new Promise((resolve, reject) => {
+    /** @type {Buffer[]} */
     const chunks = [];
     let total = 0;
+    /** @param {Buffer} chunk */
     const onData = (chunk) => {
       total += chunk.length;
       if (total > maxBytes) {

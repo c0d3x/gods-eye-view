@@ -13,6 +13,14 @@ import {
 } from '../lib/upstreamBody.mjs';
 
 /**
+ * One cached FIRMS pull: when it ran, how each source fared, and the fires.
+ * @typedef {object} FirmsEntry
+ * @property {number} at
+ * @property {Array<{source: string, count: number, ok: boolean}>} sources
+ * @property {NonNullable<ReturnType<typeof parseFirmsCsv>>} fires
+ */
+
+/**
  * NASA FIRMS live active-fire proxy with a memory + disk cache.
  * Upstream: https://firms.modaps.eosdis.nasa.gov/api/area/csv/{KEY}/{SOURCE}/world/2
  *
@@ -41,10 +49,10 @@ export function firmsProxy() {
   const CACHE_DIR = path.join(process.cwd(), '.gev-cache');
   const CACHE_PATH = path.join(CACHE_DIR, 'firms.json');
 
-  /** @type {?{at: number, sources: Array<object>, fires: Array<object>}} */
+  /** @type {?FirmsEntry} */
   let mem = null;
   let diskChecked = false;
-  /** @type {?Promise<?{at: number, sources: Array<object>, fires: Array<object>}>} single-flight refresh */
+  /** @type {?Promise<?FirmsEntry>} single-flight refresh */
   let inflight = null;
   /** @type {?{at: number, transactions: ?{used: number, limit: number}}} mapkey_status cache */
   let statusCache = null;
@@ -70,6 +78,7 @@ export function firmsProxy() {
     }
   }
 
+  /** @param {FirmsEntry} entry */
   async function writeDisk(entry) {
     try {
       await fsp.mkdir(CACHE_DIR, { recursive: true });
@@ -83,6 +92,8 @@ export function firmsProxy() {
    * Fetch + parse one FIRMS source. Throws on HTTP error or a non-CSV body
    * (FIRMS reports errors as HTML/plain text, never CSV). Never log the URL —
    * it embeds the MAP_KEY.
+   * @param {string} key
+   * @param {string} source
    */
   async function fetchSource(key, source) {
     const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(key)}/${source}/world/2`;
@@ -101,6 +112,7 @@ export function firmsProxy() {
    * Partial success (≥1 source ok) still produces a cacheable entry with the
    * failed sources marked ok:false; total failure throws so the caller can
    * serve stale.
+   * @param {string} key
    */
   async function refreshUpstream(key) {
     const now = Date.now();
@@ -129,6 +141,8 @@ export function firmsProxy() {
   /**
    * Cache entry → response payload. Fires are RE-filtered to the trailing
    * 24 h at serve time so a stale cache never serves >24h-old detections.
+   * @param {FirmsEntry} entry
+   * @param {boolean} stale
    */
   function buildPayload(entry, stale) {
     const fires = filterTrailing24h(entry.fires, Date.now());
@@ -142,7 +156,10 @@ export function firmsProxy() {
     };
   }
 
-  /** mapkey_status transactions, cached 5 min, best-effort (null on failure). */
+  /**
+   * mapkey_status transactions, cached 5 min, best-effort (null on failure).
+   * @param {string} key
+   */
   function getTransactions(key) {
     const now = Date.now();
     if (statusCache && now - statusCache.at < STATUS_TTL_MS) {
@@ -183,6 +200,10 @@ export function firmsProxy() {
     name: 'firms-proxy',
     configureServer(server) {
       server.middlewares.use('/api/firms', async (req, res) => {
+        /**
+         * @param {number} status
+         * @param {unknown} obj
+         */
         const sendJson = (status, obj) =>
           writeJson(res, status, obj, { 'Cache-Control': 'no-store' });
         try {

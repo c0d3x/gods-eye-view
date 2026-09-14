@@ -93,6 +93,10 @@ export function isPublicAddress(value) {
     (total, group) => (total << 16n) | BigInt(`0x${group}`),
     0n,
   );
+  /**
+   * @param {string} text
+   * @param {number} prefix
+   */
   const cidr = (text, prefix) => {
     const base = text
       .split(':')

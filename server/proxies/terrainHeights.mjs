@@ -28,6 +28,8 @@ export const TERRAIN_CACHE_MAX_POINTS = 20_000;
  * 5dp point, so reordered and partially overlapping batches reuse prior work.
  * Only missing/stale points go upstream; the response is rebuilt in exact
  * request order. Oversized requests (>256 points) are chunked sequentially.
+ *
+ * @returns {import('vite').Plugin}
  */
 export function terrainHeightsProxy({
   cacheDir = path.join(process.cwd(), '.gev-cache'),
@@ -136,7 +138,10 @@ export function terrainHeightsProxy({
     return results;
   }
 
-  /** Coalesce concurrent requests for the same canonical missing-point list. */
+  /**
+   * Coalesce concurrent requests for the same canonical missing-point list.
+   * @param {Array<[number, number]>} points
+   */
   function fetchMissingSingleFlight(points) {
     const key = points.map(terrainPointKey).join(';');
     if (!inflight.has(key)) {
@@ -153,6 +158,10 @@ export function terrainHeightsProxy({
     name: 'terrain-heights-proxy',
     configureServer(server) {
       server.middlewares.use('/api/terrain/heights', async (req, res) => {
+        /**
+         * @param {number} status
+         * @param {unknown} bodyObj
+         */
         const send = (status, bodyObj) => writeJson(res, status, bodyObj);
         try {
           await loadDiskOnce();

@@ -114,14 +114,20 @@ export function knownKeySetupEnvVars() {
   return names;
 }
 
-/** Tooltip guidance for a control gated by one registry entry. */
+/**
+ * Tooltip guidance for a control gated by one registry entry.
+ * @param {string} id
+ */
 export function keySetupRequirement(id) {
   const entry = KEY_SETUP_KEYS.find((candidate) => candidate.id === id);
   if (!entry) return '';
   return `Needs ${entry.envVars.join(' + ')} — add it in Provider Settings`;
 }
 
-/** The environment variables a key-setup entry needs, or none for an unknown id. */
+/**
+ * The environment variables a key-setup entry needs, or none for an unknown id.
+ * @param {string|undefined} id
+ */
 export function keySetupEnvVars(id) {
   return KEY_SETUP_KEYS.find((candidate) => candidate.id === id)?.envVars || [];
 }

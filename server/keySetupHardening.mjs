@@ -46,7 +46,11 @@ const WINDOWS_ACL_VERIFY_FAILURES = Object.freeze({
   9: 'a principal is missing',
 });
 
-/** A refused hardening, naming the step and why. */
+/**
+ * A refused hardening, naming the step and why.
+ * @param {string} step
+ * @param {string} detail
+ */
 function failure(step, detail) {
   return { ok: false, step, detail };
 }
@@ -54,12 +58,16 @@ function failure(step, detail) {
 /**
  * One line on a failed subprocess: its spawn error, signal or exit status,
  * what that status means when known, and the first line it printed.
+ * @param {import('node:child_process').SpawnSyncReturns<string | Buffer>} result
+ * @param {Readonly<Record<number, string>>} [meanings]
  */
 function describeCommandFailure(result, meanings = {}) {
   if (!result) return 'no result';
   if (result.error) return result.error.message;
   if (result.signal) return `killed by ${result.signal}`;
-  const meaning = meanings[result.status] ? `: ${meanings[result.status]}` : '';
+  const meaning = meanings[/** @type {number} */ (result.status)]
+    ? `: ${meanings[/** @type {number} */ (result.status)]}`
+    : '';
   const output = `${result.stderr || ''}\n${result.stdout || ''}`
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -75,12 +83,17 @@ function describeCommandFailure(result, meanings = {}) {
  * Requiring consistent aliases, canonical paths, and regular files prevents an
  * inherited environment override, UNC share, device path, junction, or PATH
  * shim from being treated as an operating-system security tool.
+ * @param {NodeJS.ProcessEnv} environment
+ * @param {typeof fs} fileSystem
+ * @param {NodeJS.Architecture} architecture
  */
 function resolveWindowsNativeTools(environment, fileSystem, architecture) {
   const aliases = ['SystemRoot', 'SYSTEMROOT', 'WINDIR', 'windir'];
-  const configured = aliases
-    .map((name) => environment[name])
-    .filter((value) => typeof value === 'string' && value.length > 0);
+  const configured = /** @type {string[]} */ (
+    aliases
+      .map((name) => environment[name])
+      .filter((value) => typeof value === 'string' && value.length > 0)
+  );
   if (configured.length === 0) return null;
 
   const roots = configured.map((value) => {
@@ -89,10 +102,16 @@ function resolveWindowsNativeTools(environment, fileSystem, architecture) {
     return value.endsWith('\\') ? value.slice(0, -1) : value;
   });
   if (roots.some((root) => !root)) return null;
-  if (roots.some((root) => root.toLowerCase() !== roots[0].toLowerCase()))
+  if (
+    roots.some(
+      (root) =>
+        /** @type {string} */ (root).toLowerCase() !==
+        /** @type {string} */ (roots[0]).toLowerCase(),
+    )
+  )
     return null;
 
-  const systemRoot = roots[0];
+  const systemRoot = /** @type {string} */ (roots[0]);
   const systemDirectory = architecture === 'ia32' ? 'Sysnative' : 'System32';
   const expected = {
     whoami: path.win32.join(systemRoot, systemDirectory, 'whoami.exe'),
@@ -143,6 +162,7 @@ function resolveWindowsNativeTools(environment, fileSystem, architecture) {
  * Restrict a credential file before any secret is written to it, and say
  * which step failed when that isn't possible. Dependencies are injectable so
  * every fail-closed branch is unit-testable.
+ * @param {string} filepath
  * @returns {{ ok: true } | { ok: false, step: string, detail: string }}
  */
 export function hardenCredentialFileReport(
@@ -229,6 +249,7 @@ export function hardenCredentialFileReport(
     // disabled. Any unexpected rule, right, command error, or missing principal
     // fails closed before the secret reaches disk.
     step = 'verify';
+    /** @type {NodeJS.ProcessEnv} */
     const verifyEnvironment = {
       ...environment,
       GEV_ACL_FILE: filepath,
@@ -261,7 +282,11 @@ export function hardenCredentialFileReport(
   }
 }
 
-/** Restrict a credential file before any secret is written to it. */
+/**
+ * Restrict a credential file before any secret is written to it.
+ * @param {string} filepath
+ * @param {Parameters<typeof hardenCredentialFileReport>[1]} [options]
+ */
 export function hardenCredentialFile(filepath, options) {
   return hardenCredentialFileReport(filepath, options).ok;
 }

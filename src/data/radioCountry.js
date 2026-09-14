@@ -20,6 +20,7 @@ const ENGLISH_REGION_NAMES =
     ? new Intl.DisplayNames(['en'], { type: 'region' })
     : null;
 
+/** @param {unknown} value */
 function countryKey(value) {
   return String(value || '')
     .normalize('NFKC')
@@ -80,6 +81,7 @@ for (const [name, code] of Object.entries({
 }))
   COUNTRY_NAME_TO_CODE.set(countryKey(name), code);
 
+/** @param {string} code */
 function canonicalCountryName(code) {
   return ENGLISH_REGION_NAMES?.of(code) || code;
 }
@@ -87,6 +89,7 @@ function canonicalCountryName(code) {
 /**
  * Normalize a bounded country code or English/common country name.
  * Invalid or ambiguous values fail closed instead of broadening selection.
+ * @param {unknown} value
  */
 export function normalizeRadioCountryInput(value) {
   if (value === undefined || value === null || value === '') {

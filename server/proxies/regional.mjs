@@ -47,6 +47,15 @@ const _weatherEffectsRateLimiter = createRateLimiter({
 let _nominatimQueue = Promise.resolve();
 let _nominatimLastRequestAt = 0;
 
+/**
+ * A latitude and longitude that validRegionalPoint accepted.
+ * @typedef {{latitude: number, longitude: number}} RegionalPoint
+ */
+
+/**
+ * @param {URLSearchParams} params
+ * @returns {RegionalPoint|null}
+ */
 export function validRegionalPoint(params) {
   const latitude = requiredFiniteQueryNumber(params, 'latitude');
   const longitude = requiredFiniteQueryNumber(params, 'longitude');
@@ -72,6 +81,7 @@ function trimWeatherEffectsCache() {
   }
 }
 
+/** @param {string} url */
 async function fetchRegionalJson(
   url,
   {
@@ -91,6 +101,7 @@ async function fetchRegionalJson(
   }
 }
 
+/** @param {string} url */
 async function fetchRegionalText(
   url,
   {
@@ -114,6 +125,7 @@ async function fetchRegionalText(
  * Plain text from an RSS field: unwraps CDATA, decodes entities and drops
  * tags. `&amp;` is decoded last, so text that was escaped twice is decoded
  * only once.
+ * @param {unknown} value
  */
 export function decodeRssText(value) {
   return String(value || '')
@@ -128,6 +140,10 @@ export function decodeRssText(value) {
     .trim();
 }
 
+/**
+ * @param {string} block
+ * @param {string} tag
+ */
 function rssTag(block, tag) {
   return decodeRssText(
     new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${tag}>`, 'i').exec(
@@ -136,6 +152,7 @@ function rssTag(block, tag) {
   );
 }
 
+/** @param {unknown} xml */
 function normalizeRssArticles(xml, limit = 5) {
   const seen = new Set();
   const articles = [];
@@ -171,6 +188,7 @@ function normalizeRssArticles(xml, limit = 5) {
   return articles;
 }
 
+/** @param {RegionalPoint} point */
 function fetchRegionalPlace(point) {
   const task = _nominatimQueue.then(async () => {
     const waitMs = Math.max(0, 1100 - (Date.now() - _nominatimLastRequestAt));
@@ -199,6 +217,7 @@ function fetchRegionalPlace(point) {
   return task;
 }
 
+/** @param {ReturnType<typeof normalizeRegionalPlace>} place */
 async function fetchRegionalNews(place) {
   const query = place?.locality || place?.region || place?.country;
   if (!query)
@@ -251,6 +270,7 @@ async function fetchRegionalNews(place) {
   }
 }
 
+/** @param {RegionalPoint} point */
 async function fetchRegionalWeather(point) {
   const params = new URLSearchParams({
     latitude: point.latitude.toFixed(5),
@@ -280,7 +300,12 @@ export function regionalBriefHasAnySource({ place, weather, news } = {}) {
   return Boolean(place || weather || (news && news.status !== 'unavailable'));
 }
 
+/** @returns {import('vite').Plugin} */
 export function regionalBriefProxy() {
+  /**
+   * @param {RegionalPoint} point
+   * @param {string} key
+   */
   async function refresh(point, key) {
     const [placeResult, weatherResult] = await Promise.allSettled([
       fetchRegionalPlace(point),
@@ -312,6 +337,7 @@ export function regionalBriefProxy() {
     return payload;
   }
 
+  /** @param {import('vite').Connect.Server} middlewares */
   function install(middlewares) {
     middlewares.use('/api/regional-brief', async (req, res) => {
       if (req.method !== 'GET') {
@@ -395,7 +421,12 @@ export function regionalBriefProxy() {
   };
 }
 
+/** @returns {import('vite').Plugin} */
 export function weatherEffectsProxy() {
+  /**
+   * @param {RegionalPoint} point
+   * @param {string} key
+   */
   async function refresh(point, key) {
     const weather = await fetchRegionalWeather(point);
     if (!weather) throw new Error('Weather observation unavailable');
@@ -410,6 +441,7 @@ export function weatherEffectsProxy() {
     return payload;
   }
 
+  /** @param {import('vite').Connect.Server} middlewares */
   function install(middlewares) {
     middlewares.use('/api/weather-effects', async (req, res) => {
       if (req.method !== 'GET') {

@@ -75,6 +75,7 @@ export function sanitizeDebugValue(value, depth = 0) {
   }
   if (typeof value !== 'object') return String(value);
 
+  /** @type {Record<string, unknown>} */
   const output = {};
   for (const [key, item] of Object.entries(value)) {
     // A parsed `__proto__` key would reassign the copy's prototype.

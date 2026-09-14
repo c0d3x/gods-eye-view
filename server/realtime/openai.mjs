@@ -44,6 +44,7 @@ import { GEV_REALTIME_TOOLS } from './tools.mjs';
 // process.env here at import time would miss a limit configured in .env. Building on first request
 // (like the OPENAI_API_KEY reads) sees the loaded env; the result is cached so the limiter's per-IP
 // window state persists.
+/** @type {ReturnType<typeof createCostRateLimiter> | undefined} */
 let _openAiRateLimiter; // undefined = not built yet; null = disabled; fn = active limiter
 
 /** OpenAI cost endpoints (realtime/token + hud-summary). */
@@ -85,12 +86,14 @@ export const OPENAI_TIMEOUT_MS = 20_000;
  * @param {string} [options.debugLogDirectory] Where the debug log is written.
  * @param {object[]} [options.tools] The function tools each voice session is
  *   created with; the voice tool schema by default.
+ * @returns {import('vite').Plugin}
  */
 export function openAiRealtimeProxy({
   debugLogDirectory = REALTIME_DEBUG_LOG_DIR,
   tools = GEV_REALTIME_TOOLS,
 } = {}) {
   const debugLog = createDebugLogWriter({ directory: debugLogDirectory });
+  /** @param {import('vite').Connect.Server} middlewares */
   function install(middlewares) {
     middlewares.use('/api/openai/hud-summary', async (req, res) => {
       if (req.method !== 'POST') {
@@ -201,6 +204,10 @@ export function openAiRealtimeProxy({
     });
 
     middlewares.use('/api/realtime/debug-log', async (req, res) => {
+      /**
+       * @param {number} statusCode
+       * @param {string} error
+       */
       const reply = (statusCode, error) => {
         res.statusCode = statusCode;
         res.setHeader('Content-Type', 'application/json');
@@ -475,6 +482,7 @@ export function openAiRealtimeProxy({
   };
 }
 
+/** @param {Record<string, any>} data Parsed Responses API JSON, unvalidated. */
 function extractOpenAiResponseText(data) {
   if (typeof data?.output_text === 'string' && data.output_text.trim()) {
     return data.output_text.trim();
@@ -487,6 +495,7 @@ function extractOpenAiResponseText(data) {
     .trim();
 }
 
+/** @param {unknown} value */
 function toFiveWordHudSummary(value) {
   return String(value || '')
     .replace(/[^\p{L}\p{N}\s-]/gu, ' ')

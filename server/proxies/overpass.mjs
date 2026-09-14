@@ -79,12 +79,16 @@ const _overpassInFlight = new Map();
  * and area→relation pivots) — the static, expensive geometry that earns the
  * 30-day disk TTL. The enclosing-compound sweep and road fetches keep the
  * default TTL. Exported for tests.
+ * @param {unknown} cacheKey
  */
 export function isOverpassBoundaryQuery(cacheKey) {
   return /is_in\s*\(|\bpivot\b/i.test(String(cacheKey || ''));
 }
 
-/** Disk TTL for a query: boundary geometry keeps for a month, the rest 7 days. */
+/**
+ * Disk TTL for a query: boundary geometry keeps for a month, the rest 7 days.
+ * @param {string} cacheKey
+ */
 function overpassDiskTtlMs(cacheKey) {
   return isOverpassBoundaryQuery(cacheKey)
     ? OVERPASS_BOUNDARY_DISK_TTL_MS
@@ -92,7 +96,10 @@ function overpassDiskTtlMs(cacheKey) {
 }
 
 /** Iterative Douglas-Peucker on [{lat,lon},...] (planar-degree approx — fine at
- *  the ~44 m tolerance used here). Endpoints always kept. */
+ *  the ~44 m tolerance used here). Endpoints always kept.
+ * @param {Array<{lat: number, lon: number}>} points
+ * @param {number} toleranceDeg
+ */
 function douglasPeucker(points, toleranceDeg) {
   const n = points.length;
   if (n <= 2) return points;
@@ -136,7 +143,12 @@ function douglasPeucker(points, toleranceDeg) {
   return out;
 }
 
-/** Simplify one element's geometry array in place if it is big enough. */
+/**
+ * Simplify one element's geometry array in place if it is big enough.
+ * @param {any} el One element of the parsed upstream Overpass JSON.
+ * @param {number} minPoints
+ * @param {number} toleranceDeg
+ */
 function simplifyElementGeometry(el, minPoints, toleranceDeg) {
   if (Array.isArray(el?.geometry) && el.geometry.length >= minPoints) {
     el.geometry = douglasPeucker(el.geometry, toleranceDeg);
@@ -162,6 +174,10 @@ function simplifyElementGeometry(el, minPoints, toleranceDeg) {
  * passes through byte-identical. Exported for tests (opts override thresholds).
  *
  * @param {string} bodyText - Raw upstream JSON body.
+ * @param {object} [opts]
+ * @param {number} [opts.minBytes]
+ * @param {number} [opts.minPoints]
+ * @param {number} [opts.toleranceDeg]
  * @returns {string} Possibly-simplified JSON body.
  */
 export function simplifyOverpassPayloadBody(bodyText, opts = {}) {
@@ -186,7 +202,10 @@ export function simplifyOverpassPayloadBody(bodyText, opts = {}) {
   }
 }
 
-/** Normalized Overpass query -> stable disk-cache file path. */
+/**
+ * Normalized Overpass query -> stable disk-cache file path.
+ * @param {string} cacheKey
+ */
 function overpassDiskPath(cacheKey) {
   return path.join(
     OVERPASS_DISK_DIR,
@@ -197,7 +216,9 @@ function overpassDiskPath(cacheKey) {
 /**
  * Read a disk-cached Overpass payload. maxAgeMs Infinity = any age (the
  * serve-stale path when every mirror is down).
- * @returns {Promise<?Object>} Payload with cachedAt, or null.
+ * @param {string} cacheKey
+ * @param {number} maxAgeMs
+ * @returns {Promise<CachedOverpassPayload|null>} Payload with cachedAt, or null.
  */
 export async function readOverpassDisk(cacheKey, maxAgeMs) {
   try {
@@ -219,7 +240,11 @@ export async function readOverpassDisk(cacheKey, maxAgeMs) {
   }
 }
 
-/** Fire-and-forget disk write for a successful Overpass payload. */
+/**
+ * Fire-and-forget disk write for a successful Overpass payload.
+ * @param {string} cacheKey
+ * @param {CachedOverpassPayload} payload
+ */
 function writeOverpassDisk(cacheKey, payload) {
   fsp
     .mkdir(OVERPASS_DISK_DIR, { recursive: true })
@@ -280,7 +305,10 @@ export async function resolveOverpassPreflight({
     : { source: 'RATE_LIMITED', payload: null };
 }
 
-/** Return only last-good Overpass data, regardless of its age. */
+/**
+ * Return only last-good Overpass data, regardless of its age.
+ * @param {string} cacheKey
+ */
 async function readStaleOverpass(cacheKey) {
   const cached = _overpassCache.get(cacheKey);
   return cached && overpassPayloadIsData(cached)
@@ -385,6 +413,7 @@ const OVERPASS_BBOX_RE =
  * quoted string is treated as string content, not a comment (and vice versa).
  * Chained regex replaces get the ordering wrong (a quoted slash-slash would hide
  * the rest of the line), which is exactly the bypass this avoids.
+ * @param {string} src
  */
 function stripOverpassNoise(src) {
   let out = '';
@@ -500,6 +529,7 @@ function sanitizeOverpassBody(rawBody) {
     // filters so a tag KEY/value (e.g. `way[is_in]`, `node[around]`) can never be
     // misread as a spatial bound. Bounds live in (...) / function calls / set
     // refs, never inside [...], so the probe loses nothing real.
+    /** @type {string[]} */
     const outSets = [];
     const body = stmt.replace(/->\s*\.(\w+)/g, (_, name) => {
       outSets.push(name);
@@ -570,6 +600,8 @@ function overpassLooksRateLimited(bodyText) {
  * Detect an Overpass HTTP-200 body that is actually a runtime FAILURE (server-side
  * timeout / out-of-memory) via its `remark`. These are transient upstream failures,
  * not authoritative empty results, so they must not be returned or cached.
+ * @param {string} bodyText - Upstream response body.
+ * @returns {boolean}
  */
 function overpassLooksRuntimeError(bodyText) {
   const text = String(bodyText || '').toLowerCase();
@@ -782,6 +814,8 @@ export function overpassProxy() {
 
           // Normalize whitespace so semantically identical Overpass QL queries share cache entries
           cacheKey = safeBody.replace(/\s+/g, ' ').trim();
+          // Callbacks below use this copy; cacheKey stays a let for the catch.
+          const requestKey = cacheKey;
           const preflight = await resolveOverpassPreflight({
             cacheKey,
             memoryCache: _overpassCache,
@@ -789,7 +823,7 @@ export function overpassProxy() {
             // Fresh-enough disk entries survive restarts and skip the public
             // mirrors; boundary-class queries keep their month-long TTL.
             readDisk: () =>
-              readOverpassDisk(cacheKey, overpassDiskTtlMs(cacheKey)),
+              readOverpassDisk(requestKey, overpassDiskTtlMs(requestKey)),
             allowUpstream: () => _overpassRateLimiter(rateLimitKey(req)),
           });
           if (preflight.source === 'RATE_LIMITED') {
@@ -833,8 +867,6 @@ export function overpassProxy() {
             return;
           }
           _overpassConcurrent += 1;
-          // The callbacks below use this copy; cacheKey stays a let for the catch.
-          const requestKey = cacheKey;
           const requestPromise = fetchOverpassPayload(safeBody)
             .then((payload) => {
               // Only a 2xx is data. `< 500` cached every 4xx, so one mirror's
@@ -883,6 +915,7 @@ export function overpassProxy() {
       // Real OSM routing via the public FOSSGIS OSRM servers (foot/car/bike).
       // GET /api/route?profile=foot|car|bike&coords=lon,lat;lon,lat[;...]
       server.middlewares.use('/api/route', async (req, res) => {
+        /** @param {string} msg */
         const fail = (msg) => {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: false, error: msg }));

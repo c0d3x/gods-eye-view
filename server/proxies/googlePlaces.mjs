@@ -27,6 +27,7 @@ import {
 // GEV_RATELIMIT_GOOGLE_PER_MIN. Built on first request, not at module load:
 // the config hook loads `.env` into process.env after this module is imported.
 // The limiter is then cached, so its per-client window state persists.
+/** @type {ReturnType<typeof createCostRateLimiter> | undefined} */
 let _googleRateLimiter; // undefined = not built yet; null = disabled; fn = active limiter
 
 /** Google Places endpoints (nearby-places + text-search), one shared budget. */
@@ -47,6 +48,8 @@ export const GOOGLE_PLACES_TIMEOUT_MS = 10_000;
  * Optional Google place context is an empty capability when no key is present,
  * not a server outage. Returning 200 keeps a deliberately keyless session out
  * of the browser error console while preserving an explicit configured flag.
+ *
+ * @param {unknown} apiKey
  */
 export function keylessGooglePlacesResponse(apiKey) {
   if (String(apiKey ?? '').trim()) return null;
@@ -62,8 +65,11 @@ export function keylessGooglePlacesResponse(apiKey) {
  * The Photorealistic 3D Tiles mesh does not expose rendered map labels as
  * Cesium feature metadata. Nearby Search supplies the names around the actual
  * screen-space target without exposing the Google API key in the request.
+ *
+ * @returns {import('vite').Plugin}
  */
 export function googlePlacesContextProxy() {
+  /** @param {import('vite').Connect.Server} middlewares */
   function install(middlewares) {
     middlewares.use('/api/google/nearby-places', async (req, res) => {
       if (req.method !== 'GET') {
@@ -158,6 +164,7 @@ export function googlePlacesContextProxy() {
             `[Places] nearby search: ${describeUpstreamFailure(response.status, text)}`,
           );
         }
+        /** @type {Record<string, any>} Parsed Places response. */
         const data = parseJsonObject(text);
         const seenPlaces = new Set();
         const places = Array.isArray(data.places)
@@ -334,6 +341,7 @@ export function googlePlacesContextProxy() {
             `[Places] text search: ${describeUpstreamFailure(response.status, text)}`,
           );
         }
+        /** @type {Record<string, any>} Parsed Places response. */
         const data = parseJsonObject(text);
         const places = Array.isArray(data.places)
           ? data.places
@@ -424,6 +432,7 @@ export function googlePlacesContextProxy() {
   };
 }
 
+/** @param {string[]} types */
 function placeContextPriority(types) {
   const typeSet = new Set(types);
   if (typeSet.has('historical_landmark') || typeSet.has('monument')) return 100;
@@ -434,6 +443,13 @@ function placeContextPriority(types) {
   return 40;
 }
 
+/**
+ * @param {number} latA
+ * @param {number} lonA
+ * @param {number} latB From the Places response; a missing or non-finite
+ *   coordinate gives Number.MAX_SAFE_INTEGER.
+ * @param {number} lonB
+ */
 function approximateDistanceM(latA, lonA, latB, lonB) {
   if (![latA, lonA, latB, lonB].every(Number.isFinite))
     return Number.MAX_SAFE_INTEGER;

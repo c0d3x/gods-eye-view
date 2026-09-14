@@ -115,10 +115,14 @@ export function tomtomProxy({
     void persistBudget();
   }
 
+  /** @param {string} key */
   const tilePath = (key) =>
     path.join(CACHE_DIR, `flow-${key.replaceAll('/', '-')}.pbf`);
 
-  /** Disk-cache read; tile age comes from the file's mtime. */
+  /**
+   * Disk-cache read; tile age comes from the file's mtime.
+   * @param {string} key
+   */
   async function readDiskTile(key) {
     try {
       const [stat, buf] = await Promise.all([
@@ -131,6 +135,10 @@ export function tomtomProxy({
     }
   }
 
+  /**
+   * @param {string} key
+   * @param {Buffer} buf
+   */
   async function writeDiskTile(key, buf) {
     try {
       await fsp.mkdir(CACHE_DIR, { recursive: true });
@@ -144,7 +152,11 @@ export function tomtomProxy({
     }
   }
 
-  /** LRU-ish memory insert (Map preserves insertion order; evict the oldest). */
+  /**
+   * LRU-ish memory insert (Map preserves insertion order; evict the oldest).
+   * @param {string} key
+   * @param {{at: number, buf: Buffer}} entry
+   */
   function memSet(key, entry) {
     if (!mem.has(key) && mem.size >= MEM_MAX_ENTRIES) {
       const oldest = mem.keys().next().value;
@@ -153,6 +165,11 @@ export function tomtomProxy({
     mem.set(key, entry);
   }
 
+  /**
+   * @param {number} z
+   * @param {number} x
+   * @param {number} y
+   */
   async function fetchUpstream(z, x, y) {
     // The tile route answers 503 before calling this when the key is unset.
     const url =
@@ -174,11 +191,20 @@ export function tomtomProxy({
       server.middlewares.use('/api/tomtom', async (req, res) => {
         // Sanitized responses only (proxy/security baseline): no upstream
         // error details, and never echo the key or the upstream URL.
+        /**
+         * @param {number} status
+         * @param {unknown} obj
+         * @param {Record<string, string>} [extraHeaders]
+         */
         const sendJson = (status, obj, extraHeaders = {}) =>
           writeJson(res, status, obj, {
             'Cache-Control': 'no-store',
             ...extraHeaders,
           });
+        /**
+         * @param {Buffer} buf
+         * @param {string} cacheStatus
+         */
         const sendTile = (buf, cacheStatus) => {
           if (res.headersSent) return;
           res.writeHead(200, {

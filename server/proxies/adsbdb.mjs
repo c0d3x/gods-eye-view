@@ -16,6 +16,8 @@ export const ADSBDB_CACHE_MAX_ENTRIES = 5_000;
  * aggressively: ONE upstream request per new key ever (404s negative-cached),
  * persisted to disk so restarts don't re-hammer it. Adapted from skylight
  * (MIT) server/src/enrich/routes.ts.
+ *
+ * @returns {import('vite').Plugin}
  */
 export function adsbdbProxy({
   cachePath = path.join(process.cwd(), '.gev-cache', 'adsbdb.json'),
@@ -25,6 +27,7 @@ export function adsbdbProxy({
   // Each store is keyed by client input, so it is capped (oldest lookups go).
   const makeStore = () =>
     createBoundedCache({ maxEntries: ADSBDB_CACHE_MAX_ENTRIES, ttlMs: TTL_MS });
+  /** @type {Record<string, ReturnType<typeof makeStore>>} */
   const cache = { routes: makeStore(), aircraft: makeStore() };
   let dirty = false;
   let loaded = false;
@@ -60,11 +63,14 @@ export function adsbdbProxy({
     }, 15_000).unref?.();
   }
 
+  /** @param {{at: number}|undefined} e */
   const fresh = (e) => e && Date.now() - e.at < TTL_MS;
 
+  /** @param {any} json Parsed adsbdb response. */
   function parseRoute(json) {
     const fr = json?.response?.flightroute;
     if (!fr?.origin || !fr?.destination) return null;
+    /** @param {Record<string, any>} a An airport from that response. */
     const airport = (a) => ({
       code: a.iata_code || a.icao_code || '',
       name: a.municipality || a.name || '',
@@ -78,6 +84,7 @@ export function adsbdbProxy({
     };
   }
 
+  /** @param {any} json Parsed adsbdb response. */
   function parseAircraft(json) {
     const a = json?.response?.aircraft;
     if (!a) return null;
@@ -91,6 +98,10 @@ export function adsbdbProxy({
     };
   }
 
+  /**
+   * @param {'route'|'aircraft'} kind
+   * @param {string} key
+   */
   function lookup(kind, key) {
     const store = kind === 'route' ? cache.routes : cache.aircraft;
     const cached = store.get(key);
@@ -140,6 +151,10 @@ export function adsbdbProxy({
     configureServer(server) {
       server.middlewares.use('/api/adsbdb', async (req, res) => {
         await loadOnce();
+        /**
+         * @param {number} status
+         * @param {unknown} obj
+         */
         const send = (status, obj) => {
           res.writeHead(status, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify(obj));

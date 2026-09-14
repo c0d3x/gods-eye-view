@@ -34,6 +34,7 @@ import {
   readResponseJsonCapped,
 } from '../lib/upstreamBody.mjs';
 
+/** @type {ReturnType<typeof createCostRateLimiter>|undefined} */
 let _streetViewRateLimiter;
 
 /**
@@ -130,7 +131,11 @@ const DEFAULT_AUSTIN_MAX_SOURCES = 250;
 const DEFAULT_CCTV_MAX_SOURCES = 900;
 /** Reference point for Austin camera prioritization (Congress & 6th). */
 const AUSTIN_DOWNTOWN = { lat: 30.2672, lon: -97.7431 };
-/** Caltrans CCTV: one JSON feed per district, identical schema statewide. */
+/**
+ * Caltrans CCTV: one JSON feed per district, identical schema statewide.
+ *
+ * @param {number} district
+ */
 const CALTRANS_CCTV_URL = (district) =>
   `https://cwwp2.dot.ca.gov/data/d${district}/cctv/cctvStatusD${String(district).padStart(2, '0')}.json`;
 /** Districts fetched by default: SF Bay (4), LA (7), San Diego (11), Sacramento (3). */
@@ -175,7 +180,12 @@ const CCTV_RELAY_SAFETY_HEADERS = Object.freeze({
   'Content-Security-Policy': "default-src 'none'; sandbox",
 });
 
-/** A camera's health message for a failed media fetch, in our own words. */
+/**
+ * A camera's health message for a failed media fetch, in our own words.
+ *
+ * @param {unknown} error
+ * @param {number} status
+ */
 function cameraFailureMessage(error, status) {
   if (status === 504) return 'Upstream did not answer in time';
   if (error instanceof PrivateAddressError)
@@ -499,11 +509,12 @@ function fallbackHeadingFromId(cameraId) {
 /**
  * Convert a Socrata rows.json array row into a keyed object using column metadata.
  *
- * @param {Array} row - Array of cell values from the Socrata payload.
+ * @param {Array<unknown>} row - Array of cell values from the Socrata payload.
  * @param {Array<{fieldName?:string, name?:string}>} columns - Column descriptors.
  * @returns {Record<string, any>} Keyed record with normalized snake_case keys.
  */
 function rowArrayToObject(row, columns) {
+  /** @type {Record<string, any>} */
   const record = {};
   for (let idx = 0; idx < columns.length; idx++) {
     const col = columns[idx];
@@ -702,6 +713,7 @@ async function loadCaltransSourcesFromOpenData() {
     }),
   );
 
+  /** @type {Array<Record<string, any>>} */
   const cameras = [];
   for (const result of settled) {
     if (result.status !== 'fulfilled') {
@@ -822,6 +834,7 @@ async function loadTflSourcesFromOpenData() {
 
     const cameras = [];
     for (const place of places) {
+      /** @type {Record<string, unknown>} */
       const props = {};
       for (const p of place?.additionalProperties || []) {
         if (p?.key) props[p.key] = p.value;
@@ -973,8 +986,11 @@ async function refreshCctvSources() {
     forceAustin || (fromFile.length + fromEnv.length === 0 && preferAustin);
   const tflEnabled = String(process.env.CCTV_TFL_ENABLED || '1').trim() !== '0';
 
+  /** @type {Array<object>} */
   let fromAustin = [];
+  /** @type {Array<object>} */
   let fromCaltrans = [];
+  /** @type {Array<object>} */
   let fromTfl = [];
   if (needsLiveSources) {
     const [austinResult, caltransResult, tflResult] = await Promise.allSettled([
@@ -1154,6 +1170,7 @@ async function proxyMediaResponse(
   const contentLength = upstream.headers.get('content-length');
   const contentRange = upstream.headers.get('content-range');
   const acceptRanges = upstream.headers.get('accept-ranges');
+  /** @type {Record<string, string>} */
   const headers = {
     'Content-Type': contentType,
     'Cache-Control': cacheControl,
@@ -1289,7 +1306,17 @@ export function cctvProxy() {
    * observability isn't silently evicted for a default 800-camera catalog. */
   const HEALTH_MAX_ENTRIES = 1200;
 
-  /** Update the health entry for a camera, evicting the oldest entry if at capacity. */
+  /**
+   * Update the health entry for a camera, evicting the oldest entry if at
+   * capacity.
+   *
+   * @param {string} cameraId
+   * @param {object} patch
+   * @param {string} patch.status
+   * @param {string} patch.sourceKind
+   * @param {string} patch.label
+   * @param {string} patch.message
+   */
   const setHealth = (cameraId, patch) => {
     // Evict oldest entries if the health map grows beyond the cap
     if (!health.has(cameraId) && health.size >= HEALTH_MAX_ENTRIES) {
@@ -1311,7 +1338,12 @@ export function cctvProxy() {
   /** Snapshot all camera health entries as an array. */
   const listHealth = () => Array.from(health.values());
 
-  /** Build a JSON payload describing stream info (feedType, URLs) for a camera. */
+  /**
+   * Build a JSON payload describing stream info (feedType, URLs) for a camera.
+   *
+   * @param {CctvSource|undefined} source
+   * @param {string} cameraId
+   */
   const buildStreamPayload = (source, cameraId) => {
     const feedType = normalizeFeedType(source?.feedType || 'image');
     return {
@@ -1345,6 +1377,14 @@ export function cctvProxy() {
    * re-polls reuse its frame. Only a cache miss calls Google, and each miss
    * counts against the client's Street View budget (streetViewRateLimiter);
    * once that is spent this returns `{ ok: false, rateLimited: true }`.
+   *
+   * @param {object} opts
+   * @param {number} opts.lat
+   * @param {number} opts.lon
+   * @param {number} opts.heading
+   * @param {number} opts.fov
+   * @param {number} opts.pitch
+   * @param {string} opts.rateLimitKey
    */
   const streetViewFallback = async ({
     lat,
@@ -1493,6 +1533,7 @@ export function cctvProxy() {
             }
 
             try {
+              /** @type {Record<string, string>} */
               const upstreamHeaders = {
                 'User-Agent': 'gods-eye-view-cctv-proxy/1.0',
               };

@@ -35,6 +35,10 @@ const RADIO_FALLBACK_MIRRORS = Object.freeze([
   'https://nl1.api.radio-browser.info',
 ]);
 
+/**
+ * @param {unknown} value
+ * @param {number} maxLength
+ */
 function cleanRadioText(value, maxLength) {
   return (
     String(value ?? '')
@@ -47,7 +51,10 @@ function cleanRadioText(value, maxLength) {
   );
 }
 
-/** Return a normalized public HTTPS URL, or null for local/private targets. */
+/**
+ * Return a normalized public HTTPS URL, or null for local/private targets.
+ * @param {unknown} value
+ */
 export function publicRadioHttpsUrl(value) {
   try {
     const url = new URL(String(value ?? ''));
@@ -72,7 +79,11 @@ export function publicRadioHttpsUrl(value) {
   }
 }
 
-/** Normalize one Radio Browser station and omit favicons and unsafe streams. */
+/**
+ * Normalize one Radio Browser station and omit favicons and unsafe streams.
+ * @param {Record<string, unknown>} raw A station row from the Radio Browser
+ *   search API, parsed from upstream JSON.
+ */
 export function normalizeRadioBrowserStation(raw) {
   const id = cleanRadioText(raw?.stationuuid, 40).toLowerCase();
   const lat =
@@ -151,6 +162,12 @@ export function normalizeRadioBrowserStation(raw) {
   };
 }
 
+/**
+ * A Radio Browser station that passed normalization.
+ * @typedef {NonNullable<ReturnType<typeof normalizeRadioBrowserStation>>} RadioStation
+ */
+
+/** @param {RadioStation} station */
 export function publicRadioStation(station) {
   return {
     id: station.id,
@@ -170,6 +187,7 @@ export function publicRadioStation(station) {
   };
 }
 
+/** @param {unknown} value */
 function radioMirrorOrigin(value) {
   const hostname = String(value ?? '')
     .toLowerCase()
@@ -178,11 +196,16 @@ function radioMirrorOrigin(value) {
   return `https://${hostname}`;
 }
 
-/** Return whether a resolved Radio Browser address is safe for an outbound request. */
+/**
+ * Return whether a resolved Radio Browser address is safe for an outbound
+ * request.
+ * @param {string} value
+ */
 export function isPublicRadioAddress(value) {
   return isPublicAddress(value);
 }
 
+/** @param {unknown} value */
 function radioProxyDestination(value) {
   let url;
   try {
@@ -209,6 +232,10 @@ function radioProxyDestination(value) {
   return discovery || directory || click ? url : null;
 }
 
+/**
+ * @param {string} hostname
+ * @param {typeof lookupDns} lookupImpl
+ */
 async function resolveRadioProxyAddresses(hostname, lookupImpl) {
   try {
     return await resolvePublicAddresses(hostname, lookupImpl);
@@ -220,6 +247,13 @@ async function resolveRadioProxyAddresses(hostname, lookupImpl) {
   }
 }
 
+/**
+ * @template T, R
+ * @param {Array<T>} values
+ * @param {number} concurrency
+ * @param {(value: T, index: number) => Promise<R>} mapper
+ * @returns {Promise<Array<R>>}
+ */
 async function mapRadioConcurrent(values, concurrency, mapper) {
   const results = new Array(values.length);
   let cursor = 0;
@@ -278,6 +312,7 @@ export function createRadioProxyMiddleware({
   /** @type {Promise<RadioCatalog>|null} */
   let refreshPromise = null;
 
+  /** @param {string} url */
   async function fetchJson(url, maxBytes = RADIO_RESPONSE_MAX_BYTES) {
     const destination = radioProxyDestination(url);
     if (!destination)
@@ -353,6 +388,7 @@ export function createRadioProxyMiddleware({
     return mirrorPromise;
   }
 
+  /** @param {string} pathname */
   async function fetchPath(pathname) {
     let lastError = null;
     for (const origin of await mirrors()) {
@@ -440,8 +476,10 @@ export function createRadioProxyMiddleware({
     );
     const resultSets = outcomes.map((outcome) => outcome.stations);
 
+    /** @type {Array<RadioStation>} */
     const selected = [];
     const seen = new Set();
+    /** @param {RadioStation} station */
     const take = (station) => {
       if (
         !station ||
@@ -552,6 +590,11 @@ export function createRadioProxyMiddleware({
     }
   }
 
+  /**
+   * @param {import('node:http').ServerResponse} res
+   * @param {number} status
+   * @param {unknown} body Serialized with JSON.stringify.
+   */
   function sendJson(res, status, body) {
     res.writeHead(status, {
       'Content-Type': 'application/json; charset=utf-8',
@@ -560,6 +603,10 @@ export function createRadioProxyMiddleware({
     res.end(JSON.stringify(body));
   }
 
+  /**
+   * @param {import('vite').Connect.IncomingMessage} req
+   * @param {import('node:http').ServerResponse} res
+   */
   return async function radioProxyMiddleware(req, res) {
     const requestUrl = new URL(req.url || '/', 'http://localhost');
     if (requestUrl.pathname === '/stations') {
@@ -612,8 +659,12 @@ export function createRadioProxyMiddleware({
   };
 }
 
+/** @returns {import('vite').Plugin} */
 export function radioBrowserProxy() {
   const middleware = createRadioProxyMiddleware();
+  /**
+   * @param {import('vite').ViteDevServer|import('vite').PreviewServer} server
+   */
   const install = (server) => {
     server.middlewares.use('/api/radio', middleware);
   };
