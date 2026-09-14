@@ -147,21 +147,21 @@ test('desktop panel lanes use per-panel allocations and presentation-only auto-c
     ui,
     /_scheduleLeftPanelLayout\(\{[\s\S]*?reconsiderAutoCollapse: this\._leftPanelStack\?\.contains\(panelEl\) === true/,
   );
-  assert.match(ui, /collapseLaterPanels: shouldFocus && this\.hud\.getVariant\(\) === 'tactical'/);
+  assert.match(ui, /collapseLaterPanels:\s*shouldFocus\s*&&\s*this\s*\.hud\s*\.getVariant\(,?\s*\)\s*===\s*'tactical'/);
   assert.match(ui, /this\._leftStackPreferredPanelId = leftOwnerPanel\.id;/);
   assert.match(
     ui,
-    /preferredExpandedPanel[\s\S]*?\[preferredExpandedPanel, \.\.\.expandedPanelsInDomOrder/,
+    /preferredExpandedPanel[\s\S]*?\[\s*preferredExpandedPanel,\s*\.\.\s*\.expandedPanelsInDomOrder/,
     'the latest explicitly opened left panel must receive primary allocation',
   );
   assert.match(ui, /this\._rightStackPreferredPanelId = rightOwnerPanel\.id;/);
   assert.match(
     ui,
-    /panel\.id === this\._rightStackPreferredPanelId[\s\S]*?\[preferredExpandedPanel, \.\.\.expandedPanelsInDomOrder/,
+    /panel\s*\.id\s*===\s*this\s*\._rightStackPreferredPanelId[\s\S]*?\[\s*preferredExpandedPanel,\s*\.\.\s*\.expandedPanelsInDomOrder/,
     'the latest explicitly opened right panel must receive primary allocation',
   );
   assert.match(ui, /panelId === 'radio-panel'[\s\S]*?document\.getElementById\('global-context-panel'\)/);
-  assert.match(ui, /focusedExpandedPanel = expandedPanelsInDomOrder\.find\(\(panel\) => panel\.contains\(document\.activeElement\)\)/);
+  assert.match(ui, /focusedExpandedPanel\s*=\s*expandedPanelsInDomOrder\s*\.find\(\s*\(\s*panel,?\s*\)\s*=>\s*panel\s*\.contains\(\s*document\s*\.activeElement,?\s*\),?\s*\)/);
   assert.match(ui, /setAttribute\('aria-expanded', String\(!collapsed\)\)/);
   assert.match(ui, /--left-panel-allocated-height/);
   assert.match(ui, /--right-panel-allocated-height/);
@@ -183,7 +183,7 @@ test('desktop panel lanes use per-panel allocations and presentation-only auto-c
     'focus mode must hide every collapsed sibling, including presentation-only auto-collapses',
   );
   assert.doesNotMatch(css, /layout-focus > \[data-panel-id\]\.collapsed:not\(\.layout-auto-collapsed\)/);
-  assert.match(ui, /const hiddenSibling = shouldFocus && panel\.classList\.contains\('collapsed'\);/);
+  assert.match(ui, /const\s*hiddenSibling\s*=\s*shouldFocus\s*&&\s*panel\s*\.classList\s*\.contains\(\s*'collapsed',?\s*\);/);
 });
 
 test('share-panel state excludes responsive collapse and preserves recipient preferences', () => {
@@ -214,7 +214,7 @@ test('parameterized Display presets keep one stable scroll owner', () => {
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 
   assert.match(css, /#pp-toggles:not\(\.collapsed\) > #param-slider-panel\.active\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?max-height:\s*none;[\s\S]*?overflow-y:\s*visible;/);
-  assert.match(ui, /const displayScrollTop = this\._displayPortalScrollRestoreOwner === 'standard'[\s\S]*?this\._standardDisplayScrollTop[\s\S]*?this\._ppToggles\?\.scrollTop \|\| 0/);
+  assert.match(ui, /const\s*displayScrollTop\s*=\s*this\s*\._displayPortalScrollRestoreOwner\s*===\s*'standard'[\s\S]*?this\s*\._standardDisplayScrollTop[\s\S]*?this\s*\._ppToggles\s*\?\s*\.scrollTop\s*\|\|\s*0/);
   assert.match(ui, /this\._ppToggles\.scrollTop = Math\.min\(displayScrollTop, maxScrollTop\);/);
   assert.match(
     ui,

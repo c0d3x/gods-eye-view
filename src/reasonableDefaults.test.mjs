@@ -211,7 +211,7 @@ test('first run opens with detection on, in every style, using the one tactical 
   // Normal used to start OFF while only CRT/NVG/FLIR auto-applied the preset.
   // It is now the baseline for all of them, reusing the SAME frozen object, so
   // "the tactical look" cannot fork into two definitions.
-  assert.match(uiSource, /const MILITARY_DETECTION_PRESET = Object\.freeze\(\{ mode: 'dense', densityPct: 75 \}\);/,
+  assert.match(uiSource, /const\s*MILITARY_DETECTION_PRESET\s*=\s*Object\s*\.freeze\(\s*\{\s*mode:\s*'dense',\s*densityPct:\s*75,?\s*\},?\s*\);/,
     'the tactical look is still Dense @ 75%');
   const baseline = uiBlock('const GLOBAL_POST_DEFAULTS = {', '\n};');
   assert.match(baseline, /detectionMode: MILITARY_DETECTION_PRESET\.mode\.toUpperCase\(\),/,

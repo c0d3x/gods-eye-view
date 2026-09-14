@@ -154,7 +154,7 @@ test('Cockpit Escape collapses Contact or Live Signals before exiting Cockpit', 
 test('Cockpit utility Escape leaves an expanded nested Parameters panel to the shared handler', () => {
   assert.match(
     source,
-    /const nestedPanel = event\.target\?\.closest\?\.\('\.panel-collapsible:not\(\.collapsed\), #param-slider-panel:not\(\.collapsed\)'\);[\s\S]*?if \(nestedPanel\) return;[\s\S]*?setCockpitDisclosure/,
+    /const\s*nestedPanel\s*=\s*event\s*\.target\s*\?\s*\.closest\s*\?\.\(\s*'\s*\.panel-collapsible:not\(\s*\.collapsed,?\s*\),\s*#param-slider-panel:not\(\s*\.collapsed,?\s*\)',?\s*\);[\s\S]*?if\s*\(\s*nestedPanel,?\s*\)\s*return;[\s\S]*?setCockpitDisclosure/,
   );
   assert.match(
     source,

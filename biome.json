@@ -22,6 +22,7 @@
       "src/data/localAsset.js",
       "src/data/localAsset.test.mjs",
       "src/testing/uiSources.mjs",
+      "src/testing/uiSources.test.mjs",
       "src/ui/adoptMethods.js",
       "src/ui/adoptMethods.test.mjs",
       "src/main.js",

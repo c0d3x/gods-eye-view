@@ -381,7 +381,7 @@ test('a fresh boot starts 3D aircraft ON in proximity — codec, both layers, an
   const html = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
   assert.match(html, /class="pp-toggle-btn active" id="models3d-toggle" aria-pressed="true"/,
     'index.html: the 3D button paints lit on first paint, before ui.js runs — and says so');
-  assert.match(ui, /this\._models3dBtn\?\.setAttribute\('aria-pressed', String\(this\._models3dEnabled\)\)/,
+  assert.match(ui, /this\s*\._models3dBtn\s*\?\s*\.setAttribute\(\s*'aria-pressed',\s*String\(\s*this\s*\._models3dEnabled,?\s*\),?\s*\)/,
     'ui.js: and keeps aria-pressed synchronized, so the lit state is not colour-only');
   assert.match(html, /class="pp-slider-row visible" id="models3d-mode-row"/,
     'index.html: and the Proximity/All row paints open with it');

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { readUiSource } from './testing/uiSources.mjs';
+import { looseIndexOf, readUiSource } from './testing/uiSources.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ui = readUiSource();
@@ -22,7 +22,7 @@ function body(source, pattern, label) {
 function ordered(source, needles, label) {
   let previous = -1;
   for (const needle of needles) {
-    const index = source.indexOf(needle);
+    const index = looseIndexOf(source, needle);
     assert.ok(index >= 0, `${label}: missing ${needle}`);
     assert.ok(index > previous, `${label}: ${needle} is out of order`);
     previous = index;
@@ -69,7 +69,7 @@ test('one explicit tracking selection clears sibling IDs before publishing its d
 test('navigation clears dormant tracker IDs without aborting unrelated layer restoration', () => {
   const stamp = body(
     ui,
-    /_stampNavigation\(\{ cancelPendingSelection = true[^)]*\} = \{\}\) \{([\s\S]*?)\n  \}/,
+    /_stampNavigation\(\s*\{\s*cancelPendingSelection\s*=\s*true[^)]*,?\s*\}\s*=\s*\{,?\s*\},?\s*\)\s*\{\s*([\s\S]*?)\n  \}/,
     'navigation authority stamp',
   );
   assert.doesNotMatch(stamp, /cancelPendingRestores\(\)/);
@@ -77,8 +77,8 @@ test('navigation clears dormant tracker IDs without aborting unrelated layer res
   assert.match(stamp, /militaryFlightsLayer\.cancelPendingTrackingRestore\?\.\(\)/);
   assert.match(stamp, /satellitesLayer\.cancelPendingTrackingRestore\?\.\(\)/);
   assert.match(stamp, /if \(!passivelyClearedShareSelection && !flightsLayer\.getTrackedInfo\?\.\(\)\)[\s\S]*?selectedFlightsTrackingId: null/);
-  assert.match(stamp, /if \(!passivelyClearedShareSelection && !militaryFlightsLayer\.getTrackedInfo\?\.\(\)\)[\s\S]*?selectedMilitaryTrackingId: null/);
-  assert.match(stamp, /if \(!passivelyClearedShareSelection && !satellitesLayer\.getTrackedInfo\?\.\(\)\)[\s\S]*?selectedSatTrackingId: null/);
+  assert.match(stamp, /if\s*\(\s*!passivelyClearedShareSelection\s*&&\s*!militaryFlightsLayer\s*\.getTrackedInfo\s*\?\.\(,?\s*\),?\s*\)[\s\S]*?selectedMilitaryTrackingId:\s*null/);
+  assert.match(stamp, /if\s*\(\s*!passivelyClearedShareSelection\s*&&\s*!satellitesLayer\s*\.getTrackedInfo\s*\?\.\(,?\s*\),?\s*\)[\s\S]*?selectedSatTrackingId:\s*null/);
 });
 
 test('voice Cockpit entry reaches the camera only through stamping seams', () => {
@@ -133,11 +133,11 @@ test('voice Cockpit next/previous shares the manual Context navigation path', ()
   // the arbiter.
   assert.match(
     ui,
-    /this\._listen\(this\.contextPrevious, 'click', \(\) => this\.navigateContext\(-1, \{ origin: 'user' \}\)\);/,
+    /this\s*\._listen\(\s*this\s*\.contextPrevious,\s*'click',\s*\(,?\s*\)\s*=>\s*this\s*\.navigateContext\(\s*-1,\s*\{\s*origin:\s*'user',?\s*\},?\s*\),?\s*\);/,
   );
   assert.match(
     ui,
-    /this\._listen\(this\.contextNext, 'click', \(\) => this\.navigateContext\(1, \{ origin: 'user' \}\)\);/,
+    /this\s*\._listen\(\s*this\s*\.contextNext,\s*'click',\s*\(,?\s*\)\s*=>\s*this\s*\.navigateContext\(\s*1,\s*\{\s*origin:\s*'user',?\s*\},?\s*\),?\s*\);/,
   );
   const funnel = body(
     ui,
@@ -281,7 +281,7 @@ test('a direct globe gesture retires delayed camera and selection restore only',
   );
   const stamp = body(
     ui,
-    /_stampNavigation\(\{ cancelPendingSelection = true[^)]*\} = \{\}\) \{([\s\S]*?)\n  \}/,
+    /_stampNavigation\(\s*\{\s*cancelPendingSelection\s*=\s*true[^)]*,?\s*\}\s*=\s*\{,?\s*\},?\s*\)\s*\{\s*([\s\S]*?)\n  \}/,
     'navigation stamp',
   );
   assert.match(stamp, /if \(cancelPendingSelection\) \{[\s\S]*?cancelPendingTrackingRestore/);
@@ -340,7 +340,7 @@ test('teardown synchronously closes immediate camera entry points', () => {
 test('teardown refuses deferred location work before geocoding begins', () => {
   const deferred = body(
     ui,
-    /_beginDeferredNavigation\(noun = 'location', \{ cancelPendingSelection = true \} = \{\}\) \{([\s\S]*?)\n  \}/,
+    /_beginDeferredNavigation\(\s*noun\s*=\s*'location',\s*\{\s*cancelPendingSelection\s*=\s*true,?\s*\}\s*=\s*\{,?\s*\},?\s*\)\s*\{\s*([\s\S]*?)\n  \}/,
     'deferred navigation',
   );
   assert.match(deferred, /disposed: this\._disposed/);

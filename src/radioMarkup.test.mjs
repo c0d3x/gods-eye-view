@@ -252,9 +252,9 @@ test('Radio is nested inside Context with separate disclosure and power controls
   const cycleMethod = ui.slice(cycleStart, ui.indexOf('const toggleRadio', cycleStart));
   assert.doesNotMatch(cycleMethod, /refreshTunerBand/);
   assert.match(ui, /_radioTunerBandPinnedForNavigation = true/);
-  assert.match(ui, /viewer\?\.canvas\?\.addEventListener\('pointerdown', releaseNavigationBand/);
+  assert.match(ui, /viewer\s*\?\s*\.canvas\s*\?\s*\.addEventListener\(\s*'pointerdown',\s*releaseNavigationBand/);
   assert.match(ui, /previewTuningStation\(station\?\.id \|\| null, \{ rotate \}\)/);
-  assert.match(ui, /tunerPreview\(\{ coordinate: this\._radioTunerCoordinate, rotate: commit \}\)/);
+  assert.match(ui, /tunerPreview\(\s*\{\s*coordinate:\s*this\s*\._radioTunerCoordinate,\s*rotate:\s*commit,?\s*\},?\s*\)/);
   assert.match(ui, /radioLayer\.cancelTuning\(\)/);
   assert.match(ui, /classList\.remove\('radio-broadcasting'\)/);
   assert.match(ui, /radioLayer\.getTunerStations\(750\)/);
@@ -314,7 +314,7 @@ test('expanded Context routes its Radio icon to the embedded section and keeps c
   const revealMethod = ui.slice(revealStart, revealEnd);
   assert.ok(revealStart >= 0 && revealEnd > revealStart, 'embedded Radio reveal helper is missing');
   assert.match(revealMethod, /requestAnimationFrame\(\(\) => requestAnimationFrame/);
-  assert.match(revealMethod, /scroller\.scrollTo\(\{ top: next, behavior: reducedMotion \? 'auto' : 'smooth' \}\)/);
+  assert.match(revealMethod, /scroller\s*\.scrollTo\(\s*\{\s*top:\s*next,\s*behavior:\s*reducedMotion\s*\?\s*'auto'\s*:\s*'smooth',?\s*\},?\s*\)/);
   assert.match(revealMethod, /focus\?\.\(\{ preventScroll: true \}\)/);
   assert.doesNotMatch(revealMethod, /setEnabled|togglePlayback|selectStation|setContextMode/);
 
@@ -322,8 +322,8 @@ test('expanded Context routes its Radio icon to the embedded section and keeps c
   const syncEnd = ui.indexOf('\n  /**', syncStart + 10);
   const syncMethod = ui.slice(syncStart, syncEnd);
   assert.ok(syncStart >= 0 && syncEnd > syncStart, 'Context Radio launcher state sync is missing');
-  assert.match(syncMethod, /contextExpanded[\s\S]*?aria-controls', 'radio-panel'[\s\S]*?aria-expanded', String\(radioExpanded\)/);
-  assert.match(syncMethod, /aria-controls', 'context-radio-mini'[\s\S]*?aria-expanded', String\(compactOpen\)/);
+  assert.match(syncMethod, /contextExpanded[\s\S]*?aria-controls',\s*'radio-panel'[\s\S]*?aria-expanded',\s*String\(\s*radioExpanded,?\s*\)/);
+  assert.match(syncMethod, /aria-controls',\s*'context-radio-mini'[\s\S]*?aria-expanded',\s*String\(\s*compactOpen,?\s*\)/);
   const renderStart = ui.indexOf('\n  _renderRadioState(state)');
   const renderMethod = ui.slice(renderStart, ui.indexOf('\n  _renderRadioTuner', renderStart));
   assert.match(renderMethod, /this\._syncContextRadioLauncherState\(\)/);

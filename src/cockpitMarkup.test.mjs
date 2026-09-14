@@ -67,15 +67,15 @@ test('Cockpit heading tape leaves the bottom exit row unobstructed', () => {
 
 test('Cockpit vision cycle exposes exactly five real visual styles without NONE', () => {
   assert.match(ui, /const modes = COCKPIT_VISION_MODES;/);
-  assert.match(ui, /const labels = \{ optical: inherited, crt: 'CRT', nvg: 'NVG', thermal: 'FLIR', noir: 'NOIR' \};/);
+  assert.match(ui, /const\s*labels\s*=\s*\{\s*optical:\s*inherited,\s*crt:\s*'CRT',\s*nvg:\s*'NVG',\s*thermal:\s*'FLIR',\s*noir:\s*'NOIR',?\s*\};/);
   assert.doesNotMatch(ui, /none: 'NONE'/);
   assert.match(ui, /getInheritedVisionLabel: \(\) => \([\s\S]*?STYLE_STATUS_LABELS\[this\.activeStyle\]/);
   assert.match(html, /id="cockpit-vision-current-label"[^>]*>NORMAL<\/strong>/);
-  assert.match(ui, /const target = applyCockpitVisionStageIntensities\(this\.stages, next, this\._cockpitVisionRestore\);/);
-  assert.match(ui, /this\._cockpitVisionRestore = captureCockpitVisionBaseline\(this\.stages, this\.transitions\);/);
+  assert.match(ui, /const\s*target\s*=\s*applyCockpitVisionStageIntensities\(\s*this\s*\.stages,\s*next,\s*this\s*\._cockpitVisionRestore,?\s*\);/);
+  assert.match(ui, /this\s*\._cockpitVisionRestore\s*=\s*captureCockpitVisionBaseline\(\s*this\s*\.stages,\s*this\s*\.transitions,?\s*\);/);
   assert.match(
     ui,
-    /if \(next === 'optical'\) \{[\s\S]*?applyCockpitVisionStageIntensities\(this\.stages, next, this\._cockpitVisionRestore\);[\s\S]*?return;[\s\S]*?const target = applyCockpitVisionStageIntensities/,
+    /if\s*\(\s*next\s*===\s*'optical',?\s*\)\s*\{\s*[\s\S]*?applyCockpitVisionStageIntensities\(\s*this\s*\.stages,\s*next,\s*this\s*\._cockpitVisionRestore,?\s*\);[\s\S]*?return;[\s\S]*?const\s*target\s*=\s*applyCockpitVisionStageIntensities/,
     'the inherited entry must restore the map shader while CRT, NVG, FLIR, and NOIR remain temporary Cockpit overrides',
   );
   assert.match(
@@ -117,11 +117,11 @@ test('Cockpit Escape handling precedes form-control shortcut suppression and foc
 test('Cockpit shortcut failures do not leak and open Radio owns the first Escape', () => {
   const keydown = ui.match(/onKeyDown\(event\) \{([\s\S]*?)\n  \}\n\n  enter\(\)/);
   assert.ok(keydown, 'Cockpit keyboard handler is missing');
-  assert.match(keydown[1], /document\.getElementById\('context-radio-dock'\)\?\.classList\.contains\('disclosure-open'\)/);
+  assert.match(keydown[1], /document\s*\.getElementById\(\s*'context-radio-dock',?\s*\)\s*\?\s*\.classList\s*\.contains\(\s*'disclosure-open',?\s*\)/);
   assert.match(keydown[1], /#cockpit-utility-controls \[aria-expanded="true"\]/);
   assert.match(
     keydown[1],
-    /const cockpitAttempt = !!\(this\.readAircraftInfo\(\) && this\.viewer\.trackedEntity\?\.position\);[\s\S]*?event\.preventDefault\(\);[\s\S]*?event\.stopImmediatePropagation\(\);[\s\S]*?!this\.isEntryAllowed\(\)/,
+    /const\s*cockpitAttempt\s*=\s*!!\(\s*this\s*\.readAircraftInfo\(,?\s*\)\s*&&\s*this\s*\.viewer\s*\.trackedEntity\s*\?\s*\.position,?\s*\);[\s\S]*?event\s*\.preventDefault\(,?\s*\);[\s\S]*?event\s*\.stopImmediatePropagation\(,?\s*\);[\s\S]*?!this\s*\.isEntryAllowed\(,?\s*\)/,
   );
 });
 
@@ -274,7 +274,7 @@ test('Cockpit owns a focused shared Display portal and compact Radio controls', 
   );
   assert.match(css, /\.cockpit-utility-controls\.layout-primary-only[\s\S]*?display:\s*none/);
   assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*?\.cockpit-utility-controls:has\(\.cockpit-utility-control\.is-expanded\)[\s\S]*?display:\s*none/);
-  assert.match(ui, /resolveCockpitUtilityLayout\(\{ availableHeight, expandedHeight, collapsedHeight \}\)/);
+  assert.match(ui, /resolveCockpitUtilityLayout\(\s*\{\s*availableHeight,\s*expandedHeight,\s*collapsedHeight,?\s*\},?\s*\)/);
   assert.match(ui, /setAttribute\('aria-hidden', String\(hiddenSibling\)\)/);
 });
 
@@ -303,7 +303,7 @@ test('Clear Selected Layers uses one adopted batch and discards Context restorat
     manager,
     /for \(const \{ layerId, intentEpoch \} of targets\)[\s\S]*?visibilityIntentEpoch !== intentEpoch[\s\S]*?await this\.setEnabled\(layerId, false/,
   );
-  assert.match(ui, /if \(this\._clearSelectedLayersPromise\) return this\._clearSelectedLayersPromise/);
+  assert.match(ui, /if\s*\(\s*this\s*\._clearSelectedLayersPromise,?\s*\)\s*return\s*this\s*\._clearSelectedLayersPromise/);
   assert.match(ui, /async _selectContextMode\([\s\S]*?if \(this\._clearSelectedLayersPromise\) return false/);
   assert.match(ui, /this\._contextModeGeneration[\s\S]*?this\._contextSessionSnapshot = null;[\s\S]*?this\._contextRestoreState = null;/);
   assert.match(ui, /if \(this\._contextRestoreState\) this\._contextRestoreState\.cancelled = true/);
@@ -335,11 +335,11 @@ test('Cockpit side surfaces behave as two single-expanded accordions', () => {
   );
   assert.match(
     ui,
-    /!nextCollapsed && this\.cockpitView\?\.active && panelId === 'data-panel'[\s\S]*?_cockpitContextCollapsedForDataPanel = !this\.cockpitView\.contextCollapsed[\s\S]*?this\.cockpitView\.setContextCollapsed\(true\);/,
+    /!nextCollapsed\s*&&\s*this\s*\.cockpitView\s*\?\s*\.active\s*&&\s*panelId\s*===\s*'data-panel'[\s\S]*?_cockpitContextCollapsedForDataPanel\s*=\s*!this\s*\.cockpitView\s*\.contextCollapsed[\s\S]*?this\s*\.cockpitView\s*\.setContextCollapsed\(\s*true,?\s*\);/,
   );
   assert.match(
     ui,
-    /nextCollapsed && this\.cockpitView\?\.active && panelId === 'data-panel'[\s\S]*?_cockpitContextCollapsedForDataPanel[\s\S]*?this\.cockpitView\.setContextCollapsed\(false\);/,
+    /nextCollapsed\s*&&\s*this\s*\.cockpitView\s*\?\s*\.active\s*&&\s*panelId\s*===\s*'data-panel'[\s\S]*?_cockpitContextCollapsedForDataPanel[\s\S]*?this\s*\.cockpitView\s*\.setContextCollapsed\(\s*false,?\s*\);/,
     'closing Data Layers must restore Contact only after an automatic collapse',
   );
   assert.match(
@@ -358,12 +358,12 @@ test('Cockpit side surfaces behave as two single-expanded accordions', () => {
   );
   assert.match(
     ui,
-    /!displayOpen && !radioOpen[\s\S]*?this\.cockpitView\?\.active[\s\S]*?!this\.cockpitView\.signalUserCollapsed[\s\S]*?setSignalCollapsed\(false\)/,
+    /!displayOpen\s*&&\s*!radioOpen[\s\S]*?this\s*\.cockpitView\s*\?\s*\.active[\s\S]*?!this\s*\.cockpitView\s*\.signalUserCollapsed[\s\S]*?setSignalCollapsed\(\s*false,?\s*\)/,
     'Live Signals should reopen only after both utility panels close and no manual collapse is retained',
   );
   assert.match(
     ui,
-    /event\.target\?\.closest\?\.\('#left-panel-stack, #cockpit-context'\)\) return;[\s\S]*?setCockpitDisclosure\('display', false\);/,
+    /event\s*\.target\s*\?\s*\.closest\s*\?\.\(\s*'#left-panel-stack,\s*#cockpit-context',?\s*\),?\s*\)\s*return;[\s\S]*?setCockpitDisclosure\(\s*'display',\s*false,?\s*\);/,
     'left-side interactions must not collapse the independent Cockpit utilities',
   );
 });
@@ -439,7 +439,7 @@ test('fresh Cockpit entry temporarily collapses map panels and exit restores the
 
 test('real disclosure changes reconsider only their own temporary panel lane', () => {
   const collapse = memberSource(ui, '  setPanelCollapsed(panelId, collapsed, {');
-  assert.match(collapse, /classList\.contains\('collapsed'\) === nextCollapsed && !wasAutoCollapsed[\s\S]*?return;/);
+  assert.match(collapse, /classList\s*\.contains\(\s*'collapsed',?\s*\)\s*===\s*nextCollapsed\s*&&\s*!wasAutoCollapsed[\s\S]*?return;/);
   assert.match(collapse, /_rightPanelStack\?\.contains\(panelEl\)[\s\S]*?_scheduleRightPanelLayout\(\{ reconsiderAutoCollapse: true \}\)/);
   assert.match(collapse, /_scheduleLeftPanelLayout\(\{[\s\S]*?reconsiderAutoCollapse: this\._leftPanelStack\?\.contains\(panelEl\) === true/);
 });
@@ -503,14 +503,14 @@ test('Cockpit Radio station changes preserve first-person camera ownership', () 
   assert.ok(cycleHelper, 'shared Radio cycle helper is missing');
   assert.match(cycleHelper[1], /cycleStation\(direction, \{[\s\S]*?rotate,/);
   assert.match(ui, /_radioPrevBtn\?\.addEventListener\('click', \(\) => cycleRadio\(-1\)\)/);
-  assert.match(ui, /_contextRadioMiniNextBtn\?\.addEventListener\('click', \(\) => cycleRadio\(1\)\)/);
+  assert.match(ui, /_contextRadioMiniNextBtn\s*\?\s*\.addEventListener\(\s*'click',\s*\(,?\s*\)\s*=>\s*cycleRadio\(\s*1,?\s*\),?\s*\)/);
   assert.match(
     ui,
-    /_cockpitRadioPrevBtn\?\.addEventListener\('click', \(\) => cycleRadio\(-1, \{ rotate: false \}\)\)/,
+    /_cockpitRadioPrevBtn\s*\?\s*\.addEventListener\(\s*'click',\s*\(,?\s*\)\s*=>\s*cycleRadio\(\s*-1,\s*\{\s*rotate:\s*false,?\s*\},?\s*\),?\s*\)/,
   );
   assert.match(
     ui,
-    /_cockpitRadioNextBtn\?\.addEventListener\('click', \(\) => cycleRadio\(1, \{ rotate: false \}\)\)/,
+    /_cockpitRadioNextBtn\s*\?\s*\.addEventListener\(\s*'click',\s*\(,?\s*\)\s*=>\s*cycleRadio\(\s*1,\s*\{\s*rotate:\s*false,?\s*\},?\s*\),?\s*\)/,
   );
 });
 
@@ -536,7 +536,7 @@ test('Cockpit panel corridors reserve the owned topline readouts', () => {
   assert.ok(signalLayout, 'Cockpit signal layout method is missing');
   assert.match(
     signalLayout[1],
-    /setProperty\('--cockpit-utility-top', `\$\{utilityAnchor\.top\.toFixed\(1\)\}px`\)/,
+    /setProperty\(\s*'--cockpit-utility-top',\s*`\$\{\s*utilityAnchor\s*\.top\s*\.toFixed\(\s*1,?\s*\),?\s*\}px`,?\s*\)/,
     'Cockpit owns the utility strip anchor and republishes it every layout tick',
   );
   assert.match(
@@ -547,13 +547,13 @@ test('Cockpit panel corridors reserve the owned topline readouts', () => {
   assert.match(signalLayout[1], /#intel-hud \.hud-top-right/);
   assert.match(
     signalLayout[1],
-    /const recBounds = isRenderedOnScreen\(recReadout\) \? recReadout\.getBoundingClientRect\(\) : null;/,
+    /const\s*recBounds\s*=\s*isRenderedOnScreen\(\s*recReadout,?\s*\)\s*\?\s*recReadout\s*\.getBoundingClientRect\(,?\s*\)\s*:\s*null;/,
     'HUD Off retires the Intel HUD with visibility/opacity, which leaves the REC '
       + 'readout a rect — a rect test alone would anchor the strip to an invisible readout',
   );
   assert.match(
     ui,
-    /function isRenderedOnScreen\(element\) \{[\s\S]*?style\.display === 'none' \|\| style\.visibility === 'hidden' \|\| Number\(style\.opacity\) === 0[\s\S]*?rect\.width > 0 && rect\.height > 0;/,
+    /function\s*isRenderedOnScreen\(\s*element,?\s*\)\s*\{\s*[\s\S]*?style\s*\.display\s*===\s*'none'\s*\|\|\s*style\s*\.visibility\s*===\s*'hidden'\s*\|\|\s*Number\(\s*style\s*\.opacity,?\s*\)\s*===\s*0[\s\S]*?rect\s*\.width\s*>\s*0\s*&&\s*rect\s*\.height\s*>\s*0;/,
   );
   assert.match(
     ui,
@@ -636,7 +636,7 @@ test('Cockpit Display portals shared HUD, Detection, Parameters, and 3D controls
   assert.doesNotMatch(ui, /\['presets',/);
   assert.match(
     ui,
-    /group\.before\(anchor\)[\s\S]*?window\.addEventListener\('gev:cockpit-mode-changed', this\._cockpitDisplayModeHandler\)/,
+    /group\s*\.before\(\s*anchor,?\s*\)[\s\S]*?window\s*\.addEventListener\(\s*'gev:cockpit-mode-changed',\s*this\s*\._cockpitDisplayModeHandler,?\s*\)/,
   );
   assert.match(
     ui,
@@ -644,7 +644,7 @@ test('Cockpit Display portals shared HUD, Detection, Parameters, and 3D controls
   );
   assert.match(
     ui,
-    /window\.removeEventListener\('gev:cockpit-mode-changed', this\._cockpitDisplayModeHandler\)[\s\S]*?_setCockpitDisplayPortalActive\(false\)[\s\S]*?record\.anchor\.remove\(\)/,
+    /window\s*\.removeEventListener\(\s*'gev:cockpit-mode-changed',\s*this\s*\._cockpitDisplayModeHandler,?\s*\)[\s\S]*?_setCockpitDisplayPortalActive\(\s*false,?\s*\)[\s\S]*?record\s*\.anchor\s*\.remove\(,?\s*\)/,
   );
   assert.doesNotMatch(ui, /_cycleCockpitHud|_cockpitModels3dToggle|_cockpitDetectionToggle/);
   assert.equal((html.match(/id="style-buttons"/g) || []).length, 1);
@@ -846,7 +846,7 @@ test('cockpit state cannot report entryAllowed while already active', () => {
   );
   assert.match(
     state,
-    /const entryAllowed = !active && Boolean\(/,
+    /const\s*entryAllowed\s*=\s*!active\s*&&\s*Boolean\(\s*/,
     'entry is impossible while already inside, unconditionally',
   );
   assert.match(state, /entryBlockedReason:/, 'and a refusal can be explained');

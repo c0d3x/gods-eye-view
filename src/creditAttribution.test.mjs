@@ -441,16 +441,16 @@ test('custom properties inside modelled offsets are provably non-negative', () =
   assert.ok(start > 0, '_updateCommandDockTrayStack is missing');
   const writer = ui.slice(start, start + 1800);
   // Every value traces back to a rect height, floored at 0 and rounded up.
-  assert.match(writer, /const locationHeight = [\s\S]{0,120}?getBoundingClientRect\(\)\.height \|\| 0;/);
-  assert.match(writer, /const presetsHeight = [\s\S]{0,120}?getBoundingClientRect\(\)\.height \|\| 0;/);
-  assert.match(writer, /const lowerPinnedHeight = [\s\S]{0,160}?getBoundingClientRect\(\)\.height \|\| 0;/);
+  assert.match(writer, /const\s*locationHeight\s*=\s*[\s\S]{0,120}?getBoundingClientRect\(,?\s*\)\s*\.height\s*\|\|\s*0;/);
+  assert.match(writer, /const\s*presetsHeight\s*=\s*[\s\S]{0,120}?getBoundingClientRect\(,?\s*\)\s*\.height\s*\|\|\s*0;/);
+  assert.match(writer, /const\s*lowerPinnedHeight\s*=\s*[\s\S]{0,160}?getBoundingClientRect\(,?\s*\)\s*\.height\s*\|\|\s*0;/);
   assert.match(writer, /const locationHeightPx = Math\.ceil\(locationHeight\);/);
   assert.match(writer, /const presetsHeightPx = Math\.ceil\(presetsHeight\);/);
-  assert.match(writer, /'--dock-location-pinned-height', `\$\{locationHeightPx\}px`/);
-  assert.match(writer, /'--dock-presets-pinned-height', `\$\{presetsHeightPx\}px`/);
-  assert.match(writer, /'--dock-lower-pinned-height', `\$\{Math\.ceil\(lowerPinnedHeight\)\}px`/);
+  assert.match(writer, /'--dock-location-pinned-height',\s*`\$\{\s*locationHeightPx,?\s*\}px`/);
+  assert.match(writer, /'--dock-presets-pinned-height',\s*`\$\{\s*presetsHeightPx,?\s*\}px`/);
+  assert.match(writer, /'--dock-lower-pinned-height',\s*`\$\{\s*Math\s*\.ceil\(\s*lowerPinnedHeight,?\s*\),?\s*\}px`/);
   assert.match(writer, /'--dock-pinned-stack-height', stackHeight/);
-  assert.match(writer, /const stackHeight = pinnedCount > 1[\s\S]{0,160}?`calc\(\$\{locationHeightPx\}px \+ \$\{presetsHeightPx\}px \+ 1\.2rem\)`/);
+  assert.match(writer, /const\s*stackHeight\s*=\s*pinnedCount\s*>\s*1[\s\S]{0,160}?`calc\(\s*\$\{\s*locationHeightPx,?\s*\}px\s*\+\s*\$\{\s*presetsHeightPx,?\s*\}px\s*\+\s*1\.2rem,?\s*\)`/);
 });
 
 test('the inputs behind the measured constants are unchanged', () => {

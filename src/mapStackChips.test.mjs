@@ -345,11 +345,11 @@ test('the Visual Presets tray owns Map Source and the retired left panel is abse
     'the compact wing must expose a semantic keyboard disclosure',
   );
   assert.match(ui, /event\.key !== 'Escape'[\s\S]*?disclosure\?\.focus/);
-  assert.match(ui, /querySelector\('\.map-stack-chip\.active'\)\s*\|\| panelEl\.querySelector\('\.map-stack-chip'\)/);
+  assert.match(ui, /querySelector\(\s*'\s*\.map-stack-chip\s*\.active',?\s*\)\s*\|\|\s*panelEl\s*\.querySelector\(\s*'\s*\.map-stack-chip',?\s*\)/);
 
   assert.match(
     ui,
-    /renderMapStackChips\(this\._mapStackChips, this\.mapStackController\.getStacks\(\), \{[\s\S]*?onSelect: \(stackId\) => \{ this\._setMapStack\(stackId\); \}/,
+    /renderMapStackChips\(\s*this\s*\._mapStackChips,\s*this\s*\.mapStackController\s*\.getStacks\(,?\s*\),\s*\{\s*[\s\S]*?onSelect:\s*\(\s*stackId,?\s*\)\s*=>\s*\{\s*this\s*\._setMapStack\(\s*stackId,?\s*\);,?\s*\}/,
     'chips must dispatch through the same _setMapStack path the dropdown used',
   );
   assert.match(
@@ -359,7 +359,7 @@ test('the Visual Presets tray owns Map Source and the retired left panel is abse
   );
   assert.match(
     ui,
-    /window\.addEventListener\('gev:map-stack-changed', this\._mapStackChangeHandler\)/,
+    /window\s*\.addEventListener\(\s*'gev:map-stack-changed',\s*this\s*\._mapStackChangeHandler,?\s*\)/,
     'provider-driven fallback must re-sync the UI without a user click',
   );
   assert.match(

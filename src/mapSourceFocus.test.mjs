@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { readUiSource } from './testing/uiSources.mjs';
+import { looseIndexOf, readUiSource } from './testing/uiSources.mjs';
 
 // Exercise the installed event routes and central close method, without WebGL.
 const source = readUiSource();
@@ -15,7 +15,7 @@ const initStart = source.indexOf('  _initAutoHoverPanel(');
 const initEnd = source.indexOf('  /**\n   * Sets up drag-to-reposition', initStart);
 const escapeStart = source.indexOf('  _collapsePanelOnEscape(');
 const escapeEnd = source.indexOf('  _initCommandDockPins(', escapeStart);
-const closeStart = source.indexOf('  setPanelCollapsed(panelId, collapsed, {');
+const closeStart = looseIndexOf(source, '  setPanelCollapsed(panelId, collapsed, {');
 const closeEnd = source.indexOf('\n  }\n', closeStart) + '\n  }\n'.length;
 const syncStart = source.indexOf('  _syncPanelCollapseButton(panelEl) {');
 const syncEnd = source.indexOf('  /**\n   * Converts a panel', syncStart);

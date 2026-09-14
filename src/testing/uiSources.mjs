@@ -37,17 +37,65 @@ export function readUiSource() {
 }
 
 /**
- * One class member of \`source\`, from its signature through its closing brace.
+ * A regex source for `text` that accepts the line shapes a formatter may
+ * give it: any whitespace run between tokens, whitespace after an opening
+ * bracket or a comma, and a trailing comma before a closing bracket.
+ * @param {string} text - Source text, such as a member's signature.
+ * @returns {string}
+ */
+export function looseSourcePattern(text) {
+  let out = '';
+  for (const char of text) {
+    if (/\s/.test(char)) {
+      if (!out.endsWith('\\s*')) out += '\\s*';
+    } else if ('([{'.includes(char)) {
+      out += `\\${char}\\s*`;
+    } else if (')]}'.includes(char)) {
+      out = `${out.replace(/(?:\\s\*)+$/, '')},?\\s*\\${char}`;
+    } else if (char === ',') {
+      out += ',\\s*';
+    } else {
+      out += char.replace(/[.*+?^$|\\/]/g, '\\$&');
+    }
+  }
+  return out.replace(/(?:\\s\*){2,}/g, '\\s*');
+}
+
+/**
+ * Where `text` first appears in `source` at or after `from`, allowing the
+ * line shapes looseSourcePattern() allows. Leading indentation stays exact.
+ * @param {string} source
+ * @param {string} text
+ * @param {number} [from]
+ * @returns {number} The index, or -1.
+ */
+export function looseIndexOf(source, text, from = 0) {
+  const indent = /^ */.exec(text)[0];
+  const pattern = new RegExp(
+    indent + looseSourcePattern(text.slice(indent.length)),
+    'g',
+  );
+  pattern.lastIndex = from;
+  return pattern.exec(source)?.index ?? -1;
+}
+
+/**
+ * One class member of `source`, from its signature through its closing brace.
  * Members move between ui.js and the panel modules, so a member ends at its
- * own brace rather than at whichever member follows it.
+ * own brace rather than at whichever member follows it, and its signature
+ * matches however the formatter wrapped it.
  * @param {string} source - Usually readUiSource().
  * @param {string} signature - The member's first line as written, indentation
  *   included, such as '  setOrbit(enabled) {'.
  * @returns {string} The member's text, or '' when it is missing.
  */
 export function memberSource(source, signature) {
-  const start = source.indexOf(`\n${signature}`);
-  if (start < 0) return '';
-  const end = source.indexOf('\n  }\n', start + 1 + signature.length);
-  return end < 0 ? '' : source.slice(start + 1, end + '\n  }'.length);
+  const indent = /^ */.exec(signature)[0];
+  const pattern = new RegExp(
+    `\\n${indent}${looseSourcePattern(signature.slice(indent.length))}`,
+  );
+  const match = pattern.exec(source);
+  if (!match) return '';
+  const end = source.indexOf('\n  }\n', match.index + match[0].length);
+  return end < 0 ? '' : source.slice(match.index + 1, end + '\n  }'.length);
 }

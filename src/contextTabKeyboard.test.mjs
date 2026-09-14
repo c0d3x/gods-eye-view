@@ -17,7 +17,7 @@ test('Contacts and Space Missions both participate in the ordinary Tab sequence'
 
   const sync = ui.match(/_syncContextModeButtons\(\) \{([\s\S]*?)\n  \}\n/);
   assert.ok(sync, 'Context mode sync is missing');
-  assert.match(sync[1], /\[this\._globalContextFlightsBtn, this\._globalContextMissionsBtn\]/);
+  assert.match(sync[1], /\[\s*this\s*\._globalContextFlightsBtn,\s*this\s*\._globalContextMissionsBtn,?\s*\]/);
   assert.match(sync[1], /button\.tabIndex = 0/);
   assert.doesNotMatch(sync[1], /tabIndex\s*=\s*[^;]*\?\s*-1/);
 });

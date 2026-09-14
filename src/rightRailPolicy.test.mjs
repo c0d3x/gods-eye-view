@@ -38,13 +38,13 @@ test('desktop Display participates in Tactical exclusivity without changing mobi
   assert.match(ui, /const isMobile = window\.matchMedia\('\(max-width: 720px\)'\)\.matches/);
   assert.match(
     ui,
-    /!panel\.classList\.contains\('collapsed'\) && \(!isMobile \|\| panel\.id !== 'pp-toggles'\)/,
+    /!panel\s*\.classList\s*\.contains\(\s*'collapsed',?\s*\)\s*&&\s*\(\s*!isMobile\s*\|\|\s*panel\s*\.id\s*!==\s*'pp-toggles',?\s*\)/,
   );
   assert.doesNotMatch(
     ui,
     /panel\.id !== 'pp-toggles' && !panel\.classList\.contains\('collapsed'\)/,
   );
-  assert.match(ui, /if \(exclusive && panel\.classList\.contains\('collapsed'\)\) panel\.setAttribute\('aria-hidden', 'true'\)/);
+  assert.match(ui, /if\s*\(\s*exclusive\s*&&\s*panel\s*\.classList\s*\.contains\(\s*'collapsed',?\s*\),?\s*\)\s*panel\s*\.setAttribute\(\s*'aria-hidden',\s*'true',?\s*\)/);
   assert.match(css, /#right-context-rail\.layout-exclusive > \[data-panel-id\]\.collapsed \{/);
 });
 

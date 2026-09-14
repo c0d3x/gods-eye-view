@@ -136,5 +136,5 @@ test('the UI saves positions in the format this module retires, and shows the no
     body,
     /takePanelLayoutResetNotice\(localStorage, PANEL_POSITION_STORAGE_VERSION\)/,
   );
-  assert.match(body, /this\._showToast\('Panel layout updated/);
+  assert.match(body, /this\s*\._showToast\(\s*'Panel\s*layout\s*updated/);
 });

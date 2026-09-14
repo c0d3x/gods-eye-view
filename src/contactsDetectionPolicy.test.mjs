@@ -34,7 +34,7 @@ const uiSource = readUiSource();
  */
 const MILITARY_PRESET = (() => {
   const match = uiSource.match(
-    /const MILITARY_DETECTION_PRESET = Object\.freeze\(\{ mode: '(\w+)', densityPct: (\d+) \}\)/,
+    /const\s*MILITARY_DETECTION_PRESET\s*=\s*Object\s*\.freeze\(\s*\{\s*mode:\s*'(\w+)',\s*densityPct:\s*(\d+),?\s*\},?\s*\)/,
   );
   assert.ok(match, 'ui.js must expose one shared military detection preset');
   return { mode: match[1].toUpperCase(), densityPct: Number(match[2]) };

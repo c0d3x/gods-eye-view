@@ -17,7 +17,7 @@ import {
   shouldShowFirstRun,
 } from './firstRunExperience.js';
 import { GEV_REALTIME_TOOLS } from '../server/realtime/tools.mjs';
-import { readUiSource } from './testing/uiSources.mjs';
+import { looseIndexOf, readUiSource } from './testing/uiSources.mjs';
 
 function memoryStorage(key, value = null) {
   const values = new Map(value == null ? [] : [[key, value]]);
@@ -270,7 +270,7 @@ test('one ESC does one thing — the radio disclosure stops the launcher outrigh
   // disclosure's earlier capture handler closed the disclosure and the launcher
   // dismissed itself off the same key. The earlier listener is the only one that
   // can stop the later one — and only the immediate form does it.
-  const radioEsc = ui.slice(ui.indexOf("if (event.key !== 'Escape' || !this._contextRadioDock"));
+  const radioEsc = ui.slice(looseIndexOf(ui, "if (event.key !== 'Escape' || !this._contextRadioDock"));
   const claim = radioEsc.slice(0, radioEsc.indexOf('setRadioDisclosure(false'));
   assert.match(claim, /event\.preventDefault\(\);/);
   assert.match(claim, /event\.stopImmediatePropagation\(\);/);

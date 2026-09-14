@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { readUiSource } from './testing/uiSources.mjs';
+import { looseIndexOf, memberSource, readUiSource } from './testing/uiSources.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ui = readUiSource();
@@ -25,7 +25,7 @@ test('the ACTIVE STYLE indicator is written from the style name and nothing else
   assert.equal(writes.length, 1, 'the style indicator must have exactly one writer');
   assert.match(
     ui.slice(writes[0].index, writes[0].index + 160),
-    /this\._styleIndicator\.textContent = displayNames\[styleName\] \|\| styleName\.toUpperCase\(\);/,
+    /this\s*\._styleIndicator\s*\.textContent\s*=\s*displayNames\[\s*styleName,?\s*\]\s*\|\|\s*styleName\s*\.toUpperCase\(,?\s*\);/,
   );
 
   const handler = locationSearchHandler();
@@ -65,13 +65,13 @@ test('any other camera destination clears the search label too', () => {
   // Voice navigation, the globe reset, camera takeover and entity selection
   // all funnel through _stampNavigation; without a clear there, a searched
   // label outlives the place it named.
-  const start = ui.indexOf('  _stampNavigation({ cancelPendingSelection = true, clearSearchedLocation = true } = {}) {');
-  assert.ok(start > 0, '_stampNavigation is missing');
-  assert.match(ui.slice(start, start + 700), /if \(clearSearchedLocation\) this\.clearSearchedLocation\(\);/);
+  const stamp = memberSource(ui, '  _stampNavigation({ cancelPendingSelection = true, clearSearchedLocation = true } = {}) {');
+  assert.ok(stamp, '_stampNavigation is missing');
+  assert.match(stamp, /if \(clearSearchedLocation\) this\.clearSearchedLocation\(\);/);
 
   // The shared funnel is what the reset and voice seams actually reach.
   for (const seam of ['resetToGlobeView() {', 'beginLocationNavigation() {', '_runExplicitNavigation(noun, navigate']) {
-    const at = ui.indexOf(seam);
+    const at = looseIndexOf(ui, seam);
     assert.ok(at > 0, `missing navigation seam "${seam}"`);
     assert.match(ui.slice(at, at + 900), /_stampNavigation\(/, `"${seam}" must stamp navigation`);
   }
@@ -85,11 +85,11 @@ test('a deferred lookup that never flies leaves the readout standing', () => {
   // the stamp blanked a still-true readout whenever the lookup failed, was
   // superseded, or was refused — no camera ever moved. The deferred begin opts
   // out; the reassert seam, reached only once the flight is granted, clears.
-  const begin = ui.indexOf('  _beginDeferredNavigation(noun = ');
-  assert.ok(begin > 0, '_beginDeferredNavigation is missing');
+  const begin = memberSource(ui, "  _beginDeferredNavigation(noun = 'location', { cancelPendingSelection = true } = {}) {");
+  assert.ok(begin, '_beginDeferredNavigation is missing');
   assert.match(
-    ui.slice(begin, begin + 700),
-    /stamp: \(\) => this\._stampNavigation\(\{ cancelPendingSelection, clearSearchedLocation: false \}\)/,
+    begin,
+    /stamp:\s*\(,?\s*\)\s*=>\s*this\s*\._stampNavigation\(\s*\{\s*cancelPendingSelection,\s*clearSearchedLocation:\s*false,?\s*\},?\s*\)/,
   );
 
   const reassert = ui.indexOf('  _reassertNavigationHandoff(generation) {');

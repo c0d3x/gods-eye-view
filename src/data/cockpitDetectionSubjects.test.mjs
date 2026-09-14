@@ -89,7 +89,7 @@ test('Cockpit lifecycle publishes one normalized aircraft identity to both detec
     .exec(UI_SOURCE)?.[0];
   assert.ok(dispatcher, 'Cockpit event dispatcher is defined');
   assert.match(dispatcher, /info\?\.icao24/);
-  assert.match(dispatcher, /\.trim\(\)\.toLowerCase\(\)/);
+  assert.match(dispatcher, /\s*\.trim\(,?\s*\)\s*\.toLowerCase\(,?\s*\)/);
   assert.match(dispatcher, /\['flights', 'military'\]\.includes\(info\?\.layerId\)/);
   assert.match(dispatcher, /detail: \{ active: active === true, subjectId, layerId \}/);
   assert.match(UI_SOURCE, /this\.dispatchCockpitModeChanged\(true, info\);/,

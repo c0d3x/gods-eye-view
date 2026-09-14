@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ShareLinkManager, decodeShareCreatedAtMs } from './sharelink.js';
 import { createDefaultLayerState } from './data/layerState.js';
-import { readUiSource } from './testing/uiSources.mjs';
+import { memberSource, readUiSource } from './testing/uiSources.mjs';
 
 const uiSource = readUiSource();
 
@@ -12,11 +12,9 @@ const uiSource = readUiSource();
  * the block ends at the member's own brace, not at whichever member follows.
  */
 function memberBlock(start) {
-  const startIndex = uiSource.indexOf(start);
-  assert.ok(startIndex >= 0, `missing member start: ${start}`);
-  const endIndex = uiSource.indexOf('\n  }\n', startIndex + start.length);
-  assert.ok(endIndex > startIndex, `missing member end: ${start}`);
-  return uiSource.slice(startIndex, endIndex + '\n  }'.length);
+  const block = memberSource(uiSource, start);
+  assert.ok(block, `missing member: ${start}`);
+  return block;
 }
 
 function assertClaimsBefore(block, mutation, label) {
@@ -196,7 +194,7 @@ test('a shared view reserves its own camera without cancelling its saved Follow'
   );
   // The shared view's own `cancelPendingSelection` must reach the stamp; other
   // stamp options may ride alongside it.
-  assert.match(deferred, /_stampNavigation\(\{ cancelPendingSelection[^)]*\}\)/);
+  assert.match(deferred, /_stampNavigation\(\s*\{\s*cancelPendingSelection[^)]*,?\s*\},?\s*\)/);
 });
 
 test('copy timestamp parsing is strict and rejects malformed or future values', () => {

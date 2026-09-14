@@ -119,7 +119,7 @@ test('context handler: either failed direct Context-shell start rolls the sessio
   assert.match(failedBranch, /\['military-awareness', 'rocket-launches'\]\.includes\(change\.layerId\)/);
   assert.match(
     failedBranch,
-    /_restoreContextSessionAfterLayerSettles\(\s*change\.layerId,\s*\{ notificationToken \},\s*\)/,
+    /_restoreContextSessionAfterLayerSettles\(\s*change\s*\.layerId,\s*\{\s*notificationToken,?\s*\},?\s*\)/,
   );
   assert.match(failedBranch, /_runUserFacingContextAction/);
   assert.match(failedBranch, /const failureMessage =/);
@@ -127,11 +127,11 @@ test('context handler: either failed direct Context-shell start rolls the sessio
     failedBranch,
     /await this\._restoreContextSessionAfterLayerSettles\([\s\S]*?this\._showToast\(failureMessage\);\s*return true;/,
   );
-  assert.match(failedBranch, /\},\s*failureMessage,\s*\)\);/);
+  assert.match(failedBranch, /,?\s*\},\s*failureMessage,?\s*\),?\s*\);/);
   assert.match(failedBranch, /_trackContextLayerReaction\(/);
   assert.match(
     failedBranch,
-    /else if \(!this\._userFacingContextNotificationTokens\.has\(change\.notificationToken\)\)/,
+    /else\s*if\s*\(\s*!this\s*\._userFacingContextNotificationTokens\s*\.has\(\s*change\s*\.notificationToken,?\s*\),?\s*\)/,
   );
 
   const deferredRestore = src.slice(
@@ -165,7 +165,7 @@ test('every user-facing Context exit route settles through the failure surface',
   assert.doesNotMatch(initPanel, /void this\._selectContextMode/);
 
   const deactivationCalls = [...handler.matchAll(
-    /void this\._trackContextLayerReaction\(this\._runUserFacingContextAction\(\(notificationToken\) => \(\s*this\._deactivateContextForLayerChange\(\{ notificationToken \}\)\s*\)\)\)/g,
+    /void this\._trackContextLayerReaction\(\s*this\._runUserFacingContextAction\(\(notificationToken\) =>\s*\(?\s*this\._deactivateContextForLayerChange\(\{ notificationToken \}\)\s*\)?,?\s*\),?\s*\)/g,
   )];
   assert.equal(deactivationCalls.length, 4, 'dependency and primary layer exits share the caught restore path');
   assert.doesNotMatch(handler, /void this\._deactivateContextForLayerChange\(\)/);
@@ -187,7 +187,7 @@ test('only the expanded Radio Enable gesture requests the contained post-enable 
     src.indexOf("this._radioFilter?.addEventListener('change'"),
   );
   assert.match(radioControls, /revealAfterEnable = enabling && trigger === this\._radioEnableBtn/);
-  assert.match(radioControls, /if \(revealAfterEnable\) await this\._revealRadioControlsAfterExplicitEnable\(trigger\)/);
+  assert.match(radioControls, /if\s*\(\s*revealAfterEnable,?\s*\)\s*await\s*this\s*\._revealRadioControlsAfterExplicitEnable\(\s*trigger,?\s*\)/);
   assert.equal((src.match(/_revealRadioControlsAfterExplicitEnable\(trigger\)/g) || []).length, 2);
 });
 
@@ -205,8 +205,8 @@ test('right-rail context entry is transactional: activation result gates the mod
   assert.match(failureBlock, /await this\._dataManager\._waitForVisibilityIntent\?\.\(/);
   assert.match(failureBlock, /outcome\?\.intentEpoch === replacementIntent\.intentEpoch[\s\S]*?outcome\.succeeded === true/);
   assert.match(failureBlock, /outcome\?\.cancellationReason === 'superseded'[\s\S]*?outcome\.successorEnabled === true[\s\S]*?outcome\.successorIntentEpoch > replacementIntent\.intentEpoch/);
-  assert.match(failureBlock, /activationError \|\| activated === false \|\| !this\._dataManager\.isEnabled\(entryLayerId\)/);
-  assert.match(failureBlock, /cancelledAndSettled = terminalIntentOutcome\?\.succeeded === false/);
+  assert.match(failureBlock, /activationError\s*\|\|\s*activated\s*===\s*false\s*\|\|\s*!this\s*\._dataManager\s*\.isEnabled\(\s*entryLayerId,?\s*\)/);
+  assert.match(failureBlock, /cancelledAndSettled\s*=\s*terminalIntentOutcome\s*\?\s*\.succeeded\s*===\s*false/);
   assert.match(failureBlock, /\['caller-abort', 'resource-abort', 'superseded'\]/);
   assert.match(failureBlock, /this\._contextMode = null/);
   assert.match(failureBlock, /await this\._restoreContextSession\(\{[\s\S]*?excludeLayerIds: \[entryLayerId\],[\s\S]*?notificationToken/);
@@ -218,7 +218,7 @@ test('Context entry awaits isolation and direct shell routes isolate in the visi
     src.indexOf('async _selectContextMode('),
     src.indexOf('async _deactivateContextForLayerChange('),
   );
-  assert.match(select, /await this\._clearLayersOutsideContextMode\(mode, \{ notificationToken, signal \}\)/);
+  assert.match(select, /await\s*this\s*\._clearLayersOutsideContextMode\(\s*mode,\s*\{\s*notificationToken,\s*signal,?\s*\},?\s*\)/);
   assert.match(select, /await this\._restoreContextSession\(\{ notificationToken, signal \}\)/);
   assert.doesNotMatch(select, /void this\._clearLayersOutsideContextMode\(mode\)/);
 
@@ -275,7 +275,7 @@ test('a lost cross-mode switch says Context is off, and the state agrees', () =>
   assert.match(setter, /const priorMode = this\._contextMode;/, 'the report knows what was lost');
   assert.match(
     setter,
-    /const crossModeSwitchLost = transitioned !== true\s*&& Boolean\(priorMode\) && priorMode !== canonical && !state\.mode;/,
+    /const\s*crossModeSwitchLost\s*=\s*transitioned\s*!==\s*true\s*&&\s*Boolean\(\s*priorMode,?\s*\)\s*&&\s*priorMode\s*!==\s*canonical\s*&&\s*!state\s*\.mode;/,
     'the verdict requires a real cross-mode switch that ended with no mode',
   );
   assert.match(
@@ -313,7 +313,7 @@ test('Context facade preserves success when cancellation arrives after commit', 
   const setContextMode = memberSource(src, '  async setContextMode(mode, {');
   assert.match(
     setContextMode,
-    /transitioned === null \|\| \(!requestIsCurrent\(\) && transitioned !== true\)/,
+    /transitioned\s*===\s*null\s*\|\|\s*\(\s*!requestIsCurrent\(,?\s*\)\s*&&\s*transitioned\s*!==\s*true,?\s*\)/,
   );
   assert.match(
     setContextMode,
@@ -327,11 +327,11 @@ test('Context production rollback paths merge primary and restore failed-layer i
     src.indexOf('async _deactivateContextForLayerChange('),
   );
   assert.equal(
-    (select.match(/mergeContextTransitionErrors\(transitionError, restoreError\)/g) || []).length,
+    (select.match(/mergeContextTransitionErrors\(\s*transitionError,\s*restoreError,?\s*\)/g) || []).length,
     2,
   );
-  assert.match(select, /transitionError\.failedLayerIds = \[\.\.\.new Set\(\[/);
-  assert.match(select, /this\._contextTransitionFailedLayerIds = \[\.\.\.\(transitionError\.failedLayerIds \|\| \[\]\)\]/);
+  assert.match(select, /transitionError\s*\.failedLayerIds\s*=\s*\[\s*\.\.\s*\.new\s*Set\(\s*\[\s*/);
+  assert.match(select, /this\s*\._contextTransitionFailedLayerIds\s*=\s*\[\s*\.\.\.\(\s*transitionError\s*\.failedLayerIds\s*\|\|\s*\[,?\s*\],?\s*\),?\s*\]/);
 });
 
 test('stale Context cancellation preserves rollback failed-layer identities', () => {

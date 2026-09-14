@@ -95,7 +95,7 @@ test('share-follow failures use the universal top-center status instead of the b
   assert.match(handler, /this\._showGlobalStatusNotice\(message\)/);
   assert.match(handler, /this\.initialRestorePromise\.then\(showAfterStartupCover\)/);
   assert.match(handler, /requestAnimationFrame\(\(\) => \{/);
-  assert.match(handler, /startupCover\.addEventListener\('transitionend', showOnce, \{ once: true \}\)/);
+  assert.match(handler, /startupCover\s*\.addEventListener\(\s*'transitionend',\s*showOnce,\s*\{\s*once:\s*true,?\s*\},?\s*\)/);
   assert.match(handler, /fallbackTimer = setTimeout\(showOnce, 1000\)/);
   assert.doesNotMatch(handler, /this\._showToast\(message\)/);
   assert.doesNotMatch(handler, /pushCockpitSignal/);
@@ -105,7 +105,7 @@ test('share-follow failures use the universal top-center status instead of the b
   assert.match(handler, /this\._shareTrackingNoticeGeneration \+= 1/);
   assert.match(handler, /canPresentDeferredStatusNotice\(/);
   assert.match(handler, /if \(this\._shareTrackingAcquiringKey\) return/);
-  assert.match(handler, /result\.classification === 'followed' \|\| result\.classification === 'cancelled'/);
+  assert.match(handler, /result\s*\.classification\s*===\s*'followed'\s*\|\|\s*result\s*\.classification\s*===\s*'cancelled'/);
 });
 
 test('universal notice masks active loading only for its own fixed dwell', () => {
@@ -712,7 +712,7 @@ test('the loading ticker never runs hidden and stops after loading and notices s
   //    Persistent ACQUIRING notices remain visible without a 60ms timer.
   assert.match(
     arm,
-    /const noticeNeedsTicker = Number\.isFinite\(this\._globalStatusNotice\?\.hideAt\);[\s\S]*?if \(this\._loadingFeedbackState\?\.phase === 'idle' && !noticeNeedsTicker\) \{\s*this\._stopLoadingFeedbackTicker\(\);\s*\}/,
+    /const\s*noticeNeedsTicker\s*=\s*Number\s*\.isFinite\(\s*this\s*\._globalStatusNotice\s*\?\s*\.hideAt,?\s*\);[\s\S]*?if\s*\(\s*this\s*\._loadingFeedbackState\s*\?\s*\.phase\s*===\s*'idle'\s*&&\s*!noticeNeedsTicker,?\s*\)\s*\{\s*this\s*\._stopLoadingFeedbackTicker\(,?\s*\);,?\s*\}/,
     'an idle phase with no expiring notice must stop the ticker',
   );
   assert.match(

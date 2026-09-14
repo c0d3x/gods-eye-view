@@ -695,7 +695,7 @@ test('detection cannot resurrect a private canvas, listener, matrix, resize, cle
   // three times" — same guarantee, and the copies can no longer drift.
   assert.match(
     uiSource,
-    /const MILITARY_DETECTION_PRESET = Object\.freeze\(\{ mode: 'dense', densityPct: 75 \}\);/,
+    /const\s*MILITARY_DETECTION_PRESET\s*=\s*Object\s*\.freeze\(\s*\{\s*mode:\s*'dense',\s*densityPct:\s*75,?\s*\},?\s*\);/,
     'the tactical detection default is still Dense @ 75%',
   );
   assert.equal(
