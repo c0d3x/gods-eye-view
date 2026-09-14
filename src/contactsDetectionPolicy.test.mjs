@@ -137,10 +137,8 @@ test('the Contacts preset is the very object the military styles apply', () => {
 });
 
 test('the shared preset applier ignores the style override flag — the caller owns it', () => {
-  const applier = uiSource.slice(
-    uiSource.indexOf('_applyDetectionPreset(det) {'),
-    uiSource.indexOf('Applies the global post-processing baseline'),
-  );
+  const applierStart = uiSource.indexOf('  _applyDetectionPreset(det) {');
+  const applier = uiSource.slice(applierStart, uiSource.indexOf('\n  }\n', applierStart));
   assert.ok(applier.length > 0);
   assert.doesNotMatch(applier, /_detectionUserOverridden/);
   // The STYLE path still gates on it; Contacts deliberately does not.

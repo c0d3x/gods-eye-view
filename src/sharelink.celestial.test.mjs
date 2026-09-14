@@ -6,12 +6,17 @@ import { readUiSource } from './testing/uiSources.mjs';
 
 const uiSource = readUiSource();
 
-function sourceBlock(start, end) {
+/**
+ * One class member of the UI source, from its signature `start` through its
+ * closing brace. Members move between ui.js and the modules under src/ui/, so
+ * the block ends at the member's own brace, not at whichever member follows.
+ */
+function memberBlock(start) {
   const startIndex = uiSource.indexOf(start);
-  const endIndex = uiSource.indexOf(end, startIndex + start.length);
-  assert.ok(startIndex >= 0, `missing source block start: ${start}`);
-  assert.ok(endIndex > startIndex, `missing source block end: ${end}`);
-  return uiSource.slice(startIndex, endIndex);
+  assert.ok(startIndex >= 0, `missing member start: ${start}`);
+  const endIndex = uiSource.indexOf('\n  }\n', startIndex + start.length);
+  assert.ok(endIndex > startIndex, `missing member end: ${start}`);
+  return uiSource.slice(startIndex, endIndex + '\n  }'.length);
 }
 
 function assertClaimsBefore(block, mutation, label) {
@@ -186,9 +191,8 @@ test('a shared view reserves its own camera without cancelling its saved Follow'
     uiSource,
     /_beginDeferredNavigation\(\s*'shared view',\s*\{ cancelPendingSelection: false \},\s*\)/,
   );
-  const deferred = sourceBlock(
+  const deferred = memberBlock(
     "  _beginDeferredNavigation(noun = 'location', { cancelPendingSelection = true } = {}) {",
-    '  /** Final authority check and release immediately before a delayed flight. */',
   );
   // The shared view's own `cancelPendingSelection` must reach the stamp; other
   // stamp options may ride alongside it.
@@ -415,7 +419,7 @@ test('newer visual, map, and individual panel actions suppress only their owned 
 });
 
 test('every explicit visual UI gesture claims restore authority before it mutates state', () => {
-  const initUi = sourceBlock('  _initUI() {', '  _initMapStackControl() {');
+  const initUi = memberBlock('  _initUI() {');
   const gestureRoutes = [
     ["if (e.key.toLowerCase() === 'h')", "if (e.key.toLowerCase() === 'o')", 'this.hud.toggle()', 'HUD hotkey'],
     ["if (e.key.toLowerCase() === 'd')", "if (e.key.toLowerCase() === 'c')", 'cycleDetectionMode()', 'detection hotkey'],
@@ -437,7 +441,7 @@ test('every explicit visual UI gesture claims restore authority before it mutate
     assertClaimsBefore(initUi.slice(startIndex, endIndex), mutation, label);
   }
 
-  const hudToggle = sourceBlock('  _initHUDToggle() {', '  _initCockpitDisplayPortal() {');
+  const hudToggle = memberBlock('  _initHUDToggle() {');
   assertClaimsBefore(
     hudToggle.slice(
       hudToggle.indexOf("this._hudBtn.addEventListener('click'"),
@@ -477,16 +481,15 @@ test('explicit Context transitions claim the visual restore lane before transiti
     assert.ok(claimIndex < mutationIndex, `${label} must claim before mutation`);
   };
 
-  const helper = sourceBlock(
+  const helper = memberBlock(
     '  _claimContextVisualAuthority() {',
-    '  async _selectContextMode(mode, {',
   );
   assert.ok(
     helper.includes("claimRestoreLane?.('visual')"),
     'the Context authority helper must claim the visual lane',
   );
 
-  const contextPanel = sourceBlock('  _initGlobalContextPanel() {', '  async _runUserFacingContextAction(');
+  const contextPanel = memberBlock('  _initGlobalContextPanel() {');
   for (const [start, end, label] of [
     ["this._globalContextFlightsBtn?.addEventListener('click'", "this._globalContextMissionsBtn?.addEventListener('click'", 'Contacts tab'],
     ["this._globalContextMissionsBtn?.addEventListener('click'", 'CONTEXT_PANEL_END', 'Space Missions tab'],
@@ -500,7 +503,7 @@ test('explicit Context transitions claim the visual restore lane before transiti
   }
 
   // The voice/tool facade validates the mode first, then transitions.
-  const facade = sourceBlock('  async setContextMode(mode, {', '  getCockpitState() {');
+  const facade = memberBlock('  async setContextMode(mode, {');
   assertContextClaimsBefore(facade, 'this._selectContextMode(', 'setContextMode facade');
   // Authority is taken per validated branch, never ahead of validation. The
   // OFF branch is validated by its own guard; the named-mode branch must claim
@@ -530,8 +533,8 @@ test('explicit Context transitions claim the visual restore lane before transiti
 // detection: `_detectionUserOverridden` is what suppresses the military-style
 // auto-enable for the rest of the session. Contacts entry is not that.
 test('Context lane claims never set the session detection-override flag', () => {
-  const contextPanel = sourceBlock('  _initGlobalContextPanel() {', '  async _runUserFacingContextAction(');
-  const facade = sourceBlock('  async setContextMode(mode, {', '  getCockpitState() {');
+  const contextPanel = memberBlock('  _initGlobalContextPanel() {');
+  const facade = memberBlock('  async setContextMode(mode, {');
   for (const [block, label] of [
     [contextPanel, 'Context panel'],
     [facade, 'setContextMode facade'],
@@ -545,20 +548,20 @@ test('Context lane claims never set the session detection-override flag', () => 
 
 test('every explicit visual control facade claims restore authority before mutation', () => {
   const facadeRoutes = [
-    ['  setHudVisible(mode) {', '  setHudLayout(variantName) {', 'this.hud.setMode(', 'setHudVisible'],
-    ['  setHudLayout(variantName) {', '  getDetectionState() {', 'this._setHudVariant(', 'setHudLayout'],
-    ['  setDetection({ enabled, mode, densityPct, allocationStrategy, fadePct, outsideOpacityPct } = {}) {', '  async setMapStack(stackId) {', 'this._setDetectionAllocation(', 'setDetection'],
-    ['  setBloom({ enabled, intensityPct } = {}) {', '  setSharpen({ enabled, intensityPct } = {}) {', 'this._setBloomIntensity(', 'setBloom'],
-    ['  setSharpen({ enabled, intensityPct } = {}) {', '  get celestialRingEnabled() {', 'this._applySharpenIntensity(', 'setSharpen'],
-    ['  setCelestialRingEnabled(enabled, { syncShare = true, focus = false } = {}) {', '  setOrbit(enabled) {', 'this.celestialRing?.setEnabled(', 'setCelestialRingEnabled'],
+    ['  setHudVisible(mode) {', 'this.hud.setMode(', 'setHudVisible'],
+    ['  setHudLayout(variantName) {', 'this._setHudVariant(', 'setHudLayout'],
+    ['  setDetection({ enabled, mode, densityPct, allocationStrategy, fadePct, outsideOpacityPct } = {}) {', 'this._setDetectionAllocation(', 'setDetection'],
+    ['  setBloom({ enabled, intensityPct } = {}) {', 'this._setBloomIntensity(', 'setBloom'],
+    ['  setSharpen({ enabled, intensityPct } = {}) {', 'this._applySharpenIntensity(', 'setSharpen'],
+    ['  setCelestialRingEnabled(enabled, { syncShare = true, focus = false } = {}) {', 'this.celestialRing?.setEnabled(', 'setCelestialRingEnabled'],
   ];
-  for (const [start, end, mutation, label] of facadeRoutes) {
-    assertClaimsBefore(sourceBlock(start, end), mutation, label);
+  for (const [start, mutation, label] of facadeRoutes) {
+    assertClaimsBefore(memberBlock(start), mutation, label);
   }
 
-  const style = sourceBlock('  setStyle(styleName, {', '  _startTransition(styleName, fromValue, toValue) {');
+  const style = memberBlock('  setStyle(styleName, {');
   assertClaimsBefore(style, 'this.activeStyle = styleName', 'setStyle');
-  const sliders = sourceBlock('  _updateSliderPanel(styleName, { reveal = false } = {}) {', '  _revealStyleParameters() {');
+  const sliders = memberBlock('  _updateSliderPanel(styleName, { reveal = false } = {}) {');
   assertClaimsBefore(sliders, 'this.stages[styleName].uniforms[uName] = val', 'style parameter slider');
 });
 
@@ -566,27 +569,25 @@ test('public visual facades reject the complete invalid request before authority
   const cases = [
     {
       label: 'setDetection',
-      block: sourceBlock(
+      block: memberBlock(
         '  setDetection({ enabled, mode, densityPct, allocationStrategy, fadePct, outsideOpacityPct } = {}) {',
-        '  async setMapStack(stackId) {',
       ),
       validations: ['enabled !== undefined', 'Invalid outside opacity'],
     },
     {
       label: 'setBloom',
-      block: sourceBlock('  setBloom({ enabled, intensityPct } = {}) {', '  setSharpen({ enabled, intensityPct } = {}) {'),
+      block: memberBlock('  setBloom({ enabled, intensityPct } = {}) {'),
       validations: ['Invalid bloom enabled value', 'Invalid bloom intensity'],
     },
     {
       label: 'setSharpen',
-      block: sourceBlock('  setSharpen({ enabled, intensityPct } = {}) {', '  get celestialRingEnabled() {'),
+      block: memberBlock('  setSharpen({ enabled, intensityPct } = {}) {'),
       validations: ['Invalid sharpen enabled value', 'Invalid sharpen intensity'],
     },
     {
       label: 'setCelestialRingEnabled',
-      block: sourceBlock(
+      block: memberBlock(
         '  setCelestialRingEnabled(enabled, { syncShare = true, focus = false } = {}) {',
-        '  setOrbit(enabled) {',
       ),
       validations: [
         'Invalid celestial ring enabled value',
