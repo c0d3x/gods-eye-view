@@ -198,11 +198,11 @@ test('accepted navigation releases through PR15-aware ownership before flight', 
 
 test('validated voice camera destinations share the UI navigation authority facade', () => {
   assert.match(ui, /runImmediateNavigation\(noun, navigate, releaseOptions = undefined\) \{\s*return this\._runExplicitNavigation\(noun, navigate, releaseOptions\);/);
-  assert.match(voice, /runManagedVoiceNavigation\(\s*styleManager, 'camera', 'move_camera', navigate, releaseOptions/);
-  assert.match(voice, /runManagedVoiceNavigation\(styleManager, 'route', 'fly_route', navigate/);
-  assert.match(voice, /runManagedVoiceNavigation\(styleManager, 'fire', 'track_entity'/);
-  assert.match(voice, /runManagedVoiceNavigation\(styleManager, family\.kind, 'track_entity'/);
-  assert.match(voice, /runManagedVoiceNavigation\(styleManager, 'frame', 'frame_overhead'/);
+  assert.match(voice, /runManagedVoiceNavigation\(\s*styleManager,\s*'camera',\s*'move_camera',\s*navigate,\s*releaseOptions/);
+  assert.match(voice, /runManagedVoiceNavigation\(\s*styleManager,\s*'route',\s*'fly_route',\s*navigate/);
+  assert.match(voice, /runManagedVoiceNavigation\(\s*styleManager,\s*'fire',\s*'track_entity'/);
+  assert.match(voice, /runManagedVoiceNavigation\(\s*styleManager,\s*family\.kind,\s*'track_entity'/);
+  assert.match(voice, /runManagedVoiceNavigation\(\s*styleManager,\s*'frame',\s*'frame_overhead'/);
   const trackedVoice = voice.slice(
     voice.indexOf('async function trackEntity'),
     voice.indexOf('async function frameOverhead'),
