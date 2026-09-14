@@ -1,5 +1,6 @@
 import { governorRequestRender } from '../renderGovernor.js';
 import { markDetectionSourcesChanged } from './detection.js';
+
 function cloneLayerParams(value) {
   if (Array.isArray(value)) return value.map(cloneLayerParams);
   if (value && typeof value === 'object') {
@@ -431,8 +432,7 @@ export class DataLayerManager {
   async refreshLayer(layerId, { signal = null } = {}) {
     const entry = this.layers.get(layerId);
     if (
-      !entry ||
-      !entry.enabled ||
+      !entry?.enabled ||
       entry.lifecycleState !== 'enabled' ||
       entry.destroying ||
       signal?.aborted
@@ -502,7 +502,7 @@ export class DataLayerManager {
       origin,
       refreshSucceeded: false,
     };
-    if (!entry || !entry.enabled || entry.destroying) {
+    if (!entry?.enabled || entry.destroying) {
       return { ...base, status: 'unavailable', reason: 'layer-unavailable' };
     }
     if (typeof entry.module?.resolveTrackingRestoreTarget !== 'function') {
@@ -1823,11 +1823,7 @@ export class DataLayerManager {
     { origin = 'programmatic', paramsIntentEpoch = null } = {},
   ) {
     const entry = this.layers.get(layerId);
-    if (
-      !entry ||
-      !entry.module ||
-      typeof entry.module.setParams !== 'function'
-    ) {
+    if (!entry?.module || typeof entry.module.setParams !== 'function') {
       return {
         succeeded: false,
         error: paramsRejectedError(layerId),
@@ -2149,7 +2145,7 @@ export class DataLayerManager {
    */
   getLayerParams(layerId) {
     const entry = this.layers.get(layerId);
-    if (!entry || !entry.module || typeof entry.module.getParams !== 'function')
+    if (!entry?.module || typeof entry.module.getParams !== 'function')
       return null;
     try {
       const params = entry.module.getParams();

@@ -6,7 +6,7 @@
  * an on-demand voice call. Pattern from skylight (MIT) shared/src/celestial.ts
  * nextISSPass, extended with set-time + peak tracking.
  */
-import { propagate, gstime, eciToEcf, ecfToLookAngles } from 'satellite.js';
+import { ecfToLookAngles, eciToEcf, gstime, propagate } from 'satellite.js';
 
 const R2D = 180 / Math.PI;
 const D2R = Math.PI / 180;
@@ -15,7 +15,7 @@ const D2R = Math.PI / 180;
 export function lookAnglesAt(satrec, dateMs, latDeg, lonDeg) {
   const date = new Date(dateMs);
   const pv = propagate(satrec, date);
-  const pos = pv && pv.position;
+  const pos = pv?.position;
   if (!pos || typeof pos === 'boolean') return null;
   const ecf = eciToEcf(pos, gstime(date));
   const look = ecfToLookAngles(

@@ -7,18 +7,18 @@ import {
   removeEntityContextsForLayer,
   selectEntityContext,
 } from './contextStore.js';
-import {
-  cachedGroundFloor,
-  floorAltitudeM,
-  resolveGroundFloorCellsBounded,
-} from './groundFloor.js';
 // The shared batched/chunked/session-cached DEM warm chain. The module name is
 // historical (it shipped with the FIRMS fire anchors); the mechanism itself is
 // generic — cold coarse floor cells for a rendered point set, resolved strictly
 // sequentially so overlapping renders cannot stack requests on the proxy.
 import { warmFireAnchorFloors } from './fireAnchors.js';
-import { normalizeMilitaryInstallations } from './militaryInstallationData.js';
+import {
+  cachedGroundFloor,
+  floorAltitudeM,
+  resolveGroundFloorCellsBounded,
+} from './groundFloor.js';
 import { installationFeedback } from './installationFeedback.js';
+import { normalizeMilitaryInstallations } from './militaryInstallationData.js';
 import { registerPickOwner, unregisterPickOwner } from './pickRegistry.js';
 
 const LAYER_ID = 'military-installations';

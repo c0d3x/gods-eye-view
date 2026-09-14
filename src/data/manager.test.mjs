@@ -9,13 +9,14 @@
 // Pure test: the manager only calls the layer module's lifecycle methods and (when
 // a toggle container is present) DOM refresh. We pass no container, so it stays
 // headless. Run with: npm test
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
-import { DataLayerManager, layerFeedState } from './manager.js';
+import { test } from 'node:test';
 import {
   contextSnapshotLayerIds,
   shouldCaptureContextSession,
 } from '../contextModePolicy.js';
+import { DataLayerManager, layerFeedState } from './manager.js';
 
 /** Build a mock layer whose init/update resolve on the next microtask, so a
  *  second toggle can land while the first is awaiting. */
@@ -3293,7 +3294,7 @@ test('re-entrant setEnabled from a blocked-adoption listener supersedes the comp
 
   const pendingOff = mgr.setEnabled('flights', false, { origin: 'user' });
   await firstDisableStarted;
-  let removeGuard = mgr.addVisibilityGuard((change) =>
+  const removeGuard = mgr.addVisibilityGuard((change) =>
     change.layerId === 'flights' && change.enabled ? 'blocked by mode' : null,
   );
 
@@ -3410,7 +3411,7 @@ test('every manager registration exposes the normalized loading and refresh cont
 test('periodic refresh publishes work, failure, and later manager-owned recovery', async () => {
   const mgr = new DataLayerManager({});
   let updateResult = true;
-  let moduleError = null;
+  const moduleError = null;
   let releaseUpdate;
   let updateStarted;
   const started = new Promise((resolve) => {
@@ -3871,7 +3872,7 @@ test('a failed Data Layer transition clears busy state without losing keyboard f
     enable() {
       enableCalls += 1;
       if (enableCalls > 1) return true;
-      return new Promise((resolve, reject) => {
+      return new Promise((_resolve, reject) => {
         rejectEnable = reject;
       });
     },

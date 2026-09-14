@@ -3,32 +3,33 @@
 // clamp military render altitudes and trail waypoints so they never render
 // below the local ellipsoidal surface (RS46 heli-in-hillside + WAKE01
 // trail-underground findings).
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
+  _clearMeshFloorCellsForTest,
+  allocateCorridorCells,
+  CORRIDOR_MAX_CELLS,
+  CORRIDOR_WALK_STEP_DEG,
+  cachedGroundFloor,
+  cachedMeshFloor,
   coarseFloorCoord,
+  corridorFloorCells,
+  displayFloorHeightM,
   floorAltitudeM,
   GROUND_FLOOR_LIFT_M,
-  displayFloorHeightM,
-  corridorFloorCells,
-  CORRIDOR_MAX_CELLS,
-  stickyFloorCell,
-  allocateCorridorCells,
-  CORRIDOR_WALK_STEP_DEG,
-  meshFloorSampleWithinPrior,
-  reportMeshFloorCell,
-  cachedMeshFloor,
-  cachedGroundFloor,
-  setMeshFloorPreferred,
   meshFloorPreferred,
-  _clearMeshFloorCellsForTest,
+  meshFloorSampleWithinPrior,
   neighborFloorM,
+  reportMeshFloorCell,
+  setMeshFloorPreferred,
+  stickyFloorCell,
 } from './groundFloor.js';
 import {
+  CORRIDOR_MAX_LENGTH_M,
+  CORRIDOR_SAMPLE_SPACING_M,
   corridorPathLatLon,
   projectGroundArcLatLon,
-  CORRIDOR_SAMPLE_SPACING_M,
-  CORRIDOR_MAX_LENGTH_M,
 } from './motionModel.js';
 
 test('coarseFloorCoord rounds to a 3-decimal (~111 m) grid cell', () => {

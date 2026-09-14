@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import { installationFeedback } from './installationFeedback.js';
 
 test('retry copy follows the real deadline and does not promise an overdue timer fired', () => {

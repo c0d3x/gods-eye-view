@@ -12,14 +12,15 @@
 // The fix: `_modelMatrix(pos, heading, result)` writes into each model's OWN `.modelMatrix`. This
 // test locks the invariant at the Cesium level (the module's _modelMatrix is private and pulls the
 // full engine, so we exercise the exact Cesium call it makes).
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
-  Transforms,
-  Matrix4,
   Cartesian3,
-  HeadingPitchRoll,
   Ellipsoid,
+  HeadingPitchRoll,
+  Matrix4,
+  Transforms,
 } from 'cesium';
 
 const HPR = new HeadingPitchRoll(0, 0, 0);

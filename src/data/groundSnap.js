@@ -205,8 +205,7 @@ export function createGroundSnap() {
    * @returns {number|null}
    */
   function heldSnapM(entry, surfacePos) {
-    if (!entry || !entry.held || entry.h == null || !entry.samplePos)
-      return null;
+    if (!entry?.held || entry.h == null || !entry.samplePos) return null;
     if (
       Cesium.Cartesian3.distanceSquared(surfacePos, entry.samplePos) >
       HELD_SNAP_MAX_DRIFT_M * HELD_SNAP_MAX_DRIFT_M
@@ -322,12 +321,7 @@ export function createGroundSnap() {
     const misses = entry ? entry.misses : 0;
     const miss = () => {
       // A held measurement survives the miss — only the retry schedule moves.
-      const held = !!(
-        entry &&
-        entry.held &&
-        entry.h != null &&
-        entry.samplePos
-      );
+      const held = !!(entry?.held && entry.h != null && entry.samplePos);
       const next = {
         h: held ? entry.h : null,
         samplePos: held ? entry.samplePos : null,

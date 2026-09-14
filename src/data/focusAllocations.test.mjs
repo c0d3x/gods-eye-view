@@ -1,6 +1,6 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { test } from 'node:test';
 import { isCalibratedAllocationRuntime } from '../../scripts/run-unit-tests.mjs';
 
 /**

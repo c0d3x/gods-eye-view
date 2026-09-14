@@ -1,24 +1,23 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-
-import { DataLayerManager } from './manager.js';
+import test from 'node:test';
+import { stampInitialShareGesture } from '../navigationPolicy.js';
+import { readUiSource } from '../testing/uiSources.mjs';
 import {
-  LAYER_STATE_REGISTRY,
-  LAYER_STATE_STORAGE_KEY,
-  LayerStateCoordinator,
-  REGISTERED_LAYER_IDS,
-  SHARE_TRACKING_RESTORE_POLICIES,
   createDefaultLayerState,
   decodeLayerStateParams,
   encodeLayerStateParams,
+  LAYER_STATE_REGISTRY,
+  LAYER_STATE_STORAGE_KEY,
+  LayerStateCoordinator,
   normalizeLayerState,
   parseStoredLayerState,
+  REGISTERED_LAYER_IDS,
+  SHARE_TRACKING_RESTORE_POLICIES,
   serializeStoredLayerState,
   validateLayerStateRegistry,
 } from './layerState.js';
+import { DataLayerManager } from './manager.js';
 import radioLayer from './radio.js';
-import { stampInitialShareGesture } from '../navigationPolicy.js';
-import { readUiSource } from '../testing/uiSources.mjs';
 
 function deferred() {
   let resolve;

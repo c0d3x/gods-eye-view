@@ -1,9 +1,9 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import { applyVesselFocusDeemphasis } from './aisLiveVessels.js';
 import { applyCctvFocusDeemphasis } from './cctv.js';
-import { applySatellitePointFocusDeemphasis } from './satellites.js';
 import { DEFAULT_FOCUS_DEEMPHASIS_PARAMS } from './focusDeemphasis.js';
+import { applySatellitePointFocusDeemphasis } from './satellites.js';
 
 const params = { ...DEFAULT_FOCUS_DEEMPHASIS_PARAMS, paddingPx: 0 };
 const target = {

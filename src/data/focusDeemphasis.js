@@ -530,7 +530,7 @@ export function nearFarScalarValueAtDistance(scalar, cameraDistanceM) {
   if (!Number.isFinite(nearSq) || !Number.isFinite(farSq) || farSq <= nearSq)
     return 1;
   const rawT = (cameraDistanceM * cameraDistanceM - nearSq) / (farSq - nearSq);
-  const t = Math.pow(clamp(rawT, 0, 1), 0.2);
+  const t = clamp(rawT, 0, 1) ** 0.2;
   return scalar.nearValue + (scalar.farValue - scalar.nearValue) * t;
 }
 

@@ -58,7 +58,7 @@ function allocateLayerQuotasInto(
   priorityOrder,
   remainders,
 ) {
-  quotas.forEach((value, layerId) => {
+  quotas.forEach((_value, layerId) => {
     if (!demand.has(layerId)) quotas.delete(layerId);
   });
   for (let i = 0; i < idCount; i++) quotas.set(ids[i], 0);
@@ -96,7 +96,8 @@ function allocateLayerQuotasInto(
     const layerId = ids[i];
     const count = demand.get(layerId) || 0;
     const semanticWeight = Math.max(0.05, Number(layerWeights?.[layerId]) || 1);
-    const entry = weighted[i] || (weighted[i] = {});
+    weighted[i] ||= {};
+    const entry = weighted[i];
     entry.layerId = layerId;
     entry.count = count;
     entry.weight = Math.sqrt(count) * semanticWeight;
@@ -848,8 +849,7 @@ export class LabelArbiter {
     for (let i = 0; i < source.length; i++) {
       const candidate = source[i];
       if (
-        !candidate ||
-        !candidate.key ||
+        !candidate?.key ||
         !candidate.layerId ||
         !(candidate.keyholeAlpha > 0)
       )
@@ -1177,7 +1177,8 @@ export class LabelArbiter {
         state.lastPlacement,
       );
       if (!placement) continue;
-      const entry = out[outIndex] || (out[outIndex] = {});
+      out[outIndex] ||= {};
+      const entry = out[outIndex];
       entry.candidate = candidate;
       entry.placement = placement;
       entry.temporalAlpha = temporalAlpha;

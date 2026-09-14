@@ -3,27 +3,28 @@
 // camera-height budget bands (inverted sense vs CCTV), importance+proximity
 // ranking with an incumbency bonus, in-view filtering, dedupe, and the
 // ported eviction-grace planner.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
-  INFRA_LOD_ACTIVE_MIN,
-  INFRA_LOD_ACTIVE_MID,
+  applyInfraEvictionGrace,
   INFRA_LOD_ACTIVE_MAX,
-  INFRA_LOD_GLOBAL_HEIGHT_M,
-  INFRA_LOD_REGIONAL_HEIGHT_M,
-  INFRA_LOD_INCUMBENT_BONUS,
+  INFRA_LOD_ACTIVE_MID,
+  INFRA_LOD_ACTIVE_MIN,
   INFRA_LOD_FAR_M,
-  INFRA_LOD_MAX_DISTANCE_PENALTY,
-  INFRA_LOD_GRACE_PASSES,
+  INFRA_LOD_GLOBAL_HEIGHT_M,
   INFRA_LOD_GRACE_MS,
+  INFRA_LOD_GRACE_PASSES,
+  INFRA_LOD_INCUMBENT_BONUS,
+  INFRA_LOD_MAX_DISTANCE_PENALTY,
+  INFRA_LOD_MOTION_EPSILON_MIN_M,
+  INFRA_LOD_MOTION_EPSILON_RATIO,
+  INFRA_LOD_MOTION_PROBE_INTERVAL_MS,
+  INFRA_LOD_REGIONAL_HEIGHT_M,
   infraLodBudget,
+  infraLodMotionEpsilonM,
   infraRankScore,
   selectInfraLod,
-  applyInfraEvictionGrace,
-  INFRA_LOD_MOTION_PROBE_INTERVAL_MS,
-  INFRA_LOD_MOTION_EPSILON_RATIO,
-  INFRA_LOD_MOTION_EPSILON_MIN_M,
-  infraLodMotionEpsilonM,
   shouldRecomputeInfraLod,
 } from './localGeojsonLod.js';
 

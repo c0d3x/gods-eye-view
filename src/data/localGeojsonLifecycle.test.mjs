@@ -1,8 +1,8 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import * as Cesium from 'cesium';
-import { createLocalGeoJsonLayer } from './localGeojson.js';
 import { getContextStore } from './contextStore.js';
+import { createLocalGeoJsonLayer } from './localGeojson.js';
 
 const dataset = JSON.stringify({
   type: 'Feature',

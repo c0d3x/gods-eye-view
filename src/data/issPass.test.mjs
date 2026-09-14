@@ -1,6 +1,7 @@
 // src/data/issPass.test.mjs
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import { twoline2satrec } from 'satellite.js';
 import { findNextIssPass, lookAnglesAt } from './issPass.js';
 

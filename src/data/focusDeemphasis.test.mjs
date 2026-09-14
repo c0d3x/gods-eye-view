@@ -1,9 +1,9 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
-  DEFAULT_FOCUS_DEEMPHASIS_PARAMS,
   advanceFocusEvidenceNowMs,
   advanceSpriteFocus,
+  DEFAULT_FOCUS_DEEMPHASIS_PARAMS,
   focusNowMs,
   focusTargetEmphasis,
   nearFarScalarValueAtDistance,

@@ -1,6 +1,6 @@
-import { localGeoJsonServices } from './localGeojson.js';
-import { createInfrastructureLayers } from './infrastructure.js';
 import { createFirmsHeatmapLayer } from './firmsHeatmap.js';
+import { createInfrastructureLayers } from './infrastructure.js';
+import { localGeoJsonServices } from './localGeojson.js';
 import submarineCablesLayer from './telegeographySubmarineCables.js';
 
 const [datacenters, dams] = createInfrastructureLayers(localGeoJsonServices);

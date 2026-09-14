@@ -1,10 +1,10 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import {
   ALLOCATION_ELASTIC,
   ALLOCATION_WEIGHTED,
-  LabelArbiter,
   allocateLayerQuotas,
+  LabelArbiter,
 } from './labelArbiter.js';
 
 function objectQuotas(map) {

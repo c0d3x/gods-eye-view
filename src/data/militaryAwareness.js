@@ -1,8 +1,15 @@
 import * as Cesium from 'cesium';
-import flightsLayer from './flights.js';
-import militaryFlightsLayer from './militaryFlights.js';
+import { celestialScreenAngle, getKeyholeGeometry } from '../celestialRing.js';
+import { bearingBetweenCoordinates } from '../cockpitMath.js';
+import { announceNavigationAuthority } from '../navigationPolicy.js';
+import {
+  governorRequestRender,
+  holdContinuousRender,
+  releaseContinuousRender,
+} from '../renderGovernor.js';
 import aisLiveVesselsLayer from './aisLiveVessels.js';
-import militaryInstallationsLayer from './militaryInstallations.js';
+import flightsLayer from './flights.js';
+import { cameraPoseSignature } from './iconOrientation.js';
 import {
   AWARENESS_MAX_FLIGHT_SEARCH_RADIUS_M,
   AWARENESS_RADIUS_M,
@@ -13,15 +20,8 @@ import {
   getAwarenessNavigationTargets,
   summarizeAwarenessCohort,
 } from './militaryAwarenessEngine.js';
-import { announceNavigationAuthority } from '../navigationPolicy.js';
-import { celestialScreenAngle, getKeyholeGeometry } from '../celestialRing.js';
-import { bearingBetweenCoordinates } from '../cockpitMath.js';
-import { cameraPoseSignature } from './iconOrientation.js';
-import {
-  governorRequestRender,
-  holdContinuousRender,
-  releaseContinuousRender,
-} from '../renderGovernor.js';
+import militaryFlightsLayer from './militaryFlights.js';
+import militaryInstallationsLayer from './militaryInstallations.js';
 
 const AIRCRAFT_DEPENDENCIES = ['flights', 'military'];
 const DEFERRED_DEPENDENCIES = ['ais-live-vessels', 'military-installations'];

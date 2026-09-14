@@ -1,14 +1,17 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
+import * as Cesium from 'cesium';
 import {
-  approximateSurfaceDistanceM,
-  classifyGoogleMilitaryPlace,
-  installationSourceLabel,
-  installationResponseSaturated,
-  installationSurfaceHeightM,
-  installationWithinViewport,
-} from './militaryInstallations.js';
-import militaryInstallationsLayer from './militaryInstallations.js';
+  _resetRenderGovernorForTest,
+  getRenderGovernorDiagnostics,
+  installRenderGovernor,
+} from '../renderGovernor.js';
+import {
+  getSelectedEntityContext,
+  registerEntityContext,
+  selectEntityContext,
+} from './contextStore.js';
+import { _resetFireAnchorsForTest } from './fireAnchors.js';
 import {
   _clearMeshFloorCellsForTest,
   cachedGroundFloor,
@@ -16,18 +19,14 @@ import {
   reportMeshFloorCell,
   setMeshFloorPreferred,
 } from './groundFloor.js';
-import { _resetFireAnchorsForTest } from './fireAnchors.js';
-import {
-  _resetRenderGovernorForTest,
-  getRenderGovernorDiagnostics,
-  installRenderGovernor,
-} from '../renderGovernor.js';
-import * as Cesium from 'cesium';
-import {
-  registerEntityContext,
-  selectEntityContext,
-  getSelectedEntityContext,
-} from './contextStore.js';
+import militaryInstallationsLayer, {
+  approximateSurfaceDistanceM,
+  classifyGoogleMilitaryPlace,
+  installationResponseSaturated,
+  installationSourceLabel,
+  installationSurfaceHeightM,
+  installationWithinViewport,
+} from './militaryInstallations.js';
 
 test('clicking a selected installation again or empty map clears it through refresh', async () => {
   const run = await runInstallationLoad({
@@ -1120,6 +1119,7 @@ test('zoom-out aborts an active installation request and returns non-loading gui
   }
 });
 
+import fs from 'node:fs';
 // The unavailable-state retry: 'temporarily unavailable' must mean temporarily.
 // Fetches otherwise fire only on enable and on camera moveEnd, so a parked
 // camera whose first request failed stayed unavailable forever while the proxy
@@ -1130,7 +1130,6 @@ test('zoom-out aborts an active installation request and returns non-loading gui
 // by source probes against the shipped file, the same technique the HUD datum
 // tests use where a full boot is impractical.
 import { installationRetryDelayMs } from './militaryInstallations.js';
-import fs from 'node:fs';
 
 const installationsSource = fs.readFileSync(
   new URL('./militaryInstallations.js', import.meta.url),
@@ -1166,7 +1165,7 @@ test('the unavailable retry backs off 30s to a 240s ceiling and restarts clean',
 test('the retry is wired to every lifecycle edge, not just declared', () => {
   assert.match(
     installationsSource,
-    /setInstallationStatus\(\s*'unavailable',\s*[^]*?,?\s*\);\s*scheduleUnavailableRetry\(,?\s*\);/,
+    /setInstallationStatus\(\s*'unavailable',\s*[\s\S]*?,?\s*\);\s*scheduleUnavailableRetry\(,?\s*\);/,
     'a failed load schedules the retry immediately after reporting unavailable',
   );
   assert.match(
@@ -1181,12 +1180,12 @@ test('the retry is wired to every lifecycle edge, not just declared', () => {
   );
   assert.match(
     installationsSource,
-    /disable\(\) \{[^]*?clearUnavailableRetry\(\);/,
+    /disable\(\) \{[\s\S]*?clearUnavailableRetry\(\);/,
     'disabling the layer cancels the retry',
   );
   assert.match(
     installationsSource,
-    /function scheduleLoad\(\) \{[^]*?clearUnavailableRetry\(\{ resetBackoff: false \}\)/,
+    /function scheduleLoad\(\) \{[\s\S]*?clearUnavailableRetry\(\{ resetBackoff: false \}\)/,
     'a user-driven load supersedes the retry without resetting the backoff step',
   );
   assert.match(

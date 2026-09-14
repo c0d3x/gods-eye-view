@@ -1,28 +1,28 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import test from 'node:test';
 import * as Cesium from 'cesium';
 import {
-  GROUND_SAMPLE_MAX_ARMED_RETRIES,
-  LOCAL_OVERLAY_COHORT_LIMIT,
-  LOCAL_STEM_TIP_EPSILON_M,
+  _resetRenderGovernorForTest,
+  getRenderGovernorDiagnostics,
+  installRenderGovernor,
+} from '../renderGovernor.js';
+import {
   createLocalGeoJsonLayer,
   createLocalInfrastructureOverlayEntry,
   createLocalInfrastructureOverlayPublisher,
+  GROUND_SAMPLE_MAX_ARMED_RETRIES,
+  LOCAL_OVERLAY_COHORT_LIMIT,
+  LOCAL_STEM_TIP_EPSILON_M,
   localDatasetError,
   localInfrastructureOverlayCopy,
   selectLocalInfrastructureOverlayCohort,
 } from './localGeojson.js';
-import { layerFeedState } from './manager.js';
 import {
-  INFRA_LOD_ACTIVE_MIN,
   INFRA_LOD_ACTIVE_MAX,
+  INFRA_LOD_ACTIVE_MIN,
 } from './localGeojsonLod.js';
-import {
-  installRenderGovernor,
-  getRenderGovernorDiagnostics,
-  _resetRenderGovernorForTest,
-} from '../renderGovernor.js';
+import { layerFeedState } from './manager.js';
 
 class MockLayerEvent {
   constructor() {

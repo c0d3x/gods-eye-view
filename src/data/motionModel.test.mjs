@@ -1,28 +1,29 @@
 // src/data/motionModel.test.mjs
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import * as Cesium from 'cesium';
 import {
-  norm360,
-  norm180,
-  courseBetweenCartesians,
-  limitCourseStep,
-  estimateTurnRateDps,
-  turnRateFromFixHistory,
   arcOffsetEnu,
-  speedRamp,
-  lerpAngleDeg,
-  courseSlewCapDps,
-  displayedKinematics,
-  staleCoastLimitSeconds,
-  liftRepeatedGroundFix,
-  synthesizeForwardKinematicsFix,
-  projectGroundArcLatLon,
-  corridorPathLatLon,
-  COURSE_TRACK_ONLY_MPS,
   COURSE_CHORD_ONLY_MPS,
   COURSE_MIN_DPS,
+  COURSE_TRACK_ONLY_MPS,
+  corridorPathLatLon,
+  courseBetweenCartesians,
+  courseSlewCapDps,
+  displayedKinematics,
+  estimateTurnRateDps,
+  lerpAngleDeg,
+  liftRepeatedGroundFix,
+  limitCourseStep,
+  norm180,
+  norm360,
+  projectGroundArcLatLon,
+  speedRamp,
+  staleCoastLimitSeconds,
+  synthesizeForwardKinematicsFix,
   TURN_MIN_SPEED_MPS,
+  turnRateFromFixHistory,
 } from './motionModel.js';
 
 const AUSTIN = { lat: 30.2672, lon: -97.7431, alt: 9000 };

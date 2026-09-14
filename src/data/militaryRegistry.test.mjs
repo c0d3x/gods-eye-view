@@ -10,18 +10,18 @@
  * and past the cap the least recently seen go first.
  */
 
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
-  setMilitaryLayerActive,
-  isMilitaryLayerActive,
-  onMilitaryLayerActiveChange,
-  registerMilitaryIcaos,
-  isMilitaryIcao,
-  MILITARY_REGISTRY_MAX_ENTRIES,
-  MILITARY_REGISTRY_TTL_MS,
   _militaryRegistrySizeForTest,
   _resetMilitaryRegistryForTest,
+  isMilitaryIcao,
+  isMilitaryLayerActive,
+  MILITARY_REGISTRY_MAX_ENTRIES,
+  MILITARY_REGISTRY_TTL_MS,
+  onMilitaryLayerActiveChange,
+  registerMilitaryIcaos,
+  setMilitaryLayerActive,
 } from './militaryRegistry.js';
 
 test('active-change listener fires on transitions only, with committed state', () => {

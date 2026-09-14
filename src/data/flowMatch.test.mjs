@@ -1,6 +1,7 @@
 // src/data/flowMatch.test.mjs
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import { matchFlowToRoads, median } from './flowMatch.js';
 
 // Synthetic geometry around downtown Austin (cos-lat correction matters here).

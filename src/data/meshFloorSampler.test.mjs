@@ -17,22 +17,26 @@
 // The DEM priors are seeded the same way `terrainHeights.test.mjs` does: a fake
 // `globalThis.fetch` in front of the real resolver, so the module's own
 // real-vs-fallback bookkeeping is exercised rather than stubbed.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import * as Cesium from 'cesium';
-import { sampleMeshFloorCells } from './meshFloorSampler.js';
-import { resolveEllipsoidalGround } from './terrainHeights.js';
 import {
+  _clearMeshFloorCellsForTest,
   cachedGroundFloor,
   cachedMeshFloor,
   setMeshFloorPreferred,
-  _clearMeshFloorCellsForTest,
 } from './groundFloor.js';
+import { sampleMeshFloorCells } from './meshFloorSampler.js';
+import { resolveEllipsoidalGround } from './terrainHeights.js';
 
 /** Distinct site per test — terrainHeights' cache is module-global and warm
  *  entries are permanent, so tests must not share coordinates. */
 let siteLat = 40.0;
-const nextSite = () => ({ lat: +(siteLat += 0.05).toFixed(3), lon: -97.66 });
+const nextSite = () => {
+  siteLat += 0.05;
+  return { lat: +siteLat.toFixed(3), lon: -97.66 };
+};
 
 /** Seeds a REAL ('reearth') DEM prior for a cell through the real resolver. */
 async function seedDem(cell, ellipsoid) {

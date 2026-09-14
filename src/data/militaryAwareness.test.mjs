@@ -1,48 +1,48 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { test } from 'node:test';
 import * as Cesium from 'cesium';
-import militaryAwarenessLayer, {
-  _getAwarenessNavigationStateForTest,
-  awarenessClearMatchesSubject,
-  awarenessNeedsContinuousRender,
-  awarenessRefreshDecision,
-  awarenessRefreshIntervalMs,
-  awarenessRefreshRequired,
-  awarenessResultsAreLive,
-  awarenessPanelControlKey,
-  buildAwarenessContextSnapshot,
-  canNavigateAwarenessNext,
-  contactsWindowFromSnapshot,
-  contextTargetFlyToAllowed,
-  captureAwarenessPanelFocus,
-  summarizeInstallationViewport,
-  findCompatibleHistoryIndex,
-  AWARENESS_QUERY_LIMIT,
-  historySubjectSnapshot,
-  restoreAwarenessPanelFocus,
-} from './militaryAwareness.js';
-import flightsLayer, {
-  _setTrackedFlightRefreshStateForTest,
-} from './flights.js';
-import militaryFlightsLayer, {
-  _setTrackedMilitaryRefreshStateForTest,
-} from './militaryFlights.js';
-import aisLiveVesselsLayer, {
-  _setVesselStateForTest,
-} from './aisLiveVessels.js';
-import militaryInstallationsLayer from './militaryInstallations.js';
+import { NAVIGATION_AUTHORITY_EVENT } from '../navigationPolicy.js';
 import {
   _resetRenderGovernorForTest,
   getRenderGovernorDiagnostics,
   installRenderGovernor,
 } from '../renderGovernor.js';
+import aisLiveVesselsLayer, {
+  _setVesselStateForTest,
+} from './aisLiveVessels.js';
+import flightsLayer, {
+  _setTrackedFlightRefreshStateForTest,
+} from './flights.js';
+import militaryAwarenessLayer, {
+  _getAwarenessNavigationStateForTest,
+  AWARENESS_QUERY_LIMIT,
+  awarenessClearMatchesSubject,
+  awarenessNeedsContinuousRender,
+  awarenessPanelControlKey,
+  awarenessRefreshDecision,
+  awarenessRefreshIntervalMs,
+  awarenessRefreshRequired,
+  awarenessResultsAreLive,
+  buildAwarenessContextSnapshot,
+  canNavigateAwarenessNext,
+  captureAwarenessPanelFocus,
+  contactsWindowFromSnapshot,
+  contextTargetFlyToAllowed,
+  findCompatibleHistoryIndex,
+  historySubjectSnapshot,
+  restoreAwarenessPanelFocus,
+  summarizeInstallationViewport,
+} from './militaryAwareness.js';
 import {
   AWARENESS_RADIUS_M,
   formatAwarenessLabel,
   getAwarenessNavigationTargets,
 } from './militaryAwarenessEngine.js';
-import { NAVIGATION_AUTHORITY_EVENT } from '../navigationPolicy.js';
+import militaryFlightsLayer, {
+  _setTrackedMilitaryRefreshStateForTest,
+} from './militaryFlights.js';
+import militaryInstallationsLayer from './militaryInstallations.js';
 
 const militaryAwarenessSource = fs.readFileSync(
   new URL('./militaryAwareness.js', import.meta.url),
@@ -900,7 +900,9 @@ function stubAwarenessCollections({
     () => installations,
     restores,
   );
-  return () => restores.reverse().forEach((restore) => restore());
+  return () => {
+    for (const restore of restores.reverse()) restore();
+  };
 }
 
 function awarenessSubject(layerId, id, position) {
@@ -982,7 +984,7 @@ for (const fixture of [
         'adoption must not replace the source-owned tracked entity',
       );
     } finally {
-      restores.reverse().forEach((restore) => restore());
+      for (const restore of restores.reverse()) restore();
       runtime.restore();
     }
   });
@@ -1078,7 +1080,7 @@ test('Contacts activation adopts the production military tracked-subject descrip
       'production military adoption must preserve tracker ownership',
     );
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     _setTrackedMilitaryRefreshStateForTest({
       icao24: id,
       entity: null,
@@ -1158,7 +1160,7 @@ test('production military tracked-subject label falls back to registration befor
       'an adopted callsign-less contact must not surface its raw ICAO hex',
     );
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     _setTrackedMilitaryRefreshStateForTest({
       icao24: id,
       entity: null,
@@ -1285,7 +1287,7 @@ test('a cached Context subject re-reads its label when enrichment lands after se
       'cockpit signal titles must resolve to the registration, not the hex',
     );
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     _setTrackedFlightRefreshStateForTest({
       icao24: id,
       entity: null,
@@ -1396,7 +1398,7 @@ test('Contacts activation adopts the production civilian tracked-subject descrip
       'production civilian adoption must preserve tracker ownership',
     );
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     _setTrackedFlightRefreshStateForTest({
       icao24: id,
       entity: null,
@@ -1475,7 +1477,7 @@ test('Contacts activation reconciles to a newer cross-layer tracked flight after
     );
   } finally {
     releaseDependencies();
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
   }
 });
@@ -1545,7 +1547,7 @@ test('tracked flight cleared during Contacts activation suppresses fallback auto
     assert.deepEqual(focused, []);
   } finally {
     releaseDependencies();
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -1636,7 +1638,7 @@ test('a fast-culled subject is reported absent so the readout can hold last-know
       'a returning subject clears the absent state',
     );
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
   }
 });
@@ -1669,7 +1671,7 @@ test('a layer that cannot answer is never read as a cull', () => {
       'a silent layer must not fabricate a CONTACT LOST cue',
     );
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
   }
 });
@@ -1680,7 +1682,7 @@ test('presence never comes from the capped position rows', () => {
   const position = Cesium.Cartesian3.fromDegrees(-97.74, 30.27, 0);
   const runtime = installAwarenessRuntime();
   const restores = [];
-  const saturated = Array.from({ length: 1000 }, (unused, index) => ({
+  const saturated = Array.from({ length: 1000 }, (_unused, index) => ({
     id: `filler-${index}`,
     position,
   }));
@@ -1707,7 +1709,7 @@ test('presence never comes from the capped position rows', () => {
       'a contact past the row cap is still present',
     );
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
   }
 });
@@ -1736,7 +1738,7 @@ test('a mapped installation subject is always present — static data is never c
       true,
     );
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
   }
 });
@@ -1827,7 +1829,7 @@ test('a disabled layer leaves the presence verdict untouched', () => {
       'a disabled layer cannot resurrect a contact already known absent',
     );
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
   }
 });
@@ -1889,7 +1891,7 @@ test('an evicted aircraft becomes CONTACT LOST instead of collapsing the panel',
       'navigation stays resolvable so PREVIOUS/NEXT remain operable',
     );
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
   }
 });
@@ -1933,7 +1935,7 @@ test('an evicted vessel becomes CONTACT LOST instead of collapsing the panel', (
     assert.equal(snapshot.subject.id, '353136000');
     assert.equal(snapshot.subjectPresent, false);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
   }
 });
@@ -1957,7 +1959,7 @@ test('a deliberate clear still fully clears the subject', () => {
       'a deliberate clear must still take the panel down',
     );
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
   }
 });
@@ -1991,7 +1993,7 @@ test('a deliberate source clear still fully clears the subject', () => {
     });
     assert.equal(militaryAwarenessLayer.getContextSnapshot(), null);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
   }
 });
@@ -2236,7 +2238,7 @@ test('Context entry tracks a nearer civilian aircraft over a farther military ai
 
     assert.deepEqual(focused, ['flights:civilian']);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -2273,7 +2275,7 @@ test('Context entry prefers military aircraft on an exact nearest-distance tie',
 
     assert.deepEqual(focused, ['military:military']);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -2305,7 +2307,7 @@ test('Context entry retries once on the next refresh after initially empty feeds
     runtime.tick();
     assert.deepEqual(focused, ['recovered']);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -2353,7 +2355,7 @@ test('user deselect cancels a pending Context entry auto-focus retry', async () 
     assert.deepEqual(focused, []);
     assert.equal(militaryAwarenessLayer.getContextSnapshot(), null);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -2421,7 +2423,7 @@ test('reset camera release preserves the selected Contact for explicit refocus',
       null,
     );
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
   }
 });
@@ -2469,7 +2471,7 @@ test('same-layer selection clear is suppressed during a synchronous navigation r
       pendingSelectionKey: null,
     });
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -2540,7 +2542,7 @@ test('FOCUS on an already-tracked subject clears its suppression keys before a l
     runtime.dispatch('gev:entity-selection-cleared', { layerId: 'flights' });
     assert.equal(militaryAwarenessLayer.getContextSnapshot(), null);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -2615,7 +2617,7 @@ test('NEXT wraps through a fresh visited cycle instead of ping-ponging after exh
     assert.deepEqual(focused, ['b', 'c', 'd', 'a', 'b', 'c']);
     assert.notDeepEqual(focused.slice(-4), ['a', 'b', 'a', 'b']);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -2669,7 +2671,7 @@ test('NEXT reaches beyond the panel cap when more nearby targets exist', () => {
 
     assert.deepEqual(focused[focused.length - 1], 'l');
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -2709,7 +2711,7 @@ test('NEXT jumps to expanded flight search after fully cycling nearby flight can
     replaceMethod(
       flightsLayer,
       'getNearby',
-      (position, radius) => {
+      (_position, radius) => {
         getNearbyCalls += 1;
         if (radius <= AWARENESS_RADIUS_M) {
           return nearbyFlights;
@@ -2752,7 +2754,7 @@ test('NEXT jumps to expanded flight search after fully cycling nearby flight can
     assert.deepEqual(focused, ['b', 'c', 'd']);
     assert.equal(getNearbyCalls >= 3, true);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -2807,7 +2809,7 @@ test('NEXT can restrict navigation to a requested layer', () => {
       },
     ]);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -2860,7 +2862,7 @@ test('NEXT can restrict navigation to an aircraftClass', () => {
     );
     assert.deepEqual(focused, ['f2']);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -2922,7 +2924,7 @@ test('Cockpit NEXT ignores a nearer vessel and selects the next aircraft', () =>
     );
     assert.deepEqual(focused, ['flights:f2']);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -3055,7 +3057,7 @@ test('NEXT steps over a history contact whose layer has since evicted it', () =>
     assert.deepEqual(focused, ['c']);
     assert.equal(_getAwarenessNavigationStateForTest().navigationIndex, 2);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -3117,7 +3119,7 @@ test('a fully evicted forward history falls through to the live cohort', () => {
     assert.equal(militaryAwarenessLayer.navigateNext(), true);
     assert.deepEqual(focused, ['c']);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -3174,7 +3176,7 @@ test('every Context camera flight without a tracked entity takes navigation auth
       'context-installation-focus',
     ]);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -3212,7 +3214,7 @@ test('Contacts vessel autofocus takes navigation authority before it frames', as
       },
     ]);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -3366,7 +3368,7 @@ test('walking a cohort does not rescan the source layer per selection', () => {
       `a three-step NEXT burst paid ${historyScans} extra layer scans (want 0)`,
     );
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -3502,7 +3504,7 @@ test('unknown subject cohort blocks cross-layer NEXT navigation and availability
     assert.equal(militaryAwarenessLayer.navigateNext(), false);
     assert.equal(focusCalls, 0);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -3618,7 +3620,7 @@ test('canNext agrees with NEXT for unknown, healthy-empty, and recovered flight 
     assert.equal(militaryAwarenessLayer.navigateNext(), true);
     assert.equal(focusCalls, 2);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }
@@ -3657,7 +3659,7 @@ test('far-side hidden aircraft cannot enable NEXT when navigation cannot see the
     );
     assert.equal(militaryAwarenessLayer.navigateNext(), false);
   } finally {
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
   }
 });
@@ -3698,7 +3700,7 @@ test('runtime listeners exist only while the awareness layer is enabled', () => 
       return nextTimer++;
     },
     clearInterval() {},
-    requestAnimationFrame(callback) {
+    requestAnimationFrame(_callback) {
       return nextTimer++;
     },
     cancelAnimationFrame() {},
@@ -4126,7 +4128,7 @@ test('a moving camera refreshes Contacts more than once inside one parked interv
     );
   } finally {
     Date.now = realNow;
-    restores.reverse().forEach((restore) => restore());
+    for (const restore of restores.reverse()) restore();
     runtime.restore();
     restoreCollections();
   }

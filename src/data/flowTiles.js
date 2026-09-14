@@ -1,5 +1,5 @@
-import { PbfReader } from 'pbf';
 import { VectorTile } from '@mapbox/vector-tile';
+import { PbfReader } from 'pbf';
 import { tilesForBounds } from './tomtomTiles.js';
 
 /**

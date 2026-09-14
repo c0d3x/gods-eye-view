@@ -16,24 +16,25 @@
 // (both legacy GLBs are now transform-applied, but the hierarchy-aware reader
 // guards future asset updates). For jet.glb this yields 29.83 — Cesium's
 // Model.boundingSphere.radius / scale measured in-app (2026-07-02).
-import { test } from 'node:test';
-import * as Cesium from 'cesium';
+
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import * as Cesium from 'cesium';
 import {
-  CLASS_SCALE_3D,
-  CLASS_MODEL_URL,
   CLASS_MODEL_REAL,
+  CLASS_MODEL_URL,
+  CLASS_SCALE_3D,
 } from './aircraftClass.js';
 import {
   MODEL_TRAIL_ANCHOR_NATIVE,
   MODEL_VISUAL_CENTER_NATIVE,
+  modelAnchorWorld,
   modelVisualAnchor,
   trailAnchorForModel,
   trailHeadStart,
-  modelAnchorWorld,
 } from './modelVisualAnchor.js';
 
 const ROOT = path.resolve(

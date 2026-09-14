@@ -10,8 +10,9 @@
 // plan's "Verified facts" reference values are Re:Earth's EGM2008 — the two
 // models differ by up to ~1 m, and the brief's own tolerance absorbs that
 // spread rather than asserting exact agreement.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import { gunzipSync } from 'node:zlib';
 import {
   ellipsoidalToMslDisplayM,

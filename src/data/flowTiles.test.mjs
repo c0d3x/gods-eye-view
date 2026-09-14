@@ -1,15 +1,16 @@
 // src/data/flowTiles.test.mjs
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   decodeFlowTile,
   fetchFlowForBounds,
-  tilesForBounds,
   getFlowSessionStats,
   resetFlowTileCache,
+  tilesForBounds,
 } from './flowTiles.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -192,7 +193,7 @@ test('fetchFlowForBounds: decode cache serves repeat calls within TTL (no refetc
 
 test('fetchFlowForBounds: aborted signal rejects (AbortSignal-aware)', async () => {
   resetFlowTileCache();
-  const restore = stubFetch(async (url, opts) => {
+  const restore = stubFetch(async (_url, opts) => {
     // Mimic real fetch abort semantics.
     if (opts?.signal?.aborted) {
       const err = new Error('aborted');

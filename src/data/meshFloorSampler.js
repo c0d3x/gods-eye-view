@@ -20,12 +20,12 @@
 // the mesh legitimately sits ABOVE bare earth, so the window is asymmetric.
 import * as Cesium from 'cesium';
 import {
-  coarseFloorCoord,
+  cachedGroundFloor,
   cachedMeshFloor,
+  coarseFloorCoord,
+  meshFloorPreferred,
   reportValidatedMeshFloorCell,
   setMeshFloorPreferred,
-  meshFloorPreferred,
-  cachedGroundFloor,
 } from './groundFloor.js';
 
 /** @constant {number} Max scene samples per call (one call per layer poll). */

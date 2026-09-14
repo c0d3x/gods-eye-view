@@ -1,3 +1,8 @@
+import {
+  clearOverlaySource,
+  setOverlayEntries,
+  setOverlaySourceVisible,
+} from '../overlays/worldOverlay.js';
 import { governorRequestRender } from '../renderGovernor.js';
 import {
   clearSelectedEntityContextForLayer,
@@ -5,11 +10,6 @@ import {
   removeEntityContextsForLayer,
   selectEntityContext,
 } from './contextStore.js';
-import {
-  clearOverlaySource,
-  setOverlayEntries,
-  setOverlaySourceVisible,
-} from '../overlays/worldOverlay.js';
 import {
   createLocalGeoJsonLayer as createLayer,
   createLocalInfrastructureOverlayPublisher as createPublisher,
