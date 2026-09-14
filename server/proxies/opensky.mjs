@@ -14,6 +14,7 @@ import {
   upstreamErrorStatus,
 } from '../lib/fetchWithTimeout.mjs';
 import { requiredFiniteQueryNumber } from '../lib/queryParams.mjs';
+import { errorField, errorMessage } from '../lib/thrownErrors.mjs';
 import {
   PROVIDER_JSON_MAX_BYTES,
   readResponseJsonCapped,
@@ -178,7 +179,7 @@ export async function getOpenSkyToken() {
       if (!_openskyAuthWarned) {
         console.warn(
           '[OpenSky] OAuth token request failed:',
-          err?.message || String(err),
+          errorMessage(err) || String(err),
         );
         _openskyAuthWarned = true;
       }
@@ -329,8 +330,8 @@ async function fetchAdsbLolPointFallback(req) {
     const record = await request.promise;
     return { ...record, cacheStatus: request.shared ? 'INFLIGHT' : 'MISS' };
   } catch (error) {
-    if (!request.shared && error?.name !== 'AbortError') {
-      console.warn('[adsb.lol Flights Fallback]', error?.message || error);
+    if (!request.shared && errorField(error, 'name') !== 'AbortError') {
+      console.warn('[adsb.lol Flights Fallback]', errorMessage(error) || error);
     }
     return cached ? { ...cached, cacheStatus: 'STALE' } : null;
   }
@@ -660,7 +661,7 @@ export function openSkyProxy() {
           );
           res.end(body);
         } catch (e) {
-          console.error('[OpenSky Proxy]', e.message);
+          console.error('[OpenSky Proxy]', errorMessage(e));
           if (_openskyCacheBody) {
             const cachedMeta = _openskyCacheMeta || {
               requestedMode: normalizeOpenSkyAuthMode(

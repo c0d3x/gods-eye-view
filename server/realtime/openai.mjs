@@ -30,6 +30,7 @@ import {
   enforceRateLimit,
 } from '../lib/rateLimit.mjs';
 import { readBodyWithin } from '../lib/requestBody.mjs';
+import { errorField, errorMessage } from '../lib/thrownErrors.mjs';
 import {
   PROVIDER_JSON_MAX_BYTES,
   parseJsonObject,
@@ -189,7 +190,7 @@ export function openAiRealtimeProxy({
         if (error instanceof ClientGoneError) return;
         console.warn(
           '[HUD Summary] OpenAI request failed:',
-          error?.message || error,
+          errorMessage(error) || error,
         );
         res.statusCode = upstreamErrorStatus(error);
         res.setHeader('Content-Type', 'application/json');
@@ -245,7 +246,7 @@ export function openAiRealtimeProxy({
       } catch (error) {
         console.warn(
           '[Realtime] Debug log write failed:',
-          error?.code || 'unknown error',
+          errorField(error, 'code') || 'unknown error',
         );
         reply(500, 'Could not write the debug log');
         return;
@@ -460,7 +461,7 @@ export function openAiRealtimeProxy({
         if (error instanceof ClientGoneError) return;
         console.warn(
           '[Realtime] token request failed:',
-          error?.message || error,
+          errorMessage(error) || error,
         );
         res.statusCode = upstreamErrorStatus(error);
         res.setHeader('Content-Type', 'application/json');

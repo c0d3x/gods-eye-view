@@ -39,8 +39,8 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 - `pnpm run typecheck` also checks the server: every module under `server/`,
   `vite.config.js`, and the shared browser modules they import, against Node's
   type declarations (`@types/node`, pinned to the Node 24 line the app
-  supports), in strict mode except for `useUnknownInCatchVariables`. The fixes
-  for what it found change types, not behavior.
+  supports), in strict mode. The fixes for what it found change types, not
+  behavior.
 
 - The nightly QA run covers the first-run launcher and Map Source tray
   harnesses again. Their timing-sensitive checks now hold under

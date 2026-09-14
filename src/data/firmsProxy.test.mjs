@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import { errorMessage } from '../../server/lib/thrownErrors.mjs';
 import { filterTrailing24h, parseFirmsCsv } from './firmsCsv.js';
 
 const config = fs.readFileSync(
@@ -17,17 +18,26 @@ const NOW = Date.UTC(2026, 8, 11, 12);
 const recent = { acqDate: '2026-09-11', acqTime: '1100' };
 
 // Exercise the production refresh without opening a server or using a MAP_KEY.
-// Inject only its upstream, clock and filter dependencies; keep its aggregation
-// and source-status code intact, including failures while consuming records.
+// Inject only its upstream, clock, filter and error-message dependencies; keep
+// its aggregation and source-status code intact, including failures while
+// consuming records.
 function createRefresh(fetchSource, filter = filterTrailing24h) {
   return new Function(
     'SOURCES',
     'fetchSource',
     'filterTrailing24h',
+    'errorMessage',
     'Date',
     'console',
     `return (${refreshSource});`,
-  )(SOURCES, fetchSource, filter, { now: () => NOW }, { warn() {} });
+  )(
+    SOURCES,
+    fetchSource,
+    filter,
+    errorMessage,
+    { now: () => NOW },
+    { warn() {} },
+  );
 }
 
 test('FIRMS retains large sources in order and filters expired rows', async () => {

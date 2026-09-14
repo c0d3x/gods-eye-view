@@ -5,6 +5,7 @@
  */
 
 import { createRequire } from 'node:module';
+import { errorMessage } from '../lib/thrownErrors.mjs';
 import {
   createAisStreamAdapter,
   isRecognizedAisEnvelope,
@@ -146,7 +147,7 @@ export function createAisRelay({
       _aisWebSocketImpl = null;
       warn(
         '[AISStream] `ws` is unavailable; the live vessel feed is off.',
-        error?.message || '',
+        errorMessage(error) || '',
       );
     }
     return _aisWebSocketImpl;
@@ -294,7 +295,7 @@ export function createAisRelay({
       try {
         ensureAisStreamConnection();
       } catch (error) {
-        warn('[AISStream] watchdog tick failed', error?.message || '');
+        warn('[AISStream] watchdog tick failed', errorMessage(error) || '');
       }
     }, AISSTREAM_TICK_MS);
     _aisStreamTickTimer.unref?.();
@@ -661,7 +662,7 @@ export function aisLiveProxy({ relay = sharedRelay } = {}) {
           }),
         );
       } catch (error) {
-        console.warn('[AIS Live]', error?.message || error);
+        console.warn('[AIS Live]', errorMessage(error) || error);
         res.statusCode = 502;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');

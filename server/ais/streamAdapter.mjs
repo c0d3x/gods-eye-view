@@ -18,6 +18,7 @@
 // still own, and (b) decoded into a real AIS record. Handshakes, malformed
 // frames and error envelopes are never liveness.
 
+import { errorMessage } from '../lib/thrownErrors.mjs';
 import { createAisWatchdog } from './watchdog.mjs';
 
 /** @typedef {ReturnType<typeof createAisWatchdog>} AisWatchdog */
@@ -377,7 +378,7 @@ export function createAisStreamAdapter(options) {
       socket.terminate();
     } catch (error) {
       warn(
-        `[AISStream] terminate(${reason || 'unknown'}) failed: ${error?.message || error}`,
+        `[AISStream] terminate(${reason || 'unknown'}) failed: ${errorMessage(error) || error}`,
       );
     }
   }
@@ -437,7 +438,7 @@ export function createAisStreamAdapter(options) {
       failGeneration(
         owner,
         generation,
-        classifyAisFailure({ message: error?.message }),
+        classifyAisFailure({ message: errorMessage(error) }),
       );
       return;
     }
@@ -482,7 +483,7 @@ export function createAisStreamAdapter(options) {
         failGeneration(
           owner,
           generation,
-          classifyAisFailure({ message: error?.message }),
+          classifyAisFailure({ message: errorMessage(error) }),
         );
       }
     });
@@ -512,7 +513,9 @@ export function createAisStreamAdapter(options) {
       } catch (error) {
         // A frame that cannot even be decoded is a malformed frame: dropped,
         // with no liveness credit and no other state effect.
-        warn(`[AISStream] message handling failed: ${error?.message || error}`);
+        warn(
+          `[AISStream] message handling failed: ${errorMessage(error) || error}`,
+        );
       }
     });
 

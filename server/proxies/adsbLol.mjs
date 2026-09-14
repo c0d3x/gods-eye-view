@@ -9,6 +9,7 @@ import {
   upstreamErrorMessage,
   upstreamErrorStatus,
 } from '../lib/fetchWithTimeout.mjs';
+import { errorMessage } from '../lib/thrownErrors.mjs';
 import { readResponseTextCapped } from '../lib/upstreamBody.mjs';
 
 // Deadlines for the upstream calls made through fetchWithTimeout
@@ -79,7 +80,7 @@ export function adsbLolProxy() {
                 }),
           );
         } catch (e) {
-          console.error('[adsb.lol Proxy]', e.message);
+          console.error('[adsb.lol Proxy]', errorMessage(e));
           if (_cache) {
             res.writeHead(200, {
               'Content-Type': 'application/json',

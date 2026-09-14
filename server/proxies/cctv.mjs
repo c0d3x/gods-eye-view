@@ -29,6 +29,7 @@ import {
   DEFAULT_GOOGLE_REQUESTS_PER_MINUTE,
   rateLimitKey,
 } from '../lib/rateLimit.mjs';
+import { errorMessage } from '../lib/thrownErrors.mjs';
 import {
   readResponseBytesCapped,
   readResponseJsonCapped,
@@ -252,7 +253,7 @@ function loadSourcesFromFile() {
     console.warn(
       '[CCTV] failed to read source file:',
       resolved,
-      error?.message || error,
+      errorMessage(error) || error,
     );
     return [];
   }
@@ -671,7 +672,7 @@ async function loadAustinSourcesFromOpenData() {
   } catch (error) {
     console.warn(
       '[CCTV] Austin source download error:',
-      error?.message || error,
+      errorMessage(error) || error,
     );
     return [];
   }
@@ -888,7 +889,10 @@ async function loadTflSourcesFromOpenData() {
     );
     return prioritized;
   } catch (error) {
-    console.warn('[CCTV] TfL JamCam download error:', error?.message || error);
+    console.warn(
+      '[CCTV] TfL JamCam download error:',
+      errorMessage(error) || error,
+    );
     return [];
   }
 }
@@ -1636,7 +1640,7 @@ export function cctvProxy() {
               if (error instanceof ClientGoneError) return;
               console.warn(
                 '[CCTV Proxy] media fetch failed:',
-                error?.message || error,
+                errorMessage(error) || error,
               );
               const status = upstreamErrorStatus(error);
               setHealth(cameraId, {
@@ -1764,7 +1768,7 @@ export function cctvProxy() {
           });
           res.end(svg);
         } catch (error) {
-          console.error('[CCTV Proxy]', error?.message || String(error));
+          console.error('[CCTV Proxy]', errorMessage(error) || String(error));
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'CCTV proxy error' }));
         }

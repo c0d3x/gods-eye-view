@@ -5,6 +5,7 @@ import {
   commandCompletedSuccessfully,
   parseWindowsUserSid,
 } from './keySetupCore.mjs';
+import { errorMessage } from './lib/thrownErrors.mjs';
 
 /**
  * PowerShell verification for the exact owner-only Windows credential DACL.
@@ -196,7 +197,7 @@ export function hardenCredentialFileReport(
         return failure(step, `the mode is ${mode.toString(8)}, not 600`);
       return { ok: true };
     } catch (error) {
-      return failure(step, error.message);
+      return failure(step, errorMessage(error) ?? String(error));
     }
   }
 
@@ -280,7 +281,7 @@ export function hardenCredentialFileReport(
     }
     return { ok: true };
   } catch (error) {
-    return failure(step, error.message);
+    return failure(step, errorMessage(error) ?? String(error));
   }
 }
 

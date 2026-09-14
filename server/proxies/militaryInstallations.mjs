@@ -14,6 +14,7 @@ import {
 } from '../lib/diskCacheLimits.mjs';
 import { requiredFiniteQueryNumber } from '../lib/queryParams.mjs';
 import { createRateLimiter, rateLimitKey } from '../lib/rateLimit.mjs';
+import { errorMessage } from '../lib/thrownErrors.mjs';
 import { fetchOverpassPayload } from './overpass.mjs';
 
 const _militaryInstallationsRateLimiter = createRateLimiter({
@@ -269,7 +270,7 @@ export async function writeMilitaryInstallationDisk(
   } catch (err) {
     console.warn(
       '[Installations Proxy] disk cache write failed:',
-      err?.message || err,
+      errorMessage(err) || err,
     );
     await fsp.rm(temp, { force: true }).catch(() => {});
     return false;

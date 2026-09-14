@@ -17,6 +17,7 @@ import {
   DEFAULT_GOOGLE_REQUESTS_PER_MINUTE,
   rateLimitKey,
 } from '../lib/rateLimit.mjs';
+import { errorMessage } from '../lib/thrownErrors.mjs';
 import {
   PROVIDER_JSON_MAX_BYTES,
   parseJsonObject,
@@ -230,7 +231,7 @@ export function googlePlacesContextProxy() {
         );
       } catch (error) {
         if (error instanceof ClientGoneError) return;
-        console.warn('[Places] request failed:', error?.message || error);
+        console.warn('[Places] request failed:', errorMessage(error) || error);
         res.statusCode = upstreamErrorStatus(error);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
@@ -407,7 +408,7 @@ export function googlePlacesContextProxy() {
         );
       } catch (error) {
         if (error instanceof ClientGoneError) return;
-        console.warn('[Places] request failed:', error?.message || error);
+        console.warn('[Places] request failed:', errorMessage(error) || error);
         res.statusCode = upstreamErrorStatus(error);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');

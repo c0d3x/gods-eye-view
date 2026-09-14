@@ -7,6 +7,7 @@ import { promises as fsp } from 'node:fs';
 import path from 'node:path';
 import { filterTrailing24h, parseFirmsCsv } from '../../src/data/firmsCsv.js';
 import { writeJson } from '../lib/jsonResponse.mjs';
+import { errorMessage } from '../lib/thrownErrors.mjs';
 import {
   readResponseJsonCapped,
   readResponseTextCapped,
@@ -84,7 +85,10 @@ export function firmsProxy() {
       await fsp.mkdir(CACHE_DIR, { recursive: true });
       await fsp.writeFile(CACHE_PATH, JSON.stringify(entry), 'utf8');
     } catch (err) {
-      console.warn('[firms-proxy] cache write failed:', err?.message || err);
+      console.warn(
+        '[firms-proxy] cache write failed:',
+        errorMessage(err) || err,
+      );
     }
   }
 
@@ -129,7 +133,7 @@ export function firmsProxy() {
       } catch (err) {
         console.warn(
           `[firms-proxy] ${source} fetch failed:`,
-          err?.message || err,
+          errorMessage(err) || err,
         );
         sources.push({ source, count: 0, ok: false });
       }
@@ -180,7 +184,7 @@ export function firmsProxy() {
         } catch (err) {
           console.warn(
             '[firms-proxy] mapkey status failed:',
-            err?.message || err,
+            errorMessage(err) || err,
           );
           return null;
         }
@@ -277,7 +281,7 @@ export function firmsProxy() {
             });
           }
         } catch (err) {
-          console.warn('[firms-proxy] error:', err?.message || err);
+          console.warn('[firms-proxy] error:', errorMessage(err) || err);
           sendJson(500, { error: 'firms proxy error' });
         }
       });

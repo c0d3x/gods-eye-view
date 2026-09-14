@@ -18,6 +18,7 @@ import {
   diskCachePruners,
 } from '../lib/diskCacheLimits.mjs';
 import { writeJson } from '../lib/jsonResponse.mjs';
+import { errorMessage } from '../lib/thrownErrors.mjs';
 import { readResponseBytesCapped } from '../lib/upstreamBody.mjs';
 
 /**
@@ -99,7 +100,10 @@ export function tomtomProxy({
       await fsp.mkdir(CACHE_DIR, { recursive: true });
       await fsp.writeFile(BUDGET_PATH, JSON.stringify(budget), 'utf8');
     } catch (err) {
-      console.warn('[tomtom-proxy] budget write failed:', err?.message || err);
+      console.warn(
+        '[tomtom-proxy] budget write failed:',
+        errorMessage(err) || err,
+      );
     }
   }
 
@@ -147,7 +151,7 @@ export function tomtomProxy({
     } catch (err) {
       console.warn(
         `[tomtom-proxy] tile cache write failed for ${key}:`,
-        err?.message || err,
+        errorMessage(err) || err,
       );
     }
   }
@@ -302,7 +306,7 @@ export function tomtomProxy({
             sendJson(502, { error: 'upstream' });
           }
         } catch (err) {
-          console.warn('[tomtom-proxy] error:', err?.message || err);
+          console.warn('[tomtom-proxy] error:', errorMessage(err) || err);
           sendJson(500, { error: 'proxy' });
         }
       });

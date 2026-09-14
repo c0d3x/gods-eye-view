@@ -1,3 +1,5 @@
+import { errorField } from './lib/thrownErrors.mjs';
+
 // Pure server-side mechanics for the Re:Earth terrain-heights proxy.
 // Kept free of Vite/Node middleware state so cache reconstruction and retry
 // behavior can be exercised by the offline node:test suite.
@@ -67,7 +69,7 @@ export function validTerrainResult(result) {
 
 /**
  * Convert Retry-After (delta-seconds or HTTP-date) to milliseconds.
- * @param {string|null|undefined} value
+ * @param {unknown} value
  * @param {number} nowMs
  * @returns {number|null}
  */
@@ -150,13 +152,16 @@ export async function fetchTerrainChunkWithRetry(
       return json.results;
     } catch (error) {
       lastError = error;
-      const retryable = error?.retryable !== false;
+      const retryable = errorField(error, 'retryable') !== false;
       if (!retryable || attempt >= maxAttempts - 1) break;
       if (retryStartedAt == null) retryStartedAt = now();
       const remaining = retryBudgetMs - (now() - retryStartedAt);
       if (remaining <= 0) break;
 
-      const retryAfterMs = terrainRetryAfterMs(error?.retryAfter, now());
+      const retryAfterMs = terrainRetryAfterMs(
+        errorField(error, 'retryAfter'),
+        now(),
+      );
       const backoffMs = Math.round(
         350 * 2 ** attempt * (0.75 + random() * 0.5),
       );
@@ -212,7 +217,7 @@ export async function resolveTerrainHeightRequest({
   }
 
   let cacheChanged = false;
-  /** @type {Error|null} */
+  /** @type {unknown} Whatever made the upstream fetch fail, if it did. */
   let upstreamError = null;
   if (missing.length > 0) {
     try {

@@ -14,6 +14,7 @@ import {
 import { haversineKm } from '../lib/geo.mjs';
 import { createRateLimiter, rateLimitKey } from '../lib/rateLimit.mjs';
 import { readBodyWithin } from '../lib/requestBody.mjs';
+import { errorMessage } from '../lib/thrownErrors.mjs';
 import { readResponseTextCapped } from '../lib/upstreamBody.mjs';
 
 // ---------------------------------------------------------------------------
@@ -681,7 +682,7 @@ export async function fetchOverpassPayload(
     simplify = simplifyOverpassPayloadBody,
   } = {},
 ) {
-  /** @type {Error|null} */
+  /** @type {unknown} Whatever the last failing mirror threw. */
   let lastError = null;
   /** @type {OverpassPayload|null} */
   let lastRateLimitPayload = null;
@@ -906,7 +907,7 @@ export function overpassProxy() {
             sendOverpassResponse(res, stale, 'STALE');
             return;
           }
-          console.error('[Overpass Proxy]', e.message);
+          console.error('[Overpass Proxy]', errorMessage(e));
           res.writeHead(502, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Overpass proxy error' }));
         }
@@ -1026,7 +1027,7 @@ export function overpassProxy() {
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify(payload));
         } catch (e) {
-          console.error('[Route Proxy]', e?.message || e);
+          console.error('[Route Proxy]', errorMessage(e) || e);
           fail('route proxy error');
         }
       });

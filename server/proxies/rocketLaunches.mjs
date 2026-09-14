@@ -6,6 +6,7 @@
 import { promises as fsp } from 'node:fs';
 import path from 'node:path';
 import { coalesceProxyRequest } from '../lib/coalesce.mjs';
+import { errorField } from '../lib/thrownErrors.mjs';
 import { readResponseTextCapped } from '../lib/upstreamBody.mjs';
 
 export const LL2_CACHE_TTL_MS = 15 * 60_000;
@@ -130,9 +131,11 @@ export function rocketLaunchesProxy() {
         send(res, 200, fresh.body, request.shared ? 'INFLIGHT' : 'MISS');
       } catch (error) {
         // Log only a bounded status, never upstream bodies, URLs, or credentials.
-        const status = Number.isInteger(error?.upstreamStatus)
-          ? error.upstreamStatus
-          : 502;
+        const upstreamStatus = errorField(error, 'upstreamStatus');
+        const status =
+          typeof upstreamStatus === 'number' && Number.isInteger(upstreamStatus)
+            ? upstreamStatus
+            : 502;
         if (!request.shared)
           console.warn(
             `[launch-library-proxy] refresh failed (HTTP ${status})${stale ? ' — serving stale cache' : ''}`,

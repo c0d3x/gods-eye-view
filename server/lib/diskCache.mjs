@@ -1,5 +1,6 @@
 import fsp from 'node:fs/promises';
 import path from 'node:path';
+import { errorField } from './thrownErrors.mjs';
 
 /**
  * Delete old and excess files from one disk-cache directory.
@@ -25,7 +26,7 @@ export async function pruneCacheDirectory(
   try {
     dirents = await fsp.readdir(directory, { withFileTypes: true });
   } catch (error) {
-    if (error?.code === 'ENOENT') return { removed: 0, bytes: 0 };
+    if (errorField(error, 'code') === 'ENOENT') return { removed: 0, bytes: 0 };
     throw error;
   }
 

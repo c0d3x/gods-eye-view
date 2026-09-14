@@ -8,6 +8,7 @@ import {
   upstreamErrorMessage,
   upstreamErrorStatus,
 } from '../lib/fetchWithTimeout.mjs';
+import { errorMessage } from '../lib/thrownErrors.mjs';
 import { readResponseTextWithin } from '../lib/upstreamBody.mjs';
 
 /** Upstream fetch timeout for GBFS requests (ms). */
@@ -222,7 +223,7 @@ export function gbfsProxy() {
             res.end(JSON.stringify({ error: 'GBFS upstream timeout' }));
             return;
           }
-          console.error('[GBFS Proxy]', error?.message || String(error));
+          console.error('[GBFS Proxy]', errorMessage(error) || String(error));
           res.writeHead(502, {
             'Content-Type': 'application/json',
             'Cache-Control': 'no-store',

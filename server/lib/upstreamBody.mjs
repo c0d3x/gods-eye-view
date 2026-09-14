@@ -3,6 +3,8 @@
  * hostile upstream can't make the dev server buffer an unbounded body.
  */
 
+import { errorField } from './thrownErrors.mjs';
+
 /** The cap on a provider's JSON answer: OpenSky tokens, OpenAI and Google Places. */
 export const PROVIDER_JSON_MAX_BYTES = 2 * 1024 * 1024;
 
@@ -72,7 +74,7 @@ export async function readResponseTextWithin(response, maxBytes) {
       text: await readResponseTextCapped(response, maxBytes),
     };
   } catch (error) {
-    if (error?.code !== 'RESPONSE_TOO_LARGE') throw error;
+    if (errorField(error, 'code') !== 'RESPONSE_TOO_LARGE') throw error;
     return { tooLarge: true, text: '' };
   }
 }

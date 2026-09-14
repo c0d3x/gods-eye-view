@@ -20,6 +20,7 @@ import {
 } from './keySetupCore.mjs';
 import { hardenCredentialFileReport } from './keySetupHardening.mjs';
 import { readBodyWithin } from './lib/requestBody.mjs';
+import { errorField, errorMessage } from './lib/thrownErrors.mjs';
 
 /** The repository root, which holds .env and pinokio/ENVIRONMENT. */
 const REPO_ROOT = fileURLToPath(new URL('../', import.meta.url));
@@ -134,7 +135,7 @@ export function keySetupEndpoint() {
       if (pinokioManaged()) return readPinokioEnvironmentSource(storePath());
       return fs.readFileSync(storePath(), 'utf8');
     } catch (error) {
-      if (error?.code === 'ENOENT') return ''; // The first saved key births the file.
+      if (errorField(error, 'code') === 'ENOENT') return ''; // The first saved key births the file.
       throw Object.assign(
         new Error(
           'the existing configuration could not be read, so nothing was changed',
@@ -218,7 +219,7 @@ export function keySetupEndpoint() {
         );
       }
     } catch (error) {
-      if (error.code !== 'ENOENT') throw error; // absent is fine — first save.
+      if (errorField(error, 'code') !== 'ENOENT') throw error; // absent is fine — first save.
     }
     // Random suffix, not the pid: a stale temp from a failed rename would
     // otherwise make every later save in this process fail EEXIST forever.
@@ -331,11 +332,11 @@ export function keySetupEndpoint() {
               // error. Everything else returns a fixed message (a raw filesystem
               // error can carry an absolute path; that stays in the server log).
               if (
-                error?.code === 'GEV_HARDEN_FAILED' ||
-                error?.code === 'GEV_STORE_UNREADABLE'
+                errorField(error, 'code') === 'GEV_HARDEN_FAILED' ||
+                errorField(error, 'code') === 'GEV_STORE_UNREADABLE'
               ) {
                 return respond(res, 500, {
-                  error: `The key was not saved: ${error.message}`,
+                  error: `The key was not saved: ${errorMessage(error)}`,
                 });
               }
               return respond(res, 500, {

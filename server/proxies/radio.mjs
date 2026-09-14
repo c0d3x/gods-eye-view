@@ -13,6 +13,7 @@ import {
   requestPinned,
   resolvePublicAddresses,
 } from '../lib/publicAddress.mjs';
+import { errorField } from '../lib/thrownErrors.mjs';
 import { readResponseTextCapped } from '../lib/upstreamBody.mjs';
 
 // ---------------------------------------------------------------------------
@@ -283,6 +284,21 @@ async function mapRadioConcurrent(values, concurrency, mapper) {
  * @property {{successfulQueries: number, totalQueries: number, stationCount: number, healthyStationMinimum: number}} coverage
  * @property {number|null} acceptedGeneration
  */
+
+/**
+ * The error a catalog refresh throws when the new catalog fails the health
+ * policy.
+ * @typedef {Error & {radioCatalogDegraded: true, radioDegradedReason: string|null,
+ *   radioCoverage: RadioCatalog['coverage']}} RadioCatalogError
+ */
+
+/**
+ * @param {unknown} error
+ * @returns {error is RadioCatalogError}
+ */
+function isRadioCatalogError(error) {
+  return errorField(error, 'radioCatalogDegraded') === true;
+}
 
 /**
  * Create the testable Connect middleware backing `/api/radio`.
@@ -574,6 +590,7 @@ export function createRadioProxyMiddleware({
     try {
       return { ...(await refreshPromise), stale: false };
     } catch (error) {
+      const degradedError = isRadioCatalogError(error) ? error : null;
       if (
         catalogCache &&
         now() - catalogCache.cachedAt <= RADIO_DIRECTORY_STALE_MS
@@ -582,8 +599,9 @@ export function createRadioProxyMiddleware({
           ...catalogCache,
           stale: true,
           degraded: true,
-          degradedReason: error?.radioDegradedReason || 'refresh-failed',
-          coverage: error?.radioCoverage || catalogCache.coverage,
+          degradedReason:
+            degradedError?.radioDegradedReason || 'refresh-failed',
+          coverage: degradedError?.radioCoverage || catalogCache.coverage,
         };
       }
       throw error;
@@ -628,10 +646,11 @@ export function createRadioProxyMiddleware({
           catalogInstance,
         });
       } catch (error) {
+        const degradedError = isRadioCatalogError(error) ? error : null;
         sendJson(res, 503, {
           error: 'Radio directory is temporarily unavailable',
-          degraded: Boolean(error?.radioCatalogDegraded),
-          degradedReason: error?.radioDegradedReason || null,
+          degraded: degradedError !== null,
+          degradedReason: degradedError?.radioDegradedReason || null,
         });
       }
       return;
