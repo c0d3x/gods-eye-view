@@ -1,9 +1,10 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import test from 'node:test';
 import * as Cesium from 'cesium';
 import { MAP_STACKS } from '../mapStackController.js';
 import {
+  applyTranslucentMarkerBlend,
   CABLE_LABEL_DEPTH_DECISION,
   CABLE_OVERLAY_COLLISION_CAPACITY,
   CABLE_OVERLAY_SOURCE_ID,
@@ -11,7 +12,6 @@ import {
   CABLE_STEM_TIP_EPSILON_M,
   CABLE_SWEEP_MOTION_EPSILON_M,
   CABLE_SWEEP_MOTION_PROBE_INTERVAL_MS,
-  applyTranslucentMarkerBlend,
   cableClassificationTypeForScene,
   cableClassificationTypeForStack,
   cableReferencePriority,

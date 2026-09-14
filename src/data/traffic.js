@@ -1,30 +1,30 @@
 import * as Cesium from 'cesium';
-import { deriveFetchCenter, clampBoundsAroundCenter } from './trafficBounds.js';
+import { fetchJson } from '../fetchJson.js';
+import {
+  holdContinuousRender,
+  releaseContinuousRender,
+} from '../renderGovernor.js';
+import { registerDynamicCredit, TOMTOM_CREDIT } from './dataCredits.js';
+import { matchFlowToRoads } from './flowMatch.js';
 import {
   fetchFlowForBounds,
   getFlowSessionStats,
   resetFlowTileCache,
 } from './flowTiles.js';
-import { matchFlowToRoads } from './flowMatch.js';
+import { clampBoundsAroundCenter, deriveFetchCenter } from './trafficBounds.js';
 import {
   flowBucket,
-  flowSpeedScale,
   flowDensityMult,
+  flowSpeedScale,
 } from './trafficFlowStyle.js';
 import {
-  trafficStyleProfile,
+  presetDotOutline,
   presetDotRgba,
   presetSizeDelta,
-  presetDotOutline,
   trafficBucketTier,
+  trafficStyleProfile,
 } from './trafficPresetStyle.js';
-import { queuePlatoons, locateAlongRoad } from './trafficQueue.js';
-import { registerDynamicCredit, TOMTOM_CREDIT } from './dataCredits.js';
-import {
-  holdContinuousRender,
-  releaseContinuousRender,
-} from '../renderGovernor.js';
-import { fetchJson } from '../fetchJson.js';
+import { locateAlongRoad, queuePlatoons } from './trafficQueue.js';
 
 /**
  * @file Street Traffic — animated dots along OSM road polylines, colored by
@@ -183,7 +183,7 @@ let _enabled = false;
 /** @type {Function|null} Disposer returned by preRender event subscription */
 let _preRenderRemover = null;
 /** @type {Function|null} Disposer returned by camera.changed event subscription */
-let _cameraRemover = null;
+const _cameraRemover = null;
 /** @type {ReturnType<typeof setTimeout>|null} Debounce timer for camera-change fetch */
 let _fetchTimeout = null;
 /** @type {{south:number,west:number,north:number,east:number}|null} Last fetched clamped bounds */
@@ -290,7 +290,7 @@ let _styleListenerBound = false;
  * spawn/recolor/restyle all read from here, no per-dot allocation.
  * @type {{free:Cesium.Color, slow:Cesium.Color, jam:Cesium.Color}}
  */
-let _activeBucketColors = { ...FLOW_BUCKET_COLORS };
+const _activeBucketColors = { ...FLOW_BUCKET_COLORS };
 /**
  * @const {number} Minimum base pixel size for COLORED dots while a styled
  * preset is active — residential-road dots spawn at 4 px and vanish into
@@ -598,7 +598,7 @@ async function fetchRoads(
  *   Parsed road objects ready for dot spawning.
  */
 function parseRoads(overpassData) {
-  if (!overpassData || !overpassData.elements) return [];
+  if (!overpassData?.elements) return [];
 
   const roads = [];
   for (const el of overpassData.elements) {
@@ -2044,7 +2044,7 @@ function parseRoadsTimed(overpassData, trace) {
     _trafficTimingParseStartTime,
   );
   /* TRACE_ONLY_END */
-  if (!overpassData || !overpassData.elements) {
+  if (!overpassData?.elements) {
     /* TRACE_ONLY_BEGIN */
     const _trafficTimingParseEnd = trafficTimingMark(
       _trafficTimingState,

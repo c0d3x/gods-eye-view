@@ -1,54 +1,54 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  buildRadioCategories,
   buildRadioTunerBand,
   buildRadioTunerTicks,
-  buildRadioCategories,
+  confirmRadioPlayback,
   createRadioClusterOverlayEntry,
   createRadioSelectedOverlayEntry,
   createRadioSingletonOverlayEntry,
-  confirmRadioPlayback,
   DEFAULT_RADIO_FILTER,
   filterRadioStations,
   getRadioAcceptedCatalogSnapshot,
   getRadioUIState,
   isEnglishRadioStation,
   normalizeRadioTag,
-  radioCategoryColor,
-  radioGlobeLabel,
-  radioGlobeNeedsRecentering,
-  radioGlobeRecenterHeight,
   RADIO_GLOBE_INTERACTION_MAX_DISTANCE_M,
   RADIO_OVERLAY_COHORT_LIMIT,
   RADIO_OVERLAY_SOURCE_OPTIONS,
   RADIO_SINGLETON_GLOBAL_LIMIT,
   RADIO_SINGLETON_MID_LIMIT,
   RADIO_SINGLETON_NEAR_LIMIT,
-  radioClusterCategoryId,
-  radioCameraPositionChanged,
   radioCameraNavigationAllowed,
+  radioCameraPositionChanged,
+  radioCategoryColor,
   radioClusterBadgeText,
-  rankRadioStationsForViewport,
-  rankRadioStationsForRequest,
-  radioRequestIsCurrent,
+  radioClusterCategoryId,
+  radioGlobeLabel,
+  radioGlobeNeedsRecentering,
+  radioGlobeRecenterHeight,
   radioLayer,
-  reconcileRadioClusterCandidates,
-  retainRadioClusterIdentitiesForStations,
-  radioStationIdFromPick,
+  radioRequestIsCurrent,
   radioSelectionBracketSvg,
-  selectRadioClusterCandidates,
-  selectRadioSingletonCandidates,
+  radioSingletonLabelLimit,
   radioStationCameraPlan,
+  radioStationCategoryId,
+  radioStationIdFromPick,
   radioTunerCommitSlot,
   radioTunerPointerPosition,
   radioTunerSlot,
   radioTuningStaticShouldPlay,
-  radioStationCategoryId,
-  setRadioParams,
-  setRadioVolume,
-  setRadioVoiceDucking,
-  radioSingletonLabelLimit,
   radioViewIsGlobal,
+  rankRadioStationsForRequest,
+  rankRadioStationsForViewport,
+  reconcileRadioClusterCandidates,
+  retainRadioClusterIdentitiesForStations,
+  selectRadioClusterCandidates,
+  selectRadioSingletonCandidates,
+  setRadioParams,
+  setRadioVoiceDucking,
+  setRadioVolume,
   stationMatchesRadioCategory,
 } from './radio.js';
 
@@ -2456,7 +2456,6 @@ test('voice playback confirmation waits for playing and requires a hard duck', a
 });
 
 test('voice playback confirmation accepts fallback buffering but times out safely', async () => {
-  let listener = () => {};
   const state = {
     audioState: 'loading',
     playingStationId: 'fallback',
@@ -2466,11 +2465,8 @@ test('voice playback confirmation accepts fallback buffering but times out safel
   const confirmed = await confirmRadioPlayback({
     startPlayback: async () => false,
     subscribe: (next) => {
-      listener = next;
       next(state);
-      return () => {
-        listener = () => {};
-      };
+      return () => {};
     },
     getState: () => state,
     timeoutMs: 10,

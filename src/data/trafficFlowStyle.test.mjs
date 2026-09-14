@@ -1,12 +1,13 @@
 // src/data/trafficFlowStyle.test.mjs
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
+  FLOW_BUCKET_RGBA,
   flowBucket,
   flowColor,
-  flowSpeedScale,
   flowDensityMult,
-  FLOW_BUCKET_RGBA,
+  flowSpeedScale,
 } from './trafficFlowStyle.js';
 
 // ── bucket thresholds ───────────────────────────────────────

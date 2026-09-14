@@ -5,13 +5,14 @@
 // traffic, and every surface it drives — the toggle chip, the panel meta
 // line, the traffic sync chip — has to say so. The two pure helpers below own
 // that contract; the layer's getStats() is a thin caller.
-import test from 'node:test';
+
 import assert from 'node:assert/strict';
+import test from 'node:test';
+import { DataLayerManager, layerFeedState } from './manager.js';
 import trafficLayer, {
   deriveTrafficFlowError,
   trafficFeedPresentation,
 } from './traffic.js';
-import { DataLayerManager, layerFeedState } from './manager.js';
 
 /**
  * The app's live markers. Case-SENSITIVE on purpose: uppercase LIVE/GPS is

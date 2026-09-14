@@ -1,7 +1,8 @@
 // src/data/routePlausible.test.mjs
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
-import { routePlausible, greatCircleKm } from './routePlausible.js';
+import { test } from 'node:test';
+import { greatCircleKm, routePlausible } from './routePlausible.js';
 
 const SFO = { lat: 37.6188, lon: -122.3754 };
 const LAX = { lat: 33.9416, lon: -118.4085 };

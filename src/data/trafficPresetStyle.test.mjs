@@ -1,11 +1,11 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
-  trafficStyleProfile,
+  presetDotOutline,
   presetDotRgba,
   presetSizeDelta,
-  presetDotOutline,
   trafficBucketTier,
+  trafficStyleProfile,
 } from './trafficPresetStyle.js';
 
 /** Rec.601 luma of an rgba tuple (rgb 0–255), normalized 0–1. */

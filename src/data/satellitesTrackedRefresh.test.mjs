@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as Cesium from 'cesium';
 import { twoline2satrec } from 'satellite.js';
-import {
-  ISS_OVERLAY_SOURCE_OPTIONS,
+import satellitesLayer, {
   _applyPendingSatelliteTrackingRestoreForTest,
   _clearSatelliteLabelLifecycleForTest,
   _pendingSatelliteTrackingRestoreForTest,
@@ -15,8 +14,8 @@ import {
   _trackedFrameCartesianForTest,
   _trackIssForTest,
   createIssOverlayEntry,
+  ISS_OVERLAY_SOURCE_OPTIONS,
 } from './satellites.js';
-import satellitesLayer from './satellites.js';
 import { createTrackedOverlayEntry } from './trackedReadout.js';
 
 const L1 =

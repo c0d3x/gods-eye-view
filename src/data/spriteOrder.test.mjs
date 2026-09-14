@@ -1,14 +1,14 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
+import aisLiveVesselsLayer from './aisLiveVessels.js';
+import { createFirmsHeatmapLayer } from './firmsHeatmap.js';
+import flightsLayer from './flights.js';
 import {
   registerSpriteCollection,
   restoreSpriteOrder,
   restoreSpriteOrderOnEnable,
   unregisterSpriteCollection,
 } from './spriteOrder.js';
-import flightsLayer from './flights.js';
-import aisLiveVesselsLayer from './aisLiveVessels.js';
-import { createFirmsHeatmapLayer } from './firmsHeatmap.js';
 
 const ORDER = ['cctv', 'firms', 'bikeshare', 'ais', 'military', 'flights'];
 

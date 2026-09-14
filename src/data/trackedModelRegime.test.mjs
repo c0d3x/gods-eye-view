@@ -16,37 +16,38 @@
 //     model with the fleet `models3d` toggle OFF (the whole point of the
 //     feature), that cockpit and TR-3B suppression survived the rewrite, and
 //     that deselecting drops the regime.
-import test from 'node:test';
+
 import assert from 'node:assert/strict';
-import {
-  trackedModelZoomActive,
-  TRACKED_MODEL_ENTER_ALT_M,
-  TRACKED_MODEL_EXIT_ALT_M,
-  FLEET_MODEL_ALT_CEIL_M,
-  TRACKED_MODEL_EXIT_RATIO,
-} from './trackedModelRegime.js';
+import test from 'node:test';
 import * as Cesium from 'cesium';
 import flightsLayer, {
   _setTrackedFlightRefreshStateForTest,
-  _trackedModelRegimeActiveForTest as flightsRegimeActive,
-  _updateTrackedModelForTest as flightsDriveTrackedModel,
-  _trackedBillboardColorForTest as flightsTrackedBillboardColor,
   _driveFleetModelHandoffForTest as flightsDriveFleetModel,
+  _updateTrackedModelForTest as flightsDriveTrackedModel,
   _ensureFleetModelForTest as flightsEnsureFleetModel,
+  _trackedModelRegimeActiveForTest as flightsRegimeActive,
+  _trackedBillboardColorForTest as flightsTrackedBillboardColor,
 } from './flights.js';
+import {
+  _clearMeshFloorCellsForTest,
+  reportMeshFloorCell,
+} from './groundFloor.js';
 import militaryFlightsLayer, {
   _setTrackedMilitaryRefreshStateForTest,
-  _trackedModelRegimeActiveForTest as militaryRegimeActive,
-  _updateTrackedModelForTest as militaryDriveTrackedModel,
-  _trackedBillboardColorForTest as militaryTrackedBillboardColor,
   _driveFleetModelHandoffForTest as militaryDriveFleetModel,
+  _updateTrackedModelForTest as militaryDriveTrackedModel,
   _ensureFleetModelForTest as militaryEnsureFleetModel,
+  _trackedModelRegimeActiveForTest as militaryRegimeActive,
+  _trackedBillboardColorForTest as militaryTrackedBillboardColor,
 } from './militaryFlights.js';
 import { clearTr3bRegistry, setTr3b } from './tr3bRegistry.js';
 import {
-  reportMeshFloorCell,
-  _clearMeshFloorCellsForTest,
-} from './groundFloor.js';
+  FLEET_MODEL_ALT_CEIL_M,
+  TRACKED_MODEL_ENTER_ALT_M,
+  TRACKED_MODEL_EXIT_ALT_M,
+  TRACKED_MODEL_EXIT_RATIO,
+  trackedModelZoomActive,
+} from './trackedModelRegime.js';
 
 // Sample altitudes are expressed RELATIVE to the band rather than as absolute
 // offsets. The thresholds have already been retuned once (1_000_000 → 150_000
@@ -897,7 +898,7 @@ for (const fixture of LAYERS) {
     let now = 3_000_000;
     Date.now = () => now;
     let sampleCalls = 0;
-    let sampledHeight = undefined;
+    let sampledHeight;
     const viewer = viewerAtHeight(30_000, {
       tilesLoaded: false,
       sampleHeight: () => {

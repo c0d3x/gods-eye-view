@@ -1,19 +1,27 @@
 import * as Cesium from 'cesium';
 import {
-  twoline2satrec,
-  propagate,
-  gstime,
-  eciToGeodetic,
-  degreesLong,
   degreesLat,
+  degreesLong,
+  eciToGeodetic,
+  gstime,
+  propagate,
+  twoline2satrec,
 } from 'satellite.js';
 import {
-  registerPickOwner,
-  unregisterPickOwner,
-  isOwnedByOtherLayer,
-  resolvePickId,
-} from './pickRegistry.js';
-import { findNextIssPass } from './issPass.js';
+  clearOverlaySource,
+  setOverlayEntries,
+  setOverlaySourceVisible,
+} from '../overlays/worldOverlay.js';
+import {
+  holdContinuousRender,
+  releaseContinuousRender,
+} from '../renderGovernor.js';
+import {
+  clearTrackedSubjectContext,
+  getContextStore,
+  refreshTrackedSubjectContext,
+  selectTrackedSubjectContext,
+} from './contextStore.js';
 import {
   advanceSpriteFocus,
   clearFocusTarget,
@@ -24,29 +32,21 @@ import {
   nearFarScalarValueAtDistance,
   publishFocusTargetFromCachedPosition,
 } from './focusDeemphasis.js';
-import { refreshTrackedReadout } from './trackedReadout.js';
+import { findNextIssPass } from './issPass.js';
+import { isExplicitLayerStateOrigin } from './layerState.js';
+import {
+  isOwnedByOtherLayer,
+  registerPickOwner,
+  resolvePickId,
+  unregisterPickOwner,
+} from './pickRegistry.js';
 import {
   satelliteClassColor,
   satelliteClassLabel,
   satelliteClassLegend,
   tallySatelliteClasses,
 } from './satelliteClass.js';
-import {
-  clearOverlaySource,
-  setOverlayEntries,
-  setOverlaySourceVisible,
-} from '../overlays/worldOverlay.js';
-import {
-  clearTrackedSubjectContext,
-  getContextStore,
-  refreshTrackedSubjectContext,
-  selectTrackedSubjectContext,
-} from './contextStore.js';
-import {
-  holdContinuousRender,
-  releaseContinuousRender,
-} from '../renderGovernor.js';
-import { isExplicitLayerStateOrigin } from './layerState.js';
+import { refreshTrackedReadout } from './trackedReadout.js';
 
 /**
  * Satellite Orbits — Real-time positions via CelesTrak TLE + SGP4 propagation.
@@ -596,9 +596,7 @@ function computeOrbitPath(satrec, referenceDate) {
           geo.height * 1000,
         ),
       );
-    } catch {
-      continue;
-    }
+    } catch {}
   }
 
   return positions;
@@ -1259,7 +1257,7 @@ async function _loadDenseCatalog({ signal = null } = {}) {
       for (let i = start; i < end; i++) {
         const entry = entries[i];
         const satrec = twoline2satrec(entry.line1, entry.line2);
-        if (!satrec || satrec.error !== 0) continue;
+        if (satrec?.error !== 0) continue;
         const noradId = Number(satrec.satnum);
         if (_catalog.has(noradId)) continue; // core catalog keeps priority
         const pos = propagatePosition(satrec, now);
@@ -1819,7 +1817,7 @@ const satellitesLayer = {
     _applyPendingTrackingRestore();
   },
 
-  disable(viewer) {
+  disable(_viewer) {
     _abortActiveUpdates();
     _cancelPendingTrackingRestore();
     _enabled = false;
@@ -1942,7 +1940,7 @@ const satellitesLayer = {
 
       for (const entry of allEntries) {
         const satrec = twoline2satrec(entry.line1, entry.line2);
-        if (!satrec || satrec.error !== 0) continue;
+        if (satrec?.error !== 0) continue;
 
         const noradId = Number(satrec.satnum);
         if (seen.has(noradId)) continue;
@@ -2080,7 +2078,7 @@ const satellitesLayer = {
   },
 
   getDetectableObjects(options = {}) {
-    if (!_pointCollection || !_pointCollection.show) return [];
+    if (!_pointCollection?.show) return [];
     // Dense extras are points-only: excluded from the detection overlay.
     const eligibleCount = Math.max(1, _points.size - _denseIds.length);
     const maxCount = Number.isFinite(options.maxCount)
@@ -2531,8 +2529,7 @@ function _installClickHandler(viewer) {
         if (!_enabled) return;
         if (
           _trackedNorad &&
-          _viewer &&
-          _viewer.trackedEntity &&
+          _viewer?.trackedEntity &&
           _viewer.trackedEntity !== _trackedEntity
         ) {
           _clearTracking(true, {
@@ -2556,7 +2553,7 @@ function _installClickHandler(viewer) {
       const prim = picked.primitive;
       if (prim && prim.id != null) {
         const noradId = Number(prim.id);
-        if (!isNaN(noradId) && _catalog.has(noradId)) {
+        if (!Number.isNaN(noradId) && _catalog.has(noradId)) {
           _cancelPendingTrackingRestore();
           _trackSatellite(noradId, { origin: 'user' });
           return;
@@ -2589,7 +2586,7 @@ function _installClickHandler(viewer) {
  */
 export function getNextIssPass({ latDeg, lonDeg, minElevDeg = 10 }) {
   const sat = _catalog.get(ISS_NORAD);
-  if (!sat || !sat.satrec) return { status: 'no-tle' };
+  if (!sat?.satrec) return { status: 'no-tle' };
   const pass = findNextIssPass({
     satrec: sat.satrec,
     latDeg,
@@ -2716,7 +2713,7 @@ export function findSatelliteOrbitTrackInTle(tleText, query, options = {}) {
   }
   if (!bestEntry || bestScore < 12) return null;
   const satrec = twoline2satrec(bestEntry.line1, bestEntry.line2);
-  if (!satrec || satrec.error !== 0) return null;
+  if (satrec?.error !== 0) return null;
   return orbitTrackFromRecord(bestEntry.name, satrec);
 }
 

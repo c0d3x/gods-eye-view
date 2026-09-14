@@ -110,7 +110,7 @@ function suffixVariants(norm) {
     v.push(norm.replace(/ mts$/, ' mountains'), norm.replace(/ mts$/, ''));
   // "x desert" ↔ "x"
   if (norm.endsWith(' desert')) v.push(norm.replace(/ desert$/, ''));
-  else v.push(norm + ' desert');
+  else v.push(`${norm} desert`);
   // "x peninsula" ↔ "x pen" (pack uses "Pen.")
   if (norm.endsWith(' peninsula')) v.push(norm.replace(/ peninsula$/, ' pen'));
   if (norm.endsWith(' pen')) v.push(norm.replace(/ pen$/, ' peninsula'));
@@ -236,7 +236,7 @@ export async function findNaturalRegion(query) {
   for (const key of candidates) {
     if (!key) continue;
     const list = index.get(key);
-    if (list && list.length) return toResult(list[0]);
+    if (list?.length) return toResult(list[0]);
   }
   return null;
 }

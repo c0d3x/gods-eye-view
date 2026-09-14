@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  SATELLITE_CLASSES,
   SATELLITE_CLASS_ORDER,
+  SATELLITE_CLASSES,
   satelliteClassColor,
   satelliteClassLabel,
   satelliteClassLegend,

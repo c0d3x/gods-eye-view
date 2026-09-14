@@ -7,8 +7,9 @@
 // counts flapped to zero. The guard now mirrors the sibling
 // `getDetectableObjects()` in each layer: a contact stays nearby while EITHER
 // visual owns it, and a contact nothing is drawing for stays excluded.
-import test from 'node:test';
+
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import * as Cesium from 'cesium';
 import flightsLayer, {
   _setTrackedFlightRefreshStateForTest,

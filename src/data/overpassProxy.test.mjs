@@ -6,8 +6,9 @@
 // ≈never. Pure-function tests, no network.
 //
 // Run with: npm test   (node --test)
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
   isOverpassBoundaryQuery,
   resolveOverpassPreflight,

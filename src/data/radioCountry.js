@@ -99,6 +99,7 @@ export function normalizeRadioCountryInput(value) {
   if (
     !trimmed ||
     trimmed.length > RADIO_COUNTRY_MAX_LENGTH ||
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters is the point of this check
     /[\u0000-\u001f\u007f]/.test(trimmed) ||
     !/^[\p{L}\p{M}.&'’()\-\s]+$/u.test(trimmed)
   )

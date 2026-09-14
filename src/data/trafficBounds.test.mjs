@@ -1,10 +1,11 @@
 // src/data/trafficBounds.test.mjs
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
-  greatCircleKm,
-  deriveFetchCenter,
   clampBoundsAroundCenter,
+  deriveFetchCenter,
+  greatCircleKm,
 } from './trafficBounds.js';
 
 // Downtown Austin — matches the TomTom fixture tile neighbourhood.

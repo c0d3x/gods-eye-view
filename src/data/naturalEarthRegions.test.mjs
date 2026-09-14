@@ -1,7 +1,8 @@
 // src/data/naturalEarthRegions.test.mjs
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
-import { statSync, readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
+import { test } from 'node:test';
 import {
   findNaturalRegion,
   listRegions,

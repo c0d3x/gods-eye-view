@@ -2,12 +2,13 @@
 // The bundled data packs memoize their load. This pins the half of that
 // contract the two hand-rolled caches got wrong (roadmap L7): a failure must
 // not be remembered, or one transient error downgrades the whole session.
-import test from 'node:test';
+
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import {
+  createRetryableLoader,
   RETRY_COOLDOWN_MAX_MS,
   RETRY_COOLDOWN_MS,
-  createRetryableLoader,
 } from './retryableLoad.js';
 
 /** Controllable clock so cooldown assertions cost no wall time. */

@@ -170,7 +170,7 @@ export async function lookupNeighborhoodRing(lat, lon, matchName) {
   // Heights. Point-in-polygon is only a CONFIRMATION / specificity tiebreak.
   let best = null; // { ring, name, contains, fwordCount }
   for (const f of feats) {
-    const fname = normalize(f.properties && f.properties.name);
+    const fname = normalize(f.properties?.name);
     if (!fname) continue;
     const fWords = fname.split(' ').filter(Boolean);
     if (!fWords.length || !fWords.every((w) => qWords.has(w))) continue; // require name match

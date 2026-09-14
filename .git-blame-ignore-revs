@@ -28,3 +28,6 @@ a966209dac9c819033fb5c2c1414ef9eb89ca358
 
 # Format src/data (flowMatch to motionModel) with Biome
 1029d3af657063c6b1b2cd7b21e17bbfe648518b
+
+# Format src/data (naturalEarthRegions to vesselLabels) with Biome
+b6270623b1b04a6ea54cf1c1640beda861c7c2e1

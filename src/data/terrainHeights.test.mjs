@@ -14,11 +14,12 @@
 // tests within this file — tests below use distinct coordinates per case to
 // avoid cross-test cache contamination, except the dedicated cache tests
 // which rely on that persistence deliberately).
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
-  resolveEllipsoidalGround,
   cachedEllipsoidalGround,
+  resolveEllipsoidalGround,
 } from './terrainHeights.js';
 
 const AUSTIN = { lat: 30.2672, lon: -97.7431 };

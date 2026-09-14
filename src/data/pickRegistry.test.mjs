@@ -9,13 +9,13 @@
  *    and never throws on a broken predicate.
  */
 
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
-  registerPickOwner,
-  unregisterPickOwner,
   isOwnedByOtherLayer,
+  registerPickOwner,
   resolvePickId,
+  unregisterPickOwner,
 } from './pickRegistry.js';
 
 // ---------------------------------------------------------------------------

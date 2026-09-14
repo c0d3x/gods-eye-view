@@ -1,10 +1,6 @@
 import * as Cesium from 'cesium';
-import {
-  findSatelliteOrbitTrackInTle,
-  getSatelliteOrbitTrack,
-  orbitFrameModelMatrix,
-} from './satellites.js';
 import { getKeyholeGeometry } from '../celestialRing.js';
+import { fetchChecked, fetchJson } from '../fetchJson.js';
 import {
   clearOverlaySource,
   setOverlayEntries,
@@ -14,7 +10,11 @@ import {
   holdContinuousRender,
   releaseContinuousRender,
 } from '../renderGovernor.js';
-import { fetchChecked, fetchJson } from '../fetchJson.js';
+import {
+  findSatelliteOrbitTrackInTle,
+  getSatelliteOrbitTrack,
+  orbitFrameModelMatrix,
+} from './satellites.js';
 
 const WINDOW_DAYS = 30;
 const API_URL = '/api/launches';
@@ -403,7 +403,7 @@ MissionOrbitPatternMaterialProperty.prototype.getType = function getType() {
 };
 
 MissionOrbitPatternMaterialProperty.prototype.getValue = function getValue(
-  time,
+  _time,
   result,
 ) {
   if (!Cesium.defined(result)) result = {};
@@ -3516,7 +3516,7 @@ function addLaunchEntity(launch, activeTleText = _activeTleText) {
     stage.endpoint = landingEndpoint(stage, launch, orbitPath?.[0] || null);
   });
   if (satelliteTrack) _orbitMatches++;
-  const entity = _dataSource.entities.add({
+  _dataSource.entities.add({
     id: `rocket-launch:${launch.id}`,
     position,
     point: {
@@ -4098,7 +4098,9 @@ async function performMissionUpdate(token) {
     _satelliteTelemetry.clear();
     _replayTracks.clear();
     _orbitMatches = 0;
-    launches.forEach((launch) => addLaunchEntity(launch, activeTleText));
+    launches.forEach((launch) => {
+      addLaunchEntity(launch, activeTleText);
+    });
     _renderedTleText = activeTleText;
     if (_renderedTleText === _activeTleText) clearPostTleRetry();
     _count = launches.length;

@@ -79,8 +79,8 @@ function canonicalSemanticBody(body) {
     .replace(/\/\/[^\n]*/g, '')
     .replace(/\s+/g, '')
     .replace(
-      'if(!overpassData||!overpassData.elements){return[];}',
-      'if(!overpassData||!overpassData.elements)return[];',
+      'if(!overpassData?.elements){return[];}',
+      'if(!overpassData?.elements)return[];',
     );
 }
 

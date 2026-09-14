@@ -14,8 +14,9 @@
 // the real WGS84 ellipsoidal value; barometric altitude is MSL-referenced
 // and additionally subject to non-standard-pressure QNH error) — no test
 // here asserts baro+N is exact, only that it matches the documented formula.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
   geoidSurfaceLastResortM,
   pickRenderAltitudeM,

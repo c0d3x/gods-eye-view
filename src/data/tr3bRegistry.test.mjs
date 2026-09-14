@@ -2,37 +2,37 @@
 // TR-3B conversion Easter egg: registry state, sprite-variant selection,
 // class-label override, and the render-path invariants that keep a converted
 // contact a 2D triangle across polls, style switches, and the 3D handoff.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { test } from 'node:test';
 import * as Cesium from 'cesium';
-
-import {
-  TR3B_CLASS,
-  TR3B_TYPE_LABEL,
-  clearTr3bRegistry,
-  isTr3b,
-  setTr3b,
-  toggleTr3b,
-  tr3bConvertedIds,
-  tr3bCount,
-  tr3bAircraftClass,
-  tr3bIconKind,
-  tr3bTypeLabel,
-} from './tr3bRegistry.js';
+import { readUiSource } from '../testing/uiSources.mjs';
+import { createGevActionRunner } from '../voice/gevActions.js';
 import { aircraftIcon, TRACKED_ICON_PX } from './aircraftIcons.js';
+import { ANALYST_LAYERS, createAnalystEngine } from './analystEngine.js';
 import flightsLayer, {
   _setTrackedFlightRefreshStateForTest,
   mapAnalystRecord as mapFlightAnalystRecord,
 } from './flights.js';
+import { findCompatibleHistoryIndex } from './militaryAwareness.js';
 import militaryFlightsLayer, {
   _setTrackedMilitaryRefreshStateForTest,
   mapAnalystRecord as mapMilitaryAnalystRecord,
 } from './militaryFlights.js';
-import { findCompatibleHistoryIndex } from './militaryAwareness.js';
-import { createGevActionRunner } from '../voice/gevActions.js';
-import { ANALYST_LAYERS, createAnalystEngine } from './analystEngine.js';
-import { readUiSource } from '../testing/uiSources.mjs';
+import {
+  clearTr3bRegistry,
+  isTr3b,
+  setTr3b,
+  TR3B_CLASS,
+  TR3B_TYPE_LABEL,
+  toggleTr3b,
+  tr3bAircraftClass,
+  tr3bConvertedIds,
+  tr3bCount,
+  tr3bIconKind,
+  tr3bTypeLabel,
+} from './tr3bRegistry.js';
 
 /** Strip block and line comments so source pins scan CODE, not prose. */
 function stripComments(source) {
@@ -632,7 +632,7 @@ test('cockpit class filter matches a converted contact end to end', async () => 
       camera: { moveEnd: { addEventListener() {} } },
     },
     styleManager: {
-      controlCockpit(action, options) {
+      controlCockpit(_action, options) {
         seen.push(options.aircraftClass);
         return {
           ok: true,

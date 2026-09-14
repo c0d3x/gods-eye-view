@@ -9,29 +9,29 @@
  * @module radio
  */
 import * as Cesium from 'cesium';
+import {
+  earthDiscScreenRadius,
+  GLOBE_ENTER_CLEARANCE_PX,
+  getKeyholeGeometry,
+  isFullGlobeInsideKeyhole,
+  projectEarthDiscToViewport,
+} from '../celestialRing.js';
+import {
+  clearOverlaySource,
+  setOverlayEntries,
+  setOverlaySourceVisible,
+} from '../overlays/worldOverlay.js';
+import { governorRequestRender } from '../renderGovernor.js';
 import { cachedGroundFloor, warmGroundFloor } from './groundFloor.js';
-import { normalizeRadioCountryInput } from './radioCountry.js';
-import { normalizeRadioFilter } from './layerState.js';
 import { horizonOccluder } from './iconOrientation.js';
+import { normalizeRadioFilter } from './layerState.js';
 import {
   isOwnedByOtherLayer,
   registerPickOwner,
   resolvePickId,
   unregisterPickOwner,
 } from './pickRegistry.js';
-import {
-  clearOverlaySource,
-  setOverlayEntries,
-  setOverlaySourceVisible,
-} from '../overlays/worldOverlay.js';
-import {
-  earthDiscScreenRadius,
-  getKeyholeGeometry,
-  GLOBE_ENTER_CLEARANCE_PX,
-  isFullGlobeInsideKeyhole,
-  projectEarthDiscToViewport,
-} from '../celestialRing.js';
-import { governorRequestRender } from '../renderGovernor.js';
+import { normalizeRadioCountryInput } from './radioCountry.js';
 
 const RADIO_PREFIX = 'radio:';
 const DIRECTORY_ENDPOINT = '/api/radio/stations';
@@ -182,7 +182,7 @@ let _acceptedCatalogSnapshot = EMPTY_ACCEPTED_CATALOG_SNAPSHOT;
 let _stations = [];
 let _stationById = new Map();
 let _categories = [];
-let _renderById = new Map();
+const _renderById = new Map();
 let _filter = DEFAULT_RADIO_FILTER;
 let _selectedId = null;
 let _selectedEntity = null;
@@ -298,6 +298,7 @@ function isValidRadioDirectoryStation(station) {
     typeof value === 'string' &&
     value.length <= maxLength &&
     (allowEmpty || value.trim().length > 0) &&
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters is the point of this check
     !/[\u0000-\u001f\u007f]/.test(value) &&
     value === value.trim() &&
     !/\s{2,}/.test(value);
@@ -1337,7 +1338,7 @@ export function radioGlobeRecenterHeight(currentHeight, fullGlobeCapable) {
 /** Bound one already ordered filtered directory without injecting outside selections. */
 export function buildRadioTunerBand(
   rankedStations,
-  selected,
+  _selected,
   limit = RADIO_TUNER_STATION_LIMIT,
 ) {
   const boundedLimit = Math.min(
@@ -2834,7 +2835,7 @@ function updateRenderVisibility({ force = true } = {}) {
   _horizonScanCount += 1;
   const occluder = horizonOccluder(_viewer.camera);
   let visibilityChanged = false;
-  for (const [id, record] of _renderById) {
+  for (const [, record] of _renderById) {
     const matches = stationMatchesRadioCategory(record.station, _filter);
     const visible = matches && occluder.isPointVisible(record.position);
     if (record.entity.show !== visible) visibilityChanged = true;

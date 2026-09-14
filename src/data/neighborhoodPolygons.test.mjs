@@ -1,9 +1,10 @@
 // src/data/neighborhoodPolygons.test.mjs — pins the bundled DataSF "Analysis
 // Neighborhoods" dataset (PDDL 1.0, see local_data/neighborhoods/SOURCE.md) and
 // its resolution contract through the source-agnostic loader.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
 import { lookupNeighborhoodRing } from './neighborhoodPolygons.js';
 
 const FILE = new URL(
@@ -27,7 +28,7 @@ test('SF neighborhoods file parses with the expected DataSF shape', () => {
   // DataSF Analysis Neighborhoods is exactly 41 areas (dataset j2bu-swwd).
   assert.equal(fc.features.length, 41);
   for (const f of fc.features) {
-    const name = f.properties && f.properties.name;
+    const name = f.properties?.name;
     assert.ok(
       typeof name === 'string' && name.trim().length > 0,
       `every feature has a non-empty properties.name (got ${JSON.stringify(name)})`,
@@ -69,7 +70,7 @@ test('the five demo neighborhoods resolve to real polygons through the loader', 
     assert.equal(hit.name, expected);
     assert.ok(
       Array.isArray(hit.ring) && hit.ring.length >= 4,
-      `${query}: real ring, not a synthesized disc (got ${hit.ring && hit.ring.length} pts)`,
+      `${query}: real ring, not a synthesized disc (got ${hit.ring?.length} pts)`,
     );
     for (const [rlon, rlat] of hit.ring) {
       assert.ok(
