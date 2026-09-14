@@ -27,6 +27,14 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Changed
 
+- Biome formats and lints every JavaScript file in the repository, and the
+  config JSON. `biome.json` names its scope by glob instead of listing files,
+  so new modules are covered as they are added; the bundled data in
+  `src/data/local_data` keeps its own layout. Adopting the rest of the code
+  took Biome's lint fixes, among them optional chains, template literals,
+  block bodies for `forEach` callbacks and the removal of functions nothing
+  called. The formatting-only commits are listed in `.git-blame-ignore-revs`.
+
 - `src/ui.js` is split into modules under `src/ui/`, one per panel, view
   or control, with the code unchanged. `ui.js` keeps StyleManager's
   construction and wiring, and goes from 10,513 lines to 1,308. The cockpit

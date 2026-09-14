@@ -1,16 +1,17 @@
 # Formatting and component boundaries
 
-Run `pnpm run format` to format the files listed in `files.includes` of
-`biome.json` and `pnpm run format:check` to check that same list without
-writing; `pnpm run lint` applies Biome's recommended lint rules and import
-sorting to it and fails on warnings as well as errors. CI checks the entire
-adopted list on Linux and Windows. Biome is pinned in the development
-dependencies; use the installed version so local and CI output agree. The shared
-configuration specifies two spaces, single quotes, semicolons and LF endings.
-The Lefthook pre-commit hook formats, lints and sorts the imports of staged
-files from the same list and leaves every other file untouched.
+Run `pnpm run format` to format every file in Biome's scope and
+`pnpm run format:check` to check them without writing; `pnpm run lint`
+applies Biome's recommended lint rules and import sorting and fails on
+warnings as well as errors. The scope, `files.includes` in `biome.json`, is a
+glob per source root: all JavaScript at the top level and in `src`, `server`,
+`scripts`, `tools` and `pinokio`, plus the config JSON. The bundled data in
+`src/data/local_data` stays out. CI checks the whole scope on Linux and
+Windows. Biome is pinned in the development dependencies; use the installed
+version so local and CI output agree. The shared configuration specifies two
+spaces, single quotes, semicolons and LF endings. The Lefthook pre-commit hook
+formats, lints and sorts the imports of staged files in scope.
 
-Add new reusable modules and their tests to the list as they are extracted.
 Keep mechanical formatting in its own commit after behavior is stable. Existing
 source-text regression assertions still apply; investigate failures and preserve
 their behavioral coverage when a move or line wrap changes a tested shape.

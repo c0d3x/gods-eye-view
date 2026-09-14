@@ -46,10 +46,10 @@ jobs:
       - name: Run setup policy checks
         run: pnpm run doctor --json
 
-      - name: Check adopted formatting
+      - name: Check formatting
         run: pnpm run format:check
 
-      - name: Lint adopted files
+      - name: Lint
         run: pnpm run lint
 
       - name: Check package boundaries
@@ -133,10 +133,10 @@ jobs:
       - name: Run the Pinokio install path
         run: node scripts/pinokio-install.mjs
 
-      - name: Check adopted formatting
+      - name: Check formatting
         run: pnpm run format:check
 
-      - name: Lint adopted files
+      - name: Lint
         run: pnpm run lint
 
       - name: Check package boundaries

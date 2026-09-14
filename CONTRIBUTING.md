@@ -78,16 +78,15 @@ The highest-leverage places to jump in:
 
 ## Formatting and reusable components
 
-Run `pnpm run format` before submitting changes to adopted modules, then
-`pnpm run format:check`, `pnpm run lint` and `pnpm run check:boundaries`.
-Formatting and linting use Biome, with its recommended lint rules and sorted
-imports, and the explicit file list in `files.includes` of `biome.json`; add
-newly extracted modules and tests there in a separate mechanical commit.
+Run `pnpm run format` before submitting changes, then `pnpm run format:check`,
+`pnpm run lint` and `pnpm run check:boundaries`. Formatting and linting use
+Biome, with its recommended lint rules and sorted imports, on every JavaScript
+file in the repository and the config JSON. `files.includes` in `biome.json`
+names them by glob, so new modules and tests are covered without a list to
+update; the bundled data in `src/data/local_data` is left as it is.
 `pnpm install` also installs a Lefthook pre-commit hook that formats, lints and
-sorts the imports of staged files from that list; set `LEFTHOOK=0` to skip it
-for one commit. Keep unadopted files
-consistent with their surrounding style. CI checks all adopted files and package
-boundaries on Linux and Windows.
+sorts the imports of staged files; set `LEFTHOOK=0` to skip it for one commit.
+CI checks formatting, lint and package boundaries on Linux and Windows.
 
 Reusable package exports own their state and receive application operations
 through explicit callbacks. They must not import the standalone bootstrap or
