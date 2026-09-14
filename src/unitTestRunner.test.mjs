@@ -1,4 +1,3 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
@@ -10,10 +9,11 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import unfinishedTestsReporter from '../scripts/lib/unfinishedTestsReporter.mjs';
 import {
   ALLOCATION_TEST_FILES,
-  UNIT_TEST_TIMEOUT_MS,
   allocationTestArgs,
   assertNode24AllocationRuntime,
   buildUnitTestPlan,
@@ -23,9 +23,9 @@ import {
   parseUnitTestArgs,
   reporterFlags,
   runCheckedTests,
+  UNIT_TEST_TIMEOUT_MS,
   unitTestFlags,
 } from '../scripts/run-unit-tests.mjs';
-import unfinishedTestsReporter from '../scripts/lib/unfinishedTestsReporter.mjs';
 
 /** A nested `node --test` that inherits NODE_TEST_CONTEXT skips running files. */
 function nestedTestEnv() {

@@ -12,7 +12,6 @@ import test from 'node:test';
 import * as Cesium from 'cesium';
 
 import {
-  ROUTE_CINEMA,
   advanceRouteFlight,
   approachValue,
   createRouteFlight,
@@ -21,13 +20,14 @@ import {
   initCameraVerbs,
   interruptCameraMotion,
   prefersReducedMotion,
+  probeMeshFloorM,
+  ROUTE_CINEMA,
   routeAltitudeOffsetM,
   routeColdSeedFloorM,
   routeCorridorCells,
   routeEyeHeightM,
   routeFloorHoldM,
   routeRampFraction,
-  probeMeshFloorM,
   routeSpeedProfile,
   signedTurnRad,
 } from './cameraVerbs.js';
@@ -458,7 +458,7 @@ test('a rise is cleared BEFORE the camera reaches it, not as it arrives', () => 
   // instantly, so reading only the current cell still clears the cell you are
   // standing on. What the lookahead buys is clearing the ridge while you are
   // still SHORT of it, which is what this measures.
-  const ridgeFloor = (lat, lon) => (lon > -97.745 && lon < -97.73 ? 900 : 0);
+  const ridgeFloor = (_lat, lon) => (lon > -97.745 && lon < -97.73 ? 900 : 0);
   const flight = flightFrom(TWO_TURN_ROUTE, { floorFn: ridgeFloor });
   const frames = record(flight);
   const floorAtFrame = (frame) => {
@@ -566,8 +566,9 @@ test('a COLD corridor never descends blind — the seed holds until terrain land
   // floor may be taken whole because nothing has moved yet.
   advanceRouteFlight(acquiring, FRAME_S);
   assert.equal(
-    acquiring.floorM,
-    Number.NaN === acquiring.floorM ? Number.NaN : acquiring.floorM,
+    acquiring.floorKnown,
+    false,
+    'a frame without terrain data acquires no floor',
   );
   acquiring.floorFn = () => REAL_FLOOR_M;
   advanceRouteFlight(acquiring, FRAME_S);

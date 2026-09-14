@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  DEFAULT_DATA_MODE,
   buildVesselCardManifest,
+  DEFAULT_DATA_MODE,
   isHardwareRenderer,
   isHeadfulMode,
   parseDataMode,

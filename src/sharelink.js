@@ -4,11 +4,11 @@ import {
   migrateDetectionState,
   normalizeAllocationStrategy,
 } from './data/detectionPolicy.js';
-import { clampScopeTerminusPct } from './scopeMask.js';
 import {
   decodeLayerStateParams,
   encodeLayerStateParams,
 } from './data/layerState.js';
+import { clampScopeTerminusPct } from './scopeMask.js';
 
 /**
  * Share Links — URL Hash State Management

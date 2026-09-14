@@ -1,6 +1,6 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import test from 'node:test';
 
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 
@@ -20,8 +20,11 @@ function ruleText(selector) {
 }
 
 function ruleBodyContaining(selector, declaration) {
-  let start = -1;
-  while ((start = css.indexOf(selector, start + 1)) >= 0) {
+  for (
+    let start = css.indexOf(selector);
+    start >= 0;
+    start = css.indexOf(selector, start + 1)
+  ) {
     const open = css.indexOf('{', start);
     const close = css.indexOf('}', open);
     const body = css.slice(open + 1, close);

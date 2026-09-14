@@ -1,31 +1,31 @@
-import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { beforeEach, test } from 'node:test';
+import { KEYHOLE_OUTER_RADIUS } from './celestialRing.js';
 import {
-  scopeMaskGeometry,
-  scopeMaskDevicePixelRatio,
-  scopeTerminusAlpha,
-  quantizeScopeTerminusAlpha,
-  updateScopeTerminusForHeight,
-  setScopeTerminusOverride,
-  getScopeTerminusOverride,
-  getScopeTerminusAlpha,
-  getScopeTerminusRepaintCount,
+  _resetScopeMaskForTest,
   clampScopeTerminusPct,
-  installScopeMask,
   destroyScopeMask,
-  setScopeMaskEnabled,
-  setScopeMaskFeather,
-  SCOPE_TERMINUS_MIN_PCT,
-  SCOPE_TERMINUS_MAX_PCT,
+  getScopeTerminusAlpha,
+  getScopeTerminusOverride,
+  getScopeTerminusRepaintCount,
+  installScopeMask,
+  quantizeScopeTerminusAlpha,
   SCOPE_FEATHER_RATIO_DEFAULT,
   SCOPE_OUTSIDE_ALPHA,
   SCOPE_TERMINUS_ALPHA_NEAR,
   SCOPE_TERMINUS_FAR_M,
+  SCOPE_TERMINUS_MAX_PCT,
+  SCOPE_TERMINUS_MIN_PCT,
   SCOPE_TERMINUS_NEAR_M,
   SCOPE_TERMINUS_QUANTUM,
-  _resetScopeMaskForTest,
+  scopeMaskDevicePixelRatio,
+  scopeMaskGeometry,
+  scopeTerminusAlpha,
+  setScopeMaskEnabled,
+  setScopeMaskFeather,
+  setScopeTerminusOverride,
+  updateScopeTerminusForHeight,
 } from './scopeMask.js';
-import { KEYHOLE_OUTER_RADIUS } from './celestialRing.js';
 
 beforeEach(() => _resetScopeMaskForTest());
 
@@ -168,8 +168,8 @@ function stubScopeMaskDom({ width = 1000, height = 800, dpr = 1 } = {}) {
     matchMedia: (query) => ({
       media: query,
       matches: true,
-      addEventListener: (type, fn) => listeners.add(fn),
-      removeEventListener: (type, fn) => listeners.delete(fn),
+      addEventListener: (_type, fn) => listeners.add(fn),
+      removeEventListener: (_type, fn) => listeners.delete(fn),
     }),
   };
   globalThis.document = { createElement: () => canvas };

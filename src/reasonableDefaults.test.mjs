@@ -27,19 +27,20 @@
 //     because "default" means "what you get when you said nothing";
 //   • the surrounding override machinery is INTACT, so a default flip cannot
 //     quietly take a separate landed behaviour with it.
-import test from 'node:test';
+
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import test from 'node:test';
 
 import {
+  KEYHOLE_LABEL_FEATHER_RATIO,
   KEYHOLE_OUTER_RADIUS,
   KEYHOLE_OUTSIDE_OPACITY_DEFAULT,
-  KEYHOLE_LABEL_FEATHER_RATIO,
 } from './celestialRing.js';
 import { AIRCRAFT_BRACKET_FLOOR_ANCHOR } from './data/detectionPolicy.js';
 import {
-  SCOPE_FEATHER_RATIO_DEFAULT,
   getScopeMaskFeather,
+  SCOPE_FEATHER_RATIO_DEFAULT,
   scopeMaskGeometry,
   setScopeMaskFeather,
 } from './scopeMask.js';
@@ -396,7 +397,7 @@ test('detection-on-by-default is a default, not an operator override', () => {
   }
   assert.doesNotMatch(
     stylePresets,
-    /\n  normal: \{/,
+    /\n {2}normal: \{/,
     'Normal gained a default, not a style preset — switching to it still touches nothing',
   );
 });

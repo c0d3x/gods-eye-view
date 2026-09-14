@@ -1,13 +1,13 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import test from 'node:test';
 import { createBoundedCache } from '../server/lib/boundedCache.mjs';
 import { coalesceProxyRequest } from '../server/lib/coalesce.mjs';
 import { writeJson } from '../server/lib/jsonResponse.mjs';
+import { PROJECT_URL } from '../server/lib/projectUrl.mjs';
 import { readResponseTextCapped } from '../server/lib/upstreamBody.mjs';
 import { ADSBDB_CACHE_MAX_ENTRIES } from '../server/proxies/adsbdb.mjs';
-import { PROJECT_URL } from '../server/lib/projectUrl.mjs';
 import { TERRAIN_CACHE_MAX_POINTS } from '../server/proxies/terrainHeights.mjs';
 
 // The production plugins, read from their modules.

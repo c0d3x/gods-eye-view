@@ -2,9 +2,10 @@
 // out landmarks on other continents — NEAR SACRE-COEUR (PARIS) 2470KM while
 // parked over Moscow — because the NEAR bound was 2,500 km. These pin the metro
 // bound, both sides of it, and the SECTOR fallback that already worked.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
 import { composeLocalityTag, NEAR_POI_MAX_KM } from './hudLocality.js';
 
 const ALCATRAZ = { poi: 'Alcatraz Island', city: 'San Francisco' };

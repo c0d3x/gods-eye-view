@@ -1,6 +1,6 @@
+import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import assert from 'node:assert/strict';
 import { readUiSource } from './testing/uiSources.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
@@ -20,7 +20,7 @@ test('Contacts and Space Missions both participate in the ordinary Tab sequence'
     assert.match(button[0], /tabindex="0"/);
   }
 
-  const sync = ui.match(/_syncContextModeButtons\(\) \{([\s\S]*?)\n  \}\n/);
+  const sync = ui.match(/_syncContextModeButtons\(\) \{([\s\S]*?)\n {2}\}\n/);
   assert.ok(sync, 'Context mode sync is missing');
   assert.match(
     sync[1],
@@ -31,7 +31,7 @@ test('Contacts and Space Missions both participate in the ordinary Tab sequence'
 });
 
 test('Context transition state preserves focus and Tab availability until settle', () => {
-  const sync = ui.match(/_syncContextModeButtons\(\) \{([\s\S]*?)\n  \}\n/);
+  const sync = ui.match(/_syncContextModeButtons\(\) \{([\s\S]*?)\n {2}\}\n/);
   assert.ok(sync, 'Context mode sync is missing');
 
   const attributes = () => new Map();
@@ -151,7 +151,7 @@ test('Context activation and Clear All never native-disable tabs and guard repea
 
 test('Context tablist retains Left, Right, Home, and End keyboard navigation', () => {
   const init = ui.match(
-    /_initGlobalContextPanel\(\) \{([\s\S]*?)\n    this\._globalContextFlightsBtn\?\.addEventListener/,
+    /_initGlobalContextPanel\(\) \{([\s\S]*?)\n {4}this\._globalContextFlightsBtn\?\.addEventListener/,
   );
   assert.ok(init, 'Context panel initialization is missing');
   assert.match(init[1], /event\.key === 'ArrowRight'/);

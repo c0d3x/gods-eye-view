@@ -1364,7 +1364,7 @@ export function moveCamera(args = {}, runNavigation = null) {
  * @returns {boolean} true when an orbit consumed the zoom.
  */
 export function adjustOrbitRange(factor) {
-  if (!_active || _active.kind !== 'orbit' || !_active.hpr) return false;
+  if (_active?.kind !== 'orbit' || !_active.hpr) return false;
   _active.hpr.range = Math.max(
     80,
     Math.min(5_000_000, _active.hpr.range * factor),

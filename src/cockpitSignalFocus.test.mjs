@@ -1,7 +1,7 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-import { CockpitViewController } from './ui/cockpitView.js';
+import test from 'node:test';
 import militaryAwarenessLayer from './data/militaryAwareness.js';
+import { CockpitViewController } from './ui/cockpitView.js';
 
 // Drives the real CockpitViewController's briefing signal list against a small
 // DOM model. The model loses native focus on removal AND on ordinary DOM

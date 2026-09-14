@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
-import config from '../vite.config.js';
-import { googleServerApiKey } from '../server/lib/googleServerKey.mjs';
-import { googlePlacesContextProxy } from '../server/proxies/googlePlaces.mjs';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import test from 'node:test';
+import { googleServerApiKey } from '../server/lib/googleServerKey.mjs';
+import { googlePlacesContextProxy } from '../server/proxies/googlePlaces.mjs';
 import { loadApiKey } from '../tools/streetview-headings.mjs';
+import config from '../vite.config.js';
 
 /** Run fn with the two Google key env vars set to the given values, then restore. */
 function withKeys({ server, browser }, fn) {

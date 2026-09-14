@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   applyCockpitVisionStageIntensities,
-  captureCockpitVisionBaseline,
   COCKPIT_VISION_MODES,
+  captureCockpitVisionBaseline,
   normalizeCockpitVisionMode,
 } from './cockpitVisionPolicy.js';
 

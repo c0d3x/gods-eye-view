@@ -1,47 +1,10 @@
 import * as Cesium from 'cesium';
 import { decodeBloomIntensity } from './bloom.js';
-import { LOCATIONS } from './locations.js';
-import { CockpitViewController } from './ui/cockpitView.js';
-import { IntelHUD } from './hud.js';
-import { ShareLinkManager } from './sharelink.js';
 import {
-  isExplicitLayerStateOrigin,
-  LayerStateCoordinator,
-} from './data/layerState.js';
-import { OrbitController } from './orbit.js';
+  registerCctvFocusRequestListener,
+  routeCctvFocusRequest,
+} from './cctvFocusRequest.js';
 import { CelestialRing } from './celestialRing.js';
-import {
-  destroyTrackedReadout,
-  initTrackedReadout,
-} from './data/trackedReadout.js';
-import {
-  destroyWorldOverlay,
-  initWorldOverlay,
-} from './overlays/worldOverlay.js';
-import {
-  destroyDetection,
-  initDetection,
-  cycleMode as cycleDetectionMode,
-  setDetectionStyle,
-} from './data/detection.js';
-import {
-  canonicalizeDensity,
-  normalizeAllocationStrategy,
-} from './data/detectionPolicy.js';
-import trafficLayer from './data/traffic.js';
-import flightsLayer from './data/flights.js';
-import militaryFlightsLayer from './data/militaryFlights.js';
-import satellitesLayer from './data/satellites.js';
-import cctvLayer from './data/cctv.js';
-import radioLayer from './data/radio.js';
-import bikeshareLayer from './data/bikeshare.js';
-import aisLiveVesselsLayer from './data/aisLiveVessels.js';
-import {
-  createLoadingFeedbackState,
-  createTrafficSyncFeedbackState,
-  presentGlobalStatusNotice,
-  presentLoadingFeedback,
-} from './loadingFeedback.js';
 import {
   cockpitEntryAllowed,
   contextLayerEnableBlockReason,
@@ -51,48 +14,83 @@ import {
   shouldCaptureContextSession,
   shouldDeferContextEntryDuringClear,
 } from './contextModePolicy.js';
+import aisLiveVesselsLayer from './data/aisLiveVessels.js';
+import bikeshareLayer from './data/bikeshare.js';
+import cctvLayer from './data/cctv.js';
 import {
-  registerCctvFocusRequestListener,
-  routeCctvFocusRequest,
-} from './cctvFocusRequest.js';
+  cycleMode as cycleDetectionMode,
+  destroyDetection,
+  initDetection,
+  setDetectionStyle,
+} from './data/detection.js';
+import {
+  canonicalizeDensity,
+  normalizeAllocationStrategy,
+} from './data/detectionPolicy.js';
+import flightsLayer from './data/flights.js';
+import {
+  isExplicitLayerStateOrigin,
+  LayerStateCoordinator,
+} from './data/layerState.js';
+import militaryFlightsLayer from './data/militaryFlights.js';
+import radioLayer from './data/radio.js';
+import satellitesLayer from './data/satellites.js';
+import {
+  destroyTrackedReadout,
+  initTrackedReadout,
+} from './data/trackedReadout.js';
+import trafficLayer from './data/traffic.js';
+import { IntelHUD } from './hud.js';
+import {
+  createLoadingFeedbackState,
+  createTrafficSyncFeedbackState,
+} from './loadingFeedback.js';
+import {
+  registerNavigationAuthorityListener,
+  stampInitialShareGesture,
+} from './navigationPolicy.js';
+import { OrbitController } from './orbit.js';
+import {
+  destroyWorldOverlay,
+  initWorldOverlay,
+} from './overlays/worldOverlay.js';
+import { releaseContinuousRender } from './renderGovernor.js';
+import {
+  clampScopeTerminusPct,
+  isScopeMaskEnabled,
+  setScopeMaskEnabled,
+  setScopeMaskFeather,
+  setScopeTerminusOverride,
+} from './scopeMask.js';
+import { ShareLinkManager } from './sharelink.js';
+import { adoptMethods } from './ui/adoptMethods.js';
+import { CctvPanel } from './ui/cctvPanel.js';
+import { CockpitControls } from './ui/cockpitControls.js';
+import { CockpitViewController } from './ui/cockpitView.js';
+import { ContextPanel } from './ui/contextPanel.js';
+import {
+  DETECTION_ALLOCATION_STORAGE_KEY,
+  DetectionControls,
+} from './ui/detectionControls.js';
+import { GlobeNavigation } from './ui/globeNavigation.js';
+import { HudControls } from './ui/hudControls.js';
+import { LocationBar } from './ui/locationBar.js';
+import { MapStackControl } from './ui/mapStackControl.js';
+import { PANEL_Z_BASE, PanelChrome } from './ui/panelChrome.js';
+import { PanelLayout } from './ui/panelLayout.js';
+import { RadioPanel } from './ui/radioPanel.js';
+import { RecordingControls } from './ui/recordingControls.js';
+import { SceneState } from './ui/sceneState.js';
+import { ShareState } from './ui/shareState.js';
+import { StatusFeedback } from './ui/statusFeedback.js';
+import { STYLE_STATUS_LABELS, STYLES } from './ui/styleConfig.js';
+import { VisualStyles } from './ui/visualStyles.js';
 import {
   flyToWorldTarget,
   registerWorldFocusRequestListener,
   routeWorldFocusRequest,
 } from './worldFocus.js';
-import {
-  registerNavigationAuthorityListener,
-  stampInitialShareGesture,
-} from './navigationPolicy.js';
-import { releaseContinuousRender } from './renderGovernor.js';
-import {
-  setScopeMaskEnabled,
-  isScopeMaskEnabled,
-  setScopeMaskFeather,
-  setScopeTerminusOverride,
-  clampScopeTerminusPct,
-} from './scopeMask.js';
-import { adoptMethods } from './ui/adoptMethods.js';
-import { RadioPanel } from './ui/radioPanel.js';
-import { CctvPanel } from './ui/cctvPanel.js';
-import { PanelLayout } from './ui/panelLayout.js';
-import { PanelChrome, PANEL_Z_BASE } from './ui/panelChrome.js';
-import { LocationBar } from './ui/locationBar.js';
-import { GlobeNavigation } from './ui/globeNavigation.js';
-import { STYLES, STYLE_STATUS_LABELS } from './ui/styleConfig.js';
-import { VisualStyles } from './ui/visualStyles.js';
-import {
-  DetectionControls,
-  DETECTION_ALLOCATION_STORAGE_KEY,
-} from './ui/detectionControls.js';
-import { CockpitControls } from './ui/cockpitControls.js';
-import { ContextPanel } from './ui/contextPanel.js';
-import { ShareState } from './ui/shareState.js';
-import { StatusFeedback } from './ui/statusFeedback.js';
-import { HudControls } from './ui/hudControls.js';
-import { RecordingControls } from './ui/recordingControls.js';
-import { MapStackControl } from './ui/mapStackControl.js';
-import { SceneState } from './ui/sceneState.js';
+
 /** Standard map-view panels cleared out of the way on a fresh Cockpit entry. */
 const COCKPIT_ENTRY_COLLAPSE_PANEL_IDS = Object.freeze([
   'data-panel',

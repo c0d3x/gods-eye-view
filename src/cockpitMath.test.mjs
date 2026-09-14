@@ -1,12 +1,12 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import {
+  altitudeRulerCurveInset,
   altitudeRulerStep,
   altitudeRulerTicks,
-  altitudeRulerCurveInset,
   bearingBetweenCoordinates,
-  cockpitAnchorCorrectionStep,
   cockpitAltitudeDisplayFt,
+  cockpitAnchorCorrectionStep,
   cockpitGroundSafeHeight,
   cockpitSurfaceWaitExpired,
   cockpitUiUpdateDue,

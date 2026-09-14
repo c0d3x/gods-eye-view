@@ -1,12 +1,12 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
   CELESTIAL_PLANE_EPSILON,
-  GLOBE_ENTER_CLEARANCE_PX,
-  GLOBE_EXIT_CLEARANCE_PX,
   celestialScreenAngle,
   circularAngleDistance,
   earthDiscScreenRadius,
+  GLOBE_ENTER_CLEARANCE_PX,
+  GLOBE_EXIT_CLEARANCE_PX,
   getKeyholeFadeTuning,
   getKeyholeGeometry,
   isCelestialRingStyleSupported,

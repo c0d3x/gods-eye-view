@@ -1,5 +1,5 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import { configureCreditKeyboardAccess } from './creditKeyboard.js';
 
 function fakeElement() {
@@ -187,12 +187,12 @@ test('Escape and backdrop dismissal close attribution and restore its disclosure
   };
   configureCreditKeyboardAccess(f.root);
   f.expand.click();
-  const escape = f.lightbox.dispatch('keydown', {
+  const escapeKey = f.lightbox.dispatch('keydown', {
     key: 'Escape',
     target: f.close,
   });
-  assert.equal(escape.defaultPrevented, true);
-  assert.equal(escape.propagationStopped, true);
+  assert.equal(escapeKey.defaultPrevented, true);
+  assert.equal(escapeKey.propagationStopped, true);
   assert.equal(closed, 1);
   assert.equal(f.expand.getAttribute('aria-expanded'), 'false');
   assert.equal(f.expand.focused, true);

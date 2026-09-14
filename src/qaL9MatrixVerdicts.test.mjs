@@ -4,28 +4,29 @@
 // check that reports green without verifying anything. Every assertion here
 // locks one path where that was possible. Mirrors src/unitTestRunner.test.mjs,
 // which likewise pins logic that lives under scripts/.
-import test from 'node:test';
+
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import {
+  applyKnownConditions,
+  CRASH,
+  CREDIT_EXEMPT_LAYERS,
+  CREDIT_EXPECTATIONS,
+  classifyNoScoreboard,
+  FAIL,
+  isCalibratedAllocationRuntime,
+  keyGuard,
+  normalizeVerdict,
+  OUTCOMES,
   PASS,
   PASS_SKIPS,
-  FAIL,
-  CRASH,
-  SKIP,
-  OUTCOMES,
-  normalizeVerdict,
-  classifyNoScoreboard,
-  readResultLine,
   readCockpit,
   readFloorVerdict,
-  keyGuard,
-  applyKnownConditions,
+  readResultLine,
   requiredCreditFor,
+  SKIP,
   satisfiesEngines,
-  isCalibratedAllocationRuntime,
   trafficFlowInconclusive,
-  CREDIT_EXPECTATIONS,
-  CREDIT_EXEMPT_LAYERS,
 } from '../scripts/qa-l9-matrix.mjs';
 
 const run = (over = {}) => ({

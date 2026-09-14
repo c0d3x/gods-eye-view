@@ -1,8 +1,10 @@
-import test from 'node:test';
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: these strings are shell source, where ${NAME} expands a variable.
+
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import test from 'node:test';
 import { readDotenvValue } from '../scripts/read-dotenv-value.mjs';
 
 test('dotenv reader preserves values without executing shell metacharacters', async () => {
@@ -31,10 +33,7 @@ test('dotenv reader preserves values without executing shell metacharacters', as
 
 test('an inherited export never masks the value written in the file', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'gev-dotenv-'));
-  const had = Object.prototype.hasOwnProperty.call(
-    process.env,
-    'GEV_INHERIT_PROBE',
-  );
+  const had = Object.hasOwn(process.env, 'GEV_INHERIT_PROBE');
   const previous = process.env.GEV_INHERIT_PROBE;
   try {
     await fs.writeFile(
@@ -58,10 +57,7 @@ test('an inherited export never masks the value written in the file', async () =
 
     delete process.env.GEV_INHERIT_PROBE;
     assert.equal(readDotenvValue('GEV_INHERIT_PROBE', root), 'from-dotenv');
-    assert.equal(
-      Object.prototype.hasOwnProperty.call(process.env, 'GEV_INHERIT_PROBE'),
-      false,
-    );
+    assert.equal(Object.hasOwn(process.env, 'GEV_INHERIT_PROBE'), false);
   } finally {
     if (had) process.env.GEV_INHERIT_PROBE = previous;
     else delete process.env.GEV_INHERIT_PROBE;

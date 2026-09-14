@@ -1,18 +1,18 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
   cockpitEntryAllowed,
   contextAllowedLayerIds,
   contextLayerEnableBlockReason,
   contextRestoreLayerIds,
+  contextSnapshotLayerIds,
   isExplicitUserIntentOrigin,
   mergeContextTransitionErrors,
-  contextSnapshotLayerIds,
-  recordContextSessionUserChange,
   recordContextRestoreExplicitChange,
+  recordContextSessionUserChange,
   runWithContextModeChanging,
-  settleContextModeChange,
   settleContextIntentReplay,
+  settleContextModeChange,
   settleUserFacingContextAction,
   shouldCaptureContextSession,
   shouldDeferContextEntryDuringClear,

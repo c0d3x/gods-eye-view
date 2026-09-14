@@ -1,6 +1,6 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import test from 'node:test';
 import { looseIndexOf, readUiSource } from './testing/uiSources.mjs';
 
 // Exercise the installed event routes and central close method, without WebGL.
@@ -569,8 +569,8 @@ test('Location synthesized click and Escape retain focus and its accessible name
   assert.equal(h.calls(), 0);
   assert.equal(h.timers.size, 0);
   h.focus(h.locationSearch);
-  const escape = h.locationEscape();
-  assert.equal(escape.defaultPrevented, true);
+  const escapeKey = h.locationEscape();
+  assert.equal(escapeKey.defaultPrevented, true);
   assert.equal(h.location.classList.contains('collapsed'), true);
   assert.equal(h.locationDisclosure.getAttribute('aria-expanded'), 'false');
   assert.equal(

@@ -1,4 +1,3 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   mkdirSync,
@@ -10,6 +9,7 @@ import {
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import test from 'node:test';
 import {
   buildCapabilitySummary,
   CREDENTIALS,

@@ -1,6 +1,7 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import test from 'node:test';
+
 const retrySite = (stats = {}) => ({
   id: 'military-installations',
   name: 'Mapped Installations',
@@ -115,6 +116,7 @@ test('turning off a retrying installation layer does not report the old fetch fa
   state = reduceLoadingFeedback(state, off, 1400);
   assert.equal(presentLoadingFeedback(state, off, 1400).label, 'LIVE DATA OFF');
 });
+
 import {
   aggregateLayerLoading,
   canPresentDeferredStatusNotice,

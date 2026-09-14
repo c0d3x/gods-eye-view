@@ -16,10 +16,11 @@
 // globals exist: Cesium's widget bundle probes for a real `document` at module
 // scope and a partial stub sends it down the browser path. Hence hook →
 // import → install DOM, in that order.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { registerHooks } from 'node:module';
+import { test } from 'node:test';
 import { ensureGeoidReady } from './data/geoid.js';
 
 const MGRS_STUB_URL = 'gev-test-stub:mgrs';

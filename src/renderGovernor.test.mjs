@@ -1,12 +1,12 @@
-import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { beforeEach, test } from 'node:test';
 import {
-  installRenderGovernor,
-  holdContinuousRender,
-  releaseContinuousRender,
-  governorRequestRender,
-  getRenderGovernorDiagnostics,
   _resetRenderGovernorForTest,
+  getRenderGovernorDiagnostics,
+  governorRequestRender,
+  holdContinuousRender,
+  installRenderGovernor,
+  releaseContinuousRender,
 } from './renderGovernor.js';
 
 function makeViewer() {

@@ -15,15 +15,15 @@
 
 import * as Cesium from 'cesium';
 import { forward as toMGRS } from 'mgrs';
-import { CITY_POIS } from './locations.js';
-import { composeLocalityTag } from './hudLocality.js';
 import {
   ellipsoidalToMslDisplayM,
   ensureGeoidReadyWhenIdle,
   geoidHeight,
   isGeoidReady,
 } from './data/geoid.js';
+import { composeLocalityTag } from './hudLocality.js';
 import { isHudSummaryUnconfigured } from './hudSummaryResponse.js';
+import { CITY_POIS } from './locations.js';
 
 /** Color palettes keyed by shader mode; applied as CSS custom properties. */
 const HUD_COLORS = {
@@ -557,8 +557,8 @@ export class IntelHUD {
     if (!rect) return null;
     const north = Cesium.Math.toDegrees(rect.north);
     const south = Cesium.Math.toDegrees(rect.south);
-    let east = Cesium.Math.toDegrees(rect.east);
-    let west = Cesium.Math.toDegrees(rect.west);
+    const east = Cesium.Math.toDegrees(rect.east);
+    const west = Cesium.Math.toDegrees(rect.west);
     let lonSpan = Math.abs(east - west);
     // Handle antimeridian wrap: if span exceeds 180 deg, take the shorter arc
     if (lonSpan > 180) lonSpan = 360 - lonSpan;

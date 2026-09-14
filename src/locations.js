@@ -1,7 +1,7 @@
 import * as Cesium from 'cesium';
 import {
-  viewportBias,
   placesNearViewRecovery,
+  viewportBias,
 } from './annotations/annotationResolver.js';
 import { fetchJson } from './fetchJson.js';
 
@@ -659,7 +659,7 @@ export function flyToPresetLocation(viewer, locationId, options = {}) {
  */
 export function flyToPOI(viewer, cityId, poiIndex, options = {}) {
   const city = CITY_POIS[cityId];
-  if (!city || !city.pois[poiIndex]) return null;
+  if (!city?.pois[poiIndex]) return null;
   const poi = city.pois[poiIndex];
   return flyToLandmark(viewer, poi.lat, poi.lon, {
     range: poi.alt,

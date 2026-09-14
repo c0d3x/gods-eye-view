@@ -3,21 +3,22 @@
 // building range (250 m) lands on a random rooftop. Pure mapping tests, no network.
 //
 // Run with: npm test   (node --test)
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { test } from 'node:test';
 import * as Cesium from 'cesium';
 import {
   CANCELLED_SEARCH,
-  placeFramingViewport,
-  PLACE_VIEWPORT_MAX_SPAN_KM,
-  PLACE_ANCHOR_OFFSET_RATIO,
   flyToGlobeView,
   flyToPresetLocation,
-  geocodeNavigationMode,
-  regionFramingPlan,
-  REGION_SWATH_SPAN_KM,
   GLOBE_VIEW,
+  geocodeNavigationMode,
+  PLACE_ANCHOR_OFFSET_RATIO,
+  PLACE_VIEWPORT_MAX_SPAN_KM,
+  placeFramingViewport,
+  REGION_SWATH_SPAN_KM,
+  regionFramingPlan,
   searchAndFlyTo,
 } from './locations.js';
 

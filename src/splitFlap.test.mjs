@@ -1,14 +1,14 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 
 import {
-  planSplitFlap,
-  visibleGlyphs,
   FLAP_CHAR_MS,
-  FLAP_STAGGER_MS,
   FLAP_MAX_TOTAL_MS,
+  FLAP_STAGGER_MS,
   FLAP_TURN_RATIO,
+  planSplitFlap,
   SPLIT_FLAP_ENABLED,
+  visibleGlyphs,
 } from './splitFlap.js';
 
 const settledText = (plan) => plan.cells.map((cell) => cell.to).join('');

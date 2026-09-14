@@ -5,18 +5,19 @@
 // data under the week/month-long cache TTLs. These cases use no live providers.
 //
 // Run with: npm test
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
-import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
-import createViteConfig from '../vite.config.js';
+import { test } from 'node:test';
 import {
   fetchOverpassPayload,
   overpassPayloadIsData,
   readOverpassDisk,
 } from '../server/proxies/overpass.mjs';
+import createViteConfig from '../vite.config.js';
 
 const ENDPOINTS = [
   'https://a.example/api',

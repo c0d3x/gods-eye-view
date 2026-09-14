@@ -1,22 +1,22 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import test from 'node:test';
+import { GEV_REALTIME_TOOLS } from '../server/realtime/tools.mjs';
 import {
   ENVIRONMENTAL_LABEL_CHOICE,
   EXCLUSIVE_SURFACE_CLASSES,
+  environmentalLabel,
+  exclusiveSurfaceActive,
   FIRST_RUN_MISSIONS,
   FIRST_RUN_SESSION_KEY,
   FIRST_RUN_STORAGE_KEY,
-  environmentalLabel,
-  exclusiveSurfaceActive,
   initFirstRunExperience,
   rememberFirstRunSessionDismissed,
   runFirstRunChoice,
   setFirstRunSuppressed,
   shouldShowFirstRun,
 } from './firstRunExperience.js';
-import { GEV_REALTIME_TOOLS } from '../server/realtime/tools.mjs';
 import { looseIndexOf, readUiSource } from './testing/uiSources.mjs';
 
 function memoryStorage(key, value = null) {

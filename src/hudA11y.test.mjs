@@ -1,6 +1,6 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import test from 'node:test';
 import { readUiSource } from './testing/uiSources.mjs';
 
 const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');

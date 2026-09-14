@@ -6,14 +6,15 @@
 // stack data, a click dispatches the same selection the `change` handler used
 // to, and the lit chip tracks controller state rather than the click. Run with:
 // npm test
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { test } from 'node:test';
 import {
   MAP_STACK_CHIP_CLASS,
-  PRESENTED_MAP_STACK_IDS,
   mapStackChipModel,
   mapStackChipModels,
+  PRESENTED_MAP_STACK_IDS,
   renderMapStackChips,
   syncMapStackChips,
 } from './mapStackChips.js';
@@ -57,7 +58,8 @@ function makeElement(tagName = 'div') {
       return element.attributes[name] ?? null;
     },
     addEventListener(type, handler) {
-      (element.listeners[type] ||= []).push(handler);
+      element.listeners[type] ||= [];
+      element.listeners[type].push(handler);
     },
     click() {
       for (const handler of element.listeners.click || []) handler();

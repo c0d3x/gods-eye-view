@@ -2,8 +2,9 @@
 // contract: cockpit refuses before anything is released, the release happens
 // before the flight, and a deferred flight retires the moment ANY newer
 // navigation intent claims the camera.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
   announceNavigationAuthority,
   beginDeferredNavigation,

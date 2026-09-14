@@ -7,21 +7,22 @@
 // thing a Node test cannot boot is the context-mode transaction itself (Cesium
 // plus the data-manager intent lanes); that wiring is pinned by source
 // assertions here and driven for real in scripts/qa-cockpit-utility.mjs.
-import test from 'node:test';
+
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import {
   applyContactsDetection,
   contactsDetectionEnterPlan,
   contactsDetectionExitPlan,
-  shareCacheNeedsHeal,
   shareableDetectionState,
+  shareCacheNeedsHeal,
 } from './contactsDetectionPolicy.js';
 import {
   cycleMode as cycleDetectionMode,
-  getDetectionTuning,
   getMode as getDetectionMode,
-  setDetectionTuning,
+  getDetectionTuning,
   setMode as setDetectionModeByLabel,
+  setDetectionTuning,
 } from './data/detection.js';
 import { canonicalizeDensity } from './data/detectionPolicy.js';
 import { readUiSource } from './testing/uiSources.mjs';

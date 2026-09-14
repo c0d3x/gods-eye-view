@@ -1,9 +1,9 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import {
   cockpitCloudRenderSize,
-  cockpitWeatherRefreshDue,
   cockpitWeatherEnabledFromStoredValue,
+  cockpitWeatherRefreshDue,
 } from './cockpitCloudEffects.js';
 
 test('cockpit cloud framebuffer stays low resolution on large displays', () => {

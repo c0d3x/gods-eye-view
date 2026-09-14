@@ -1,7 +1,7 @@
-import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { ShareLinkManager, decodeShareCreatedAtMs } from './sharelink.js';
+import { test } from 'node:test';
 import { createDefaultLayerState } from './data/layerState.js';
+import { decodeShareCreatedAtMs, ShareLinkManager } from './sharelink.js';
 import {
   looseIndexOf,
   memberSource,

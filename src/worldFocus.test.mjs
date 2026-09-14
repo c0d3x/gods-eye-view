@@ -1,17 +1,18 @@
 // One-click transfer pipeline for clicked world targets (pre-launch defect #4).
 // The layer only announces the click; the UI owns the camera.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import * as Cesium from 'cesium';
 import {
-  WORLD_CLICK_FOCUS_DURATION_SEC,
-  WORLD_FOCUS_FRAMING,
-  WORLD_FOCUS_REQUEST_EVENT,
   flyToWorldTarget,
   isValidWorldFocusTarget,
   registerWorldFocusRequestListener,
   requestWorldFocus,
   routeWorldFocusRequest,
+  WORLD_CLICK_FOCUS_DURATION_SEC,
+  WORLD_FOCUS_FRAMING,
+  WORLD_FOCUS_REQUEST_EVENT,
 } from './worldFocus.js';
 
 const POSITION = Cesium.Cartesian3.fromDegrees(-97.74, 30.26, 0);

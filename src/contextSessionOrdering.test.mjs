@@ -10,8 +10,9 @@
 //  - a failed Space Missions START from the chip route cleared siblings with
 //    no rollback;
 //  - the right-rail entry ignored the activation result entirely.
-import { test } from 'node:test';
+
 import assert from 'node:assert/strict';
+import { test } from 'node:test';
 import {
   looseIndexOf,
   memberSource,

@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { openAiRealtimeProxy } from '../server/realtime/openai.mjs';
 import {
   HUD_SUMMARY_UNCONFIGURED_CODE,
   isHudSummaryUnconfigured,
   keylessHudSummaryResponse,
 } from './hudSummaryResponse.js';
-import { openAiRealtimeProxy } from '../server/realtime/openai.mjs';
 
 const UNCONFIGURED_PAYLOAD = {
   configured: false,
