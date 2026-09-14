@@ -20,14 +20,30 @@
  * looking at (owner decision 2026-07-02).
  */
 import * as Cesium from 'cesium';
-import { classifyAircraft, CLASS_MODEL_REAL, CLASS_MODEL_URL, CLASS_SCALE_3D } from './aircraftClass.js';
-import { approxDistanceKm, contactLabel, createAircraftLayer, normalizeIcao } from './aircraftLayerCore.js';
+import {
+  CLASS_MODEL_REAL,
+  CLASS_MODEL_URL,
+  CLASS_SCALE_3D,
+  classifyAircraft,
+} from './aircraftClass.js';
+import {
+  approxDistanceKm,
+  contactLabel,
+  createAircraftLayer,
+  normalizeIcao,
+} from './aircraftLayerCore.js';
 import { stickyNumber, stickyText } from './aircraftMeta.js';
 import { formatFlightLevel } from './detectionDraw.js';
 import { cachedGroundFloor, floorAltitudeM } from './groundFloor.js';
 import { isMilitaryIcao } from './militaryRegistry.js';
-import { trailAnchorForModel, visualCenterForModel } from './modelVisualAnchor.js';
-import { geoidSurfaceLastResortM, pickRenderAltitudeM } from './renderAltitude.js';
+import {
+  trailAnchorForModel,
+  visualCenterForModel,
+} from './modelVisualAnchor.js';
+import {
+  geoidSurfaceLastResortM,
+  pickRenderAltitudeM,
+} from './renderAltitude.js';
 import { isTr3b, tr3bAircraftClass, tr3bTypeLabel } from './tr3bRegistry.js';
 
 /** Amber tint for known-military aircraft rendered by this layer (matches the military layer's icon color). */
@@ -49,7 +65,7 @@ const LANDED_SPEED_MAX_MPS = 23;
 // --- 3D models -------------------------------------------------------------------------
 const PLANE_MODEL_URL = '/models/airplane.glb';
 const MODEL_NATIVE_RADIUS_M = 34.41;
-const MODEL_SCALE = 1;          // airplane.glb is transform-applied and baked to real-world meters
+const MODEL_SCALE = 1; // airplane.glb is transform-applied and baked to real-world meters
 // Grounded-model belly offset: airplane.glb's centred origin sits 6.719 m ABOVE its
 // lowest vertex (glTF Y-up scene AABB with node transforms applied — same reader as
 // modelScale.test.mjs, measured after its 24× transform bake). × class multiplier ≈ 5.0–9.7 m
@@ -127,7 +143,9 @@ function openSkyUrl(viewer) {
  * @returns {string} Lowercase trimmed string, or '' if falsy.
  */
 function toLowerText(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || '')
+    .trim()
+    .toLowerCase();
 }
 
 /**
@@ -153,7 +171,10 @@ function deriveOpenSkyAuthError({ detail, authMode, authReason }) {
   if (reason === 'basic_invalid_credentials') {
     return 'OpenSky username/password rejected';
   }
-  if (reason === 'missing_basic_creds' || reason === 'missing_oauth_and_basic_creds') {
+  if (
+    reason === 'missing_basic_creds' ||
+    reason === 'missing_oauth_and_basic_creds'
+  ) {
     return 'OpenSky auth missing';
   }
   if (reason === 'auth_required') {
@@ -170,7 +191,11 @@ function deriveOpenSkyAuthError({ detail, authMode, authReason }) {
 }
 
 function isUsableOpenSkyState(state) {
-  if (!Array.isArray(state) || typeof state[0] !== 'string' || !normalizeIcao(state[0])) {
+  if (
+    !Array.isArray(state) ||
+    typeof state[0] !== 'string' ||
+    !normalizeIcao(state[0])
+  ) {
     return false;
   }
   return Number.isFinite(state[5]) && Number.isFinite(state[6]);
@@ -199,7 +224,8 @@ async function readOpenSkySnapshot(response, { signal }) {
   const responseSource = response.headers.get('x-flight-source');
   const responseCoverage = response.headers.get('x-flight-coverage');
   const authMode = toLowerText(
-    response.headers.get('x-opensky-auth-mode-used') || response.headers.get('x-opensky-auth')
+    response.headers.get('x-opensky-auth-mode-used') ||
+      response.headers.get('x-opensky-auth'),
   );
   const authReason = toLowerText(response.headers.get('x-opensky-auth-reason'));
 
@@ -208,46 +234,66 @@ async function readOpenSkySnapshot(response, { signal }) {
     return {
       failure: {
         longBackoff: true,
-        error: authMode && authMode !== 'anon'
-          ? 'OpenSky rate limited'
-          : 'OpenSky rate limited (anonymous)',
+        error:
+          authMode && authMode !== 'anon'
+            ? 'OpenSky rate limited'
+            : 'OpenSky rate limited (anonymous)',
       },
     };
   }
 
   if (response.status === 401 || response.status === 403) {
-    console.warn(`[Data:Flights] OpenSky unavailable (${response.status}), backing off`);
+    console.warn(
+      `[Data:Flights] OpenSky unavailable (${response.status}), backing off`,
+    );
     const detail = await errorDetail(response, signal);
-    return { failure: { longBackoff: true, error: deriveOpenSkyAuthError({ detail, authMode, authReason }) } };
+    return {
+      failure: {
+        longBackoff: true,
+        error: deriveOpenSkyAuthError({ detail, authMode, authReason }),
+      },
+    };
   }
 
   if (!response.ok) {
     console.warn(`[Data:Flights] API returned ${response.status}`);
     const detail = await errorDetail(response, signal);
-    return { failure: { longBackoff: false, error: detail || `OpenSky HTTP ${response.status}` } };
+    return {
+      failure: {
+        longBackoff: false,
+        error: detail || `OpenSky HTTP ${response.status}`,
+      },
+    };
   }
 
   const data = await response.json();
   signal.throwIfAborted();
   if (!data || !Array.isArray(data.states)) {
-    return { failure: { longBackoff: false, error: 'Malformed OpenSky response' } };
+    return {
+      failure: { longBackoff: false, error: 'Malformed OpenSky response' },
+    };
   }
 
   const rows = data.states.filter(isUsableOpenSkyState);
   if (data.states.length > 0 && rows.length === 0) {
-    return { failure: { longBackoff: false, error: 'Malformed OpenSky aircraft rows' } };
+    return {
+      failure: { longBackoff: false, error: 'Malformed OpenSky aircraft rows' },
+    };
   }
 
-  const sourceEpochMs = Number.isFinite(Number(data.time)) && Number(data.time) > 0
-    ? Number(data.time) * 1000
-    : null;
-  const sourceAgeMs = sourceEpochMs == null ? 0 : Math.max(0, Date.now() - sourceEpochMs);
+  const sourceEpochMs =
+    Number.isFinite(Number(data.time)) && Number(data.time) > 0
+      ? Number(data.time) * 1000
+      : null;
+  const sourceAgeMs =
+    sourceEpochMs == null ? 0 : Math.max(0, Date.now() - sourceEpochMs);
   return {
     rows,
     sourceEpochMs,
-    staleError: sourceAgeMs > SOURCE_STALE_MS
-      ? `Source snapshot ${Math.max(2, Math.round(sourceAgeMs / 60_000))} min old`
-      : null,
+    staleError:
+      sourceAgeMs > SOURCE_STALE_MS
+        ? `Source snapshot ${Math.max(2, Math.round(sourceAgeMs / 60_000))} min old`
+        : null,
     source: responseSource || 'OpenSky Network',
     coverage: responseCoverage || 'worldwide upstream snapshot',
   };
@@ -262,7 +308,22 @@ async function readOpenSkySnapshot(response, { signal }) {
  * globe-render height when present; height-datum fix Task 6).
  */
 function parseOpenSkyRow(state) {
-  const [rawIcao24, callsign, originCountry, timePosition, lastContact, lon, lat, baroAlt, onGround, velocity, trueTrack, , , geoAlt] = state;
+  const [
+    rawIcao24,
+    callsign,
+    originCountry,
+    timePosition,
+    lastContact,
+    lon,
+    lat,
+    baroAlt,
+    onGround,
+    velocity,
+    trueTrack,
+    ,
+    ,
+    geoAlt,
+  ] = state;
   return {
     icao24: normalizeIcao(rawIcao24),
     lat,
@@ -286,7 +347,11 @@ function parseOpenSkyRow(state) {
  * renders. See the core's update() for the bookkeeping around it.
  * @returns {{meta: object, fixEpochMs: number}}
  */
-function buildOpenSkyRecord(contact, prevMeta, { geoidN, isTracked, viewerLatDeg, viewerLonDeg, floorWarmPoints }) {
+function buildOpenSkyRecord(
+  contact,
+  prevMeta,
+  { geoidN, isTracked, viewerLatDeg, viewerLonDeg, floorWarmPoints },
+) {
   const { lat, lon, onGround } = contact;
   // Grounded planes with no baro reading sit at 0 m, not the 10 km
   // airborne default (a parked plane must never float).
@@ -299,7 +364,11 @@ function buildOpenSkyRecord(contact, prevMeta, { geoidN, isTracked, viewerLatDeg
   // ellipsoidal), else baro+geoid as a visual fallback, else ground
   // surface when parked. `Cartesian3.fromDegrees` gets renderAltitudeM,
   // never `alt` directly.
-  const alt = stickyNumber(contact.baroAlt, prevMeta?.altitude, onGround ? 0 : 10000);
+  const alt = stickyNumber(
+    contact.baroAlt,
+    prevMeta?.altitude,
+    onGround ? 0 : 10000,
+  );
 
   // on_ground surface prior: ONLY synchronous warm-cache reads here —
   // never a per-aircraft network fetch inside the poll loop (see the
@@ -318,14 +387,21 @@ function buildOpenSkyRecord(contact, prevMeta, { geoidN, isTracked, viewerLatDeg
     // (warmed by last poll's batch; aprons are flat across adjacent
     // 111 m cells). Round-5 verify caught taxiing contacts stuck at
     // the geoid without this (round 2's lesson, at cell granularity).
-    if (surfaceM == null && Number.isFinite(prevMeta?.rawLat) && Number.isFinite(prevMeta?.rawLon)) {
+    if (
+      surfaceM == null &&
+      Number.isFinite(prevMeta?.rawLat) &&
+      Number.isFinite(prevMeta?.rawLon)
+    ) {
       surfaceM = cachedGroundFloor(prevMeta.rawLat, prevMeta.rawLon);
     }
     // Grounded contacts near the viewer feed the floor warm/sampler
     // (the only ones whose exact height is visible; far contacts are
     // subpixel and always-on-top anyway).
-    if (viewerLatDeg != null &&
-        approxDistanceKm(viewerLatDeg, viewerLonDeg, lat, lon) <= GROUND_FLOOR_CLAMP_RADIUS_KM) {
+    if (
+      viewerLatDeg != null &&
+      approxDistanceKm(viewerLatDeg, viewerLonDeg, lat, lon) <=
+        GROUND_FLOOR_CLAMP_RADIUS_KM
+    ) {
       floorWarmPoints.push({ lat, lon });
     }
     // Last synchronous resort for a BRAND-NEW grounded contact with NO
@@ -392,11 +468,18 @@ function buildOpenSkyRecord(contact, prevMeta, { geoidN, isTracked, viewerLatDeg
   // within GROUND_FLOOR_CLAMP_RADIUS_KM of the viewer — the only ones
   // whose burial is visible. Cells warm in one batch after the loop.
   // Airborne only (grounded planes keep the surface-cache path above).
-  if (!onGround && renderAltitudeM < GROUND_FLOOR_WARM_MAX_ALT_M &&
-      (isTracked ||
-        (viewerLatDeg != null &&
-          approxDistanceKm(viewerLatDeg, viewerLonDeg, lat, lon) <= GROUND_FLOOR_CLAMP_RADIUS_KM))) {
-    renderAltitudeM = floorAltitudeM(renderAltitudeM, cachedGroundFloor(lat, lon));
+  if (
+    !onGround &&
+    renderAltitudeM < GROUND_FLOOR_WARM_MAX_ALT_M &&
+    (isTracked ||
+      (viewerLatDeg != null &&
+        approxDistanceKm(viewerLatDeg, viewerLonDeg, lat, lon) <=
+          GROUND_FLOOR_CLAMP_RADIUS_KM))
+  ) {
+    renderAltitudeM = floorAltitudeM(
+      renderAltitudeM,
+      cachedGroundFloor(lat, lon),
+    );
     floorWarmPoints.push({ lat, lon });
   }
 
@@ -418,17 +501,26 @@ function buildOpenSkyRecord(contact, prevMeta, { geoidN, isTracked, viewerLatDeg
     // Round 6: lifted occlusion-test point for contacts rendering
     // at/below the ellipsoid (fleet pass reads it — see the occluder
     // note there). Null for the overwhelmingly common airborne case.
-    cullPosition: renderAltitudeM < 10 ? Cesium.Cartesian3.fromDegrees(lon, lat, 12) : null,
+    cullPosition:
+      renderAltitudeM < 10 ? Cesium.Cartesian3.fromDegrees(lon, lat, 12) : null,
     velocity: stickyNumber(contact.velocity, prevMeta?.velocity, 0),
     true_track: stickyNumber(contact.trueTrack, prevMeta?.true_track, 0),
     category: cat,
     // An adsbdb-enriched type code outranks the coarse OpenSky category.
-    klass: classifyAircraft({ typeCode: prevMeta?.typeCode ?? null, category: cat }),
+    klass: classifyAircraft({
+      typeCode: prevMeta?.typeCode ?? null,
+      category: cat,
+    }),
     turnRateDps: prevMeta?.turnRateDps || 0,
-    verticalRate: stickyNumber(contact.verticalRate, prevMeta?.verticalRate, null),
+    verticalRate: stickyNumber(
+      contact.verticalRate,
+      prevMeta?.verticalRate,
+      null,
+    ),
     // Analyst seam: OpenSky origin_country (state[2]) — additive, sticky
     // like callsign so a transient blank row doesn't blank the field.
-    originCountry: stickyText(contact.originCountry, prevMeta?.originCountry) || null,
+    originCountry:
+      stickyText(contact.originCountry, prevMeta?.originCountry) || null,
     // OpenSky distinguishes the last position epoch from the last
     // transponder message. The fleet coast horizon uses this actual
     // contact time so a temporarily old position does not hard-freeze
@@ -454,9 +546,10 @@ function buildOpenSkyRecord(contact, prevMeta, { geoidN, isTracked, viewerLatDeg
 
   // The FEED's fix epoch (time_position): OpenSky positions arrive 5-15 s
   // stale, so receipt time would misplace them.
-  const fixEpochMs = Number.isFinite(contact.timePosition) && contact.timePosition > 0
-    ? contact.timePosition * 1000
-    : Date.now();
+  const fixEpochMs =
+    Number.isFinite(contact.timePosition) && contact.timePosition > 0
+      ? contact.timePosition * 1000
+      : Date.now();
   return { meta, fixEpochMs };
 }
 
@@ -468,9 +561,12 @@ function buildOpenSkyRecord(contact, prevMeta, { geoidN, isTracked, viewerLatDeg
  * @returns {Promise<object|null>} `{ points, leadingAltM }`, or null.
  */
 async function fetchOpenSkyTrack(icao24) {
-  const response = await fetch('/api/opensky-track?icao24=' + encodeURIComponent(icao24), {
-    signal: AbortSignal.timeout(8000),
-  });
+  const response = await fetch(
+    `/api/opensky-track?icao24=${encodeURIComponent(icao24)}`,
+    {
+      signal: AbortSignal.timeout(8000),
+    },
+  );
   if (!response.ok) return null;
   const data = await response.json();
   if (!Array.isArray(data?.path)) return null;
@@ -478,7 +574,12 @@ async function fetchOpenSkyTrack(icao24) {
   for (const waypoint of data.path) {
     if (!Array.isArray(waypoint)) continue;
     const [t, lat, lon, baroAlt] = waypoint;
-    points.push({ t, lat, lon, baroAltM: Number.isFinite(baroAlt) ? baroAlt : null });
+    points.push({
+      t,
+      lat,
+      lon,
+      baroAltM: Number.isFinite(baroAlt) ? baroAlt : null,
+    });
   }
   // Leading waypoints with no baro and no warm floor keep the old 10 km
   // airborne default.
@@ -501,12 +602,16 @@ function trackedLabelText(icao24, info, { stale, route }) {
   const altFt = Math.round((info.altitude || 0) * 3.28084);
   const fl = altFt >= 18000 ? `FL${Math.round(altFt / 100)}` : `${altFt} ft`;
   const spd = info.velocity ? `${Math.round(info.velocity * 1.944)} kts` : '';
-  const lines = [[cs, fl, spd, stale ? 'STALE' : ''].filter(Boolean).join(' · ')];
+  const lines = [
+    [cs, fl, spd, stale ? 'STALE' : ''].filter(Boolean).join(' · '),
+  ];
   // Converted contacts report their class as TR-3B and nothing else — the
   // operator/type identity is exactly what the Easter egg is replacing.
   const ident = isTr3b(icao24)
     ? tr3bTypeLabel(icao24)
-    : [info.airline, info.typeName || info.typeCode].filter(Boolean).join(' · ');
+    : [info.airline, info.typeName || info.typeCode]
+        .filter(Boolean)
+        .join(' · ');
   if (ident) lines.push(ident);
   if (route) lines.push(`${route.origin.code} → ${route.destination.code}`);
   return lines.join('\n');
@@ -514,12 +619,14 @@ function trackedLabelText(icao24, info, { stale, route }) {
 
 /** Context-slot wording: adsbdb airline and type, altitude in feet, and the
  *  descriptor's route (already plausibility-gated). */
-function contextProperties(icao24, described) {
+function contextProperties(_icao24, described) {
   const altFt = Math.round((described.altitudeM || 0) * 3.28084);
   return {
     operator: described.airline || '',
     type: described.typeName || described.typeCode || '',
-    altitude: described.onGround ? 'on ground' : `${altFt.toLocaleString('en-US')} ft`,
+    altitude: described.onGround
+      ? 'on ground'
+      : `${altFt.toLocaleString('en-US')} ft`,
     route: described.route
       ? `${described.route.origin.code} → ${described.route.destination.code}`
       : '',
@@ -530,7 +637,12 @@ function contextProperties(icao24, described) {
 function nearbyFields(icao24, info) {
   return {
     callsign: info?.callsign?.trim() || null,
-    aircraftClass: tr3bAircraftClass(icao24, String(info?.klass || '').trim().toLowerCase() || null),
+    aircraftClass: tr3bAircraftClass(
+      icao24,
+      String(info?.klass || '')
+        .trim()
+        .toLowerCase() || null,
+    ),
     altitudeM: info?.altitude ?? null,
     velocityMps: info?.velocity ?? null,
     track: info?.true_track ?? null,
@@ -563,9 +675,16 @@ function labelDetection(object, _icao24, info) {
  *   military: boolean, aircraftClass: string|null, originCountry: string|null,
  *   operator: string|null, routeOrigin: string|null, routeDestination: string|null}}
  */
-export function mapAnalystRecord(icao24, info, { military = false, routeOk = false } = {}) {
+export function mapAnalystRecord(
+  icao24,
+  info,
+  { military = false, routeOk = false } = {},
+) {
   const num = (v) => (Number.isFinite(v) ? v : null);
-  const text = (v) => { const t = String(v ?? '').trim(); return t || null; };
+  const text = (v) => {
+    const t = String(v ?? '').trim();
+    return t || null;
+  };
   const callsign = text(info?.callsign);
   return {
     // Display identity for the narration layer. `id` is NOT a queryable field
@@ -609,8 +728,10 @@ const { layer: flightsLayer, exports: core } = createAircraftLayer({
   trackedLabelColor: '#39d0ff',
   // White fleet, amber for known-military contacts, cyan when tracked. Ground
   // traffic gets no special tint (owner verdict 2026-07-03 field test).
-  fleetColor: (icao24) => (isMilitaryIcao(icao24) ? MIL_TINT : Cesium.Color.WHITE),
-  cockpitFarColor: (icao24) => (isMilitaryIcao(icao24) ? MIL_TINT : COCKPIT_CIVILIAN_COLOR),
+  fleetColor: (icao24) =>
+    isMilitaryIcao(icao24) ? MIL_TINT : Cesium.Color.WHITE,
+  cockpitFarColor: (icao24) =>
+    isMilitaryIcao(icao24) ? MIL_TINT : COCKPIT_CIVILIAN_COLOR,
   trackedColor: Cesium.Color.CYAN,
   trackedFadeColor: Cesium.Color.CYAN.withAlpha(0),
   billboardScale: 1,
@@ -627,8 +748,11 @@ const { layer: flightsLayer, exports: core } = createAircraftLayer({
   trackDegOf: (info) => info?.true_track,
   altitudeMOf: (info) => info?.altitude,
   verticalRateMpsOf: (info) => info?.verticalRate,
-  isLowAndSlow: (info) => Number.isFinite(info.altitude) && info.altitude < LANDED_ALT_MAX_M
-    && Number.isFinite(info.velocity) && info.velocity < LANDED_SPEED_MAX_MPS,
+  isLowAndSlow: (info) =>
+    Number.isFinite(info.altitude) &&
+    info.altitude < LANDED_ALT_MAX_M &&
+    Number.isFinite(info.velocity) &&
+    info.velocity < LANDED_SPEED_MAX_MPS,
   // adsbdb type and route enrichment; the display-time ground floor for
   // grounded contacts; the military layer's contacts yield to it; and the
   // DEV focus-evidence seam qa-focus-evidence.mjs drives.
@@ -640,10 +764,11 @@ const { layer: flightsLayer, exports: core } = createAircraftLayer({
   contextProperties,
   nearbyFields,
   labelDetection,
-  analystRecord: (icao24, info, { routeOk }) => mapAnalystRecord(icao24, info, {
-    military: isMilitaryIcao(icao24),
-    routeOk,
-  }),
+  analystRecord: (icao24, info, { routeOk }) =>
+    mapAnalystRecord(icao24, info, {
+      military: isMilitaryIcao(icao24),
+      routeOk,
+    }),
 });
 
 export const {
@@ -656,7 +781,8 @@ export const {
   _militaryLayerSuppressesForTest,
   _armTrackingRestoreForTest: _armFlightTrackingRestoreForTest,
   _pendingTrackingRestoreForTest: _pendingFlightTrackingRestoreForTest,
-  _applyPendingTrackingRestoreForTest: _applyPendingFlightTrackingRestoreForTest,
+  _applyPendingTrackingRestoreForTest:
+    _applyPendingFlightTrackingRestoreForTest,
   _setCockpitDetectionSubjectForTest,
   _trackedModelRegimeActiveForTest,
   _updateTrackedModelForTest,

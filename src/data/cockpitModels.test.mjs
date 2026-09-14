@@ -96,11 +96,11 @@ for (const layer of LAYERS) {
     // `_iconKind` is identity for every unconverted contact (see
     // tr3bRegistry.test.mjs) — it only swaps the glyph for a contact the
     // operator explicitly converted into a TR-3B.
-    assert.match(source, /bb\.image = aircraftIcon\(_iconKind\(icao24, meta\?\.klass\)(, bb\._gevIconLarge \? TRACKED_ICON_PX : undefined)?\)/,
+    assert.match(source, /bb\.image = aircraftIcon\(\s*_iconKind\(icao24, meta\?\.klass\)(,\s*bb\._gevIconLarge \? TRACKED_ICON_PX : undefined,?)?\s*\)/,
       'near contacts and model fallbacks retain the class-derived aircraft silhouette');
     assert.match(source, /bb\.rotation = 0;/,
       'far dots are reset to a rotation-free presentation');
-    assert.match(source, /\(!_cockpitContactMode \|\| isCockpitNear\) && \(doRotations \|\| revealed\)/,
+    assert.match(source, /\(!_cockpitContactMode \|\| isCockpitNear\) &&\s*\(doRotations \|\| revealed\)/,
       'near 2D silhouettes continue to receive projected course');
     assert.match(source, /if \(bb\.show\) bb\.show = false; \/\/ hand off ONLY once the model renders/,
       'the gap-proof billboard-to-model handoff remains intact');
@@ -109,6 +109,6 @@ for (const layer of LAYERS) {
   test(`${layer.name}: Cockpit exit clears near state before restoring map presentation`, () => {
     const setMode = functionSource(source, '_setCockpitContactMode');
     assert.match(setMode, /else _cockpitNearContacts = new Set\(\);/);
-    assert.match(setMode, /for \(const \[icao24, bb\] of _billboards\) _applyFleetBillboardPresentation\(icao24, bb\);/);
+    assert.match(setMode, /for \(const \[icao24, bb\] of _billboards\)\s*_applyFleetBillboardPresentation\(icao24, bb\);/);
   });
 }

@@ -101,7 +101,7 @@ test('Cockpit lifecycle publishes one normalized aircraft identity to both detec
       .exec(source)?.[0];
     assert.ok(consumer, `${name} Cockpit consumer is defined`);
     assert.match(consumer, /detail\?\.subjectId/);
-    assert.match(consumer, /\.trim\(\)\.toLowerCase\(\)/);
+    assert.match(consumer, /\.trim\(\)\s*\.toLowerCase\(\)/);
     assert.doesNotMatch(consumer, /layerId/,
       `${name} must also suppress a duplicate subject originating in the sibling AIR feed`);
   }

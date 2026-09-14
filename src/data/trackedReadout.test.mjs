@@ -262,7 +262,7 @@ test('civilian and military trail heads use the lower-centre model anchor and we
   )));
   for (const [name, source] of files) {
     assert.ok(
-      source.includes('const head = _trackedTrailCached() || _trackedDisplayPosition(_trackedIcao);'),
+      /const head =\s*_trackedTrailCached\(\) \|\| _trackedDisplayPosition\(_trackedIcao\);/.test(source),
       `${name} trail head uses the dedicated lower-centre model anchor`,
     );
     assert.ok(source.includes('const MODEL_COLOR_BLEND_AMOUNT = 0.94;'),

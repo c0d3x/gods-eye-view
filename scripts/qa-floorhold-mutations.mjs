@@ -99,7 +99,7 @@ const MUTATIONS = [
   {
     defect: 'the held floor is stretched without bound (no drift limit)',
     edits: [
-      { file: FLIGHTS, from: '      <= HELD_FLOOR_MAX_DRIFT_KM)) {', to: '      <= Infinity)) {' },
+      { file: FLIGHTS, from: '      ) <= HELD_FLOOR_MAX_DRIFT_KM', to: '      ) <= Infinity' },
     ],
   },
   {
@@ -107,8 +107,8 @@ const MUTATIONS = [
     edits: [
       {
         file: FLIGHTS,
-        from: '  if (next.easedM == null && wasHeld && Number.isFinite(stoodOnM)',
-        to: '  if (false && next.easedM == null && wasHeld && Number.isFinite(stoodOnM)',
+        from: '    next.easedM == null &&\n    wasHeld &&',
+        to: '    false &&\n    next.easedM == null &&\n    wasHeld &&',
       },
     ],
   },
@@ -127,8 +127,8 @@ const MUTATIONS = [
     edits: [
       {
         file: FLIGHTS,
-        from: '  if (next.easedM == null && wasHeld && Number.isFinite(stoodOnM)',
-        to: '  if (next.easedM == null && Number.isFinite(stoodOnM)',
+        from: '    next.easedM == null &&\n    wasHeld &&\n',
+        to: '    next.easedM == null &&\n',
       },
     ],
   },
@@ -164,8 +164,10 @@ const MUTATIONS = [
     edits: [
       {
         file: FLIGHTS,
-        from: '  if (next.easedM == null && wasHeld && Number.isFinite(stoodOnM)\n    && Number.isFinite(effective) && effective < stoodOnM) {',
-        to: '  if (next.easedM == null && Number.isFinite(floor) && wasHeld && Number.isFinite(stoodOnM)\n    && Number.isFinite(effective) && effective < stoodOnM) {',
+        from: '    next.easedM == null &&\n    wasHeld &&\n    Number.isFinite(stoodOnM) &&\n'
+          + '    Number.isFinite(effective) &&\n    effective < stoodOnM\n  ) {',
+        to: '    next.easedM == null &&\n    Number.isFinite(floor) &&\n    wasHeld &&\n    Number.isFinite(stoodOnM) &&\n'
+          + '    Number.isFinite(effective) &&\n    effective < stoodOnM\n  ) {',
       },
     ],
   },
@@ -196,7 +198,7 @@ const MUTATIONS = [
     edits: [
       {
         file: FLIGHTS,
-        from: '      const closed = Math.min(FLOOR_EASE_MAX_STEP, 1 - Math.exp(-dtMs / FLOOR_EASE_TAU_MS));',
+        from: '      const closed = Math.min(\n        FLOOR_EASE_MAX_STEP,\n        1 - Math.exp(-dtMs / FLOOR_EASE_TAU_MS),\n      );',
         to: '      const closed = 1 - Math.exp(-dtMs / FLOOR_EASE_TAU_MS);',
       },
     ],
@@ -218,7 +220,7 @@ const MUTATIONS = [
     edits: [
       {
         file: FLIGHTS,
-        from: '  return state.retiredMs != null && nowMs - state.retiredMs > FLOOR_SEED_GRACE_MS;',
+        from: '  return (\n    state.retiredMs != null && nowMs - state.retiredMs > FLOOR_SEED_GRACE_MS\n  );',
         to: '  return false;',
       },
     ],
@@ -253,7 +255,7 @@ const MUTATIONS = [
     edits: [
       {
         file: FLIGHTS,
-        from: '    state.seeded = true;        // what it answers with next is a memory, not a reading',
+        from: '    state.seeded = true; // what it answers with next is a memory, not a reading',
         to: '    state.seeded = false;',
       },
     ],

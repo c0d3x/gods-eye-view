@@ -14,13 +14,27 @@
  * builds, and the layer's amber presentation and wording.
  */
 import * as Cesium from 'cesium';
-import { classifyAircraft, CLASS_MODEL_REAL, CLASS_SCALE_3D } from './aircraftClass.js';
-import { cleanText, createAircraftLayer, normalizeIcao } from './aircraftLayerCore.js';
+import {
+  CLASS_MODEL_REAL,
+  CLASS_SCALE_3D,
+  classifyAircraft,
+} from './aircraftClass.js';
+import {
+  cleanText,
+  createAircraftLayer,
+  normalizeIcao,
+} from './aircraftLayerCore.js';
 import { stickyNumber, stickyText } from './aircraftMeta.js';
 import { formatFlightLevel } from './detectionDraw.js';
 import { cachedGroundFloor, floorAltitudeM } from './groundFloor.js';
-import { registerMilitaryIcaos, setMilitaryLayerActive } from './militaryRegistry.js';
-import { trailAnchorForModel, visualCenterForModel } from './modelVisualAnchor.js';
+import {
+  registerMilitaryIcaos,
+  setMilitaryLayerActive,
+} from './militaryRegistry.js';
+import {
+  trailAnchorForModel,
+  visualCenterForModel,
+} from './modelVisualAnchor.js';
 import { pickRenderAltitudeM } from './renderAltitude.js';
 import { tr3bAircraftClass, tr3bTypeLabel } from './tr3bRegistry.js';
 
@@ -160,10 +174,14 @@ function formatAltitude(altitudeFt) {
 // --- adsb.lol feed ---------------------------------------------------------------------
 
 function isUsableMilitaryAircraft(aircraft) {
-  if (!aircraft || Array.isArray(aircraft) || typeof aircraft !== 'object') return false;
-  if (typeof aircraft.hex !== 'string' || !normalizeIcao(aircraft.hex)) return false;
-  return Number.isFinite(toFiniteNumber(aircraft.lon))
-    && Number.isFinite(toFiniteNumber(aircraft.lat));
+  if (!aircraft || Array.isArray(aircraft) || typeof aircraft !== 'object')
+    return false;
+  if (typeof aircraft.hex !== 'string' || !normalizeIcao(aircraft.hex))
+    return false;
+  return (
+    Number.isFinite(toFiniteNumber(aircraft.lon)) &&
+    Number.isFinite(toFiniteNumber(aircraft.lat))
+  );
 }
 
 /**
@@ -188,19 +206,31 @@ async function readAdsbLolSnapshot(response, { signal }) {
     } catch {
       detail = '';
     }
-    return { failure: { longBackoff: false, error: detail || `adsb.lol HTTP ${response.status}` } };
+    return {
+      failure: {
+        longBackoff: false,
+        error: detail || `adsb.lol HTTP ${response.status}`,
+      },
+    };
   }
 
   // adsb.lol returns { ac: [...aircraft], msg: "...", ... }
   const data = await response.json();
   signal.throwIfAborted();
   if (!data || !Array.isArray(data.ac)) {
-    return { failure: { longBackoff: false, error: 'Malformed adsb.lol response' } };
+    return {
+      failure: { longBackoff: false, error: 'Malformed adsb.lol response' },
+    };
   }
 
   const rows = data.ac.filter(isUsableMilitaryAircraft);
   if (data.ac.length > 0 && rows.length === 0) {
-    return { failure: { longBackoff: false, error: 'Malformed adsb.lol aircraft rows' } };
+    return {
+      failure: {
+        longBackoff: false,
+        error: 'Malformed adsb.lol aircraft rows',
+      },
+    };
   }
   return { rows };
 }
@@ -228,26 +258,36 @@ function parseAdsbLolRow(aircraft) {
  * renders. See the core's update() for the bookkeeping around it.
  * @returns {{meta: object, fixEpochMs: number}}
  */
-function buildAdsbLolRecord({ aircraft, lat, lon }, prevMeta, { geoidN, modelOwnsVisual, floorWarmPoints, receiptNowMs }) {
+function buildAdsbLolRecord(
+  { aircraft, lat, lon },
+  prevMeta,
+  { geoidN, modelOwnsVisual, floorWarmPoints, receiptNowMs },
+) {
   // adsb.lol/readsb reports GROUND traffic as alt_baro === "ground" (no
   // separate boolean). Grounded planes fall back to their last known
   // altitude (field elevation is unknowable here), else 0 m — never the
   // 3 km airborne default (a parked plane must not float).
   const rawAltBaro = aircraft?.alt_baro;
-  const onGround = typeof rawAltBaro === 'string' && rawAltBaro.trim().toLowerCase() === 'ground';
+  const onGround =
+    typeof rawAltBaro === 'string' &&
+    rawAltBaro.trim().toLowerCase() === 'ground';
   const altitudeFt = toFiniteNumber(rawAltBaro);
   const altitudeM = Number.isFinite(altitudeFt)
     ? altitudeFt * 0.3048
-    : (onGround
-      ? (Number.isFinite(prevMeta?.altitudeFt) ? prevMeta.altitudeFt * 0.3048 : 0)
-      : 3048);
+    : onGround
+      ? Number.isFinite(prevMeta?.altitudeFt)
+        ? prevMeta.altitudeFt * 0.3048
+        : 0
+      : 3048;
   const track = toFiniteNumber(aircraft?.track) || 0;
   // Convert ground speed from knots to meters/sec for dead reckoning
   const speedKt = toFiniteNumber(aircraft?.gs);
   const speedMps = Number.isFinite(speedKt) ? speedKt * 0.514444 : 0;
   // Analyst seam (additive): readsb baro_rate is ft/min; keep m/s.
   const baroRateFtMin = toFiniteNumber(aircraft?.baro_rate);
-  const verticalRateMps = Number.isFinite(baroRateFtMin) ? baroRateFtMin * 0.00508 : null;
+  const verticalRateMps = Number.isFinite(baroRateFtMin)
+    ? baroRateFtMin * 0.00508
+    : null;
 
   const callsign = cleanText(aircraft?.flight);
   const type = cleanText(aircraft?.t);
@@ -266,7 +306,9 @@ function buildAdsbLolRecord({ aircraft, lat, lon }, prevMeta, { geoidN, modelOwn
   // alt_baro+geoid as a visual fallback, else ground surface when parked.
   const altGeomFt = toFiniteNumber(aircraft?.alt_geom);
   const geoAltitudeM = Number.isFinite(altGeomFt) ? altGeomFt * 0.3048 : null;
-  const baroAltitudeM = Number.isFinite(altitudeFt) ? altitudeFt * 0.3048 : null;
+  const baroAltitudeM = Number.isFinite(altitudeFt)
+    ? altitudeFt * 0.3048
+    : null;
 
   // GROUND-SNAP INTERPLAY (brief item 3 — "don't double-correct"): a
   // grounded plane's MODEL already rides groundSnap.js's one-shot tileset
@@ -307,7 +349,10 @@ function buildAdsbLolRecord({ aircraft, lat, lon }, prevMeta, { geoidN, modelOwn
   // ellipsoidal ground (warm-cache read only — the batch warm after the
   // loop fills cells for later polls). Grounded contacts are handled below.
   if (!onGround && renderAltitudeM < GROUND_FLOOR_WARM_MAX_ALT_M) {
-    renderAltitudeM = floorAltitudeM(renderAltitudeM, cachedGroundFloor(lat, lon));
+    renderAltitudeM = floorAltitudeM(
+      renderAltitudeM,
+      cachedGroundFloor(lat, lon),
+    );
     floorWarmPoints.push({ lat, lon });
   } else if (onGround) {
     // Grounded contacts: warm the floor cell, and — round 4 — when NO
@@ -334,7 +379,10 @@ function buildAdsbLolRecord({ aircraft, lat, lon }, prevMeta, { geoidN, modelOwn
     callsign: stickyText(callsign, prevMeta?.callsign),
     type: stickyType,
     // Type outranks category automatically inside classifyAircraft.
-    klass: classifyAircraft({ typeCode: stickyType, category: aircraft?.category }),
+    klass: classifyAircraft({
+      typeCode: stickyType,
+      category: aircraft?.category,
+    }),
     registration: stickyText(registration, prevMeta?.registration),
     operator: stickyText(operator, prevMeta?.operator),
     altitudeFt: stickyNumber(altitudeFt, prevMeta?.altitudeFt, null),
@@ -347,7 +395,11 @@ function buildAdsbLolRecord({ aircraft, lat, lon }, prevMeta, { geoidN, modelOwn
     speedMps: stickyNumber(speedMps, prevMeta?.speedMps, null),
     track: stickyNumber(track, prevMeta?.track, null),
     // Analyst seam (additive): sticky like the other kinematics.
-    verticalRateMps: stickyNumber(verticalRateMps, prevMeta?.verticalRateMps, null),
+    verticalRateMps: stickyNumber(
+      verticalRateMps,
+      prevMeta?.verticalRateMps,
+      null,
+    ),
     lastContactEpochMs: stickyNumber(
       Number.isFinite(seenSec) ? receiptNowMs - seenSec * 1000 : null,
       prevMeta?.lastContactEpochMs,
@@ -359,7 +411,8 @@ function buildAdsbLolRecord({ aircraft, lat, lon }, prevMeta, { geoidN, modelOwn
     wasAirborne: prevMeta?.wasAirborne === true || !onGround,
     // Round 6: lifted occlusion-test point for at/below-ellipsoid renders
     // (the fleet pass's occluder reads it).
-    cullPosition: renderAltitudeM < 10 ? Cesium.Cartesian3.fromDegrees(lon, lat, 12) : null,
+    cullPosition:
+      renderAltitudeM < 10 ? Cesium.Cartesian3.fromDegrees(lon, lat, 12) : null,
     // Raw poll-fix coords (pre-dead-reckon) — the stale-grounded re-floor
     // sweep keys floors off these.
     rawLat: lat,
@@ -369,7 +422,8 @@ function buildAdsbLolRecord({ aircraft, lat, lon }, prevMeta, { geoidN, modelOwn
   // adsb.lol's seen_pos is the AGE in seconds of the last position report,
   // so the fix epoch is receipt time minus that age.
   const seenPos = toFiniteNumber(aircraft?.seen_pos);
-  const fixEpochMs = receiptNowMs - (Number.isFinite(seenPos) ? seenPos * 1000 : 0);
+  const fixEpochMs =
+    receiptNowMs - (Number.isFinite(seenPos) ? seenPos * 1000 : 0);
   return { meta, fixEpochMs };
 }
 
@@ -382,9 +436,12 @@ function buildAdsbLolRecord({ aircraft, lat, lon }, prevMeta, { geoidN, modelOwn
  * @returns {Promise<object|null>} `{ points, leadingAltM, thinToBudget }`, or null.
  */
 async function fetchAdsbLolTrace(icao24) {
-  const response = await fetch('/api/adsblol/trace?hex=' + encodeURIComponent(icao24), {
-    signal: AbortSignal.timeout(8000),
-  });
+  const response = await fetch(
+    `/api/adsblol/trace?hex=${encodeURIComponent(icao24)}`,
+    {
+      signal: AbortSignal.timeout(8000),
+    },
+  );
   if (!response.ok) return null;
   const data = await response.json();
   const baseEpochSec = Number(data?.timestamp);
@@ -402,9 +459,10 @@ async function fetchAdsbLolTrace(icao24) {
       // warm — the old fixed 50 m sentinel rendered ~1.5 km underground at
       // Kirtland AFB (field ~1590 m ellipsoidal) and dragged the whole
       // pattern-work loop with it.
-      baroAltM: (altFt === 'ground' || altFt == null || !Number.isFinite(Number(altFt)))
-        ? null
-        : Number(altFt) * 0.3048,
+      baroAltM:
+        altFt === 'ground' || altFt == null || !Number.isFinite(Number(altFt))
+          ? null
+          : Number(altFt) * 0.3048,
     });
   }
   // Leading points with nothing to carry keep the old low breadcrumb sentinel
@@ -428,11 +486,18 @@ const _scratchTrailCarto = new Cesium.Cartographic();
  * @returns {Cesium.Cartesian3} The same or a lifted position.
  */
 function trailFloorPosition(position) {
-  const carto = Cesium.Cartographic.fromCartesian(position, Cesium.Ellipsoid.WGS84, _scratchTrailCarto);
+  const carto = Cesium.Cartographic.fromCartesian(
+    position,
+    Cesium.Ellipsoid.WGS84,
+    _scratchTrailCarto,
+  );
   if (!carto) return position;
   const latDeg = Cesium.Math.toDegrees(carto.latitude);
   const lonDeg = Cesium.Math.toDegrees(carto.longitude);
-  const floored = floorAltitudeM(carto.height, cachedGroundFloor(latDeg, lonDeg));
+  const floored = floorAltitudeM(
+    carto.height,
+    cachedGroundFloor(latDeg, lonDeg),
+  );
   if (floored == null || floored === carto.height) return position;
   return Cesium.Cartesian3.fromDegrees(lonDeg, latDeg, floored);
 }
@@ -449,8 +514,9 @@ function trailFloorPosition(position) {
  * @returns {string} Newline-separated label text
  */
 function trackedLabelText(icao24, info, { stale }) {
-  const callsign = (cleanText(info?.callsign) || cleanText(info?.registration) || icao24)
-    + (stale ? ' · STALE' : '');
+  const callsign =
+    (cleanText(info?.callsign) || cleanText(info?.registration) || icao24) +
+    (stale ? ' · STALE' : '');
   // Converted contacts report their class as TR-3B — that override is exactly
   // what the Easter egg replaces the real type with.
   const type = tr3bTypeLabel(icao24, cleanText(info?.type) || 'Type unknown');
@@ -459,11 +525,9 @@ function trackedLabelText(icao24, info, { stale }) {
   const altitude = formatAltitude(info?.altitudeFt);
   const speedKt = info?.speedMps ? Math.round(info.speedMps * 1.944) : null;
   const tail = speedKt ? `${altitude} · ${speedKt} kt` : altitude;
-  return [
-    callsign,
-    `${type} · ${registration}`,
-    `${operator} · ${tail}`,
-  ].join('\n');
+  return [callsign, `${type} · ${registration}`, `${operator} · ${tail}`].join(
+    '\n',
+  );
 }
 
 /** Context-slot wording: operator, converted type, and altitude in feet. */
@@ -473,14 +537,21 @@ function contextProperties(icao24, described, info) {
     // Converted contacts report their class as TR-3B — the same override
     // the readout and Contacts card show.
     type: tr3bTypeLabel(icao24, cleanText(info?.type) || ''),
-    altitude: described.onGround ? 'on ground' : formatAltitude(info?.altitudeFt),
+    altitude: described.onGround
+      ? 'on ground'
+      : formatAltitude(info?.altitudeFt),
   };
 }
 
 /** getNearby's per-contact fields beyond the shared label, identity and distance. */
 function nearbyFields(icao24, info) {
   return {
-    aircraftClass: tr3bAircraftClass(icao24, String(info?.klass || info?.type || '').trim().toLowerCase() || null),
+    aircraftClass: tr3bAircraftClass(
+      icao24,
+      String(info?.klass || info?.type || '')
+        .trim()
+        .toLowerCase() || null,
+    ),
     track: info?.track ?? null,
     // Display type — converted too, so a Contacts row can't still name the
     // airframe the triangle replaced (the filter matcher reads this as a
@@ -524,7 +595,10 @@ function labelDetection(object, icao24, info) {
  */
 export function mapAnalystRecord(icao24, info) {
   const num = (v) => (Number.isFinite(v) ? v : null);
-  const text = (v) => { const t = String(v ?? '').trim(); return t || null; };
+  const text = (v) => {
+    const t = String(v ?? '').trim();
+    return t || null;
+  };
   const callsign = text(info?.callsign);
   return {
     id: callsign || text(info?.registration) || icao24,
@@ -534,7 +608,9 @@ export function mapAnalystRecord(icao24, info) {
     lon: num(info?.rawLon),
     // altitudeFt is the sticky barometric/MSL aviation field — converted to
     // meters here for shape parity with the flights layer.
-    altitudeM: Number.isFinite(info?.altitudeFt) ? info.altitudeFt * 0.3048 : null,
+    altitudeM: Number.isFinite(info?.altitudeFt)
+      ? info.altitudeFt * 0.3048
+      : null,
     speedMps: num(info?.speedMps),
     heading: num(info?.track),
     verticalRateMps: num(info?.verticalRateMps),
@@ -580,10 +656,14 @@ const { layer: militaryFlightsLayer, exports: core } = createAircraftLayer({
   fetchTrack: fetchAdsbLolTrace,
   speedMpsOf: (info) => info?.speedMps,
   trackDegOf: (info) => info?.track,
-  altitudeMOf: (info) => (Number.isFinite(info?.altitudeFt) ? info.altitudeFt * 0.3048 : null),
+  altitudeMOf: (info) =>
+    Number.isFinite(info?.altitudeFt) ? info.altitudeFt * 0.3048 : null,
   verticalRateMpsOf: (info) => info?.verticalRateMps,
-  isLowAndSlow: (info) => Number.isFinite(info.altitudeFt) && info.altitudeFt < LANDED_ALT_MAX_FT
-    && Number.isFinite(info.speedMps) && info.speedMps < LANDED_SPEED_MAX_MPS,
+  isLowAndSlow: (info) =>
+    Number.isFinite(info.altitudeFt) &&
+    info.altitudeFt < LANDED_ALT_MAX_FT &&
+    Number.isFinite(info.speedMps) &&
+    info.speedMps < LANDED_SPEED_MAX_MPS,
   // Grounded billboards keep the pre-datum height a tileset-snapped model
   // needs (the T7 one-shot invariant), so trails are floored instead and the
   // stale re-floor leaves model-owned contacts alone.
@@ -622,7 +702,8 @@ export const {
   _setTrackingRefreshOutcomeForTest: _setMilitaryTrackingRefreshOutcomeForTest,
   _addTrackingCandidateForTest: _addMilitaryTrackingCandidateForTest,
   _pendingTrackingRestoreForTest: _pendingMilitaryTrackingRestoreForTest,
-  _applyPendingTrackingRestoreForTest: _applyPendingMilitaryTrackingRestoreForTest,
+  _applyPendingTrackingRestoreForTest:
+    _applyPendingMilitaryTrackingRestoreForTest,
   _setCockpitDetectionSubjectForTest,
   _trackedModelRegimeActiveForTest,
   _updateTrackedModelForTest,

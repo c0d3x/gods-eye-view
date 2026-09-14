@@ -1354,7 +1354,7 @@ test('hasContact declines while a layer is disabled, whatever its maps still hol
   for (const [name, source, guard] of [
     // Both flight layers are built by the aircraft layer core.
     ['aircraftLayerCore', fs.readFileSync(new URL('./aircraftLayerCore.js', import.meta.url), 'utf8'),
-      /hasContact\(icao24\) \{\s*\n\s*if \(!_billboardCollection \|\| !_billboardCollection\.show \|\| _billboards\.size === 0\) return null;/],
+      /hasContact\(icao24\) \{\s*\n\s*if \(!_billboardCollection\?\.show \|\| _billboards\.size === 0\) return null;/],
     ['aisLiveVessels', fs.readFileSync(new URL('./aisLiveVessels.js', import.meta.url), 'utf8'),
       /hasContact\(mmsi\) \{\s*\n\s*if \(!state\.enabled \|\| !state\.vesselMap \|\| state\.vesselMap\.size === 0\) return null;/],
   ]) {
