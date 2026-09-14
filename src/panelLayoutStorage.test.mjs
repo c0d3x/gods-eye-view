@@ -127,7 +127,7 @@ test('the UI saves positions in the format this module retires, and shows the no
   );
   assert.match(
     source,
-    /import \{ takePanelLayoutResetNotice \} from '\.\/panelLayoutStorage\.js';/,
+    /import \{ takePanelLayoutResetNotice \} from '(?:\.\.?\/)+panelLayoutStorage\.js';/,
   );
   const start = source.indexOf('  _maybeNotifyLayoutReset() {');
   assert.notEqual(start, -1, '_maybeNotifyLayoutReset is defined');

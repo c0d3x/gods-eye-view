@@ -10,6 +10,7 @@ export const UI_SOURCE_FILES = Object.freeze([
   'ui/radioPanel.js',
   'ui/cctvPanel.js',
   'ui/panelLayout.js',
+  'ui/panelChrome.js',
 ]);
 
 /**

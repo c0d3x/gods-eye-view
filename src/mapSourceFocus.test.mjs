@@ -16,7 +16,7 @@ const initEnd = source.indexOf('  /**\n   * Sets up drag-to-reposition', initSta
 const escapeStart = source.indexOf('  _collapsePanelOnEscape(');
 const escapeEnd = source.indexOf('  _initCommandDockPins(', escapeStart);
 const closeStart = source.indexOf('  setPanelCollapsed(panelId, collapsed, {');
-const closeEnd = source.indexOf('  /**\n   * Toggles "clean view"', closeStart);
+const closeEnd = source.indexOf('\n  }\n', closeStart) + '\n  }\n'.length;
 const syncStart = source.indexOf('  _syncPanelCollapseButton(panelEl) {');
 const syncEnd = source.indexOf('  /**\n   * Converts a panel', syncStart);
 assert.ok(initStart >= 0 && initEnd > initStart && escapeStart >= 0 && escapeEnd > escapeStart

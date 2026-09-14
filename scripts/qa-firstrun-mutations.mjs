@@ -35,6 +35,7 @@ const FILES = {
   main: path.join(ROOT, 'src', 'main.js'),
   ui: path.join(ROOT, 'src', 'ui.js'),
   radioPanel: path.join(ROOT, 'src', 'ui', 'radioPanel.js'),
+  panelChrome: path.join(ROOT, 'src', 'ui', 'panelChrome.js'),
   docs: path.join(ROOT, 'docs', 'current-state', 'first-run-and-sharing.md'),
 };
 
@@ -219,13 +220,13 @@ const MUTATIONS = [
 
   {
     defect: 'the DISPLAY rail opens on first run again, stealing the impression',
-    file: 'ui',
+    file: 'panelChrome',
     from: "if (panelId === 'pp-toggles' && stored === null) collapsed = true;",
     to: "if (panelId === 'pp-toggles' && stored === null) collapsed = false;",
   },
   {
     defect: 'the first-run rail default overrides a stored user choice',
-    file: 'ui',
+    file: 'panelChrome',
     from: "if (panelId === 'pp-toggles' && stored === null) collapsed = true;",
     to: "if (panelId === 'pp-toggles') collapsed = true;",
   },
