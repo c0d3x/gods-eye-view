@@ -15,16 +15,27 @@ function finiteCount(value) {
 /** Normalize one manager layer into a small loading-feedback record. */
 export function normalizeLayerLoading(layer = {}) {
   const stats = layer.stats || {};
-  const lifecycleState = String(layer.lifecycleState || (layer.enabled ? 'enabled' : 'disabled'));
+  const lifecycleState = String(
+    layer.lifecycleState || (layer.enabled ? 'enabled' : 'disabled'),
+  );
   const status = String(stats.status || '').toLowerCase();
   const disabling = lifecycleState === 'disabling';
-  const loading = lifecycleState === 'enabling' || disabling || stats.loading === true || stats.refreshing === true;
+  const loading =
+    lifecycleState === 'enabling' ||
+    disabling ||
+    stats.loading === true ||
+    stats.refreshing === true;
   const count = finiteCount(stats.count);
-  const stoppingInstallations = layer.id === 'military-installations' && disabling;
-  const error = stoppingInstallations ? null : stats.error || stats.lastError || stats.managerRefreshError || null;
-  const unavailable = !stoppingInstallations && (stats.unavailable === true
-    || stats.available === false
-    || ['unavailable', 'offline', 'down', 'error'].includes(status));
+  const stoppingInstallations =
+    layer.id === 'military-installations' && disabling;
+  const error = stoppingInstallations
+    ? null
+    : stats.error || stats.lastError || stats.managerRefreshError || null;
+  const unavailable =
+    !stoppingInstallations &&
+    (stats.unavailable === true ||
+      stats.available === false ||
+      ['unavailable', 'offline', 'down', 'error'].includes(status));
   const keyRequired = stats.keyRequired === true || stats.missingKey === true;
   const degraded = stats.degraded === true || Boolean(error);
   const accepted = Boolean(stats.lastUpdate) || count > 0;
@@ -33,7 +44,8 @@ export function normalizeLayerLoading(layer = {}) {
     label: String(layer.name || layer.id || 'Layer'),
     loading,
     disabling,
-    refresh: loading && layer.enabled && (stats.refreshing === true || accepted),
+    refresh:
+      loading && layer.enabled && (stats.refreshing === true || accepted),
     lifecycleState,
     count,
     accepted,
@@ -42,10 +54,16 @@ export function normalizeLayerLoading(layer = {}) {
     keyRequired,
     keySetupId: typeof stats.keySetupId === 'string' ? stats.keySetupId : null,
     degraded,
-    installationRetry: layer.id === 'military-installations' && layer.enabled && !disabling
-      ? { retryAt: Number(stats.retryAt) || 0, retrying: stats.retrying === true,
-        failureReason: stats.failureReason, loading, status: stats.status }
-      : null,
+    installationRetry:
+      layer.id === 'military-installations' && layer.enabled && !disabling
+        ? {
+            retryAt: Number(stats.retryAt) || 0,
+            retrying: stats.retrying === true,
+            failureReason: stats.failureReason,
+            loading,
+            status: stats.status,
+          }
+        : null,
   };
 }
 
@@ -76,13 +94,17 @@ function terminalFromParticipantStats(summary, participantIds) {
 export function aggregateLayerLoading(layers = []) {
   const records = layers.map(normalizeLayerLoading);
   const active = records.filter((record) => record.loading);
-  const disabling = active.length > 0 && active.every((record) => record.disabling);
+  const disabling =
+    active.length > 0 && active.every((record) => record.disabling);
   return {
     records,
     active,
     activeIds: active.map((record) => record.id),
     disabling,
-    refresh: !disabling && active.length > 0 && active.every((record) => record.refresh),
+    refresh:
+      !disabling &&
+      active.length > 0 &&
+      active.every((record) => record.refresh),
   };
 }
 
@@ -101,11 +123,11 @@ export function createLoadingFeedbackState() {
 }
 
 /** Create a top-center status notice, optionally persistent until explicitly cleared. */
-export function createGlobalStatusNotice(message, nowMs = 0, {
-  state = 'error',
-  detail = '',
-  persistent = false,
-} = {}) {
+export function createGlobalStatusNotice(
+  message,
+  nowMs = 0,
+  { state = 'error', detail = '', persistent = false } = {},
+) {
   const label = String(message || '').trim();
   if (!label) return null;
   return {
@@ -126,9 +148,11 @@ export function presentGlobalStatusNotice(notice, nowMs = 0) {
   const now = Number.isFinite(nowMs) ? nowMs : 0;
   if (!notice?.label) return null;
   if (!notice.persistent && !Number.isFinite(notice.hideAt)) {
-    notice.hideAt = now + (Number.isFinite(notice.dwellMs)
-      ? notice.dwellMs
-      : LOADING_FAILURE_DWELL_MS);
+    notice.hideAt =
+      now +
+      (Number.isFinite(notice.dwellMs)
+        ? notice.dwellMs
+        : LOADING_FAILURE_DWELL_MS);
   }
   if (Number.isFinite(notice.hideAt) && now >= notice.hideAt) return null;
   return {
@@ -139,10 +163,16 @@ export function presentGlobalStatusNotice(notice, nowMs = 0) {
 }
 
 /** Whether deferred notice work still owns the current presentation epoch. */
-export function canPresentDeferredStatusNotice(expectedGeneration, currentGeneration, disposed = false) {
-  return !disposed
-    && Number.isSafeInteger(expectedGeneration)
-    && expectedGeneration === currentGeneration;
+export function canPresentDeferredStatusNotice(
+  expectedGeneration,
+  currentGeneration,
+  disposed = false,
+) {
+  return (
+    !disposed &&
+    Number.isSafeInteger(expectedGeneration) &&
+    expectedGeneration === currentGeneration
+  );
 }
 
 /**
@@ -150,9 +180,19 @@ export function canPresentDeferredStatusNotice(expectedGeneration, currentGenera
  * hide a terminal manager failure. Failure dwell starts when the manager
  * reports it, so it must remain the highest-priority presentation while live.
  */
-export function presentGlobalLoadingStatus(notice, loadingState, summary, nowMs = 0) {
-  const loadingPresentation = presentLoadingFeedback(loadingState, summary, nowMs);
-  if (['error', 'needs-key', 'retry'].includes(loadingPresentation?.state)) return loadingPresentation;
+export function presentGlobalLoadingStatus(
+  notice,
+  loadingState,
+  summary,
+  nowMs = 0,
+) {
+  const loadingPresentation = presentLoadingFeedback(
+    loadingState,
+    summary,
+    nowMs,
+  );
+  if (['error', 'needs-key', 'retry'].includes(loadingPresentation?.state))
+    return loadingPresentation;
   return presentGlobalStatusNotice(notice, nowMs) || loadingPresentation;
 }
 
@@ -171,11 +211,11 @@ export function createTrafficSyncFeedbackState() {
  * Reduce one sampled Street Traffic status without extending completion on
  * every animation-loop poll. Coverage describes accepted data, not work.
  */
-export function reduceTrafficSyncFeedback(previous, {
-  enabled = false,
-  stats = {},
-  forceShow = false,
-} = {}, nowMs = 0) {
+export function reduceTrafficSyncFeedback(
+  previous,
+  { enabled = false, stats = {}, forceShow = false } = {},
+  nowMs = 0,
+) {
   const state = previous || createTrafficSyncFeedbackState();
   const now = Number.isFinite(nowMs) ? nowMs : 0;
   if (!enabled) return createTrafficSyncFeedbackState();
@@ -183,10 +223,13 @@ export function reduceTrafficSyncFeedback(previous, {
   const hasProgress = Number.isFinite(stats.phaseProgressPct);
   const progressPct = hasProgress
     ? Math.max(0, Math.min(100, Math.round(stats.phaseProgressPct)))
-    : (stats.loading ? 1 : 100);
-  const busy = stats.loading === true
-    || stats.worldJumping === true
-    || (hasProgress && (progressPct < 100 || (stats.prewarmQueueDepth ?? 0) > 0));
+    : stats.loading
+      ? 1
+      : 100;
+  const busy =
+    stats.loading === true ||
+    stats.worldJumping === true ||
+    (hasProgress && (progressPct < 100 || (stats.prewarmQueueDepth ?? 0) > 0));
   const label = String(stats.phaseLabel || stats.loadingLabel || '').trim();
 
   if (busy) {
@@ -202,13 +245,13 @@ export function reduceTrafficSyncFeedback(previous, {
     };
   }
 
-  const existingConfirmation = state.confirmationUntil > now
-    ? state.confirmationUntil
-    : 0;
-  const confirmationUntil = existingConfirmation || (state.busy || forceShow
-    ? now + TRAFFIC_SYNC_CONFIRM_MS
-    : 0);
-  const visible = confirmationUntil > now && progressPct >= 100 && Boolean(label);
+  const existingConfirmation =
+    state.confirmationUntil > now ? state.confirmationUntil : 0;
+  const confirmationUntil =
+    existingConfirmation ||
+    (state.busy || forceShow ? now + TRAFFIC_SYNC_CONFIRM_MS : 0);
+  const visible =
+    confirmationUntil > now && progressPct >= 100 && Boolean(label);
   return {
     busy: false,
     visible,
@@ -226,7 +269,8 @@ export function reduceTrafficSyncFeedback(previous, {
 
 function terminalFromEvent(event) {
   const type = String(event?.type || '');
-  if (type === 'visibility-failed' || type === 'refresh-failed' || event?.error) return 'error';
+  if (type === 'visibility-failed' || type === 'refresh-failed' || event?.error)
+    return 'error';
   if (type === 'visibility-cancelled' || event?.cancelled) return 'cancelled';
   if (type === 'visibility' || type === 'refresh') return 'complete';
   return null;
@@ -249,7 +293,9 @@ export function reduceLoadingFeedback(previous, summary, nowMs, event = null) {
     const beginning = state.phase !== 'loading';
     const startedAt = beginning ? now : state.startedAt;
     const priorParticipants = beginning ? [] : state.activeIds;
-    const activeIds = [...new Set([...priorParticipants, ...summary.activeIds])];
+    const activeIds = [
+      ...new Set([...priorParticipants, ...summary.activeIds]),
+    ];
     const eventLayerId = String(event?.layerId || '');
     const eventParticipates = eventLayerId && activeIds.includes(eventLayerId);
     const batchOutcome = mergeTerminalOutcome(
@@ -268,30 +314,42 @@ export function reduceLoadingFeedback(previous, summary, nowMs, event = null) {
       activeIds,
       batchOutcome,
       terminal: null,
-      operation: summary.disabling ? 'disabling' : summary.refresh ? 'refresh' : 'loading',
-      failedEventIds: [...new Set([
-        ...(beginning ? [] : state.failedEventIds || []),
-        ...(eventParticipates && terminalFromEvent(event) === 'error' ? [eventLayerId] : []),
-      ])],
+      operation: summary.disabling
+        ? 'disabling'
+        : summary.refresh
+          ? 'refresh'
+          : 'loading',
+      failedEventIds: [
+        ...new Set([
+          ...(beginning ? [] : state.failedEventIds || []),
+          ...(eventParticipates && terminalFromEvent(event) === 'error'
+            ? [eventLayerId]
+            : []),
+        ]),
+      ],
     };
   }
 
   if (state.phase === 'loading') {
     const eventLayerId = String(event?.layerId || '');
-    const eventParticipates = eventLayerId && state.activeIds.includes(eventLayerId);
-    const terminal = mergeTerminalOutcome(
+    const eventParticipates =
+      eventLayerId && state.activeIds.includes(eventLayerId);
+    const terminal =
       mergeTerminalOutcome(
-        state.batchOutcome,
-        terminalFromParticipantStats(summary, state.activeIds),
-      ),
-      eventParticipates ? terminalFromEvent(event) : null,
-    ) || 'complete';
+        mergeTerminalOutcome(
+          state.batchOutcome,
+          terminalFromParticipantStats(summary, state.activeIds),
+        ),
+        eventParticipates ? terminalFromEvent(event) : null,
+      ) || 'complete';
     const wasVisible = state.visible || now >= state.showAt;
-    if (!wasVisible && terminal === 'complete') return createLoadingFeedbackState();
+    if (!wasVisible && terminal === 'complete')
+      return createLoadingFeedbackState();
     // KEY REQUIRED carries a button, so it stays as long as a failure does.
-    const dwell = terminal === 'error' || terminal === 'needs-key'
-      ? LOADING_FAILURE_DWELL_MS
-      : LOADING_TERMINAL_DWELL_MS;
+    const dwell =
+      terminal === 'error' || terminal === 'needs-key'
+        ? LOADING_FAILURE_DWELL_MS
+        : LOADING_TERMINAL_DWELL_MS;
     return {
       ...state,
       phase: 'terminal',
@@ -299,10 +357,14 @@ export function reduceLoadingFeedback(previous, summary, nowMs, event = null) {
       hideAt: now + dwell,
       batchOutcome: terminal,
       terminal,
-      failedEventIds: [...new Set([
-        ...(state.failedEventIds || []),
-        ...(eventParticipates && terminalFromEvent(event) === 'error' ? [eventLayerId] : []),
-      ])],
+      failedEventIds: [
+        ...new Set([
+          ...(state.failedEventIds || []),
+          ...(eventParticipates && terminalFromEvent(event) === 'error'
+            ? [eventLayerId]
+            : []),
+        ]),
+      ],
     };
   }
 
@@ -312,11 +374,17 @@ export function reduceLoadingFeedback(previous, summary, nowMs, event = null) {
 
 /** Build the user-facing status copy for the current loading state. */
 export function presentLoadingFeedback(state, summary, nowMs) {
-  const site = summary.records.find(record => record.installationRetry?.retryAt > 0);
-  const otherFailure = summary.records.some(record => record.id !== 'military-installations'
-    && (state?.activeIds || []).includes(record.id)
-    && (record.error || record.unavailable || record.keyRequired))
-    || (state?.failedEventIds || []).some(id => id !== 'military-installations');
+  const site = summary.records.find(
+    (record) => record.installationRetry?.retryAt > 0,
+  );
+  const otherFailure =
+    summary.records.some(
+      (record) =>
+        record.id !== 'military-installations' &&
+        (state?.activeIds || []).includes(record.id) &&
+        (record.error || record.unavailable || record.keyRequired),
+    ) ||
+    (state?.failedEventIds || []).some((id) => id !== 'military-installations');
   // Keep the actual retry visible between attempts, without hiding another
   // participant's failure or pretending that a scheduled retry is fetching.
   if (site && !summary.active.length && !otherFailure) {
@@ -328,8 +396,10 @@ export function presentLoadingFeedback(state, summary, nowMs) {
   if (state.phase === 'terminal') {
     if (state.terminal === 'needs-key') {
       // Name the missing key; the UI offers the way into Provider Settings.
-      const needsKey = summary.records.find((record) => record.keyRequired
-        && (state.activeIds || []).includes(record.id));
+      const needsKey = summary.records.find(
+        (record) =>
+          record.keyRequired && (state.activeIds || []).includes(record.id),
+      );
       const envVars = keySetupEnvVars(needsKey?.keySetupId);
       return {
         state: 'needs-key',
@@ -338,28 +408,55 @@ export function presentLoadingFeedback(state, summary, nowMs) {
         keySetupId: needsKey?.keySetupId || null,
       };
     }
-    const labels = { complete: 'LOAD COMPLETE', cancelled: 'LOAD CANCELLED', error: 'LOAD FAILED' };
-    const label = state.operation === 'disabling' && state.terminal === 'complete'
-      ? 'LIVE DATA OFF'
-      : state.terminal === 'complete' && state.activeIds?.length === 1 && state.activeIds[0] === 'military-installations'
-        ? 'MAPPED SITES LOADED' : labels[state.terminal] || 'LOAD COMPLETE';
+    const labels = {
+      complete: 'LOAD COMPLETE',
+      cancelled: 'LOAD CANCELLED',
+      error: 'LOAD FAILED',
+    };
+    const label =
+      state.operation === 'disabling' && state.terminal === 'complete'
+        ? 'LIVE DATA OFF'
+        : state.terminal === 'complete' &&
+            state.activeIds?.length === 1 &&
+            state.activeIds[0] === 'military-installations'
+          ? 'MAPPED SITES LOADED'
+          : labels[state.terminal] || 'LOAD COMPLETE';
     return { state: state.terminal, label, detail: '' };
   }
   const active = summary.active;
-  if (active.length === 1 && active[0].installationRetry && !summary.disabling) {
-    return { state: 'loading', label: active[0].installationRetry.retrying
-      ? 'RETRYING MAPPED SITES' : 'FETCHING MAPPED SITES', detail: 'OpenStreetMap · Overpass' };
+  if (
+    active.length === 1 &&
+    active[0].installationRetry &&
+    !summary.disabling
+  ) {
+    return {
+      state: 'loading',
+      label: active[0].installationRetry.retrying
+        ? 'RETRYING MAPPED SITES'
+        : 'FETCHING MAPPED SITES',
+      detail: 'OpenStreetMap · Overpass',
+    };
   }
   const elapsed = Math.max(0, nowMs - state.startedAt);
   const label = summary.disabling
     ? 'TURNING OFF LIVE DATA'
-    : summary.refresh ? 'REFRESHING LIVE DATA' : 'LOADING LIVE DATA';
-  const names = active.slice(0, 2).map((record) => record.label).join(' · ');
+    : summary.refresh
+      ? 'REFRESHING LIVE DATA'
+      : 'LOADING LIVE DATA';
+  const names = active
+    .slice(0, 2)
+    .map((record) => record.label)
+    .join(' · ');
   const suffix = active.length > 2 ? ` +${active.length - 2}` : '';
   return {
-    state: elapsed >= LOADING_LONG_THRESHOLD_MS
-      ? 'long'
-      : summary.disabling ? 'disabling' : summary.refresh ? 'refresh' : 'loading',
+    state:
+      elapsed >= LOADING_LONG_THRESHOLD_MS
+        ? 'long'
+        : summary.disabling
+          ? 'disabling'
+          : summary.refresh
+            ? 'refresh'
+            : 'loading',
     label,
     detail: `${names}${suffix}`,
   };

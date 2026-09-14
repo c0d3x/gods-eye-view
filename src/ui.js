@@ -10,15 +10,24 @@ import {
 } from './data/layerState.js';
 import { OrbitController } from './orbit.js';
 import { CelestialRing } from './celestialRing.js';
-import { destroyTrackedReadout, initTrackedReadout } from './data/trackedReadout.js';
-import { destroyWorldOverlay, initWorldOverlay } from './overlays/worldOverlay.js';
+import {
+  destroyTrackedReadout,
+  initTrackedReadout,
+} from './data/trackedReadout.js';
+import {
+  destroyWorldOverlay,
+  initWorldOverlay,
+} from './overlays/worldOverlay.js';
 import {
   destroyDetection,
   initDetection,
   cycleMode as cycleDetectionMode,
   setDetectionStyle,
 } from './data/detection.js';
-import { canonicalizeDensity, normalizeAllocationStrategy } from './data/detectionPolicy.js';
+import {
+  canonicalizeDensity,
+  normalizeAllocationStrategy,
+} from './data/detectionPolicy.js';
 import trafficLayer from './data/traffic.js';
 import flightsLayer from './data/flights.js';
 import militaryFlightsLayer from './data/militaryFlights.js';
@@ -72,7 +81,10 @@ import { LocationBar } from './ui/locationBar.js';
 import { GlobeNavigation } from './ui/globeNavigation.js';
 import { STYLES, STYLE_STATUS_LABELS } from './ui/styleConfig.js';
 import { VisualStyles } from './ui/visualStyles.js';
-import { DetectionControls, DETECTION_ALLOCATION_STORAGE_KEY } from './ui/detectionControls.js';
+import {
+  DetectionControls,
+  DETECTION_ALLOCATION_STORAGE_KEY,
+} from './ui/detectionControls.js';
 import { CockpitControls } from './ui/cockpitControls.js';
 import { ContextPanel } from './ui/contextPanel.js';
 import { ShareState } from './ui/shareState.js';
@@ -115,7 +127,11 @@ export class StyleManager {
     this._bloomStage = null;
     this._sharpenStage = null;
     this._recordingMode = false;
-    this._recordingConfig = { hidePanels: true, hudMode: 'minimal', safeFrame: '16:9' };
+    this._recordingConfig = {
+      hidePanels: true,
+      hudMode: 'minimal',
+      safeFrame: '16:9',
+    };
     this._preRecordingHudState = null;
     this._panelZCounter = PANEL_Z_BASE + 10;
     this._animFrameId = null;
@@ -207,29 +223,50 @@ export class StyleManager {
     this._sharpenBtn = document.getElementById('sharpen-toggle');
     this._sharpenSliderRow = document.getElementById('sharpen-slider-row');
     this._sharpenSlider = document.getElementById('sharpen-intensity-slider');
-    this._sharpenSliderValue = document.getElementById('sharpen-intensity-value');
+    this._sharpenSliderValue = document.getElementById(
+      'sharpen-intensity-value',
+    );
     this._hudBtn = document.getElementById('hud-toggle');
     this._hudLayoutRow = document.getElementById('hud-layout-row');
     this._hudLayoutSelect = document.getElementById('hud-layout-select');
     this._detectionSliderRow = document.getElementById('detection-slider-row');
-    this._detectionDensitySlider = document.getElementById('detection-density-slider');
-    this._detectionDensityValue = document.getElementById('detection-density-value');
-    this._detectionAllocationRow = document.getElementById('detection-allocation-row');
+    this._detectionDensitySlider = document.getElementById(
+      'detection-density-slider',
+    );
+    this._detectionDensityValue = document.getElementById(
+      'detection-density-value',
+    );
+    this._detectionAllocationRow = document.getElementById(
+      'detection-allocation-row',
+    );
     this._detectionAllocationBtns = [
       document.getElementById('detection-allocation-elastic'),
       document.getElementById('detection-allocation-weighted'),
     ].filter(Boolean);
     this._detectionFadeRow = document.getElementById('detection-fade-row');
-    this._detectionFadeSlider = document.getElementById('detection-fade-slider');
+    this._detectionFadeSlider = document.getElementById(
+      'detection-fade-slider',
+    );
     this._detectionFadeValue = document.getElementById('detection-fade-value');
-    this._detectionOpacityRow = document.getElementById('detection-opacity-row');
-    this._detectionOpacitySlider = document.getElementById('detection-opacity-slider');
-    this._detectionOpacityValue = document.getElementById('detection-opacity-value');
+    this._detectionOpacityRow = document.getElementById(
+      'detection-opacity-row',
+    );
+    this._detectionOpacitySlider = document.getElementById(
+      'detection-opacity-slider',
+    );
+    this._detectionOpacityValue = document.getElementById(
+      'detection-opacity-value',
+    );
     let storedDetectionAllocation = 'ELASTIC';
     try {
-      storedDetectionAllocation = localStorage.getItem(DETECTION_ALLOCATION_STORAGE_KEY) || 'ELASTIC';
-    } catch { /* storage can be unavailable in privacy/test contexts */ }
-    this._detectionAllocationPreference = normalizeAllocationStrategy(storedDetectionAllocation);
+      storedDetectionAllocation =
+        localStorage.getItem(DETECTION_ALLOCATION_STORAGE_KEY) || 'ELASTIC';
+    } catch {
+      /* storage can be unavailable in privacy/test contexts */
+    }
+    this._detectionAllocationPreference = normalizeAllocationStrategy(
+      storedDetectionAllocation,
+    );
     this._celestialBtn = document.getElementById('celestial-toggle');
     this._scopeBtn = document.getElementById('scope-toggle');
     this._scopeFeatherSlider = document.getElementById('scope-feather-slider');
@@ -244,32 +281,72 @@ export class StyleManager {
     this._cctvPanel = document.getElementById('cctv-panel');
     this._radioPanel = document.getElementById('radio-panel');
     this._contextRadioDock = document.getElementById('context-radio-dock');
-    this._contextRadioToggleBtn = document.getElementById('context-radio-toggle-btn');
+    this._contextRadioToggleBtn = document.getElementById(
+      'context-radio-toggle-btn',
+    );
     this._contextRadioMini = document.getElementById('context-radio-mini');
-    this._contextRadioMiniEnableBtn = document.getElementById('context-radio-mini-enable-btn');
-    this._contextRadioDetailsBtn = document.getElementById('context-radio-details-btn');
-    this._contextRadioMiniCloseBtn = document.getElementById('context-radio-mini-close-btn');
-    this._contextRadioMiniStation = document.getElementById('context-radio-mini-station');
-    this._contextRadioMiniPrevBtn = document.getElementById('context-radio-mini-prev-btn');
-    this._contextRadioMiniPlayBtn = document.getElementById('context-radio-mini-play-btn');
-    this._contextRadioMiniNextBtn = document.getElementById('context-radio-mini-next-btn');
-    this._contextRadioMiniVolume = document.getElementById('context-radio-mini-volume');
-    this._contextRadioMiniVolumeValue = document.getElementById('context-radio-mini-volume-value');
-    this._cockpitUtilityControls = document.getElementById('cockpit-utility-controls');
-    this._cockpitDisplayToggleBtn = document.getElementById('cockpit-display-toggle-btn');
-    this._cockpitDisplayPanel = document.getElementById('cockpit-display-panel');
+    this._contextRadioMiniEnableBtn = document.getElementById(
+      'context-radio-mini-enable-btn',
+    );
+    this._contextRadioDetailsBtn = document.getElementById(
+      'context-radio-details-btn',
+    );
+    this._contextRadioMiniCloseBtn = document.getElementById(
+      'context-radio-mini-close-btn',
+    );
+    this._contextRadioMiniStation = document.getElementById(
+      'context-radio-mini-station',
+    );
+    this._contextRadioMiniPrevBtn = document.getElementById(
+      'context-radio-mini-prev-btn',
+    );
+    this._contextRadioMiniPlayBtn = document.getElementById(
+      'context-radio-mini-play-btn',
+    );
+    this._contextRadioMiniNextBtn = document.getElementById(
+      'context-radio-mini-next-btn',
+    );
+    this._contextRadioMiniVolume = document.getElementById(
+      'context-radio-mini-volume',
+    );
+    this._contextRadioMiniVolumeValue = document.getElementById(
+      'context-radio-mini-volume-value',
+    );
+    this._cockpitUtilityControls = document.getElementById(
+      'cockpit-utility-controls',
+    );
+    this._cockpitDisplayToggleBtn = document.getElementById(
+      'cockpit-display-toggle-btn',
+    );
+    this._cockpitDisplayPanel = document.getElementById(
+      'cockpit-display-panel',
+    );
     this._cockpitDisplayPortalRecords = [];
     this._cockpitDisplayPortalActive = false;
     this._cockpitDisplayModeHandler = null;
-    this._cockpitRadioToggleBtn = document.getElementById('cockpit-radio-toggle-btn');
+    this._cockpitRadioToggleBtn = document.getElementById(
+      'cockpit-radio-toggle-btn',
+    );
     this._cockpitRadioPanel = document.getElementById('cockpit-radio-panel');
-    this._cockpitRadioEnableBtn = document.getElementById('cockpit-radio-enable-btn');
-    this._cockpitRadioStation = document.getElementById('cockpit-radio-station');
-    this._cockpitRadioPrevBtn = document.getElementById('cockpit-radio-prev-btn');
-    this._cockpitRadioPlayBtn = document.getElementById('cockpit-radio-play-btn');
-    this._cockpitRadioNextBtn = document.getElementById('cockpit-radio-next-btn');
+    this._cockpitRadioEnableBtn = document.getElementById(
+      'cockpit-radio-enable-btn',
+    );
+    this._cockpitRadioStation = document.getElementById(
+      'cockpit-radio-station',
+    );
+    this._cockpitRadioPrevBtn = document.getElementById(
+      'cockpit-radio-prev-btn',
+    );
+    this._cockpitRadioPlayBtn = document.getElementById(
+      'cockpit-radio-play-btn',
+    );
+    this._cockpitRadioNextBtn = document.getElementById(
+      'cockpit-radio-next-btn',
+    );
     this._cockpitRadioVolume = document.getElementById('cockpit-radio-volume');
-    this._cockpitRadioVolumeValue = document.getElementById('cockpit-radio-volume-value');
+    this._cockpitRadioVolumeValue = document.getElementById(
+      'cockpit-radio-volume-value',
+    );
     this._radioLayerState = document.getElementById('radio-layer-state');
     this._radioEnableBtn = document.getElementById('radio-enable-btn');
     this._radioFilter = document.getElementById('radio-filter');
@@ -279,7 +356,9 @@ export class StyleManager {
     this._radioTuner = document.getElementById('radio-tuner');
     this._radioTunerSlider = document.getElementById('radio-tuner-slider');
     this._radioTunerNeedle = document.getElementById('radio-tuner-needle');
-    this._radioTunerBandLabel = document.getElementById('radio-tuner-band-label');
+    this._radioTunerBandLabel = document.getElementById(
+      'radio-tuner-band-label',
+    );
     this._radioTunerValue = document.getElementById('radio-tuner-value');
     this._radioTunerStation = document.getElementById('radio-tuner-station');
     this._radioPrevBtn = document.getElementById('radio-prev-btn');
@@ -289,12 +368,20 @@ export class StyleManager {
     this._radioVolume = document.getElementById('radio-volume');
     this._radioVolumeValue = document.getElementById('radio-volume-value');
     this._radioPlaybackState = document.getElementById('radio-playback-state');
-    this._radioStationHomepage = document.getElementById('radio-station-homepage');
-    this._globalContextFlightsBtn = document.getElementById('global-context-flights-btn');
-    this._globalContextMissionsBtn = document.getElementById('global-context-missions-btn');
+    this._radioStationHomepage = document.getElementById(
+      'radio-station-homepage',
+    );
+    this._globalContextFlightsBtn = document.getElementById(
+      'global-context-flights-btn',
+    );
+    this._globalContextMissionsBtn = document.getElementById(
+      'global-context-missions-btn',
+    );
     this._contextModeStandby = document.getElementById('context-mode-standby');
     this._contextFlightsView = document.getElementById('context-flights-view');
-    this._contextMissionsView = document.getElementById('context-missions-view');
+    this._contextMissionsView = document.getElementById(
+      'context-missions-view',
+    );
     this._contextMode = null;
     this._contextModeChanging = false;
     this._contextModeGeneration = 0;
@@ -310,7 +397,9 @@ export class StyleManager {
     this._dataManagerBeforeDestroyUnsubscribe = null;
     this._dataManagerVisibilityGuardUnsubscribe = null;
     this._dataManagerVisibilityRequestUnsubscribe = null;
-    this._installationsSearchBtn = document.getElementById('installations-search-btn');
+    this._installationsSearchBtn = document.getElementById(
+      'installations-search-btn',
+    );
     this._leftPanelStack = document.getElementById('left-panel-stack');
     this._cctvEnableBtn = document.getElementById('cctv-enable-btn');
     this._cctvNearestBtn = document.getElementById('cctv-nearest-btn');
@@ -334,11 +423,19 @@ export class StyleManager {
     this._cctvMeta = document.getElementById('cctv-meta');
     this._cctvSummary = document.getElementById('cctv-summary');
     this._shareBtn = document.getElementById('share-btn');
-    this._clearSelectedLayersBtn = document.getElementById('clear-selected-layers');
-    this._globalLoadingStatus = document.getElementById('global-loading-status');
+    this._clearSelectedLayersBtn = document.getElementById(
+      'clear-selected-layers',
+    );
+    this._globalLoadingStatus = document.getElementById(
+      'global-loading-status',
+    );
     this._globalLoadingLabel = document.getElementById('global-loading-label');
-    this._globalLoadingDetail = document.getElementById('global-loading-detail');
-    this._globalLoadingAction = document.getElementById('global-loading-action');
+    this._globalLoadingDetail = document.getElementById(
+      'global-loading-detail',
+    );
+    this._globalLoadingAction = document.getElementById(
+      'global-loading-action',
+    );
     // A KEY REQUIRED status opens Provider Settings; keySetup.js listens.
     this._globalLoadingAction?.addEventListener('click', () => {
       document.dispatchEvent(new CustomEvent('gev:open-key-setup'));
@@ -348,7 +445,9 @@ export class StyleManager {
     this._styleButtons = document.getElementById('style-buttons');
     this._trafficSyncChip = document.getElementById('traffic-sync-chip');
     this._trafficSyncLabel = document.getElementById('traffic-sync-label');
-    this._trafficSyncProgress = document.getElementById('traffic-sync-progress');
+    this._trafficSyncProgress = document.getElementById(
+      'traffic-sync-progress',
+    );
     this._cctvSyncChip = document.getElementById('cctv-sync-chip');
     this._cctvSyncLabel = document.getElementById('cctv-sync-label');
     this._cctvSyncProgress = document.getElementById('cctv-sync-progress');
@@ -367,7 +466,7 @@ export class StyleManager {
     this._expandedCityId = null;
     this._activePoiIndex = null;
     this._currentTarget = null; // Cesium.Cartesian3 of current POI target
-    this._currentPoi = null;    // Current POI data object
+    this._currentPoi = null; // Current POI data object
     // Formatted address of the last free-text geocode search. Preset pills set
     // _activeLocationId instead; a search has no preset record, so this is the
     // only thing the mini-status can report for it.
@@ -392,18 +491,20 @@ export class StyleManager {
     /** Pre-Contacts detection state, restored on deactivation (see _syncContactsDetection). */
     this._contactsDetectionRestore = null;
     this.cockpitView = new CockpitViewController(viewer, {
-      onVisionChange: (mode, active, options) => this._setCockpitVision(mode, active, options),
-      onCameraTakeover: () => this._stampNavigation({ cancelPendingSelection: false }),
-      getInheritedVisionLabel: () => (
-        STYLE_STATUS_LABELS[this.activeStyle]
-        || String(this.activeStyle || 'normal').toUpperCase()
-      ),
-      isEntryAllowed: () => cockpitEntryAllowed({
-        contextMode: this._contextMode,
-        contextModeChanging: this._contextModeChanging,
-        flightsEnabled: !!this._dataManager?.isEnabled('flights'),
-        militaryEnabled: !!this._dataManager?.isEnabled('military'),
-      }),
+      onVisionChange: (mode, active, options) =>
+        this._setCockpitVision(mode, active, options),
+      onCameraTakeover: () =>
+        this._stampNavigation({ cancelPendingSelection: false }),
+      getInheritedVisionLabel: () =>
+        STYLE_STATUS_LABELS[this.activeStyle] ||
+        String(this.activeStyle || 'normal').toUpperCase(),
+      isEntryAllowed: () =>
+        cockpitEntryAllowed({
+          contextMode: this._contextMode,
+          contextModeChanging: this._contextModeChanging,
+          flightsEnabled: !!this._dataManager?.isEnabled('flights'),
+          militaryEnabled: !!this._dataManager?.isEnabled('military'),
+        }),
       onEntered: () => {
         // A new Cockpit session owns both side rails. Clear standard map-view
         // panels once on entry; NEXT/PREVIOUS never reaches this callback, so
@@ -413,7 +514,10 @@ export class StyleManager {
         for (const panelId of COCKPIT_ENTRY_COLLAPSE_PANEL_IDS) {
           const panel = document.getElementById(panelId);
           if (panel) {
-            this._cockpitPanelRestore.set(panelId, panel.classList.contains('collapsed'));
+            this._cockpitPanelRestore.set(
+              panelId,
+              panel.classList.contains('collapsed'),
+            );
           }
           this.setPanelCollapsed(panelId, true, {
             persist: false,
@@ -436,11 +540,15 @@ export class StyleManager {
         }
       },
       restoreTrackingFrame: (entity) => {
-        const [layerId, ...idParts] = String(entity?.gevTrackedId || '').split(':');
+        const [layerId, ...idParts] = String(entity?.gevTrackedId || '').split(
+          ':',
+        );
         const trackedId = idParts.join(':');
         if (!trackedId) return false;
-        if (layerId === 'flights') return flightsLayer.refocusTrackedById?.(trackedId) === true;
-        if (layerId === 'military') return militaryFlightsLayer.refocusTrackedById?.(trackedId) === true;
+        if (layerId === 'flights')
+          return flightsLayer.refocusTrackedById?.(trackedId) === true;
+        if (layerId === 'military')
+          return militaryFlightsLayer.refocusTrackedById?.(trackedId) === true;
         return false;
       },
     });
@@ -449,10 +557,11 @@ export class StyleManager {
     // Cesium canvas but below the HUD/detection/readout z ladder.
     this.celestialRing = new CelestialRing(viewer, {
       enabled: false,
-      onAutoDisable: () => this.setCelestialRingEnabled(false, {
-        syncShare: !!this.shareLinkManager,
-        focus: false,
-      }),
+      onAutoDisable: () =>
+        this.setCelestialRingEnabled(false, {
+          syncShare: !!this.shareLinkManager,
+          focus: false,
+        }),
     });
 
     // Share Link Manager
@@ -482,10 +591,21 @@ export class StyleManager {
         } = state || {};
         // Ignore the retired 'ai-edit' style from older share links.
         if (style && style !== 'normal' && style !== 'ai-edit') {
-          this.setStyle(style, { applyPreset: true, revealParameters: false, restore: true });
+          this.setStyle(style, {
+            applyPreset: true,
+            revealParameters: false,
+            restore: true,
+          });
         }
-        if (styleParams && style && this.stages[style] && STYLES[style]?.uniforms) {
-          for (const [uniformName, uniformValue] of Object.entries(styleParams)) {
+        if (
+          styleParams &&
+          style &&
+          this.stages[style] &&
+          STYLES[style]?.uniforms
+        ) {
+          for (const [uniformName, uniformValue] of Object.entries(
+            styleParams,
+          )) {
             if (!Object.hasOwn(STYLES[style].uniforms, uniformName)) continue;
             this.stages[style].uniforms[uniformName] = uniformValue;
           }
@@ -508,25 +628,39 @@ export class StyleManager {
           this.hud.setMode(hudVisible ? 'on' : 'off');
           this._updateHudButtonState();
         }
-        if (typeof detectionDensity === 'number' && this._detectionDensitySlider) {
+        if (
+          typeof detectionDensity === 'number' &&
+          this._detectionDensitySlider
+        ) {
           const pct = canonicalizeDensity(detectionDensity);
           this._detectionDensitySlider.value = String(pct);
           this._detectionDensityValue.textContent = `${pct}%`;
           this._applyDetectionDensityFromUi();
         }
         if (detectionAllocation) {
-          this._setDetectionAllocation(detectionAllocation, { syncShare: false, persist: false });
+          this._setDetectionAllocation(detectionAllocation, {
+            syncShare: false,
+            persist: false,
+          });
         }
         if (typeof detectionFadePct === 'number' && this._detectionFadeSlider) {
           this._detectionFadeSlider.value = String(detectionFadePct);
         }
-        if (typeof detectionOutsideOpacityPct === 'number' && this._detectionOpacitySlider) {
-          this._detectionOpacitySlider.value = String(detectionOutsideOpacityPct);
+        if (
+          typeof detectionOutsideOpacityPct === 'number' &&
+          this._detectionOpacitySlider
+        ) {
+          this._detectionOpacitySlider.value = String(
+            detectionOutsideOpacityPct,
+          );
         }
         this._applyDetectionFadeFromUi();
         if (detectionMode) this._setDetectionMode(detectionMode);
         if (typeof celestialRing === 'boolean') {
-          this.setCelestialRingEnabled(celestialRing, { syncShare: false, focus: false });
+          this.setCelestialRingEnabled(celestialRing, {
+            syncShare: false,
+            focus: false,
+          });
         }
         if (typeof scopeEnabled === 'boolean') {
           setScopeMaskEnabled(scopeEnabled);
@@ -536,7 +670,8 @@ export class StyleManager {
         if (typeof scopeFeatherPct === 'number' && this._scopeFeatherSlider) {
           const pct = Math.max(0, Math.min(100, Math.round(scopeFeatherPct)));
           this._scopeFeatherSlider.value = String(pct);
-          if (this._scopeFeatherValue) this._scopeFeatherValue.textContent = `${pct}%`;
+          if (this._scopeFeatherValue)
+            this._scopeFeatherValue.textContent = `${pct}%`;
           setScopeMaskFeather(pct / 100);
         }
         // null restores the altitude-adaptive ramp; a number pins the terminus
@@ -553,16 +688,22 @@ export class StyleManager {
         await mapStackRestore;
         this._syncShareState();
       },
-      isNavigationCurrent: (generation) => generation === this._navigationGeneration,
+      isNavigationCurrent: (generation) =>
+        generation === this._navigationGeneration,
       cancelOwnedNavigation: () => this.viewer.camera.cancelFlight(),
     });
-    this.shareLinkManager.setPanelStateProvider(() => this._buildSharePanelState());
+    this.shareLinkManager.setPanelStateProvider(() =>
+      this._buildSharePanelState(),
+    );
     this.shareLinkManager.setStyleParamStateProvider((styleName) => {
       const shader = STYLES[styleName];
       const stage = this.stages[styleName];
       if (!shader?.uniforms || !stage) return null;
       return Object.fromEntries(
-        Object.keys(shader.uniforms).map((uniformName) => [uniformName, stage.uniforms[uniformName]]),
+        Object.keys(shader.uniforms).map((uniformName) => [
+          uniformName,
+          stage.uniforms[uniformName],
+        ]),
       );
     });
     // Parse before panel chrome initializes so every valid share URL starts
@@ -593,9 +734,21 @@ export class StyleManager {
 
     // Initialize detection overlay BEFORE style stages so the composite
     // stage is first in the post-process pipeline
-    initDetection(viewer, [trafficLayer, flightsLayer, militaryFlightsLayer, satellitesLayer, cctvLayer, bikeshareLayer, aisLiveVesselsLayer], (modeLabel) => {
-      this._updateDetectionButton(modeLabel);
-    });
+    initDetection(
+      viewer,
+      [
+        trafficLayer,
+        flightsLayer,
+        militaryFlightsLayer,
+        satellitesLayer,
+        cctvLayer,
+        bikeshareLayer,
+        aisLiveVesselsLayer,
+      ],
+      (modeLabel) => {
+        this._updateDetectionButton(modeLabel);
+      },
+    );
     initTrackedReadout(viewer);
     setDetectionStyle(this.activeStyle);
     this._applyDetectionDensityFromUi();
@@ -627,7 +780,9 @@ export class StyleManager {
     // Restore from URL hash if present
     const savedState = this._initialShareState;
     this._initialShareRestorePromise = savedState
-      ? new Promise((resolve) => { this._resolveInitialShareRestore = resolve; })
+      ? new Promise((resolve) => {
+          this._resolveInitialShareRestore = resolve;
+        })
       : Promise.resolve({ status: 'not-requested', share: null, layers: [] });
     if (savedState) {
       this._hasShareState = true;
@@ -641,26 +796,35 @@ export class StyleManager {
         this._initialShareRestoreTimeout = null;
         if (this._disposed) return;
         const generation = this._initialShareNavigationGeneration;
-        const applyCamera = Number.isInteger(generation)
-          && this._reassertNavigationHandoff(generation);
+        const applyCamera =
+          Number.isInteger(generation) &&
+          this._reassertNavigationHandoff(generation);
         void (async () => {
           try {
             const share = await this.shareLinkManager.applyState(savedState, {
               applyCamera,
               navigationToken: generation,
             });
-            const layers = await (this._layerStateRestorePromise || Promise.resolve([]));
-            const tracking = share.camera === 'applied'
-              ? await this._layerStateCoordinator?.restoreShareTrackingSelection?.()
-              : {
-                  status: 'superseded',
-                  cleared: this._layerStateCoordinator?.cancelPendingShareTracking?.(
-                    'shared-camera-superseded',
-                    { clearSelection: true },
-                  ) === true,
-                };
+            const layers = await (this._layerStateRestorePromise ||
+              Promise.resolve([]));
+            const tracking =
+              share.camera === 'applied'
+                ? await this._layerStateCoordinator?.restoreShareTrackingSelection?.()
+                : {
+                    status: 'superseded',
+                    cleared:
+                      this._layerStateCoordinator?.cancelPendingShareTracking?.(
+                        'shared-camera-superseded',
+                        { clearSelection: true },
+                      ) === true,
+                  };
             this.shareLinkManager.completeInitialRestore();
-            this._settleInitialShareRestore({ status: 'settled', share, layers, tracking });
+            this._settleInitialShareRestore({
+              status: 'settled',
+              share,
+              layers,
+              tracking,
+            });
           } catch (error) {
             this.shareLinkManager.completeInitialRestore();
             this._settleInitialShareRestore({
@@ -680,18 +844,27 @@ export class StyleManager {
     // and selected-subject Follow so delayed work cannot seize navigation.
     this._initialShareGestureHandler = () => {
       if (
-        this._disposed
-        || !this._hasShareState
-        || !this._resolveInitialShareRestore
-      ) return;
+        this._disposed ||
+        !this._hasShareState ||
+        !this._resolveInitialShareRestore
+      )
+        return;
       stampInitialShareGesture((options) => this._stampNavigation(options));
     };
-    this.viewer?.canvas?.addEventListener('pointerdown', this._initialShareGestureHandler, {
-      passive: true,
-    });
-    this.viewer?.canvas?.addEventListener('wheel', this._initialShareGestureHandler, {
-      passive: true,
-    });
+    this.viewer?.canvas?.addEventListener(
+      'pointerdown',
+      this._initialShareGestureHandler,
+      {
+        passive: true,
+      },
+    );
+    this.viewer?.canvas?.addEventListener(
+      'wheel',
+      this._initialShareGestureHandler,
+      {
+        passive: true,
+      },
+    );
 
     // Keep the parameter panel from overlapping toggle controls.
     this._layoutRightPanels();
@@ -709,39 +882,45 @@ export class StyleManager {
     this._loadingVisibilityHandler = () => {
       if (!document.hidden) this._updateGlobalLoadingFeedback();
     };
-    document.addEventListener('visibilitychange', this._loadingVisibilityHandler);
-    this._cctvRequestFocusHandler = (event) => routeCctvFocusRequest(
-      event,
-      (activate, focus) => this._runExplicitCctvFocus(activate, focus),
-      (cameraId, durationSec) => cctvLayer.focusCamera(cameraId, durationSec),
+    document.addEventListener(
+      'visibilitychange',
+      this._loadingVisibilityHandler,
     );
+    this._cctvRequestFocusHandler = (event) =>
+      routeCctvFocusRequest(
+        event,
+        (activate, focus) => this._runExplicitCctvFocus(activate, focus),
+        (cameraId, durationSec) => cctvLayer.focusCamera(cameraId, durationSec),
+      );
     this._removeCctvRequestFocusListener = registerCctvFocusRequestListener(
       window,
       this._cctvRequestFocusHandler,
     );
-    this._worldRequestFocusHandler = (event) => routeWorldFocusRequest(
-      event,
-      (detail, fly) => this._runExplicitWorldFocus(detail, fly),
-      (detail) => flyToWorldTarget(this.viewer, detail),
-    );
+    this._worldRequestFocusHandler = (event) =>
+      routeWorldFocusRequest(
+        event,
+        (detail, fly) => this._runExplicitWorldFocus(detail, fly),
+        (detail) => flyToWorldTarget(this.viewer, detail),
+      );
     this._removeWorldRequestFocusListener = registerWorldFocusRequestListener(
       window,
       this._worldRequestFocusHandler,
     );
-    this._navigationOwnerChangedRemover = viewer.trackedEntityChanged.addEventListener((entity) => {
-      if (entity && !this._disposed) this._stampNavigation({ cancelPendingSelection: false });
-    });
+    this._navigationOwnerChangedRemover =
+      viewer.trackedEntityChanged.addEventListener((entity) => {
+        if (entity && !this._disposed)
+          this._stampNavigation({ cancelPendingSelection: false });
+      });
     // Vessel/installation focus flies without ever assigning a tracked entity,
     // so it cannot reach the listener above. It announces instead.
-    this._removeNavigationAuthorityListener = registerNavigationAuthorityListener(
-      window,
-      (event) => {
+    this._removeNavigationAuthorityListener =
+      registerNavigationAuthorityListener(window, (event) => {
         if (this._disposed) return;
         this._stampNavigation({
-          cancelPendingSelection: event?.detail?.cancelPendingSelection !== false,
+          cancelPendingSelection:
+            event?.detail?.cancelPendingSelection !== false,
         });
-      },
-    );
+      });
   }
 
   /**
@@ -753,7 +932,7 @@ export class StyleManager {
    */
   _initUI() {
     // Style buttons
-    document.querySelectorAll('.style-btn').forEach(btn => {
+    document.querySelectorAll('.style-btn').forEach((btn) => {
       btn.addEventListener('click', () => this.setStyle(btn.dataset.style));
     });
 
@@ -763,14 +942,19 @@ export class StyleManager {
       // hotkeys ('1'-'7', 'h', 'o', 'v', 'd', 'c', 'f') otherwise fire while a
       // <select> dropdown (e.g. HUD layout) is focused and its native
       // type-ahead is in use, or while typing in a text field (M9).
-      const isFormControl = e.target?.matches?.('select, input, textarea')
-        || e.target === this._locationSearch;
+      const isFormControl =
+        e.target?.matches?.('select, input, textarea') ||
+        e.target === this._locationSearch;
       if (isFormControl && e.key !== 'Escape') return;
 
       const keyMap = {
-        '1': 'normal', '2': 'retro', '3': 'surveillance',
-        '4': 'thermal', '5': 'anime', '6': 'noir',
-        '7': 'snow',
+        1: 'normal',
+        2: 'retro',
+        3: 'surveillance',
+        4: 'thermal',
+        5: 'anime',
+        6: 'noir',
+        7: 'snow',
       };
       if (keyMap[e.key]) this.setStyle(keyMap[e.key]);
       if (e.key === 'Escape') {
@@ -833,8 +1017,12 @@ export class StyleManager {
     });
     this._scopeFeatherSlider?.addEventListener('input', () => {
       this.shareLinkManager?.claimRestoreLane?.('visual');
-      const pct = Math.max(0, Math.min(100, parseInt(this._scopeFeatherSlider.value, 10) || 0));
-      if (this._scopeFeatherValue) this._scopeFeatherValue.textContent = `${pct}%`;
+      const pct = Math.max(
+        0,
+        Math.min(100, parseInt(this._scopeFeatherSlider.value, 10) || 0),
+      );
+      if (this._scopeFeatherValue)
+        this._scopeFeatherValue.textContent = `${pct}%`;
       setScopeMaskFeather(pct / 100);
       this._syncShareState();
     });
@@ -859,10 +1047,14 @@ export class StyleManager {
     }
 
     if (this._cleanViewBtn) {
-      this._cleanViewBtn.addEventListener('click', () => this.toggleCleanView());
+      this._cleanViewBtn.addEventListener('click', () =>
+        this.toggleCleanView(),
+      );
     }
     if (this._cleanViewExitBtn) {
-      this._cleanViewExitBtn.addEventListener('click', () => this.toggleCleanView(false));
+      this._cleanViewExitBtn.addEventListener('click', () =>
+        this.toggleCleanView(false),
+      );
     }
 
     if (this._detectionDensitySlider) {
@@ -887,7 +1079,10 @@ export class StyleManager {
       });
     }
 
-    for (const slider of [this._detectionFadeSlider, this._detectionOpacitySlider]) {
+    for (const slider of [
+      this._detectionFadeSlider,
+      this._detectionOpacitySlider,
+    ]) {
       slider?.addEventListener('input', () => {
         this.shareLinkManager?.claimRestoreLane?.('visual');
         this._applyDetectionFadeFromUi();
@@ -915,26 +1110,38 @@ export class StyleManager {
     const config = {
       flights: {
         key: 'selectedFlightsTrackingId',
-        normalize: (value) => String(value ?? '').trim().toLowerCase() || null,
+        normalize: (value) =>
+          String(value ?? '')
+            .trim()
+            .toLowerCase() || null,
       },
       military: {
         key: 'selectedMilitaryTrackingId',
-        normalize: (value) => String(value ?? '').trim().toLowerCase() || null,
+        normalize: (value) =>
+          String(value ?? '')
+            .trim()
+            .toLowerCase() || null,
       },
       satellites: {
         key: 'selectedSatTrackingId',
         normalize: (value) => {
           const candidate = Number(value);
-          return Number.isFinite(candidate) && candidate > 0 ? Math.trunc(candidate) : null;
+          return Number.isFinite(candidate) && candidate > 0
+            ? Math.trunc(candidate)
+            : null;
         },
       },
     }[layerId];
     if (!config) return;
     const selectedValue = cleared ? null : config.normalize(event?.detail?.id);
     if (cleared || selectedValue === null) {
-      this._dataManager.adoptLayerParams?.(layerId, {
-        [config.key]: selectedValue,
-      }, { origin });
+      this._dataManager.adoptLayerParams?.(
+        layerId,
+        {
+          [config.key]: selectedValue,
+        },
+        { origin },
+      );
       return;
     }
     // A direct selection promotes a Context-owned tracker dependency into
@@ -955,11 +1162,19 @@ export class StyleManager {
       ['satellites', 'selectedSatTrackingId'],
     ]) {
       if (otherLayerId === layerId) continue;
-      this._dataManager.setLayerParams(otherLayerId, { [otherKey]: null }, { origin });
+      this._dataManager.setLayerParams(
+        otherLayerId,
+        { [otherKey]: null },
+        { origin },
+      );
     }
-    this._dataManager.adoptLayerParams?.(layerId, {
-      [config.key]: selectedValue,
-    }, { origin });
+    this._dataManager.adoptLayerParams?.(
+      layerId,
+      {
+        [config.key]: selectedValue,
+      },
+      { origin },
+    );
   }
 
   /**
@@ -999,111 +1214,141 @@ export class StyleManager {
     }
     this._updateGlobalLoadingFeedback(performance.now());
     if (typeof this._dataManager?.subscribeVisibilityRequests === 'function') {
-      this._dataManagerVisibilityRequestUnsubscribe = this._dataManager.subscribeVisibilityRequests((change) => {
-        if (shouldCaptureContextSession(change)) {
-          // This event is synchronous with intent publication, before an
-          // awaited guard or Clear All can alter the rest of the layer set.
-          // Manager effective visibility already includes both the new entry
-          // intent and Clear's reserved OFF baseline.
-          this._captureContextSessionSnapshot({ excludeLayerIds: [change.layerId] });
-          if (shouldDeferContextEntryDuringClear({
-            change,
-            clearInFlight: Boolean(this._clearSelectedLayersPromise),
-          })) {
-            this._contextModeDeferredEntryIntent = {
-              layerId: change.layerId,
-              intentEpoch: change.intentEpoch,
-              origin: change.origin,
-            };
-            this._contextModeEntering = 'space-missions';
-            this._syncContextModeButtons();
+      this._dataManagerVisibilityRequestUnsubscribe =
+        this._dataManager.subscribeVisibilityRequests((change) => {
+          if (shouldCaptureContextSession(change)) {
+            // This event is synchronous with intent publication, before an
+            // awaited guard or Clear All can alter the rest of the layer set.
+            // Manager effective visibility already includes both the new entry
+            // intent and Clear's reserved OFF baseline.
+            this._captureContextSessionSnapshot({
+              excludeLayerIds: [change.layerId],
+            });
+            if (
+              shouldDeferContextEntryDuringClear({
+                change,
+                clearInFlight: Boolean(this._clearSelectedLayersPromise),
+              })
+            ) {
+              this._contextModeDeferredEntryIntent = {
+                layerId: change.layerId,
+                intentEpoch: change.intentEpoch,
+                origin: change.origin,
+              };
+              this._contextModeEntering = 'space-missions';
+              this._syncContextModeButtons();
+            }
+          } else if (
+            change?.layerId === 'rocket-launches' &&
+            change.enabled === false &&
+            isExplicitUserIntentOrigin(change.origin, change.layerId)
+          ) {
+            this._contextModeDeferredEntryIntent = null;
+            if (this._clearSelectedLayersPromise) {
+              this._contextSessionSnapshot = null;
+              this._contextModeEntering = null;
+              this._syncContextModeButtons();
+            }
           }
-        } else if (
-          change?.layerId === 'rocket-launches'
-          && change.enabled === false
-          && isExplicitUserIntentOrigin(change.origin, change.layerId)
-        ) {
-          this._contextModeDeferredEntryIntent = null;
-          if (this._clearSelectedLayersPromise) {
-            this._contextSessionSnapshot = null;
-            this._contextModeEntering = null;
-            this._syncContextModeButtons();
-          }
-        }
-      });
+        });
     }
     if (typeof this._dataManager?.addVisibilityGuard === 'function') {
-      this._dataManagerVisibilityGuardUnsubscribe = this._dataManager.addVisibilityGuard(async (change) => {
-        const layerName = this._dataManager?.layers?.get(change.layerId)?.module?.name || change.layerId;
-        const reason = contextLayerEnableBlockReason({
-          contextMode: this._contextModeEntering || this._contextMode,
-          change,
-          layerName,
-        });
-        if (reason) return reason;
-        if (
-          change.enabled
-          && ['military-awareness', 'rocket-launches'].includes(change.layerId)
-          && shouldCaptureContextSession(change)
-          && (
-            !this._contextModeChanging
-            || (
-              change.layerId === 'rocket-launches'
-              && this._contextModeDeferredEntryIntent?.intentEpoch === change.intentEpoch
-            )
-          )
-        ) {
-          const entryMode = change.layerId === 'rocket-launches' ? 'space-missions' : null;
-          const deferredClearEntry = this._contextModeDeferredEntryIntent?.intentEpoch === change.intentEpoch;
-          // A deferred entry owns the state after Clear settles. Restoring
-          // Clear's transient busy flag here would leave Context stuck.
-          const priorChanging = deferredClearEntry ? false : this._contextModeChanging;
-          const notificationToken = change.notificationToken || Symbol('direct-context-shell-entry');
-          const ownsNotificationToken = !change.notificationToken;
-          if (ownsNotificationToken) {
-            this._userFacingContextNotificationTokens.add(notificationToken);
-          }
-          this._contextModeEntering = entryMode;
-          this._contextModeChanging = true;
-          try {
-            if (deferredClearEntry) {
-              await this._clearSelectedLayersManagerPromise;
-              if (this._contextModeDeferredEntryIntent?.intentEpoch !== change.intentEpoch) return false;
-              this._contextModeDeferredEntryIntent = null;
+      this._dataManagerVisibilityGuardUnsubscribe =
+        this._dataManager.addVisibilityGuard(async (change) => {
+          const layerName =
+            this._dataManager?.layers?.get(change.layerId)?.module?.name ||
+            change.layerId;
+          const reason = contextLayerEnableBlockReason({
+            contextMode: this._contextModeEntering || this._contextMode,
+            change,
+            layerName,
+          });
+          if (reason) return reason;
+          if (
+            change.enabled &&
+            ['military-awareness', 'rocket-launches'].includes(
+              change.layerId,
+            ) &&
+            shouldCaptureContextSession(change) &&
+            (!this._contextModeChanging ||
+              (change.layerId === 'rocket-launches' &&
+                this._contextModeDeferredEntryIntent?.intentEpoch ===
+                  change.intentEpoch))
+          ) {
+            const entryMode =
+              change.layerId === 'rocket-launches' ? 'space-missions' : null;
+            const deferredClearEntry =
+              this._contextModeDeferredEntryIntent?.intentEpoch ===
+              change.intentEpoch;
+            // A deferred entry owns the state after Clear settles. Restoring
+            // Clear's transient busy flag here would leave Context stuck.
+            const priorChanging = deferredClearEntry
+              ? false
+              : this._contextModeChanging;
+            const notificationToken =
+              change.notificationToken || Symbol('direct-context-shell-entry');
+            const ownsNotificationToken = !change.notificationToken;
+            if (ownsNotificationToken) {
+              this._userFacingContextNotificationTokens.add(notificationToken);
             }
-            await this._clearLayersOutsideContextMode(entryMode, { notificationToken });
-          } catch (error) {
-            this._contextModeEntering = null;
-            console.warn(`[Context] ${change.layerId} isolation failed`, error);
+            this._contextModeEntering = entryMode;
+            this._contextModeChanging = true;
             try {
-              await this._restoreContextSession({
-                excludeLayerIds: [change.layerId],
+              if (deferredClearEntry) {
+                await this._clearSelectedLayersManagerPromise;
+                if (
+                  this._contextModeDeferredEntryIntent?.intentEpoch !==
+                  change.intentEpoch
+                )
+                  return false;
+                this._contextModeDeferredEntryIntent = null;
+              }
+              await this._clearLayersOutsideContextMode(entryMode, {
                 notificationToken,
               });
-            } catch (restoreError) {
-              console.warn(`[Context] ${change.layerId} rollback failed`, restoreError);
+            } catch (error) {
+              this._contextModeEntering = null;
+              console.warn(
+                `[Context] ${change.layerId} isolation failed`,
+                error,
+              );
+              try {
+                await this._restoreContextSession({
+                  excludeLayerIds: [change.layerId],
+                  notificationToken,
+                });
+              } catch (restoreError) {
+                console.warn(
+                  `[Context] ${change.layerId} rollback failed`,
+                  restoreError,
+                );
+              }
+              return `${entryMode === 'space-missions' ? 'Space Missions' : 'Context'} could not start because another layer did not stop cleanly`;
+            } finally {
+              if (ownsNotificationToken) {
+                this._userFacingContextNotificationTokens.delete(
+                  notificationToken,
+                );
+              }
+              settleContextModeChange(this, priorChanging);
             }
-            return `${entryMode === 'space-missions' ? 'Space Missions' : 'Context'} could not start because another layer did not stop cleanly`;
-          } finally {
-            if (ownsNotificationToken) {
-              this._userFacingContextNotificationTokens.delete(notificationToken);
-            }
-            settleContextModeChange(this, priorChanging);
           }
-        }
-        return null;
-      });
+          return null;
+        });
     }
     if (typeof this._dataManager?.subscribeBeforeDestroy === 'function') {
-      this._dataManagerBeforeDestroyUnsubscribe = this._dataManager.subscribeBeforeDestroy(async ({ layerId } = {}) => {
-        if (!this._contextSessionSnapshot) return;
-        await runWithContextModeChanging(this, async () => {
-          this._contextMode = null;
-          this.cockpitView?.exit({ restoreTracking: false });
-          this._syncContextModeButtons();
-          await this._restoreContextSession({ excludeLayerIds: layerId ? [layerId] : [] });
+      this._dataManagerBeforeDestroyUnsubscribe =
+        this._dataManager.subscribeBeforeDestroy(async ({ layerId } = {}) => {
+          if (!this._contextSessionSnapshot) return;
+          await runWithContextModeChanging(this, async () => {
+            this._contextMode = null;
+            this.cockpitView?.exit({ restoreTracking: false });
+            this._syncContextModeButtons();
+            await this._restoreContextSession({
+              excludeLayerIds: layerId ? [layerId] : [],
+            });
+          });
         });
-      });
     }
     this._syncContextModeButtons();
     if (this._cctvUnsubscribe) {
@@ -1128,10 +1373,18 @@ export class StyleManager {
       });
     }
     if (!this._awarenessSelectedHandler) {
-      this._awarenessSelectedHandler = (event) => this._persistAwarenessSelection(event, false);
-      this._awarenessClearedHandler = (event) => this._persistAwarenessSelection(event, true);
-      window.addEventListener('gev:awareness-subject-selected', this._awarenessSelectedHandler);
-      window.addEventListener('gev:awareness-subject-cleared', this._awarenessClearedHandler);
+      this._awarenessSelectedHandler = (event) =>
+        this._persistAwarenessSelection(event, false);
+      this._awarenessClearedHandler = (event) =>
+        this._persistAwarenessSelection(event, true);
+      window.addEventListener(
+        'gev:awareness-subject-selected',
+        this._awarenessSelectedHandler,
+      );
+      window.addEventListener(
+        'gev:awareness-subject-cleared',
+        this._awarenessClearedHandler,
+      );
     }
     this._layerStateCoordinator?.destroy();
     this._layerStateCoordinator = null;
@@ -1141,8 +1394,10 @@ export class StyleManager {
         this._dataManager,
         this.shareLinkManager,
         {
-          onDurableStateChange: (state) => this._syncModels3dFromLayerState(state),
-          onTrackingRestoreStatus: (result) => this._handleShareTrackingRestoreStatus(result),
+          onDurableStateChange: (state) =>
+            this._syncModels3dFromLayerState(state),
+          onTrackingRestoreStatus: (result) =>
+            this._handleShareTrackingRestoreStatus(result),
         },
       );
       this._layerStateRestorePromise = this._layerStateCoordinator.start({
@@ -1159,7 +1414,9 @@ export class StyleManager {
         );
       }
       void this._layerStateRestorePromise.then(() => {
-        this._syncModels3dFromLayerState(this._layerStateCoordinator?.getDurableState());
+        this._syncModels3dFromLayerState(
+          this._layerStateCoordinator?.getDurableState(),
+        );
       });
     }
   }
@@ -1184,23 +1441,42 @@ export class StyleManager {
     this._layerStateRestorePromise = null;
     clearTimeout(this._initialShareRestoreTimeout);
     this._initialShareRestoreTimeout = null;
-    this._settleInitialShareRestore({ status: 'destroyed', share: null, layers: [] });
+    this._settleInitialShareRestore({
+      status: 'destroyed',
+      share: null,
+      layers: [],
+    });
     if (this._initialShareGestureHandler) {
-      this.viewer?.canvas?.removeEventListener('pointerdown', this._initialShareGestureHandler);
-      this.viewer?.canvas?.removeEventListener('wheel', this._initialShareGestureHandler);
+      this.viewer?.canvas?.removeEventListener(
+        'pointerdown',
+        this._initialShareGestureHandler,
+      );
+      this.viewer?.canvas?.removeEventListener(
+        'wheel',
+        this._initialShareGestureHandler,
+      );
       this._initialShareGestureHandler = null;
     }
     this.shareLinkManager?.destroy();
     if (this._awarenessSelectedHandler) {
-      window.removeEventListener('gev:awareness-subject-selected', this._awarenessSelectedHandler);
+      window.removeEventListener(
+        'gev:awareness-subject-selected',
+        this._awarenessSelectedHandler,
+      );
       this._awarenessSelectedHandler = null;
     }
     if (this._awarenessClearedHandler) {
-      window.removeEventListener('gev:awareness-subject-cleared', this._awarenessClearedHandler);
+      window.removeEventListener(
+        'gev:awareness-subject-cleared',
+        this._awarenessClearedHandler,
+      );
       this._awarenessClearedHandler = null;
     }
     if (this._mapStackChangeHandler) {
-      window.removeEventListener('gev:map-stack-changed', this._mapStackChangeHandler);
+      window.removeEventListener(
+        'gev:map-stack-changed',
+        this._mapStackChangeHandler,
+      );
       this._mapStackChangeHandler = null;
     }
     // Invalidate any in-flight Context transaction the same way a newer request
@@ -1256,7 +1532,10 @@ export class StyleManager {
       this._windowResizeHandler = null;
     }
     if (this._loadingVisibilityHandler) {
-      document.removeEventListener('visibilitychange', this._loadingVisibilityHandler);
+      document.removeEventListener(
+        'visibilitychange',
+        this._loadingVisibilityHandler,
+      );
       this._loadingVisibilityHandler = null;
     }
     this._stopLoadingFeedbackTicker();

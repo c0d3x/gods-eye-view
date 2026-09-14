@@ -15,17 +15,28 @@ test('HUD sliders and location search have descriptive explicit names', () => {
     ['sharpen-intensity-slider', 'Sharpen intensity'],
     ['location-search', 'Search location by name or coordinates'],
   ]) {
-    const input = html.match(new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`))?.[0];
+    const input = html.match(
+      new RegExp(`<input\\b[^>]*\\bid="${id}"[^>]*>`),
+    )?.[0];
     assert.ok(input, `${id} exists`);
-    assert.ok(input.includes(`aria-label="${name}"`), `${id} has its descriptive name`);
+    assert.ok(
+      input.includes(`aria-label="${name}"`),
+      `${id} has its descriptive name`,
+    );
   }
 });
 
 test('the first-run checkbox keeps its native visible label', () => {
-  assert.match(html, /<label\b[^>]*class="first-run-suppress"[^>]*>\s*<input type="checkbox" data-first-run-suppress \/>\s*<span>Don't show this again<\/span>\s*<\/label>/);
+  assert.match(
+    html,
+    /<label\b[^>]*class="first-run-suppress"[^>]*>\s*<input type="checkbox" data-first-run-suppress \/>\s*<span>Don't show this again<\/span>\s*<\/label>/,
+  );
 });
 
 test('generated style sliders use the visible parameter label as their name', () => {
   assert.match(ui, /label\.textContent\s*=\s*uMeta\.label;/);
-  assert.match(ui, /slider\.setAttribute\(['"]aria-label['"],\s*uMeta\.label\)/);
+  assert.match(
+    ui,
+    /slider\.setAttribute\(['"]aria-label['"],\s*uMeta\.label\)/,
+  );
 });

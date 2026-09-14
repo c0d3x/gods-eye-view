@@ -25,7 +25,10 @@ function fakeCesium(outcomes = []) {
 }
 
 test('map startup route reflects the best configured provider', () => {
-  assert.equal(selectMapStartupRoute({ googleApiKey: 'google', cesiumToken: 'ion' }), 'google-direct');
+  assert.equal(
+    selectMapStartupRoute({ googleApiKey: 'google', cesiumToken: 'ion' }),
+    'google-direct',
+  );
   assert.equal(selectMapStartupRoute({ cesiumToken: 'ion' }), 'google-ion');
   assert.equal(selectMapStartupRoute(), 'osm');
 });
@@ -53,7 +56,9 @@ test('a direct Google key is preferred', async () => {
 test('an ion-only setup loads the hosted Google 3D asset', async () => {
   const tileset = { id: 'ion' };
   const Cesium = fakeCesium([tileset]);
-  const result = await loadPhotorealisticTileset(Cesium, { cesiumToken: 'ion-secret' });
+  const result = await loadPhotorealisticTileset(Cesium, {
+    cesiumToken: 'ion-secret',
+  });
   assert.equal(result.tileset, tileset);
   assert.equal(result.route, 'google-ion');
   assert.equal(Cesium.calls.length, 1);
@@ -91,7 +96,10 @@ test('a failed direct-only request does not consume an implicit Cesium token', a
 });
 
 test('failed direct and ion requests preserve the keyless OSM fallback', async () => {
-  const Cesium = fakeCesium([new Error('direct denied'), new Error('ion denied')]);
+  const Cesium = fakeCesium([
+    new Error('direct denied'),
+    new Error('ion denied'),
+  ]);
   const result = await loadPhotorealisticTileset(Cesium, {
     googleApiKey: 'google-secret',
     cesiumToken: 'ion-secret',

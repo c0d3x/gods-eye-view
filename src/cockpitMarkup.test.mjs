@@ -10,10 +10,22 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
 const ui = readUiSource();
 const css = fs.readFileSync(path.join(ROOT, 'style.css'), 'utf8');
-const sceneDirector = fs.readFileSync(path.join(ROOT, 'src', 'scenes', 'director.js'), 'utf8');
-const manager = fs.readFileSync(path.join(ROOT, 'src', 'data', 'manager.js'), 'utf8');
-const contextLayer = fs.readFileSync(path.join(ROOT, 'src', 'data', 'militaryAwareness.js'), 'utf8');
-const voiceActions = fs.readFileSync(path.join(ROOT, 'src', 'voice', 'gevActions.js'), 'utf8');
+const sceneDirector = fs.readFileSync(
+  path.join(ROOT, 'src', 'scenes', 'director.js'),
+  'utf8',
+);
+const manager = fs.readFileSync(
+  path.join(ROOT, 'src', 'data', 'manager.js'),
+  'utf8',
+);
+const contextLayer = fs.readFileSync(
+  path.join(ROOT, 'src', 'data', 'militaryAwareness.js'),
+  'utf8',
+);
+const voiceActions = fs.readFileSync(
+  path.join(ROOT, 'src', 'voice', 'gevActions.js'),
+  'utf8',
+);
 
 test('Cockpit has one reset action beside its bottom exit path', () => {
   assert.doesNotMatch(html, /id="cockpit-quick-entry"/);
@@ -22,24 +34,48 @@ test('Cockpit has one reset action beside its bottom exit path', () => {
     html,
     /id="map-view-switch"[^>]*aria-label="Exit cockpit view"[^>]*aria-keyshortcuts="Escape C"[\s\S]*?close_fullscreen[\s\S]*?EXIT COCKPIT/,
   );
-  const topCenterActions = html.match(/<nav id="top-center-actions"[\s\S]*?<\/nav>/);
+  const topCenterActions = html.match(
+    /<nav id="top-center-actions"[\s\S]*?<\/nav>/,
+  );
   assert.ok(topCenterActions, 'Top-center globe actions are missing');
-  assert.match(topCenterActions[0], /id="clear-selected-layers"[\s\S]*?id="share-btn"[\s\S]*?id="reset-globe-view"/);
-  assert.equal((html.match(/id="clear-selected-layers"/g) || []).length, 1, 'Clear Layers must have one DOM owner');
-  assert.equal((html.match(/id="reset-globe-view"/g) || []).length, 1, 'Reset Globe must have one DOM owner');
-  assert.equal((html.match(/id="cockpit-reset-globe"/g) || []).length, 1, 'Cockpit Reset must have one DOM owner');
+  assert.match(
+    topCenterActions[0],
+    /id="clear-selected-layers"[\s\S]*?id="share-btn"[\s\S]*?id="reset-globe-view"/,
+  );
+  assert.equal(
+    (html.match(/id="clear-selected-layers"/g) || []).length,
+    1,
+    'Clear Layers must have one DOM owner',
+  );
+  assert.equal(
+    (html.match(/id="reset-globe-view"/g) || []).length,
+    1,
+    'Reset Globe must have one DOM owner',
+  );
+  assert.equal(
+    (html.match(/id="cockpit-reset-globe"/g) || []).length,
+    1,
+    'Cockpit Reset must have one DOM owner',
+  );
   const viewSwitcher = html.match(/<nav id="view-switcher"[\s\S]*?<\/nav>/);
   assert.ok(viewSwitcher, 'View switcher is missing');
-  assert.doesNotMatch(viewSwitcher[0], /id="reset-globe-view"/, 'map-only reset must stay outside Cockpit');
+  assert.doesNotMatch(
+    viewSwitcher[0],
+    /id="reset-globe-view"/,
+    'map-only reset must stay outside Cockpit',
+  );
   assert.match(
     viewSwitcher[0],
     /id="cockpit-reset-globe"[^>]*type="button"[^>]*aria-label="Reset cockpit to full globe view"[^>]*hidden[\s\S]*?public[\s\S]*?RESET[\s\S]*?id="map-view-switch"/,
   );
 
-  const actions = html.match(/<div class="global-context-actions"[\s\S]*?<\/div>/);
+  const actions = html.match(
+    /<div class="global-context-actions"[\s\S]*?<\/div>/,
+  );
   assert.ok(actions, 'Contact Context actions are missing');
   assert.ok(
-    actions[0].indexOf('id="cockpit-entry"') < actions[0].indexOf('id="installations-search-btn"'),
+    actions[0].indexOf('id="cockpit-entry"') <
+      actions[0].indexOf('id="installations-search-btn"'),
     'Cockpit must precede Search Nearby Sites',
   );
   assert.match(
@@ -55,7 +91,9 @@ test('Cockpit has one reset action beside its bottom exit path', () => {
 });
 
 test('Cockpit heading tape leaves the bottom exit row unobstructed', () => {
-  const compass = html.match(/<div class="cockpit-compass"[\s\S]*?<div class="cockpit-position-readout">/);
+  const compass = html.match(
+    /<div class="cockpit-compass"[\s\S]*?<div class="cockpit-position-readout">/,
+  );
   assert.ok(compass, 'Cockpit compass markup is missing');
   assert.match(compass[0], /id="cockpit-speed-value"/);
   assert.match(compass[0], /id="cockpit-heading-value"/);
@@ -67,12 +105,24 @@ test('Cockpit heading tape leaves the bottom exit row unobstructed', () => {
 
 test('Cockpit vision cycle exposes exactly five real visual styles without NONE', () => {
   assert.match(ui, /const modes = COCKPIT_VISION_MODES;/);
-  assert.match(ui, /const\s*labels\s*=\s*\{\s*optical:\s*inherited,\s*crt:\s*'CRT',\s*nvg:\s*'NVG',\s*thermal:\s*'FLIR',\s*noir:\s*'NOIR',?\s*\};/);
+  assert.match(
+    ui,
+    /const\s*labels\s*=\s*\{\s*optical:\s*inherited,\s*crt:\s*'CRT',\s*nvg:\s*'NVG',\s*thermal:\s*'FLIR',\s*noir:\s*'NOIR',?\s*\};/,
+  );
   assert.doesNotMatch(ui, /none: 'NONE'/);
-  assert.match(ui, /getInheritedVisionLabel:\s*\(,?\s*\)\s*=>\s*\(?\s*[\s\S]*?STYLE_STATUS_LABELS\[\s*this\s*\.activeStyle,?\s*\]/);
+  assert.match(
+    ui,
+    /getInheritedVisionLabel:\s*\(,?\s*\)\s*=>\s*\(?\s*[\s\S]*?STYLE_STATUS_LABELS\[\s*this\s*\.activeStyle,?\s*\]/,
+  );
   assert.match(html, /id="cockpit-vision-current-label"[^>]*>NORMAL<\/strong>/);
-  assert.match(ui, /const\s*target\s*=\s*applyCockpitVisionStageIntensities\(\s*this\s*\.stages,\s*next,\s*this\s*\._cockpitVisionRestore,?\s*\);/);
-  assert.match(ui, /this\s*\._cockpitVisionRestore\s*=\s*captureCockpitVisionBaseline\(\s*this\s*\.stages,\s*this\s*\.transitions,?\s*\);/);
+  assert.match(
+    ui,
+    /const\s*target\s*=\s*applyCockpitVisionStageIntensities\(\s*this\s*\.stages,\s*next,\s*this\s*\._cockpitVisionRestore,?\s*\);/,
+  );
+  assert.match(
+    ui,
+    /this\s*\._cockpitVisionRestore\s*=\s*captureCockpitVisionBaseline\(\s*this\s*\.stages,\s*this\s*\.transitions,?\s*\);/,
+  );
   assert.match(
     ui,
     /if\s*\(\s*next\s*===\s*'optical',?\s*\)\s*\{\s*[\s\S]*?applyCockpitVisionStageIntensities\(\s*this\s*\.stages,\s*next,\s*this\s*\._cockpitVisionRestore,?\s*\);[\s\S]*?return;[\s\S]*?const\s*target\s*=\s*applyCockpitVisionStageIntensities/,
@@ -87,20 +137,34 @@ test('Cockpit vision cycle exposes exactly five real visual styles without NONE'
 });
 
 test('Contacts uses the approved radar icon', () => {
-  const button = html.match(/<button id="global-context-flights-btn"[\s\S]*?<\/button>/);
+  const button = html.match(
+    /<button id="global-context-flights-btn"[\s\S]*?<\/button>/,
+  );
   assert.ok(button, 'Contacts button is missing');
-  assert.match(button[0], /material-symbols-outlined" aria-hidden="true">radar<\/span>/);
+  assert.match(
+    button[0],
+    /material-symbols-outlined" aria-hidden="true">radar<\/span>/,
+  );
 });
 
 test('Cockpit Escape handling precedes form-control shortcut suppression and focus is restored', () => {
-  const keydown = ui.match(/onKeyDown\(event\) \{([\s\S]*?)\n  \}\n\n  enter\(\)/);
+  const keydown = ui.match(
+    /onKeyDown\(event\) \{([\s\S]*?)\n  \}\n\n  enter\(\)/,
+  );
   assert.ok(keydown, 'Cockpit keyboard handler is missing');
   const escapeIndex = keydown[1].indexOf("event.key === 'Escape'");
-  const formGuardIndex = keydown[1].indexOf("closest?.('input, textarea, select, [contenteditable]')");
-  assert.ok(escapeIndex >= 0 && formGuardIndex > escapeIndex, 'Escape must work while focus is inside a form control');
+  const formGuardIndex = keydown[1].indexOf(
+    "closest?.('input, textarea, select, [contenteditable]')",
+  );
+  assert.ok(
+    escapeIndex >= 0 && formGuardIndex > escapeIndex,
+    'Escape must work while focus is inside a form control',
+  );
 
   const enter = ui.match(/\n  enter\(\) \{([\s\S]*?)\n  \}\n\n  exit\(/);
-  const exit = ui.match(/\n  exit\(\{ restoreTracking = true \} = \{\}\) \{([\s\S]*?)\n  \}\n\n  update\(\)/);
+  const exit = ui.match(
+    /\n  exit\(\{ restoreTracking = true \} = \{\}\) \{([\s\S]*?)\n  \}\n\n  update\(\)/,
+  );
   assert.ok(enter && exit, 'Cockpit entry/exit methods are missing');
   assert.match(enter[1], /activeElement/);
   assert.match(enter[1], /mapViewButton.*focus|focus.*mapViewButton/s);
@@ -115,10 +179,18 @@ test('Cockpit Escape handling precedes form-control shortcut suppression and foc
 });
 
 test('Cockpit shortcut failures do not leak and open Radio owns the first Escape', () => {
-  const keydown = ui.match(/onKeyDown\(event\) \{([\s\S]*?)\n  \}\n\n  enter\(\)/);
+  const keydown = ui.match(
+    /onKeyDown\(event\) \{([\s\S]*?)\n  \}\n\n  enter\(\)/,
+  );
   assert.ok(keydown, 'Cockpit keyboard handler is missing');
-  assert.match(keydown[1], /document\s*\.getElementById\(\s*'context-radio-dock',?\s*\)\s*\?\s*\.classList\s*\.contains\(\s*'disclosure-open',?\s*\)/);
-  assert.match(keydown[1], /#cockpit-utility-controls \[aria-expanded="true"\]/);
+  assert.match(
+    keydown[1],
+    /document\s*\.getElementById\(\s*'context-radio-dock',?\s*\)\s*\?\s*\.classList\s*\.contains\(\s*'disclosure-open',?\s*\)/,
+  );
+  assert.match(
+    keydown[1],
+    /#cockpit-utility-controls \[aria-expanded="true"\]/,
+  );
   assert.match(
     keydown[1],
     /const\s*cockpitAttempt\s*=\s*!!\(\s*this\s*\.readAircraftInfo\(,?\s*\)\s*&&\s*this\s*\.viewer\s*\.trackedEntity\s*\?\s*\.position,?\s*\);[\s\S]*?event\s*\.preventDefault\(,?\s*\);[\s\S]*?event\s*\.stopImmediatePropagation\(,?\s*\);[\s\S]*?!this\s*\.isEntryAllowed\(,?\s*\)/,
@@ -126,7 +198,9 @@ test('Cockpit shortcut failures do not leak and open Radio owns the first Escape
 });
 
 test('the Contact panel never hides itself out from under its own NEXT button', () => {
-  const updateContext = ui.match(/\n  updateContext\(info, heading\) \{([\s\S]*?)\n  \}\n\n  scheduleContextLayout\(\)/);
+  const updateContext = ui.match(
+    /\n  updateContext\(info, heading\) \{([\s\S]*?)\n  \}\n\n  scheduleContextLayout\(\)/,
+  );
   assert.ok(updateContext, 'Cockpit updateContext is missing');
   const body = updateContext[1];
   // ui.js cannot be imported under node (Cesium's `mgrs` dependency), so the
@@ -134,7 +208,10 @@ test('the Contact panel never hides itself out from under its own NEXT button', 
   // ui.js to it. The panel hosts PREVIOUS/NEXT: the only reason it may hide is
   // that no snapshot exists at all.
   assert.match(body, /resolveCockpitContextReadout\(\{ snapshot, info \}\)/);
-  assert.match(body, /if \(!readout\.visible\) \{[\s\S]*?this\.context\.hidden = true;/);
+  assert.match(
+    body,
+    /if \(!readout\.visible\) \{[\s\S]*?this\.context\.hidden = true;/,
+  );
   assert.equal(
     (body.match(/this\.context\.hidden = true/g) || []).length,
     1,
@@ -152,12 +229,19 @@ test('the Contact panel never hides itself out from under its own NEXT button', 
   assert.match(body, /readout\.contactLost/);
   assert.match(body, /CONTACT LOST/);
   assert.match(body, /this\.context\.dataset\.state = 'lost'/);
-  assert.match(body, /if \(readout\.contactLost\) \{/, 'the CONTACT LOST branch is missing');
+  assert.match(
+    body,
+    /if \(readout\.contactLost\) \{/,
+    'the CONTACT LOST branch is missing',
+  );
   // PREVIOUS/NEXT must be written before any early return, so the operator can
   // always step off the current contact — including a lost one.
   const navIndex = body.indexOf('this.contextNext.disabled');
   const lostIndex = body.indexOf('if (readout.contactLost)');
-  assert.ok(navIndex >= 0 && lostIndex > navIndex, 'nav state must be written before the CONTACT LOST return');
+  assert.ok(
+    navIndex >= 0 && lostIndex > navIndex,
+    'nav state must be written before the CONTACT LOST return',
+  );
   assert.equal(
     (body.match(/this\.contextNext\.disabled/g) || []).length,
     1,
@@ -177,19 +261,32 @@ test('the cockpit reads its aircraft from the layer that owns Cesium tracking', 
   assert.match(read[1], /gevTrackedId/);
   // In cockpit mode the controller moves the entity off viewer.trackedEntity,
   // so its own handle is the tracked identity there.
-  assert.match(read[1], /this\.viewer\?\.trackedEntity \|\| this\.trackedEntity/);
+  assert.match(
+    read[1],
+    /this\.viewer\?\.trackedEntity \|\| this\.trackedEntity/,
+  );
 });
 
 test('programmatic Context layer changes cannot bypass explicit expansion policy', () => {
-  const handler = ui.match(/_handleContextLayerChange\(change\) \{([\s\S]*?)\n  \}\n\n  _syncContextModeButtons/);
+  const handler = ui.match(
+    /_handleContextLayerChange\(change\) \{([\s\S]*?)\n  \}\n\n  _syncContextModeButtons/,
+  );
   assert.ok(handler, 'Context layer state handler is missing');
-  assert.doesNotMatch(handler[1], /setPanelCollapsed\('global-context-panel', false\)/);
+  assert.doesNotMatch(
+    handler[1],
+    /setPanelCollapsed\('global-context-panel', false\)/,
+  );
 });
 
 test('share startup isolates panel defaults from recipient-local collapse preferences', () => {
-  const parseIndex = ui.indexOf('this._initialShareState = this.shareLinkManager.parseInitialHash();');
+  const parseIndex = ui.indexOf(
+    'this._initialShareState = this.shareLinkManager.parseInitialHash();',
+  );
   const panelChromeIndex = ui.indexOf('this._initPanelChrome();');
-  assert.ok(parseIndex >= 0, 'initial share state must be parsed during UI construction');
+  assert.ok(
+    parseIndex >= 0,
+    'initial share state must be parsed during UI construction',
+  );
   assert.ok(
     parseIndex < panelChromeIndex,
     'share state must be known before panel chrome can read recipient-local preferences',
@@ -199,7 +296,9 @@ test('share startup isolates panel defaults from recipient-local collapse prefer
     1,
     'startup must parse the incoming share exactly once',
   );
-  const panelChrome = ui.match(/_initPanelChrome\(\) \{([\s\S]*?)\n  \}\n\n  \/\*\*/);
+  const panelChrome = ui.match(
+    /_initPanelChrome\(\) \{([\s\S]*?)\n  \}\n\n  \/\*\*/,
+  );
   assert.ok(panelChrome, 'panel chrome initializer is missing');
   assert.match(
     panelChrome[1],
@@ -209,49 +308,134 @@ test('share startup isolates panel defaults from recipient-local collapse prefer
 });
 
 test('Cockpit owns a focused shared Display portal and compact Radio controls', () => {
-  const hiddenRule = css.match(/body\.cockpit-mode :is\(([^)]*)\)\s*\{\s*display:\s*none\s*!important;/);
+  const hiddenRule = css.match(
+    /body\.cockpit-mode :is\(([^)]*)\)\s*\{\s*display:\s*none\s*!important;/,
+  );
   assert.ok(hiddenRule, 'Cockpit hidden-chrome rule is missing');
-  assert.match(css, /body\.cockpit-mode #right-context-rail\s*\{\s*display:\s*none\s*!important;/);
-  assert.match(css, /body\.cockpit-mode #left-panel-stack > #scene-panel\s*\{\s*display:\s*none\s*!important;/);
-  assert.match(html, /id="cockpit-display-toggle-btn"[^>]*aria-controls="cockpit-display-panel"/);
+  assert.match(
+    css,
+    /body\.cockpit-mode #right-context-rail\s*\{\s*display:\s*none\s*!important;/,
+  );
+  assert.match(
+    css,
+    /body\.cockpit-mode #left-panel-stack > #scene-panel\s*\{\s*display:\s*none\s*!important;/,
+  );
+  assert.match(
+    html,
+    /id="cockpit-display-toggle-btn"[^>]*aria-controls="cockpit-display-panel"/,
+  );
   assert.match(html, /id="cockpit-display-toggle-btn"[^>]*>◀<\/button>/);
-  assert.match(html, /data-cockpit-launcher="display"[\s\S]*?id="cockpit-display-toggle-btn"/);
+  assert.match(
+    html,
+    /data-cockpit-launcher="display"[\s\S]*?id="cockpit-display-toggle-btn"/,
+  );
   assert.match(html, /data-cockpit-display-slot="hud"/);
-  assert.match(html, /data-cockpit-display-slot="detection"[\s\S]*?data-cockpit-display-slot="parameters"[\s\S]*?data-cockpit-display-slot="models3d"/);
+  assert.match(
+    html,
+    /data-cockpit-display-slot="detection"[\s\S]*?data-cockpit-display-slot="parameters"[\s\S]*?data-cockpit-display-slot="models3d"/,
+  );
   assert.doesNotMatch(html, /data-cockpit-display-slot="presets"/);
-  assert.match(html, /id="clear-selected-layers"[^>]*aria-label="Clear selected data layers"/);
-  assert.match(html, /id="reset-globe-view"[^>]*aria-label="Reset to full globe view"/);
-  assert.match(css, /#top-center-actions\s*\{[\s\S]*?left:\s*50%;[\s\S]*?display:\s*flex;[\s\S]*?transform:\s*translateX\(-50%\)/);
+  assert.match(
+    html,
+    /id="clear-selected-layers"[^>]*aria-label="Clear selected data layers"/,
+  );
+  assert.match(
+    html,
+    /id="reset-globe-view"[^>]*aria-label="Reset to full globe view"/,
+  );
+  assert.match(
+    css,
+    /#top-center-actions\s*\{[\s\S]*?left:\s*50%;[\s\S]*?display:\s*flex;[\s\S]*?transform:\s*translateX\(-50%\)/,
+  );
   assert.match(css, /body\.ui-clean-view #top-center-actions/);
   assert.match(css, /body\.recording-mode #top-center-actions/);
   assert.match(
     css,
     /body\.scene-playback-mode :is\(#clear-selected-layers, #reset-globe-view\)\s*\{\s*display:\s*none !important;/,
   );
-  assert.match(sceneDirector, /this\._running = true;\s*document\.body\.classList\.add\('scene-playback-mode'\);/);
-  assert.match(sceneDirector, /styleManager\.setRecordingMode\(false\);\s*document\.body\.classList\.remove\('scene-playback-mode'\);/);
-  assert.equal((html.match(/id="hud-toggle"/g) || []).length, 1, 'HUD control must have one stateful DOM owner');
-  assert.equal((html.match(/id="detection-toggle"/g) || []).length, 1, 'Detection control must have one stateful DOM owner');
-  assert.equal((html.match(/id="models3d-toggle"/g) || []).length, 1, '3D control must have one stateful DOM owner');
+  assert.match(
+    sceneDirector,
+    /this\._running = true;\s*document\.body\.classList\.add\('scene-playback-mode'\);/,
+  );
+  assert.match(
+    sceneDirector,
+    /styleManager\.setRecordingMode\(false\);\s*document\.body\.classList\.remove\('scene-playback-mode'\);/,
+  );
+  assert.equal(
+    (html.match(/id="hud-toggle"/g) || []).length,
+    1,
+    'HUD control must have one stateful DOM owner',
+  );
+  assert.equal(
+    (html.match(/id="detection-toggle"/g) || []).length,
+    1,
+    'Detection control must have one stateful DOM owner',
+  );
+  assert.equal(
+    (html.match(/id="models3d-toggle"/g) || []).length,
+    1,
+    '3D control must have one stateful DOM owner',
+  );
   assert.doesNotMatch(html, /id="cockpit-(?:hud|detection|models3d)-toggle"/);
-  assert.match(html, /id="cockpit-radio-toggle-btn"[^>]*aria-controls="cockpit-radio-panel"/);
+  assert.match(
+    html,
+    /id="cockpit-radio-toggle-btn"[^>]*aria-controls="cockpit-radio-panel"/,
+  );
   assert.match(html, /id="cockpit-radio-toggle-btn"[^>]*>◀<\/button>/);
-  assert.match(html, /data-cockpit-launcher="radio"[\s\S]*?id="cockpit-radio-toggle-btn"/);
-  const cockpitRadio = html.match(/id="cockpit-radio-panel"[\s\S]*?<\/div>\s*<\/div>\s*<\/aside>/);
+  assert.match(
+    html,
+    /data-cockpit-launcher="radio"[\s\S]*?id="cockpit-radio-toggle-btn"/,
+  );
+  const cockpitRadio = html.match(
+    /id="cockpit-radio-panel"[\s\S]*?<\/div>\s*<\/div>\s*<\/aside>/,
+  );
   assert.ok(cockpitRadio, 'Cockpit compact Radio controls are missing');
-  assert.doesNotMatch(cockpitRadio[0], /context-radio-details-btn|radio-filter|radio-tuner/);
-  assert.match(css, /\.cockpit-utility-controls[\s\S]*?top:\s*var\(--cockpit-utility-top/);
-  assert.match(css, /\[data-cockpit-launcher="display"\]\s*\{\s*width:\s*var\(--left-collapsed-width, 176px\)/);
+  assert.doesNotMatch(
+    cockpitRadio[0],
+    /context-radio-details-btn|radio-filter|radio-tuner/,
+  );
+  assert.match(
+    css,
+    /\.cockpit-utility-controls[\s\S]*?top:\s*var\(--cockpit-utility-top/,
+  );
+  assert.match(
+    css,
+    /\[data-cockpit-launcher="display"\]\s*\{\s*width:\s*var\(--left-collapsed-width, 176px\)/,
+  );
   assert.match(css, /--display-panel-expanded-width:\s*272px/);
-  assert.match(css, /#pp-toggles\s*\{[\s\S]*?--pp-expanded-width:\s*var\(--display-panel-expanded-width\)/);
-  assert.match(css, /is-expanded:has\(\[data-cockpit-launcher="display"\]\)\s*\{[\s\S]*?width:\s*var\(--display-panel-expanded-width\)/);
+  assert.match(
+    css,
+    /#pp-toggles\s*\{[\s\S]*?--pp-expanded-width:\s*var\(--display-panel-expanded-width\)/,
+  );
+  assert.match(
+    css,
+    /is-expanded:has\(\[data-cockpit-launcher="display"\]\)\s*\{[\s\S]*?width:\s*var\(--display-panel-expanded-width\)/,
+  );
   assert.doesNotMatch(ui, /--cockpit-display-expanded-width|dataPanelWidth/);
-  assert.match(css, /is-expanded:has\(\[data-cockpit-launcher="display"\]\)[\s\S]*?box-shadow:\s*0 8px 32px rgba\(0, 0, 0, \.42\)/);
-  assert.match(css, /\.cockpit-utility-control\.is-expanded \.cockpit-utility-launcher\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/);
-  assert.match(css, /\.cockpit-utility-control\.is-expanded \.cockpit-utility-divider\s*\{[\s\S]*?linear-gradient\(90deg, rgb\(0 212 255 \/ 28%\), rgba\(0, 212, 255, 0\.18\) 58%, transparent\)[\s\S]*?box-shadow:\s*0 0 7px rgba\(0, 212, 255, \.22\);/);
-  assert.match(ui, /this\._cockpitDisplayToggleBtn\.textContent = displayOpen \? '▶' : '◀';/);
-  assert.match(ui, /this\._cockpitRadioToggleBtn\.textContent = radioOpen \? '▶' : '◀';/);
-  assert.match(css, /#cockpit-display-panel\s*\{[\s\S]*?display:\s*flex;[\s\S]*?gap:\s*7px;[\s\S]*?padding:\s*0;[\s\S]*?border-top:\s*0;/);
+  assert.match(
+    css,
+    /is-expanded:has\(\[data-cockpit-launcher="display"\]\)[\s\S]*?box-shadow:\s*0 8px 32px rgba\(0, 0, 0, \.42\)/,
+  );
+  assert.match(
+    css,
+    /\.cockpit-utility-control\.is-expanded \.cockpit-utility-launcher\s*\{[\s\S]*?border:\s*0;[\s\S]*?background:\s*transparent;[\s\S]*?box-shadow:\s*none;/,
+  );
+  assert.match(
+    css,
+    /\.cockpit-utility-control\.is-expanded \.cockpit-utility-divider\s*\{[\s\S]*?linear-gradient\(90deg, rgb\(0 212 255 \/ 28%\), rgba\(0, 212, 255, 0\.18\) 58%, transparent\)[\s\S]*?box-shadow:\s*0 0 7px rgba\(0, 212, 255, \.22\);/,
+  );
+  assert.match(
+    ui,
+    /this\._cockpitDisplayToggleBtn\.textContent = displayOpen \? '▶' : '◀';/,
+  );
+  assert.match(
+    ui,
+    /this\._cockpitRadioToggleBtn\.textContent = radioOpen \? '▶' : '◀';/,
+  );
+  assert.match(
+    css,
+    /#cockpit-display-panel\s*\{[\s\S]*?display:\s*flex;[\s\S]*?gap:\s*7px;[\s\S]*?padding:\s*0;[\s\S]*?border-top:\s*0;/,
+  );
   assert.doesNotMatch(ui, /--cockpit-display-tab-width/);
   // These two widths size Cockpit Radio and nothing else. They were named for
   // the Map Stack panel that once shared them; a Radio-specific name is what
@@ -259,22 +443,44 @@ test('Cockpit owns a focused shared Display portal and compact Radio controls', 
   assert.match(css, /--cockpit-radio-collapsed-width:\s*148px/);
   assert.match(css, /--cockpit-radio-expanded-width:\s*232px/);
   assert.doesNotMatch(css, /--map-stack-(?:collapsed|expanded)-width/);
-  assert.doesNotMatch(html, /id="stack-panel"/, 'the retired Map Stack panel must not remain in Cockpit layout');
-  assert.match(css, /\[data-cockpit-launcher="radio"\]\s*\{\s*width:\s*var\(--cockpit-radio-collapsed-width, 148px\)/);
-  assert.match(css, /is-expanded:has\(\[data-cockpit-launcher="radio"\]\)[\s\S]*?--cockpit-radio-expanded-width/);
+  assert.doesNotMatch(
+    html,
+    /id="stack-panel"/,
+    'the retired Map Stack panel must not remain in Cockpit layout',
+  );
+  assert.match(
+    css,
+    /\[data-cockpit-launcher="radio"\]\s*\{\s*width:\s*var\(--cockpit-radio-collapsed-width, 148px\)/,
+  );
+  assert.match(
+    css,
+    /is-expanded:has\(\[data-cockpit-launcher="radio"\]\)[\s\S]*?--cockpit-radio-expanded-width/,
+  );
   assert.doesNotMatch(ui, /--cockpit-radio-tab-width/);
   assert.doesNotMatch(css, /\.cockpit-utility-launcher:hover/);
   const desktopUtilityCss = css.slice(
     css.indexOf('.cockpit-utility-controls {'),
-    css.indexOf('@media (max-width: 760px)', css.indexOf('.cockpit-utility-controls {')),
+    css.indexOf(
+      '@media (max-width: 760px)',
+      css.indexOf('.cockpit-utility-controls {'),
+    ),
   );
   assert.doesNotMatch(
     desktopUtilityCss,
     /\.cockpit-utility-controls:has\(\.cockpit-utility-control\.is-expanded\)/,
   );
-  assert.match(css, /\.cockpit-utility-controls\.layout-primary-only[\s\S]*?display:\s*none/);
-  assert.match(css, /@media \(max-width:\s*760px\)[\s\S]*?\.cockpit-utility-controls:has\(\.cockpit-utility-control\.is-expanded\)[\s\S]*?display:\s*none/);
-  assert.match(ui, /resolveCockpitUtilityLayout\(\s*\{\s*availableHeight,\s*expandedHeight,\s*collapsedHeight,?\s*\},?\s*\)/);
+  assert.match(
+    css,
+    /\.cockpit-utility-controls\.layout-primary-only[\s\S]*?display:\s*none/,
+  );
+  assert.match(
+    css,
+    /@media \(max-width:\s*760px\)[\s\S]*?\.cockpit-utility-controls:has\(\.cockpit-utility-control\.is-expanded\)[\s\S]*?display:\s*none/,
+  );
+  assert.match(
+    ui,
+    /resolveCockpitUtilityLayout\(\s*\{\s*availableHeight,\s*expandedHeight,\s*collapsedHeight,?\s*\},?\s*\)/,
+  );
   assert.match(ui, /setAttribute\('aria-hidden', String\(hiddenSibling\)\)/);
 });
 
@@ -285,7 +491,11 @@ test('Display orders 3D above Celestial, Clean UI below it, and Parameters below
     display[0],
     /id="detection-toggle"[\s\S]*?id="param-slider-panel"[\s\S]*?id="models3d-toggle"[\s\S]*?id="celestial-toggle"[\s\S]*?id="clean-view-toggle"/,
   );
-  assert.equal((html.match(/id="param-slider-panel"/g) || []).length, 1, 'Parameters must have one DOM owner');
+  assert.equal(
+    (html.match(/id="param-slider-panel"/g) || []).length,
+    1,
+    'Parameters must have one DOM owner',
+  );
   assert.match(
     ui,
     /const detectionGroup = this\._detectionBtn\?\.closest\('\.pp-toggle-group'\);[\s\S]*?detectionGroup\.after\(this\._sliderPanel\)/,
@@ -298,26 +508,65 @@ test('Display orders 3D above Celestial, Clean UI below it, and Parameters below
 });
 
 test('Clear Selected Layers uses one adopted batch and discards Context restoration state', () => {
-  assert.match(manager, /async clearSelectedLayers\([\s\S]*?\.filter\(\(\[, entry\]\) => this\._effectiveEnabled\(entry\)\)[\s\S]*?\.reverse\(\)/);
+  assert.match(
+    manager,
+    /async clearSelectedLayers\([\s\S]*?\.filter\(\(\[, entry\]\) => this\._effectiveEnabled\(entry\)\)[\s\S]*?\.reverse\(\)/,
+  );
   assert.match(
     manager,
     /for \(const \{ layerId, intentEpoch \} of targets\)[\s\S]*?visibilityIntentEpoch !== intentEpoch[\s\S]*?await this\.setEnabled\(layerId, false/,
   );
-  assert.match(ui, /if\s*\(\s*this\s*\._clearSelectedLayersPromise,?\s*\)\s*return\s*this\s*\._clearSelectedLayersPromise/);
-  assert.match(ui, /async _selectContextMode\([\s\S]*?if \(this\._clearSelectedLayersPromise\) return false/);
-  assert.match(ui, /this\._contextModeGeneration[\s\S]*?this\._contextSessionSnapshot = null;[\s\S]*?this\._contextRestoreState = null;/);
-  assert.match(ui, /if \(this\._contextRestoreState\) this\._contextRestoreState\.cancelled = true/);
-  assert.match(ui, /if \(restoreState\.cancelled\) return;[\s\S]*?settleContextIntentReplay/);
-  assert.match(ui, /!this\._preservePanelStateDuringLayerClear[\s\S]*?this\.setPanelCollapsed\('radio-panel', true\)/);
-  assert.match(ui, /this\._userFacingContextNotificationTokens\.add\(notificationToken\)/);
+  assert.match(
+    ui,
+    /if\s*\(\s*this\s*\._clearSelectedLayersPromise,?\s*\)\s*return\s*this\s*\._clearSelectedLayersPromise/,
+  );
+  assert.match(
+    ui,
+    /async _selectContextMode\([\s\S]*?if \(this\._clearSelectedLayersPromise\) return false/,
+  );
+  assert.match(
+    ui,
+    /this\._contextModeGeneration[\s\S]*?this\._contextSessionSnapshot = null;[\s\S]*?this\._contextRestoreState = null;/,
+  );
+  assert.match(
+    ui,
+    /if \(this\._contextRestoreState\) this\._contextRestoreState\.cancelled = true/,
+  );
+  assert.match(
+    ui,
+    /if \(restoreState\.cancelled\) return;[\s\S]*?settleContextIntentReplay/,
+  );
+  assert.match(
+    ui,
+    /!this\._preservePanelStateDuringLayerClear[\s\S]*?this\.setPanelCollapsed\('radio-panel', true\)/,
+  );
+  assert.match(
+    ui,
+    /this\._userFacingContextNotificationTokens\.add\(notificationToken\)/,
+  );
 });
 
 test('Cockpit Display portal retains both scroll owners across round trips', () => {
-  assert.match(ui, /this\._standardDisplayScrollTop = this\._ppToggles\?\.scrollTop \|\| 0/);
-  assert.match(ui, /this\._cockpitDisplayScrollTop = this\._cockpitDisplayPanel\?\.scrollTop \|\| 0/);
-  assert.match(ui, /if \(!this\._cockpitDisplayPortalActive\)[\s\S]*?this\._standardDisplayScrollTop = this\._ppToggles\?\.scrollTop/);
-  assert.match(ui, /if \(this\._cockpitDisplayPortalActive\)[\s\S]*?this\._cockpitDisplayScrollTop = this\._cockpitDisplayPanel\?\.scrollTop/);
-  assert.match(ui, /this\._cockpitDisplayPanel\.scrollTop = this\._cockpitDisplayScrollTop[\s\S]*?this\._ppToggles\.scrollTop = this\._standardDisplayScrollTop/);
+  assert.match(
+    ui,
+    /this\._standardDisplayScrollTop = this\._ppToggles\?\.scrollTop \|\| 0/,
+  );
+  assert.match(
+    ui,
+    /this\._cockpitDisplayScrollTop = this\._cockpitDisplayPanel\?\.scrollTop \|\| 0/,
+  );
+  assert.match(
+    ui,
+    /if \(!this\._cockpitDisplayPortalActive\)[\s\S]*?this\._standardDisplayScrollTop = this\._ppToggles\?\.scrollTop/,
+  );
+  assert.match(
+    ui,
+    /if \(this\._cockpitDisplayPortalActive\)[\s\S]*?this\._cockpitDisplayScrollTop = this\._cockpitDisplayPanel\?\.scrollTop/,
+  );
+  assert.match(
+    ui,
+    /this\._cockpitDisplayPanel\.scrollTop = this\._cockpitDisplayScrollTop[\s\S]*?this\._ppToggles\.scrollTop = this\._standardDisplayScrollTop/,
+  );
 });
 
 test('Cockpit side surfaces behave as two single-expanded accordions', () => {
@@ -381,10 +630,16 @@ test('fresh Cockpit entry temporarily collapses map panels and exit restores the
     'global-context-panel',
     'radio-panel',
   ]) {
-    assert.match(entryPanels[1], new RegExp(`'${panelId}'`), `${panelId} must collapse on entry`);
+    assert.match(
+      entryPanels[1],
+      new RegExp(`'${panelId}'`),
+      `${panelId} must collapse on entry`,
+    );
   }
 
-  const callback = ui.match(/onEntered: \(\) => \{([\s\S]*?)\n      \},\n      onExited:/);
+  const callback = ui.match(
+    /onEntered: \(\) => \{([\s\S]*?)\n      \},\n      onExited:/,
+  );
   assert.ok(callback, 'Cockpit onEntered callback is missing');
   assert.match(
     callback[1],
@@ -394,14 +649,18 @@ test('fresh Cockpit entry temporarily collapses map panels and exit restores the
   assert.match(
     callback[1],
     /_cockpitPanelRestore\s*\.set\(\s*panelId,\s*panel\s*\.classList\s*\.contains\(\s*'collapsed',?\s*\),?\s*\)/,
-    'entry must remember each panel\'s exact collapsed state before hiding it',
+    "entry must remember each panel's exact collapsed state before hiding it",
   );
   assert.match(
     callback[1],
     /for \(const panelId of COCKPIT_ENTRY_COLLAPSE_PANEL_IDS\)[\s\S]*?setPanelCollapsed\(panelId, true, \{[\s\S]*?persist: false,[\s\S]*?syncShare: false,/,
     'map panels must collapse without rewriting the normal saved/share layout',
   );
-  assert.match(callback[1], /setContextCollapsed\(false\)/, 'Cockpit Contact rail must open');
+  assert.match(
+    callback[1],
+    /setContextCollapsed\(false\)/,
+    'Cockpit Contact rail must open',
+  );
   assert.match(
     callback[1],
     /setSignalCollapsed\(false, \{ user: true \}\)/,
@@ -413,7 +672,9 @@ test('fresh Cockpit entry temporarily collapses map panels and exit restores the
     'normal Context must not reopen over Cockpit',
   );
 
-  const exitCallback = ui.match(/onExited: \(\) => \{([\s\S]*?)\n      \},\n      restoreTrackingFrame:/);
+  const exitCallback = ui.match(
+    /onExited: \(\) => \{([\s\S]*?)\n      \},\n      restoreTrackingFrame:/,
+  );
   assert.ok(exitCallback, 'Cockpit onExited callback is missing');
   assert.match(
     exitCallback[1],
@@ -428,7 +689,10 @@ test('fresh Cockpit entry temporarily collapses map panels and exit restores the
 
   const navigation = ui.slice(
     ui.indexOf("if (normalized === 'next' || normalized === 'previous')"),
-    ui.indexOf("return {\n      ok: false,\n      action: 'control_cockpit'", ui.indexOf("if (normalized === 'next' || normalized === 'previous')")),
+    ui.indexOf(
+      "return {\n      ok: false,\n      action: 'control_cockpit'",
+      ui.indexOf("if (normalized === 'next' || normalized === 'previous')"),
+    ),
   );
   assert.doesNotMatch(
     navigation,
@@ -438,10 +702,22 @@ test('fresh Cockpit entry temporarily collapses map panels and exit restores the
 });
 
 test('real disclosure changes reconsider only their own temporary panel lane', () => {
-  const collapse = memberSource(ui, '  setPanelCollapsed(panelId, collapsed, {');
-  assert.match(collapse, /classList\s*\.contains\(\s*'collapsed',?\s*\)\s*===\s*nextCollapsed\s*&&\s*!wasAutoCollapsed[\s\S]*?return;/);
-  assert.match(collapse, /_rightPanelStack\?\.contains\(panelEl\)[\s\S]*?_scheduleRightPanelLayout\(\{ reconsiderAutoCollapse: true \}\)/);
-  assert.match(collapse, /_scheduleLeftPanelLayout\(\{[\s\S]*?reconsiderAutoCollapse: this\._leftPanelStack\?\.contains\(panelEl\) === true/);
+  const collapse = memberSource(
+    ui,
+    '  setPanelCollapsed(panelId, collapsed, {',
+  );
+  assert.match(
+    collapse,
+    /classList\s*\.contains\(\s*'collapsed',?\s*\)\s*===\s*nextCollapsed\s*&&\s*!wasAutoCollapsed[\s\S]*?return;/,
+  );
+  assert.match(
+    collapse,
+    /_rightPanelStack\?\.contains\(panelEl\)[\s\S]*?_scheduleRightPanelLayout\(\{ reconsiderAutoCollapse: true \}\)/,
+  );
+  assert.match(
+    collapse,
+    /_scheduleLeftPanelLayout\(\{[\s\S]*?reconsiderAutoCollapse: this\._leftPanelStack\?\.contains\(panelEl\) === true/,
+  );
 });
 
 test('Cockpit hides the complete top-center globe action group', () => {
@@ -458,25 +734,42 @@ test('Cockpit hides the complete top-center globe action group', () => {
 
 test('Reset releases Contact camera ownership through its selection-preserving route', () => {
   const resetStart = ui.indexOf('resetToGlobeView()');
-  const contextRelease = ui.indexOf("militaryAwarenessLayer.releaseCameraOwnership?.({ origin: 'tool' })", resetStart);
-  const satelliteRelease = ui.indexOf("satellitesLayer.stopTracking?.({ origin: 'tool' })", resetStart);
+  const contextRelease = ui.indexOf(
+    "militaryAwarenessLayer.releaseCameraOwnership?.({ origin: 'tool' })",
+    resetStart,
+  );
+  const satelliteRelease = ui.indexOf(
+    "satellitesLayer.stopTracking?.({ origin: 'tool' })",
+    resetStart,
+  );
 
   assert.ok(resetStart >= 0);
   assert.ok(contextRelease > resetStart);
   assert.ok(satelliteRelease > contextRelease);
-  assert.match(ui, /this\._cockpitResetGlobeBtn = document\.getElementById\('cockpit-reset-globe'\)/);
+  assert.match(
+    ui,
+    /this\._cockpitResetGlobeBtn = document\.getElementById\('cockpit-reset-globe'\)/,
+  );
   assert.match(
     ui,
     /for \(const button of \[this\._resetGlobeBtn, this\._cockpitResetGlobeBtn\]\) \{[\s\S]*?addEventListener\('click', this\._globeResetHandler\)/,
     'both reset controls must delegate to the one shared reset route',
   );
-  assert.match(ui, /if \(this\.resetGlobeButton\) this\.resetGlobeButton\.hidden = false;/);
-  assert.match(ui, /if \(this\.resetGlobeButton\) this\.resetGlobeButton\.hidden = true;/);
+  assert.match(
+    ui,
+    /if \(this\.resetGlobeButton\) this\.resetGlobeButton\.hidden = false;/,
+  );
+  assert.match(
+    ui,
+    /if \(this\.resetGlobeButton\) this\.resetGlobeButton\.hidden = true;/,
+  );
 });
 
 test('Location navigation releases immediate routes before flight and deferred routes after resolution', () => {
   const releaseStart = ui.indexOf('  _releaseFollowCamera(');
-  const locationFlight = ui.indexOf('_flyWithTransition(cityChanged, flyAction)');
+  const locationFlight = ui.indexOf(
+    '_flyWithTransition(cityChanged, flyAction)',
+  );
   const search = ui.indexOf('searchAndFlyTo(this.viewer, query, {');
   const voiceStart = voiceActions.indexOf('beginDeferredLocationNavigation');
 
@@ -489,21 +782,47 @@ test('Location navigation releases immediate routes before flight and deferred r
     ui.slice(locationFlight, locationFlight + 900),
     /this\._runExplicitNavigation\('location',[\s\S]*?flyAction\(/,
   );
-  const cityHandler = ui.slice(ui.indexOf('_onCityPillClick(cityId) {'), ui.indexOf('_onPoiClick(cityId, poiIndex) {'));
-  const poiHandler = ui.slice(ui.indexOf('_onPoiClick(cityId, poiIndex) {'), ui.indexOf('_expandPOIRow(cityId) {'));
-  assert.match(cityHandler, /if \(result === false\) return;[\s\S]*?_setActiveLocation/);
-  assert.match(poiHandler, /if \(result === false\) return;[\s\S]*?_setActiveLocation/);
-  assert.match(ui.slice(search, search + 320), /beforeFly: \(\) => this\._reassertNavigationHandoff\(generation\)/);
+  const cityHandler = ui.slice(
+    ui.indexOf('_onCityPillClick(cityId) {'),
+    ui.indexOf('_onPoiClick(cityId, poiIndex) {'),
+  );
+  const poiHandler = ui.slice(
+    ui.indexOf('_onPoiClick(cityId, poiIndex) {'),
+    ui.indexOf('_expandPOIRow(cityId) {'),
+  );
+  assert.match(
+    cityHandler,
+    /if \(result === false\) return;[\s\S]*?_setActiveLocation/,
+  );
+  assert.match(
+    poiHandler,
+    /if \(result === false\) return;[\s\S]*?_setActiveLocation/,
+  );
+  assert.match(
+    ui.slice(search, search + 320),
+    /beforeFly: \(\) => this\._reassertNavigationHandoff\(generation\)/,
+  );
   assert.ok(voiceStart >= 0, 'voice Location must use the same handoff');
-  assert.match(voiceActions, /styleManager\.reassertDeferredLocationNavigation\(generation\)/);
+  assert.match(
+    voiceActions,
+    /styleManager\.reassertDeferredLocationNavigation\(generation\)/,
+  );
 });
 
 test('Cockpit Radio station changes preserve first-person camera ownership', () => {
-  const cycleHelper = ui.match(/const cycleRadio = \(direction, \{ rotate = true \} = \{\}\) => \{([\s\S]*?)\n    \};/);
+  const cycleHelper = ui.match(
+    /const cycleRadio = \(direction, \{ rotate = true \} = \{\}\) => \{([\s\S]*?)\n    \};/,
+  );
   assert.ok(cycleHelper, 'shared Radio cycle helper is missing');
   assert.match(cycleHelper[1], /cycleStation\(direction, \{[\s\S]*?rotate,/);
-  assert.match(ui, /_radioPrevBtn\?\.addEventListener\('click', \(\) => cycleRadio\(-1\)\)/);
-  assert.match(ui, /_contextRadioMiniNextBtn\s*\?\s*\.addEventListener\(\s*'click',\s*\(,?\s*\)\s*=>\s*cycleRadio\(\s*1,?\s*\),?\s*\)/);
+  assert.match(
+    ui,
+    /_radioPrevBtn\?\.addEventListener\('click', \(\) => cycleRadio\(-1\)\)/,
+  );
+  assert.match(
+    ui,
+    /_contextRadioMiniNextBtn\s*\?\s*\.addEventListener\(\s*'click',\s*\(,?\s*\)\s*=>\s*cycleRadio\(\s*1,?\s*\),?\s*\)/,
+  );
   assert.match(
     ui,
     /_cockpitRadioPrevBtn\s*\?\s*\.addEventListener\(\s*'click',\s*\(,?\s*\)\s*=>\s*cycleRadio\(\s*-1,\s*\{\s*rotate:\s*false,?\s*\},?\s*\),?\s*\)/,
@@ -515,9 +834,16 @@ test('Cockpit Radio station changes preserve first-person camera ownership', () 
 });
 
 test('Cockpit panel corridors reserve the owned topline readouts', () => {
-  const leftObstacles = ui.match(/const LEFT_STACK_OBSTACLE_SELECTOR = \[([\s\S]*?)\]\.join/);
-  const rightObstacles = ui.match(/const RIGHT_STACK_OBSTACLE_SELECTOR = \[([\s\S]*?)\]\.join/);
-  assert.ok(leftObstacles && rightObstacles, 'responsive panel obstacle selectors are missing');
+  const leftObstacles = ui.match(
+    /const LEFT_STACK_OBSTACLE_SELECTOR = \[([\s\S]*?)\]\.join/,
+  );
+  const rightObstacles = ui.match(
+    /const RIGHT_STACK_OBSTACLE_SELECTOR = \[([\s\S]*?)\]\.join/,
+  );
+  assert.ok(
+    leftObstacles && rightObstacles,
+    'responsive panel obstacle selectors are missing',
+  );
   assert.match(leftObstacles[1], /#cockpit-hud \.cockpit-topline/);
   assert.match(rightObstacles[1], /#cockpit-hud \.cockpit-topline/);
   assert.match(leftObstacles[1], /#cockpit-hud \.cockpit-topline > div/);
@@ -529,10 +855,12 @@ test('Cockpit panel corridors reserve the owned topline readouts', () => {
   assert.doesNotMatch(
     leftLayout[1],
     /setProperty\('--cockpit-utility-top'/,
-    'the right margin must not borrow the left accordion corridor: it is solved '
-      + 'against left-lane obstacles and put the strip through the briefing card',
+    'the right margin must not borrow the left accordion corridor: it is solved ' +
+      'against left-lane obstacles and put the strip through the briefing card',
   );
-  const signalLayout = ui.match(/syncSignalLayout\(\) \{([\s\S]*?)\n  \}\n\n  dispose\(\)/);
+  const signalLayout = ui.match(
+    /syncSignalLayout\(\) \{([\s\S]*?)\n  \}\n\n  dispose\(\)/,
+  );
   assert.ok(signalLayout, 'Cockpit signal layout method is missing');
   assert.match(
     signalLayout[1],
@@ -548,8 +876,8 @@ test('Cockpit panel corridors reserve the owned topline readouts', () => {
   assert.match(
     signalLayout[1],
     /const\s*recBounds\s*=\s*isRenderedOnScreen\(\s*recReadout,?\s*\)\s*\?\s*recReadout\s*\.getBoundingClientRect\(,?\s*\)\s*:\s*null;/,
-    'HUD Off retires the Intel HUD with visibility/opacity, which leaves the REC '
-      + 'readout a rect — a rect test alone would anchor the strip to an invisible readout',
+    'HUD Off retires the Intel HUD with visibility/opacity, which leaves the REC ' +
+      'readout a rect — a rect test alone would anchor the strip to an invisible readout',
   );
   assert.match(
     ui,
@@ -558,22 +886,31 @@ test('Cockpit panel corridors reserve the owned topline readouts', () => {
   assert.match(
     ui,
     /_leftStackHudTransitionHandler = \(event\) => \{[\s\S]*?_scheduleLeftPanelLayout\(\{ reconsiderAutoCollapse: true \}\);[\s\S]*?this\.cockpitView\?\.scheduleContextLayout\(\);/,
-    'the strip must remeasure on the same HUD fade the accordion does — the REC '
-      + 'readout keeps its rect until the transition ends',
+    'the strip must remeasure on the same HUD fade the accordion does — the REC ' +
+      'readout keeps its rect until the transition ends',
   );
   assert.doesNotMatch(
     signalLayout[1],
     /Math\.max\(120,/,
     'the 120px corridor floor can never be reached by a 107px strip and only hid the collision',
   );
-  assert.match(signalLayout[1], /const availableHeight = utilityAnchor\.maxHeight;/);
-  assert.match(signalLayout[1], /cockpit-utility-controls[\s\S]*?--cockpit-utility-max-height/);
+  assert.match(
+    signalLayout[1],
+    /const availableHeight = utilityAnchor\.maxHeight;/,
+  );
+  assert.match(
+    signalLayout[1],
+    /cockpit-utility-controls[\s\S]*?--cockpit-utility-max-height/,
+  );
   assert.match(
     css,
     /\.cockpit-utility-controls\s*\{[\s\S]*?top:\s*var\(--cockpit-utility-top, var\(--left-stack-safe-top, var\(--left-stack-top\)\)\)/,
     'the first frame before Cockpit publishes an anchor still needs the fallback chain',
   );
-  assert.match(css, /body\.cockpit-mode #left-panel-stack\s*\{[\s\S]*?transition:\s*none;/);
+  assert.match(
+    css,
+    /body\.cockpit-mode #left-panel-stack\s*\{[\s\S]*?transition:\s*none;/,
+  );
 });
 
 test('an expanded Cockpit left panel stays above Contact, HUD, and attribution', () => {
@@ -599,15 +936,14 @@ test('an expanded Cockpit left panel stays above Contact, HUD, and attribution',
   const cockpitIntelHud = css.match(
     /body\.cockpit-mode #intel-hud\.active\s*\{[\s\S]*?z-index:\s*(\d+);/,
   );
-  const leftStack = css.match(/body\.cockpit-mode #left-panel-stack\s*\{[\s\S]*?z-index:\s*(\d+);/);
+  const leftStack = css.match(
+    /body\.cockpit-mode #left-panel-stack\s*\{[\s\S]*?z-index:\s*(\d+);/,
+  );
   assert.ok(cockpitHud && cockpitIntelHud && leftStack);
   assert.ok(Number(leftStack[1]) > Number(cockpitHud[1]));
   assert.ok(Number(leftStack[1]) > Number(cockpitIntelHud[1]));
   // Long layer lists scroll inside the panel instead of being clipped away.
-  assert.match(
-    css,
-    /\.data-toggle-list\s*\{[\s\S]*?overflow-y:\s*auto;/,
-  );
+  assert.match(css, /\.data-toggle-list\s*\{[\s\S]*?overflow-y:\s*auto;/);
   assert.match(
     css,
     /#left-panel-stack > #data-panel:not\(\.collapsed\) \.data-panel-inner[\s\S]*?\{[\s\S]*?height:\s*100%;[\s\S]*?max-height:\s*100%;/,
@@ -616,12 +952,24 @@ test('an expanded Cockpit left panel stays above Contact, HUD, and attribution',
 
 test('Cockpit side rulers stay behind interactive panel surfaces', () => {
   const cockpitHud = css.match(/#cockpit-hud\s*\{[\s\S]*?z-index:\s*(\d+);/);
-  const leftStack = css.match(/body\.cockpit-mode #left-panel-stack\s*\{[\s\S]*?z-index:\s*(\d+);/);
-  const sideRuler = css.match(/\.cockpit-altitude-rim\s*\{[\s\S]*?z-index:\s*(\d+);/);
-  const context = css.match(/\.cockpit-context-window\s*\{[\s\S]*?z-index:\s*(\d+);/);
-  const signals = css.match(/\.cockpit-signal-window\s*\{[\s\S]*?z-index:\s*(\d+);/);
-  const utilities = css.match(/\.cockpit-utility-controls\s*\{[\s\S]*?z-index:\s*(\d+);/);
-  assert.ok(cockpitHud && leftStack && sideRuler && context && signals && utilities);
+  const leftStack = css.match(
+    /body\.cockpit-mode #left-panel-stack\s*\{[\s\S]*?z-index:\s*(\d+);/,
+  );
+  const sideRuler = css.match(
+    /\.cockpit-altitude-rim\s*\{[\s\S]*?z-index:\s*(\d+);/,
+  );
+  const context = css.match(
+    /\.cockpit-context-window\s*\{[\s\S]*?z-index:\s*(\d+);/,
+  );
+  const signals = css.match(
+    /\.cockpit-signal-window\s*\{[\s\S]*?z-index:\s*(\d+);/,
+  );
+  const utilities = css.match(
+    /\.cockpit-utility-controls\s*\{[\s\S]*?z-index:\s*(\d+);/,
+  );
+  assert.ok(
+    cockpitHud && leftStack && sideRuler && context && signals && utilities,
+  );
   assert.ok(Number(leftStack[1]) > Number(cockpitHud[1]));
   assert.ok(Number(context[1]) > Number(sideRuler[1]));
   assert.ok(Number(signals[1]) > Number(sideRuler[1]));
@@ -646,19 +994,49 @@ test('Cockpit Display portals shared HUD, Detection, Parameters, and 3D controls
     ui,
     /window\s*\.removeEventListener\(\s*'gev:cockpit-mode-changed',\s*this\s*\._cockpitDisplayModeHandler,?\s*\)[\s\S]*?_setCockpitDisplayPortalActive\(\s*false,?\s*\)[\s\S]*?record\s*\.anchor\s*\.remove\(,?\s*\)/,
   );
-  assert.doesNotMatch(ui, /_cycleCockpitHud|_cockpitModels3dToggle|_cockpitDetectionToggle/);
+  assert.doesNotMatch(
+    ui,
+    /_cycleCockpitHud|_cockpitModels3dToggle|_cockpitDetectionToggle/,
+  );
   assert.equal((html.match(/id="style-buttons"/g) || []).length, 1);
   assert.equal((html.match(/id="param-slider-panel"/g) || []).length, 1);
-  assert.match(html, /data-cockpit-display-slot="detection"[\s\S]*?data-cockpit-display-slot="parameters"[\s\S]*?data-cockpit-display-slot="models3d"/);
-  assert.match(ui, /_revealStyleParameters\(\) \{[\s\S]*?if \(this\._cockpitDisplayPortalActive\) return;/);
+  assert.match(
+    html,
+    /data-cockpit-display-slot="detection"[\s\S]*?data-cockpit-display-slot="parameters"[\s\S]*?data-cockpit-display-slot="models3d"/,
+  );
+  assert.match(
+    ui,
+    /_revealStyleParameters\(\) \{[\s\S]*?if \(this\._cockpitDisplayPortalActive\) return;/,
+  );
   assert.match(ui, /closest\?\.\('\.cockpit-vision-controls'\)\) return;/);
-  assert.match(ui, /_revealCockpitStyleParameters\(\{ openDisplay = false \} = \{\}\) \{[\s\S]*?openDisplay[\s\S]*?_setCockpitDisclosure\?\.\('display', true\)[\s\S]*?aria-expanded'\) !== 'true'[\s\S]*?classList\.remove\('collapsed'\)/);
-  assert.match(ui, /if \(displayOpen\) this\._revealCockpitStyleParameters\(\);/);
-  assert.match(ui, /setVisionMode\(modes\[nextIndex\], \{ revealParameters: true \}\);/);
-  assert.match(css, /\.cockpit-display-slot\s*\{[\s\S]*?display:\s*block;[\s\S]*?min-width:\s*0;/);
-  assert.match(css, /#cockpit-display-panel \.pp-toggle-group\s*\{\s*width:\s*100%/);
-  assert.match(css, /#cockpit-display-panel \.pp-toggle-group\s*\{[\s\S]*?min-width:\s*0;/);
-  assert.match(css, /#cockpit-display-panel \.pp-toggle-btn\s*\{[\s\S]*?width:\s*100%/);
+  assert.match(
+    ui,
+    /_revealCockpitStyleParameters\(\{ openDisplay = false \} = \{\}\) \{[\s\S]*?openDisplay[\s\S]*?_setCockpitDisclosure\?\.\('display', true\)[\s\S]*?aria-expanded'\) !== 'true'[\s\S]*?classList\.remove\('collapsed'\)/,
+  );
+  assert.match(
+    ui,
+    /if \(displayOpen\) this\._revealCockpitStyleParameters\(\);/,
+  );
+  assert.match(
+    ui,
+    /setVisionMode\(modes\[nextIndex\], \{ revealParameters: true \}\);/,
+  );
+  assert.match(
+    css,
+    /\.cockpit-display-slot\s*\{[\s\S]*?display:\s*block;[\s\S]*?min-width:\s*0;/,
+  );
+  assert.match(
+    css,
+    /#cockpit-display-panel \.pp-toggle-group\s*\{\s*width:\s*100%/,
+  );
+  assert.match(
+    css,
+    /#cockpit-display-panel \.pp-toggle-group\s*\{[\s\S]*?min-width:\s*0;/,
+  );
+  assert.match(
+    css,
+    /#cockpit-display-panel \.pp-toggle-btn\s*\{[\s\S]*?width:\s*100%/,
+  );
 });
 
 test('mobile Cockpit prioritizes flight instruments and collision-safe controls', () => {
@@ -666,24 +1044,37 @@ test('mobile Cockpit prioritizes flight instruments and collision-safe controls'
     /@media \(max-width: 760px\) \{([\s\S]*?)\n\}\n\n@media \(prefers-reduced-motion/,
   );
   assert.ok(mobileCockpit, 'mobile Cockpit rules are missing');
-  assert.match(mobileCockpit[1], /body\.cockpit-mode #left-panel-stack,[\s\S]*?display:\s*none\s*!important;/);
+  assert.match(
+    mobileCockpit[1],
+    /body\.cockpit-mode #left-panel-stack,[\s\S]*?display:\s*none\s*!important;/,
+  );
   assert.match(mobileCockpit[1], /body\.cockpit-mode #intel-hud/);
   assert.match(mobileCockpit[1], /body\.cockpit-mode \.cockpit-context-window/);
   assert.match(mobileCockpit[1], /body\.cockpit-mode \.cockpit-signal-window/);
-  assert.match(mobileCockpit[1], /body\.cockpit-mode \.cockpit-utility-controls[\s\S]*?bottom:\s*152px;/);
-  assert.match(mobileCockpit[1], /body\.cockpit-mode \.cockpit-utility-control\.is-expanded[\s\S]*?top:\s*96px;/);
-  assert.match(mobileCockpit[1], /body\.cockpit-mode \.cockpit-utility-popover[\s\S]*?position:\s*static;/);
+  assert.match(
+    mobileCockpit[1],
+    /body\.cockpit-mode \.cockpit-utility-controls[\s\S]*?bottom:\s*152px;/,
+  );
+  assert.match(
+    mobileCockpit[1],
+    /body\.cockpit-mode \.cockpit-utility-control\.is-expanded[\s\S]*?top:\s*96px;/,
+  );
+  assert.match(
+    mobileCockpit[1],
+    /body\.cockpit-mode \.cockpit-utility-popover[\s\S]*?position:\s*static;/,
+  );
   assert.match(
     mobileCockpit[1],
     /body\.cockpit-mode #view-switcher \{[\s\S]*?bottom:\s*max\(76px, env\(safe-area-inset-bottom\)\);[\s\S]*?max-width:\s*calc\(100vw - 20px\);/,
   );
-  assert.match(mobileCockpit[1], /body\.cockpit-mode #view-switcher button \{[\s\S]*?padding-inline:\s*9px;/);
+  assert.match(
+    mobileCockpit[1],
+    /body\.cockpit-mode #view-switcher button \{[\s\S]*?padding-inline:\s*9px;/,
+  );
 });
 
 test('cockpit route direction uses self-contained vector artwork, not a font ligature', () => {
-  const match = html.match(
-    /<div id="cockpit-route-direction"[\s\S]*?<\/div>/,
-  );
+  const match = html.match(/<div id="cockpit-route-direction"[\s\S]*?<\/div>/);
   assert.ok(match, 'cockpit route-direction markup is missing');
   assert.match(match[0], /<svg class="cockpit-route-chevron"/);
   assert.match(match[0], /<path d="[^"]+"/);
@@ -698,7 +1089,10 @@ test('cockpit aircraft handoff invalidates the prior world-position anchor', () 
   assert.ok(match, 'cockpit tracked-entity handoff block is missing');
   assert.match(match[1], /this\.viewer\.trackedEntity = undefined;/);
   assert.match(match[1], /this\.cockpitAnchorValid = false;/);
-  assert.match(match[1], /this\.heading = normalizeHeading\(info\.track \?\? 0\);/);
+  assert.match(
+    match[1],
+    /this\.heading = normalizeHeading\(info\.track \?\? 0\);/,
+  );
   assert.match(match[1], /this\.lastFrameMs = nowMs;/);
 });
 
@@ -713,15 +1107,19 @@ test('cockpit weather control is off before JavaScript restores an explicit opt-
 });
 
 test('cockpit summary presents the focused item as Contact', () => {
-  const match = html.match(
-    /<aside id="cockpit-context"[\s\S]*?<\/aside>/,
-  );
+  const match = html.match(/<aside id="cockpit-context"[\s\S]*?<\/aside>/);
   assert.ok(match, 'cockpit Contact summary is missing');
   assert.match(match[0], /aria-label="Contact cockpit summary"/);
   assert.match(match[0], /class="cockpit-context-kicker">CONTACT</);
   assert.match(match[0], /aria-label="Contact navigation"/);
-  assert.match(match[0], /aria-label="Previous — prior visited contact in the 250 km window"/);
-  assert.match(match[0], /aria-label="Next — nearest unvisited contact in the 250 km window"/);
+  assert.match(
+    match[0],
+    /aria-label="Previous — prior visited contact in the 250 km window"/,
+  );
+  assert.match(
+    match[0],
+    /aria-label="Next — nearest unvisited contact in the 250 km window"/,
+  );
   assert.match(match[0], /aria-label="Collapse Contact panel"/);
   assert.doesNotMatch(match[0], />GLOBAL CONTEXT</);
   assert.match(ui, /`\$\{expanded \? 'Collapse' : 'Expand'\} Contact panel`/);
@@ -741,12 +1139,18 @@ test('Global Context names its mixed contact cycle without changing the stable m
   assert.ok(match, 'Global Context contacts button is missing');
   assert.match(match[0], />CONTACTS</);
   assert.match(match[0], /aria-label="CONTACTS"/);
-  assert.match(match[0], /title="Cycles the nearest contacts of whatever type you select — planes, vessels, installations\. Satellites track independently\."/);
+  assert.match(
+    match[0],
+    /title="Cycles the nearest contacts of whatever type you select — planes, vessels, installations\. Satellites track independently\."/,
+  );
   assert.doesNotMatch(match[0], />FLIGHTS</);
 });
 
 test('Global Context uses its dedicated right rail without a duplicate Data Layers row', () => {
-  assert.match(contextLayer, /id:\s*'military-awareness'[\s\S]*?showInTogglePanel:\s*false/);
+  assert.match(
+    contextLayer,
+    /id:\s*'military-awareness'[\s\S]*?showInTogglePanel:\s*false/,
+  );
   assert.match(manager, /if \(!layer\.showInTogglePanel\) continue;/);
   assert.match(html, /id="global-context-panel"/);
   assert.match(html, /id="global-context-flights-btn"/);
@@ -754,9 +1158,7 @@ test('Global Context uses its dedicated right rail without a duplicate Data Laye
 });
 
 test('Global Context standby describes both chooser modes', () => {
-  const match = html.match(
-    /<div id="context-mode-standby"[\s\S]*?<\/div>/,
-  );
+  const match = html.match(/<div id="context-mode-standby"[\s\S]*?<\/div>/);
   assert.ok(match, 'Global Context standby is missing');
   assert.match(match[0], /CONTACTS — nearest planes · vessels · sites/);
   assert.match(match[0], /SPACE MISSIONS — launches &amp; orbital assets/);
@@ -770,13 +1172,19 @@ test('cockpit briefing cycle control keeps its state as the accessible name', ()
   assert.match(match[0], /aria-label="CYCLE OFF"/);
   assert.match(match[0], /aria-pressed="false"/);
   assert.match(match[0], />CYCLE OFF<\/button>/);
-  assert.match(match[0], /title="Cycle briefing pages automatically every 9 seconds \(Signals → News → Local\)\./);
+  assert.match(
+    match[0],
+    /title="Cycle briefing pages automatically every 9 seconds \(Signals → News → Local\)\./,
+  );
 
   const update = ui.match(
     /setBriefAutoRotate\(enabled\) \{([\s\S]*?)\n  \}\n\n  startBriefRotation/,
   );
   assert.ok(update, 'cockpit briefing cycle state updater is missing');
-  assert.match(update[1], /const label = this\.briefAutoRotateEnabled \? 'CYCLE ON' : 'CYCLE OFF';/);
+  assert.match(
+    update[1],
+    /const label = this\.briefAutoRotateEnabled \? 'CYCLE ON' : 'CYCLE OFF';/,
+  );
   assert.match(update[1], /setAttribute\('aria-label', label\)/);
   assert.match(update[1], /\.title = help;/);
   assert.doesNotMatch(update[1], /setAttribute\('aria-label', help\)/);
@@ -794,9 +1202,18 @@ test('voice Cockpit entry honours a requested contact layer before it enters', (
   const gateIndex = branch.indexOf('isEntryAllowed?.()');
   const retargetIndex = branch.indexOf('_retargetCockpitEntryLayer(');
   const enterIndex = branch.indexOf('enterCockpitWithTracking({');
-  assert.ok(gateIndex >= 0, 'entry consults the same gate the manual chip uses');
-  assert.ok(retargetIndex > gateIndex, 'the requested layer is resolved after the gate');
-  assert.ok(enterIndex > retargetIndex, 'and BEFORE the entry transaction runs');
+  assert.ok(
+    gateIndex >= 0,
+    'entry consults the same gate the manual chip uses',
+  );
+  assert.ok(
+    retargetIndex > gateIndex,
+    'the requested layer is resolved after the gate',
+  );
+  assert.ok(
+    enterIndex > retargetIndex,
+    'and BEFORE the entry transaction runs',
+  );
   // The retarget must be REACHED, not merely present: a guard that can never be
   // true reproduces the original defect while keeping the call in the source.
   assert.match(
@@ -819,8 +1236,15 @@ test('voice Cockpit entry honours a requested contact layer before it enters', (
     /militaryAwarenessLayer\.navigateNext\(\{\s*targetLayer,\s*aircraftClass,\s*origin: 'voice',\s*\}\)/,
     'retargeting reuses filtered navigation with durable voice selection authority',
   );
-  assert.match(retarget, /Cockpit flies aircraft only/, 'non-aircraft layers are refused by name');
-  assert.match(retarget, /No \$\{filtered\}\$\{label\} contact is available to enter/);
+  assert.match(
+    retarget,
+    /Cockpit flies aircraft only/,
+    'non-aircraft layers are refused by name',
+  );
+  assert.match(
+    retarget,
+    /No \$\{filtered\}\$\{label\} contact is available to enter/,
+  );
 });
 
 test('voice Cockpit entry refuses when the entry gate is shut', () => {

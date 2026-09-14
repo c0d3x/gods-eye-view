@@ -2,7 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ShareLinkManager, decodeShareCreatedAtMs } from './sharelink.js';
 import { createDefaultLayerState } from './data/layerState.js';
-import { looseIndexOf, memberSource, readUiSource } from './testing/uiSources.mjs';
+import {
+  looseIndexOf,
+  memberSource,
+  readUiSource,
+} from './testing/uiSources.mjs';
 
 const uiSource = readUiSource();
 
@@ -57,8 +61,14 @@ test('share links without cr default the celestial ring off', () => {
 });
 
 test('share links parse explicit celestial on and off states', () => {
-  assert.equal(makeManager('#lat=10&lon=20&cr=1').parseInitialHash().celestialRing, true);
-  assert.equal(makeManager('#lat=10&lon=20&cr=0').parseInitialHash().celestialRing, false);
+  assert.equal(
+    makeManager('#lat=10&lon=20&cr=1').parseInitialHash().celestialRing,
+    true,
+  );
+  assert.equal(
+    makeManager('#lat=10&lon=20&cr=0').parseInitialHash().celestialRing,
+    false,
+  );
 });
 
 test('unknown-only v2 layer tokens are invalid, while historical l fields stay inert', () => {
@@ -77,27 +87,43 @@ test('share-link serialization emits the current celestial state', () => {
   manager.onToggleChange(false, false, { celestialRingEnabled: false });
   clearTimeout(manager._debounceTimer);
   manager._updateHash();
-  assert.equal(new URLSearchParams(window.location.hash.slice(1)).get('cr'), '0');
+  assert.equal(
+    new URLSearchParams(window.location.hash.slice(1)).get('cr'),
+    '0',
+  );
 
   manager.onToggleChange(false, false, { celestialRingEnabled: true });
   clearTimeout(manager._debounceTimer);
   manager._updateHash();
-  assert.equal(new URLSearchParams(window.location.hash.slice(1)).get('cr'), '1');
+  assert.equal(
+    new URLSearchParams(window.location.hash.slice(1)).get('cr'),
+    '1',
+  );
 });
 
 test('generated links are v2 and include deterministic layers, options, style params, and panels', () => {
   const manager = makeManager();
   const layers = createDefaultLayerState();
   layers.enabledLayerIds = ['cctv', 'radio'];
-  layers.options.cctv = { coverageMode: 'viewshed', showProjection: false, autoHop: true };
+  layers.options.cctv = {
+    coverageMode: 'viewshed',
+    showProjection: false,
+    autoHop: true,
+  };
   layers.options.radio = { filter: 'news', volume: 0.45 };
   manager.setLayerStateProvider(() => layers);
-  manager.setPanelStateProvider(() => ({ specs: [
-    { id: 'control-panel', collapsed: false, pinned: true },
-    { id: 'param-slider-panel', collapsed: true },
-  ] }));
+  manager.setPanelStateProvider(() => ({
+    specs: [
+      { id: 'control-panel', collapsed: false, pinned: true },
+      { id: 'param-slider-panel', collapsed: true },
+    ],
+  }));
   manager.setStyleParamStateProvider(() => ({
-    sensitivity: 0.82, bloom: 0.37, mode: 1, pixelation: 2.6, palette: 1,
+    sensitivity: 0.82,
+    bloom: 0.37,
+    mode: 1,
+    pixelation: 2.6,
+    palette: 1,
   }));
   manager.onStyleChange('thermal');
   clearTimeout(manager._debounceTimer);
@@ -114,13 +140,20 @@ test('visual parameters, explicit empty layers, and panel state are v2-only', ()
     '#v=2&lat=10&lon=20&style=flir&l=&sp=s.82_b.37_p.260&ui=c.c.0_c.p.1_d.c.1_d.p.1',
   ).parseInitialHash();
   assert.deepEqual(parsed.layerState.enabledLayerIds, []);
-  assert.deepEqual(parsed.styleParams, { sensitivity: 0.82, bloom: 0.37, pixelation: 2.6 });
-  assert.deepEqual(parsed.panelState, { specs: [
-    { id: 'control-panel', collapsed: false, pinned: true },
-    { id: 'data-panel', collapsed: true, pinned: null },
-  ] });
-  const legacy = makeManager('#v=1&lat=10&lon=20&style=flir&l=&sp=s.82&ui=c.c.0')
-    .parseInitialHash();
+  assert.deepEqual(parsed.styleParams, {
+    sensitivity: 0.82,
+    bloom: 0.37,
+    pixelation: 2.6,
+  });
+  assert.deepEqual(parsed.panelState, {
+    specs: [
+      { id: 'control-panel', collapsed: false, pinned: true },
+      { id: 'data-panel', collapsed: true, pinned: null },
+    ],
+  });
+  const legacy = makeManager(
+    '#v=1&lat=10&lon=20&style=flir&l=&sp=s.82&ui=c.c.0',
+  ).parseInitialHash();
   assert.equal(legacy.layerState, null);
   assert.equal(legacy.styleParams, null);
   assert.equal(legacy.panelState, null);
@@ -132,9 +165,9 @@ test('camera-only, partial, and malformed panel shares remain valid incoming sta
   assert.equal(cameraOnly.panelState, null);
 
   const partial = makeManager('#v=2&lat=10&lon=20&ui=d.c.0').parseInitialHash();
-  assert.deepEqual(partial.panelState, { specs: [
-    { id: 'data-panel', collapsed: false, pinned: null },
-  ] });
+  assert.deepEqual(partial.panelState, {
+    specs: [{ id: 'data-panel', collapsed: false, pinned: null }],
+  });
 
   for (const hash of [
     '#v=2&lat=10&lon=20&ui=',
@@ -155,7 +188,9 @@ test('camera-only, partial, and malformed panel shares remain valid incoming sta
 // (pinned live in `scripts/qa-map-source-tray.mjs`). The camera half of such a
 // link must still restore.
 test('a retired-vocabulary link degrades to the unknown paths instead of failing', () => {
-  const parsed = makeManager('#v=2&lat=10&lon=20&map=bing-road&ui=k.c.0').parseInitialHash();
+  const parsed = makeManager(
+    '#v=2&lat=10&lon=20&map=bing-road&ui=k.c.0',
+  ).parseInitialHash();
   assert.equal(parsed.lat, 10);
   assert.equal(parsed.lon, 20);
   assert.equal(parsed.panelState, null);
@@ -194,25 +229,39 @@ test('a shared view reserves its own camera without cancelling its saved Follow'
   );
   // The shared view's own `cancelPendingSelection` must reach the stamp; other
   // stamp options may ride alongside it.
-  assert.match(deferred, /_stampNavigation\(\s*\{\s*cancelPendingSelection[^)]*,?\s*\},?\s*\)/);
+  assert.match(
+    deferred,
+    /_stampNavigation\(\s*\{\s*cancelPendingSelection[^)]*,?\s*\},?\s*\)/,
+  );
 });
 
 test('copy timestamp parsing is strict and rejects malformed or future values', () => {
   const nowMs = 2_000_000;
-  assert.equal(decodeShareCreatedAtMs(new URLSearchParams('at=1999'), { nowMs }), 1_999_000);
+  assert.equal(
+    decodeShareCreatedAtMs(new URLSearchParams('at=1999'), { nowMs }),
+    1_999_000,
+  );
   for (const raw of ['', '0', '-1', '1.5', 'abc', '001', '9007199254740992']) {
     assert.equal(
-      decodeShareCreatedAtMs(new URLSearchParams(`at=${encodeURIComponent(raw)}`), { nowMs }),
+      decodeShareCreatedAtMs(
+        new URLSearchParams(`at=${encodeURIComponent(raw)}`),
+        { nowMs },
+      ),
       null,
       raw,
     );
   }
-  assert.equal(decodeShareCreatedAtMs(new URLSearchParams('at=2001'), { nowMs }), null);
+  assert.equal(
+    decodeShareCreatedAtMs(new URLSearchParams('at=2001'), { nowMs }),
+    null,
+  );
 });
 
 test('copy adds a fresh ephemeral timestamp without aging the live URL', async () => {
   const copied = [];
-  installClipboard(async (url) => { copied.push(url); });
+  installClipboard(async (url) => {
+    copied.push(url);
+  });
   const manager = makeManager();
   manager._updateHash();
   const liveHash = window.location.hash;
@@ -222,12 +271,17 @@ test('copy adds a fresh ephemeral timestamp without aging the live URL', async (
   assert.equal(new URL(copied[0]).hash.includes('at=2000'), true);
   assert.equal(new URL(copied[1]).hash.includes('at=2002'), true);
   assert.equal(window.location.hash, liveHash);
-  assert.equal(new URLSearchParams(window.location.hash.slice(1)).has('at'), false);
+  assert.equal(
+    new URLSearchParams(window.location.hash.slice(1)).has('at'),
+    false,
+  );
 });
 
 test('copy snapshots current state while incoming hash writes are still suppressed', async () => {
   let copied = null;
-  installClipboard(async (url) => { copied = url; });
+  installClipboard(async (url) => {
+    copied = url;
+  });
   const manager = makeManager('#v=2&lat=10&lon=20&l=e&at=100');
   manager.parseInitialHash();
   assert.equal(manager._initialRestorePending, true);
@@ -238,7 +292,9 @@ test('copy snapshots current state while incoming hash writes are still suppress
 });
 
 test('clipboard rejection leaves both live URL and restore suppression untouched', async () => {
-  installClipboard(async () => { throw new Error('denied'); });
+  installClipboard(async () => {
+    throw new Error('denied');
+  });
   const manager = makeManager('#v=2&lat=10&lon=20&l=s');
   manager.parseInitialHash();
   assert.equal(await manager.copyLink({ nowMs: 4_000_000 }), false);
@@ -247,23 +303,37 @@ test('clipboard rejection leaves both live URL and restore suppression untouched
 });
 
 test('legacy Panoptic and Sparse hashes migrate to canonical profiles', () => {
-  const panoptic = makeManager('#lat=10&lon=20&dm=PANOPTIC&dd=0').parseInitialHash();
+  const panoptic = makeManager(
+    '#lat=10&lon=20&dm=PANOPTIC&dd=0',
+  ).parseInitialHash();
   assert.equal(panoptic.detectionMode, 'DENSE');
   assert.equal(panoptic.detectionDensity, 75);
-  const sparse = makeManager('#lat=10&lon=20&dm=SPARSE&dd=100').parseInitialHash();
+  const sparse = makeManager(
+    '#lat=10&lon=20&dm=SPARSE&dd=100',
+  ).parseInitialHash();
   assert.equal(sparse.detectionMode, 'SPARSE');
   assert.equal(sparse.detectionDensity, 25);
 });
 
 test('allocation strategy defaults to Elastic and round-trips Weighted', () => {
-  assert.equal(makeManager('#lat=10&lon=20').parseInitialHash().detectionAllocation, 'ELASTIC');
-  assert.equal(makeManager('#lat=10&lon=20&da=weighted').parseInitialHash().detectionAllocation, 'WEIGHTED');
+  assert.equal(
+    makeManager('#lat=10&lon=20').parseInitialHash().detectionAllocation,
+    'ELASTIC',
+  );
+  assert.equal(
+    makeManager('#lat=10&lon=20&da=weighted').parseInitialHash()
+      .detectionAllocation,
+    'WEIGHTED',
+  );
 
   const manager = makeManager();
   manager.onToggleChange(false, false, { detectionAllocation: 'WEIGHTED' });
   clearTimeout(manager._debounceTimer);
   manager._updateHash();
-  assert.equal(new URLSearchParams(window.location.hash.slice(1)).get('da'), 'weighted');
+  assert.equal(
+    new URLSearchParams(window.location.hash.slice(1)).get('da'),
+    'weighted',
+  );
 });
 
 test('keyhole fade controls default and round-trip as normalized percentages', () => {
@@ -294,23 +364,56 @@ test('keyhole fade controls default and round-trip as normalized percentages', (
 // mask, not a scope — and the next hash write serialized it straight back out.
 
 test('sce is clamped into the supported 94..100 band on the way in', () => {
-  assert.equal(makeManager('#lat=10&lon=20&sce=97').parseInitialHash().scopeTerminusPct, 97);
-  assert.equal(makeManager('#lat=10&lon=20&sce=94').parseInitialHash().scopeTerminusPct, 94);
-  assert.equal(makeManager('#lat=10&lon=20&sce=100').parseInitialHash().scopeTerminusPct, 100);
-  assert.equal(makeManager('#lat=10&lon=20&sce=0').parseInitialHash().scopeTerminusPct, 94,
-    'sce=0 must not create a sub-94 terminus');
-  assert.equal(makeManager('#lat=10&lon=20&sce=93').parseInitialHash().scopeTerminusPct, 94);
-  assert.equal(makeManager('#lat=10&lon=20&sce=-40').parseInitialHash().scopeTerminusPct, 94);
-  assert.equal(makeManager('#lat=10&lon=20&sce=500').parseInitialHash().scopeTerminusPct, 100);
-  assert.equal(makeManager('#lat=10&lon=20&sce=96.6').parseInitialHash().scopeTerminusPct, 97,
-    'fractional percents round into the band');
+  assert.equal(
+    makeManager('#lat=10&lon=20&sce=97').parseInitialHash().scopeTerminusPct,
+    97,
+  );
+  assert.equal(
+    makeManager('#lat=10&lon=20&sce=94').parseInitialHash().scopeTerminusPct,
+    94,
+  );
+  assert.equal(
+    makeManager('#lat=10&lon=20&sce=100').parseInitialHash().scopeTerminusPct,
+    100,
+  );
+  assert.equal(
+    makeManager('#lat=10&lon=20&sce=0').parseInitialHash().scopeTerminusPct,
+    94,
+    'sce=0 must not create a sub-94 terminus',
+  );
+  assert.equal(
+    makeManager('#lat=10&lon=20&sce=93').parseInitialHash().scopeTerminusPct,
+    94,
+  );
+  assert.equal(
+    makeManager('#lat=10&lon=20&sce=-40').parseInitialHash().scopeTerminusPct,
+    94,
+  );
+  assert.equal(
+    makeManager('#lat=10&lon=20&sce=500').parseInitialHash().scopeTerminusPct,
+    100,
+  );
+  assert.equal(
+    makeManager('#lat=10&lon=20&sce=96.6').parseInitialHash().scopeTerminusPct,
+    97,
+    'fractional percents round into the band',
+  );
 });
 
 test('an absent or non-numeric sce stays adaptive, never a pinned value', () => {
-  assert.equal(makeManager('#lat=10&lon=20').parseInitialHash().scopeTerminusPct, null);
-  assert.equal(makeManager('#lat=10&lon=20&sce=abc').parseInitialHash().scopeTerminusPct, null,
-    'junk is not a pin — absent semantics win');
-  assert.equal(makeManager('#lat=10&lon=20&sce=').parseInitialHash().scopeTerminusPct, null);
+  assert.equal(
+    makeManager('#lat=10&lon=20').parseInitialHash().scopeTerminusPct,
+    null,
+  );
+  assert.equal(
+    makeManager('#lat=10&lon=20&sce=abc').parseInitialHash().scopeTerminusPct,
+    null,
+    'junk is not a pin — absent semantics win',
+  );
+  assert.equal(
+    makeManager('#lat=10&lon=20&sce=').parseInitialHash().scopeTerminusPct,
+    null,
+  );
 });
 
 test('serialization writes only in-band sce values, and omits an adaptive one', () => {
@@ -318,19 +421,28 @@ test('serialization writes only in-band sce values, and omits an adaptive one', 
   manager.onToggleChange(false, false, { scopeTerminusPct: 0 });
   clearTimeout(manager._debounceTimer);
   manager._updateHash();
-  assert.equal(new URLSearchParams(window.location.hash.slice(1)).get('sce'), '94',
-    'an out-of-band value must be floored on write, not round-tripped');
+  assert.equal(
+    new URLSearchParams(window.location.hash.slice(1)).get('sce'),
+    '94',
+    'an out-of-band value must be floored on write, not round-tripped',
+  );
 
   manager.onToggleChange(false, false, { scopeTerminusPct: 500 });
   clearTimeout(manager._debounceTimer);
   manager._updateHash();
-  assert.equal(new URLSearchParams(window.location.hash.slice(1)).get('sce'), '100');
+  assert.equal(
+    new URLSearchParams(window.location.hash.slice(1)).get('sce'),
+    '100',
+  );
 
   manager.onToggleChange(false, false, { scopeTerminusPct: null });
   clearTimeout(manager._debounceTimer);
   manager._updateHash();
-  assert.equal(new URLSearchParams(window.location.hash.slice(1)).has('sce'), false,
-    'adaptive stays ABSENT so a shared link never freezes the ramp');
+  assert.equal(
+    new URLSearchParams(window.location.hash.slice(1)).has('sce'),
+    false,
+    'adaptive stays ABSENT so a shared link never freezes the ramp',
+  );
 });
 
 test('share-link restore forces a final stationary render for Google 3D Tiles', () => {
@@ -342,10 +454,18 @@ test('share-link restore forces a final stationary render for Google 3D Tiles', 
       heading: 0,
       pitch: -Math.PI / 2,
       roll: 0,
-      flyTo(options) { calls.flyTo = options; },
-      setView(options) { calls.setView = options; },
+      flyTo(options) {
+        calls.flyTo = options;
+      },
+      setView(options) {
+        calls.setView = options;
+      },
     },
-    scene: { requestRender() { calls.renders += 1; } },
+    scene: {
+      requestRender() {
+        calls.renders += 1;
+      },
+    },
   };
   const manager = new ShareLinkManager(viewer);
   manager.applyState({
@@ -373,17 +493,30 @@ test('newer navigation suppresses delayed share camera while non-camera state st
   const viewer = {
     camera: {
       changed: { addEventListener: () => () => {} },
-      flyTo() { flights += 1; },
+      flyTo() {
+        flights += 1;
+      },
     },
   };
   const manager = new ShareLinkManager(viewer, {
-    onRestore: (state) => { restored = state; },
+    onRestore: (state) => {
+      restored = state;
+    },
     isNavigationCurrent: () => false,
   });
-  const applied = await manager.applyState({
-    lat: 40, lon: -74, alt: 500, heading: 0, pitch: -30, roll: 0,
-    style: 'thermal', panelState: { specs: [] },
-  }, { navigationToken: 4 });
+  const applied = await manager.applyState(
+    {
+      lat: 40,
+      lon: -74,
+      alt: 500,
+      heading: 0,
+      pitch: -30,
+      roll: 0,
+      style: 'thermal',
+      panelState: { specs: [] },
+    },
+    { navigationToken: 4 },
+  );
   assert.equal(applied.succeeded, true);
   assert.equal(flights, 0);
   assert.equal(restored.style, 'thermal');
@@ -394,7 +527,9 @@ test('newer visual, map, and individual panel actions suppress only their owned 
   const manager = makeManager(
     '#v=2&lat=40&lon=-74&style=flir&map=osm&ui=c.c.0_d.c.0',
   );
-  manager._onRestore = (state) => { restored = state; };
+  manager._onRestore = (state) => {
+    restored = state;
+  };
   manager._isNavigationCurrent = () => false;
   const state = manager.parseInitialHash();
 
@@ -419,23 +554,86 @@ test('newer visual, map, and individual panel actions suppress only their owned 
 test('every explicit visual UI gesture claims restore authority before it mutates state', () => {
   const initUi = memberBlock('  _initUI() {');
   const gestureRoutes = [
-    ["if (e.key.toLowerCase() === 'h')", "if (e.key.toLowerCase() === 'o')", 'this.hud.toggle()', 'HUD hotkey'],
-    ["if (e.key.toLowerCase() === 'd')", "if (e.key.toLowerCase() === 'c')", 'cycleDetectionMode()', 'detection hotkey'],
-    ['// Bloom toggle', '// Bloom intensity slider', 'this._setBloomEnabled(', 'bloom button'],
-    ['// Bloom intensity slider', '// Sharpen toggle', 'this._setBloomIntensity(', 'bloom slider'],
-    ['// Sharpen toggle', '// Scope mask', 'this._setSharpenEnabled(', 'sharpen button'],
-    ["this._scopeBtn?.addEventListener('click'", "this._scopeFeatherSlider?.addEventListener('input'", 'setScopeMaskEnabled(', 'scope button'],
-    ["this._scopeFeatherSlider?.addEventListener('input'", 'if (this._sharpenSlider)', 'setScopeMaskFeather(', 'scope feather slider'],
-    ["this._sharpenSlider.addEventListener('input'", 'if (this._hudLayoutSelect)', 'this._applySharpenIntensity(', 'sharpen slider'],
-    ["this._hudLayoutSelect.addEventListener('change'", 'if (this._cleanViewBtn)', 'this._setHudVariant(', 'HUD layout select'],
-    ["this._detectionDensitySlider.addEventListener('input'", 'for (const button of this._detectionAllocationBtns)', 'this._applyDetectionDensityFromUi()', 'detection density slider'],
-    ["button.addEventListener('click'", 'for (const slider of [this._detectionFadeSlider', 'this._setDetectionAllocation(', 'detection allocation button'],
-    ["slider?.addEventListener('input'", 'if (this._celestialBtn)', 'this._applyDetectionFadeFromUi()', 'detection fade controls'],
+    [
+      "if (e.key.toLowerCase() === 'h')",
+      "if (e.key.toLowerCase() === 'o')",
+      'this.hud.toggle()',
+      'HUD hotkey',
+    ],
+    [
+      "if (e.key.toLowerCase() === 'd')",
+      "if (e.key.toLowerCase() === 'c')",
+      'cycleDetectionMode()',
+      'detection hotkey',
+    ],
+    [
+      '// Bloom toggle',
+      '// Bloom intensity slider',
+      'this._setBloomEnabled(',
+      'bloom button',
+    ],
+    [
+      '// Bloom intensity slider',
+      '// Sharpen toggle',
+      'this._setBloomIntensity(',
+      'bloom slider',
+    ],
+    [
+      '// Sharpen toggle',
+      '// Scope mask',
+      'this._setSharpenEnabled(',
+      'sharpen button',
+    ],
+    [
+      "this._scopeBtn?.addEventListener('click'",
+      "this._scopeFeatherSlider?.addEventListener('input'",
+      'setScopeMaskEnabled(',
+      'scope button',
+    ],
+    [
+      "this._scopeFeatherSlider?.addEventListener('input'",
+      'if (this._sharpenSlider)',
+      'setScopeMaskFeather(',
+      'scope feather slider',
+    ],
+    [
+      "this._sharpenSlider.addEventListener('input'",
+      'if (this._hudLayoutSelect)',
+      'this._applySharpenIntensity(',
+      'sharpen slider',
+    ],
+    [
+      "this._hudLayoutSelect.addEventListener('change'",
+      'if (this._cleanViewBtn)',
+      'this._setHudVariant(',
+      'HUD layout select',
+    ],
+    [
+      "this._detectionDensitySlider.addEventListener('input'",
+      'for (const button of this._detectionAllocationBtns)',
+      'this._applyDetectionDensityFromUi()',
+      'detection density slider',
+    ],
+    [
+      "button.addEventListener('click'",
+      'for (const slider of [this._detectionFadeSlider',
+      'this._setDetectionAllocation(',
+      'detection allocation button',
+    ],
+    [
+      "slider?.addEventListener('input'",
+      'if (this._celestialBtn)',
+      'this._applyDetectionFadeFromUi()',
+      'detection fade controls',
+    ],
   ];
   for (const [start, end, mutation, label] of gestureRoutes) {
     const startIndex = looseIndexOf(initUi, start);
     const endIndex = looseIndexOf(initUi, end, startIndex + start.length);
-    assert.ok(startIndex >= 0 && endIndex > startIndex, `${label} route is missing`);
+    assert.ok(
+      startIndex >= 0 && endIndex > startIndex,
+      `${label} route is missing`,
+    );
     assertClaimsBefore(initUi.slice(startIndex, endIndex), mutation, label);
   }
 
@@ -474,14 +672,18 @@ test('explicit Context transitions claim the visual restore lane before transiti
         .filter((index) => index >= 0),
     );
     const mutationIndex = block.indexOf(mutation);
-    assert.ok(Number.isFinite(claimIndex), `${label} must claim the visual restore lane`);
+    assert.ok(
+      Number.isFinite(claimIndex),
+      `${label} must claim the visual restore lane`,
+    );
     assert.ok(mutationIndex >= 0, `${label} mutation marker is missing`);
-    assert.ok(claimIndex < mutationIndex, `${label} must claim before mutation`);
+    assert.ok(
+      claimIndex < mutationIndex,
+      `${label} must claim before mutation`,
+    );
   };
 
-  const helper = memberBlock(
-    '  _claimContextVisualAuthority() {',
-  );
+  const helper = memberBlock('  _claimContextVisualAuthority() {');
   assert.ok(
     helper.includes("claimRestoreLane?.('visual')"),
     'the Context authority helper must claim the visual lane',
@@ -489,34 +691,63 @@ test('explicit Context transitions claim the visual restore lane before transiti
 
   const contextPanel = memberBlock('  _initGlobalContextPanel() {');
   for (const [start, end, label] of [
-    ["this._globalContextFlightsBtn?.addEventListener('click'", "this._globalContextMissionsBtn?.addEventListener('click'", 'Contacts tab'],
-    ["this._globalContextMissionsBtn?.addEventListener('click'", 'CONTEXT_PANEL_END', 'Space Missions tab'],
+    [
+      "this._globalContextFlightsBtn?.addEventListener('click'",
+      "this._globalContextMissionsBtn?.addEventListener('click'",
+      'Contacts tab',
+    ],
+    [
+      "this._globalContextMissionsBtn?.addEventListener('click'",
+      'CONTEXT_PANEL_END',
+      'Space Missions tab',
+    ],
   ]) {
     const startIndex = contextPanel.indexOf(start);
-    const endIndex = end === 'CONTEXT_PANEL_END'
-      ? contextPanel.length
-      : contextPanel.indexOf(end, startIndex + start.length);
-    assert.ok(startIndex >= 0 && endIndex > startIndex, `${label} route is missing`);
-    assertContextClaimsBefore(contextPanel.slice(startIndex, endIndex), 'this._selectContextMode(', label);
+    const endIndex =
+      end === 'CONTEXT_PANEL_END'
+        ? contextPanel.length
+        : contextPanel.indexOf(end, startIndex + start.length);
+    assert.ok(
+      startIndex >= 0 && endIndex > startIndex,
+      `${label} route is missing`,
+    );
+    assertContextClaimsBefore(
+      contextPanel.slice(startIndex, endIndex),
+      'this._selectContextMode(',
+      label,
+    );
   }
 
   // The voice/tool facade validates the mode first, then transitions.
   const facade = memberBlock('  async setContextMode(mode, {');
-  assertContextClaimsBefore(facade, 'this._selectContextMode(', 'setContextMode facade');
+  assertContextClaimsBefore(
+    facade,
+    'this._selectContextMode(',
+    'setContextMode facade',
+  );
   // Authority is taken per validated branch, never ahead of validation. The
   // OFF branch is validated by its own guard; the named-mode branch must claim
   // only AFTER the unknown-mode rejection, so a rejected request takes nothing.
   const offGuardIndex = facade.indexOf("if (!mode || mode === 'off')");
   const rejectIndex = facade.indexOf('Unknown context mode');
   assert.ok(offGuardIndex >= 0, 'setContextMode must keep its OFF guard');
-  assert.ok(rejectIndex > offGuardIndex, 'setContextMode must still reject unknown modes');
+  assert.ok(
+    rejectIndex > offGuardIndex,
+    'setContextMode must still reject unknown modes',
+  );
 
-  const offBranchClaim = facade.indexOf('_claimContextVisualAuthority()', offGuardIndex);
+  const offBranchClaim = facade.indexOf(
+    '_claimContextVisualAuthority()',
+    offGuardIndex,
+  );
   assert.ok(
     offBranchClaim > offGuardIndex && offBranchClaim < rejectIndex,
     'the OFF transition must claim inside its own validated branch',
   );
-  const namedBranchClaim = facade.indexOf('_claimContextVisualAuthority()', rejectIndex);
+  const namedBranchClaim = facade.indexOf(
+    '_claimContextVisualAuthority()',
+    rejectIndex,
+  );
   assert.ok(
     namedBranchClaim > rejectIndex,
     'a named Context mode must claim only after the unknown-mode rejection',
@@ -548,10 +779,26 @@ test('every explicit visual control facade claims restore authority before mutat
   const facadeRoutes = [
     ['  setHudVisible(mode) {', 'this.hud.setMode(', 'setHudVisible'],
     ['  setHudLayout(variantName) {', 'this._setHudVariant(', 'setHudLayout'],
-    ['  setDetection({ enabled, mode, densityPct, allocationStrategy, fadePct, outsideOpacityPct } = {}) {', 'this._setDetectionAllocation(', 'setDetection'],
-    ['  setBloom({ enabled, intensityPct } = {}) {', 'this._setBloomIntensity(', 'setBloom'],
-    ['  setSharpen({ enabled, intensityPct } = {}) {', 'this._applySharpenIntensity(', 'setSharpen'],
-    ['  setCelestialRingEnabled(enabled, { syncShare = true, focus = false } = {}) {', 'this.celestialRing?.setEnabled(', 'setCelestialRingEnabled'],
+    [
+      '  setDetection({ enabled, mode, densityPct, allocationStrategy, fadePct, outsideOpacityPct } = {}) {',
+      'this._setDetectionAllocation(',
+      'setDetection',
+    ],
+    [
+      '  setBloom({ enabled, intensityPct } = {}) {',
+      'this._setBloomIntensity(',
+      'setBloom',
+    ],
+    [
+      '  setSharpen({ enabled, intensityPct } = {}) {',
+      'this._applySharpenIntensity(',
+      'setSharpen',
+    ],
+    [
+      '  setCelestialRingEnabled(enabled, { syncShare = true, focus = false } = {}) {',
+      'this.celestialRing?.setEnabled(',
+      'setCelestialRingEnabled',
+    ],
   ];
   for (const [start, mutation, label] of facadeRoutes) {
     assertClaimsBefore(memberBlock(start), mutation, label);
@@ -559,8 +806,14 @@ test('every explicit visual control facade claims restore authority before mutat
 
   const style = memberBlock('  setStyle(styleName, {');
   assertClaimsBefore(style, 'this.activeStyle = styleName', 'setStyle');
-  const sliders = memberBlock('  _updateSliderPanel(styleName, { reveal = false } = {}) {');
-  assertClaimsBefore(sliders, 'this.stages[styleName].uniforms[uName] = val', 'style parameter slider');
+  const sliders = memberBlock(
+    '  _updateSliderPanel(styleName, { reveal = false } = {}) {',
+  );
+  assertClaimsBefore(
+    sliders,
+    'this.stages[styleName].uniforms[uName] = val',
+    'style parameter slider',
+  );
 });
 
 test('public visual facades reject the complete invalid request before authority or mutation', () => {
@@ -580,7 +833,10 @@ test('public visual facades reject the complete invalid request before authority
     {
       label: 'setSharpen',
       block: memberBlock('  setSharpen({ enabled, intensityPct } = {}) {'),
-      validations: ['Invalid sharpen enabled value', 'Invalid sharpen intensity'],
+      validations: [
+        'Invalid sharpen enabled value',
+        'Invalid sharpen intensity',
+      ],
     },
     {
       label: 'setCelestialRingEnabled',
@@ -599,8 +855,14 @@ test('public visual facades reject the complete invalid request before authority
     assert.ok(claimIndex >= 0, `${label} claim is missing`);
     for (const validation of validations) {
       const validationIndex = block.indexOf(validation);
-      assert.ok(validationIndex >= 0, `${label} validation is missing: ${validation}`);
-      assert.ok(validationIndex < claimIndex, `${label} must validate ${validation} before claiming`);
+      assert.ok(
+        validationIndex >= 0,
+        `${label} validation is missing: ${validation}`,
+      );
+      assert.ok(
+        validationIndex < claimIndex,
+        `${label} must validate ${validation} before claiming`,
+      );
     }
   }
   assert.doesNotMatch(cases.at(-1).block, /!!enabled/);
@@ -609,20 +871,36 @@ test('public visual facades reject the complete invalid request before authority
 test('share apply completion waits for both callback work and camera settlement', async () => {
   let flight = null;
   let releaseRestore;
-  const restoreGate = new Promise((resolve) => { releaseRestore = resolve; });
+  const restoreGate = new Promise((resolve) => {
+    releaseRestore = resolve;
+  });
   const viewer = {
     camera: {
       changed: { addEventListener: () => () => {} },
-      flyTo(options) { flight = options; },
+      flyTo(options) {
+        flight = options;
+      },
       setView() {},
     },
     scene: { requestRender() {} },
   };
-  const manager = new ShareLinkManager(viewer, { onRestore: () => restoreGate });
+  const manager = new ShareLinkManager(viewer, {
+    onRestore: () => restoreGate,
+  });
   let settled = false;
-  const applying = manager.applyState({
-    lat: 40, lon: -74, alt: 500, heading: 0, pitch: -30, roll: 0,
-  }).then((result) => { settled = true; return result; });
+  const applying = manager
+    .applyState({
+      lat: 40,
+      lon: -74,
+      alt: 500,
+      heading: 0,
+      pitch: -30,
+      roll: 0,
+    })
+    .then((result) => {
+      settled = true;
+      return result;
+    });
 
   await Promise.resolve();
   assert.equal(settled, false);
@@ -642,17 +920,29 @@ test('a later navigation prevents share completion from resetting the final pose
   const viewer = {
     camera: {
       changed: { addEventListener: () => () => {} },
-      flyTo(options) { flight = options; },
-      setView() { setViews += 1; },
+      flyTo(options) {
+        flight = options;
+      },
+      setView() {
+        setViews += 1;
+      },
     },
     scene: { requestRender() {} },
   };
   const manager = new ShareLinkManager(viewer, {
     isNavigationCurrent: (token) => token === generation,
   });
-  manager.applyState({
-    lat: 40, lon: -74, alt: 500, heading: 0, pitch: -30, roll: 0,
-  }, { navigationToken: 3 });
+  manager.applyState(
+    {
+      lat: 40,
+      lon: -74,
+      alt: 500,
+      heading: 0,
+      pitch: -30,
+      roll: 0,
+    },
+    { navigationToken: 3 },
+  );
   generation = 4;
   flight.complete();
   assert.equal(setViews, 0);
@@ -666,18 +956,33 @@ test('destroy cancels only a still-owned share flight and ignores delayed comple
   const viewer = {
     camera: {
       changed: { addEventListener: () => () => {} },
-      flyTo(options) { flight = options; },
-      setView() { setViews += 1; },
+      flyTo(options) {
+        flight = options;
+      },
+      setView() {
+        setViews += 1;
+      },
     },
     scene: { requestRender() {} },
   };
   const manager = new ShareLinkManager(viewer, {
     isNavigationCurrent: (token) => token === generation,
-    cancelOwnedNavigation: () => { cancellations += 1; flight?.cancel?.(); },
+    cancelOwnedNavigation: () => {
+      cancellations += 1;
+      flight?.cancel?.();
+    },
   });
-  manager.applyState({
-    lat: 40, lon: -74, alt: 500, heading: 0, pitch: -30, roll: 0,
-  }, { navigationToken: 7 });
+  manager.applyState(
+    {
+      lat: 40,
+      lon: -74,
+      alt: 500,
+      heading: 0,
+      pitch: -30,
+      roll: 0,
+    },
+    { navigationToken: 7 },
+  );
   manager.destroy();
   flight.complete();
   assert.equal(cancellations, 1);
@@ -685,11 +990,21 @@ test('destroy cancels only a still-owned share flight and ignores delayed comple
 
   const newerManager = new ShareLinkManager(viewer, {
     isNavigationCurrent: (token) => token === generation,
-    cancelOwnedNavigation: () => { cancellations += 1; },
+    cancelOwnedNavigation: () => {
+      cancellations += 1;
+    },
   });
-  newerManager.applyState({
-    lat: 40, lon: -74, alt: 500, heading: 0, pitch: -30, roll: 0,
-  }, { navigationToken: 7 });
+  newerManager.applyState(
+    {
+      lat: 40,
+      lon: -74,
+      alt: 500,
+      heading: 0,
+      pitch: -30,
+      roll: 0,
+    },
+    { navigationToken: 7 },
+  );
   generation = 8;
   newerManager.destroy();
   assert.equal(cancellations, 1, 'newer navigation must not be cancelled');

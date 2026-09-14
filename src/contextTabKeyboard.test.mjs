@@ -8,8 +8,13 @@ const ui = readUiSource();
 const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
 
 test('Contacts and Space Missions both participate in the ordinary Tab sequence', () => {
-  for (const id of ['global-context-flights-btn', 'global-context-missions-btn']) {
-    const button = html.match(new RegExp(`<button id="${id}"[\\s\\S]*?</button>`));
+  for (const id of [
+    'global-context-flights-btn',
+    'global-context-missions-btn',
+  ]) {
+    const button = html.match(
+      new RegExp(`<button id="${id}"[\\s\\S]*?</button>`),
+    );
     assert.ok(button, `${id} is missing`);
     assert.match(button[0], /role="tab"/);
     assert.match(button[0], /tabindex="0"/);
@@ -17,7 +22,10 @@ test('Contacts and Space Missions both participate in the ordinary Tab sequence'
 
   const sync = ui.match(/_syncContextModeButtons\(\) \{([\s\S]*?)\n  \}\n/);
   assert.ok(sync, 'Context mode sync is missing');
-  assert.match(sync[1], /\[\s*this\s*\._globalContextFlightsBtn,\s*this\s*\._globalContextMissionsBtn,?\s*\]/);
+  assert.match(
+    sync[1],
+    /\[\s*this\s*\._globalContextFlightsBtn,\s*this\s*\._globalContextMissionsBtn,?\s*\]/,
+  );
   assert.match(sync[1], /button\.tabIndex = 0/);
   assert.doesNotMatch(sync[1], /tabIndex\s*=\s*[^;]*\?\s*-1/);
 });
@@ -34,8 +42,12 @@ test('Context transition state preserves focus and Tab availability until settle
       attrs,
       tabIndex: -1,
       classList: { toggle() {} },
-      setAttribute(name, value) { attrs.set(name, String(value)); },
-      get disabled() { return disabled; },
+      setAttribute(name, value) {
+        attrs.set(name, String(value));
+      },
+      get disabled() {
+        return disabled;
+      },
       set disabled(value) {
         disabled = Boolean(value);
         // Model the browser behavior that exposed this regression: native
@@ -51,7 +63,10 @@ test('Context transition state preserves focus and Tab availability until settle
   const missions = makeButton();
   const panel = { classList: { toggle() {} }, setAttribute() {} };
   const priorDocument = globalThis.document;
-  globalThis.document = { activeElement: missions, getElementById: () => panel };
+  globalThis.document = {
+    activeElement: missions,
+    getElementById: () => panel,
+  };
   const owner = {
     _contextMode: null,
     _contextModeChanging: true,
@@ -66,7 +81,11 @@ test('Context transition state preserves focus and Tab availability until settle
   };
   try {
     Function(sync[1]).call(owner);
-    assert.equal(globalThis.document.activeElement, missions, 'busy sync retains focused Space Missions');
+    assert.equal(
+      globalThis.document.activeElement,
+      missions,
+      'busy sync retains focused Space Missions',
+    );
     for (const button of [contacts, missions]) {
       assert.equal(button.disabled, false);
       assert.equal(button.tabIndex, 0);
@@ -77,7 +96,11 @@ test('Context transition state preserves focus and Tab availability until settle
     owner._contextModeChanging = false;
     owner._contextMode = 'space-missions';
     Function(sync[1]).call(owner);
-    assert.equal(globalThis.document.activeElement, missions, 'settled sync retains focused Space Missions');
+    assert.equal(
+      globalThis.document.activeElement,
+      missions,
+      'settled sync retains focused Space Missions',
+    );
     for (const button of [contacts, missions]) {
       assert.equal(button.disabled, false);
       assert.equal(button.tabIndex, 0);
@@ -92,42 +115,72 @@ test('Context transition state preserves focus and Tab availability until settle
 test('Context activation and Clear All never native-disable tabs and guard repeated clicks', () => {
   const init = ui.slice(
     ui.indexOf('_initGlobalContextPanel() {'),
-    ui.indexOf('async _runUserFacingContextAction(', ui.indexOf('_initGlobalContextPanel() {')),
+    ui.indexOf(
+      'async _runUserFacingContextAction(',
+      ui.indexOf('_initGlobalContextPanel() {'),
+    ),
   );
   const select = ui.slice(
     ui.indexOf('async _selectContextMode('),
-    ui.indexOf('async _deactivateContextForLayerChange(', ui.indexOf('async _selectContextMode(')),
+    ui.indexOf(
+      'async _deactivateContextForLayerChange(',
+      ui.indexOf('async _selectContextMode('),
+    ),
   );
   const clear = ui.slice(
     ui.indexOf('clearSelectedLayers() {'),
     ui.indexOf('resetToGlobeView() {', ui.indexOf('clearSelectedLayers() {')),
   );
-  assert.equal((init.match(/if \(this\._contextModeChanging \|\| this\._clearSelectedLayersPromise\) return;/g) || []).length, 2);
-  assert.doesNotMatch(select, /_globalContext(?:Flights|Missions)Btn\.disabled\s*=\s*true/);
-  assert.doesNotMatch(clear, /_globalContext(?:Flights|Missions)Btn\.disabled\s*=\s*true/);
+  assert.equal(
+    (
+      init.match(
+        /if \(this\._contextModeChanging \|\| this\._clearSelectedLayersPromise\) return;/g,
+      ) || []
+    ).length,
+    2,
+  );
+  assert.doesNotMatch(
+    select,
+    /_globalContext(?:Flights|Missions)Btn\.disabled\s*=\s*true/,
+  );
+  assert.doesNotMatch(
+    clear,
+    /_globalContext(?:Flights|Missions)Btn\.disabled\s*=\s*true/,
+  );
 });
 
 test('Context tablist retains Left, Right, Home, and End keyboard navigation', () => {
-  const init = ui.match(/_initGlobalContextPanel\(\) \{([\s\S]*?)\n    this\._globalContextFlightsBtn\?\.addEventListener/);
+  const init = ui.match(
+    /_initGlobalContextPanel\(\) \{([\s\S]*?)\n    this\._globalContextFlightsBtn\?\.addEventListener/,
+  );
   assert.ok(init, 'Context panel initialization is missing');
   assert.match(init[1], /event\.key === 'ArrowRight'/);
   assert.match(init[1], /event\.key === 'ArrowLeft'/);
   assert.match(init[1], /event\.key === 'Home'/);
   assert.match(init[1], /event\.key === 'End'/);
-  assert.match(init[1], /contextTabs\[nextIndex\]\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(
+    init[1],
+    /contextTabs\[nextIndex\]\.focus\(\{ preventScroll: true \}\)/,
+  );
   assert.match(init[1], /contextTabs\[nextIndex\]\.click\(\)/);
 });
 
 test('Context tabs draw a visible keyboard-focus outline including active tabs', () => {
   const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
-  const focusRule = rules.find(([, selector, body]) => (
-    selector.trim().endsWith('.context-mode-button:focus-visible')
-      && /outline:\s*2px solid var\(--text-primary\)/.test(body)
-  ));
-  assert.ok(focusRule, 'Context focus-visible rule must draw a two-pixel outline');
+  const focusRule = rules.find(
+    ([, selector, body]) =>
+      selector.trim().endsWith('.context-mode-button:focus-visible') &&
+      /outline:\s*2px solid var\(--text-primary\)/.test(body),
+  );
+  assert.ok(
+    focusRule,
+    'Context focus-visible rule must draw a two-pixel outline',
+  );
   assert.match(focusRule[2], /outline-offset:\s*-3px/);
 
-  const activeRule = rules.find(([, selector]) => selector.trim().endsWith('.context-mode-button.active'));
+  const activeRule = rules.find(([, selector]) =>
+    selector.trim().endsWith('.context-mode-button.active'),
+  );
   assert.ok(activeRule, 'Context active-state rule is missing');
   assert.doesNotMatch(activeRule[2], /outline:\s*none/);
 });
@@ -135,15 +188,24 @@ test('Context tabs draw a visible keyboard-focus outline including active tabs',
 test('Context async action buttons remain focused while busy', () => {
   const init = ui.slice(
     ui.indexOf('_initGlobalContextPanel() {'),
-    ui.indexOf('async _runUserFacingContextAction(', ui.indexOf('_initGlobalContextPanel() {')),
+    ui.indexOf(
+      'async _runUserFacingContextAction(',
+      ui.indexOf('_initGlobalContextPanel() {'),
+    ),
   );
   const radio = ui.slice(
     ui.indexOf('const toggleRadio = async (trigger) => {'),
-    ui.indexOf('this._contextRadioToggleBtn?.addEventListener', ui.indexOf('const toggleRadio = async (trigger) => {')),
+    ui.indexOf(
+      'this._contextRadioToggleBtn?.addEventListener',
+      ui.indexOf('const toggleRadio = async (trigger) => {'),
+    ),
   );
   const radioSync = ui.slice(
     ui.indexOf('_renderRadioState(state) {'),
-    ui.indexOf('if (this._radioFilter)', ui.indexOf('_renderRadioState(state) {')),
+    ui.indexOf(
+      'if (this._radioFilter)',
+      ui.indexOf('_renderRadioState(state) {'),
+    ),
   );
   const clear = ui.slice(
     ui.indexOf('clearSelectedLayers() {'),
@@ -154,9 +216,16 @@ test('Context async action buttons remain focused while busy', () => {
   assert.doesNotMatch(init, /button\.disabled\s*=\s*true/);
   assert.match(radio, /trigger\.getAttribute\('aria-busy'\) === 'true'/);
   assert.doesNotMatch(radio, /trigger\.disabled\s*=\s*true/);
-  for (const name of ['_radioEnableBtn', '_contextRadioMiniEnableBtn', '_cockpitRadioEnableBtn']) {
+  for (const name of [
+    '_radioEnableBtn',
+    '_contextRadioMiniEnableBtn',
+    '_cockpitRadioEnableBtn',
+  ]) {
     assert.match(radioSync, new RegExp(`${name}\\.disabled = false`));
   }
   assert.doesNotMatch(clear, /_clearSelectedLayersBtn\.disabled\s*=\s*true/);
-  assert.match(clear, /_clearSelectedLayersBtn\.setAttribute\('aria-busy', 'true'\)/);
+  assert.match(
+    clear,
+    /_clearSelectedLayersBtn\.setAttribute\('aria-busy', 'true'\)/,
+  );
 });

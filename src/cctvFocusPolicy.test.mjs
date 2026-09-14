@@ -68,8 +68,15 @@ test('CCTV enable retains a pre-await tracking snapshot when tracking clears dur
   });
 
   assert.equal(result, 'cam-near');
-  assert.equal(flyCalls, 0, 'a pre-await owner must suppress the post-await focus flight');
-  assert.deepEqual(diagnostics.map(([, identity]) => identity.trackedId), ['tracked-plane', null]);
+  assert.equal(
+    flyCalls,
+    0,
+    'a pre-await owner must suppress the post-await focus flight',
+  );
+  assert.deepEqual(
+    diagnostics.map(([, identity]) => identity.trackedId),
+    ['tracked-plane', null],
+  );
   assert.match(diagnostics[0][0], /before setEnabled await/);
   assert.match(diagnostics[1][0], /after setEnabled await/);
 
@@ -83,7 +90,10 @@ test('CCTV disable transition does not emit enable-ownership diagnostics', async
 
   const result = await runCctvLayerEnableTransition({
     target: false,
-    readOwnership: () => ({ trackedEntity: { id: 'tracked-plane' }, cockpitActive: false }),
+    readOwnership: () => ({
+      trackedEntity: { id: 'tracked-plane' },
+      cockpitActive: false,
+    }),
     setEnabled: async (target) => transitions.push(target),
     shouldFocus: () => true,
     activate: () => 'cam-near',

@@ -5,7 +5,10 @@ const clean = (value) => String(value || '').trim();
  * @param {{googleApiKey?: string, cesiumToken?: string}} credentials
  * @returns {'google-direct'|'google-ion'|'osm'}
  */
-export function selectMapStartupRoute({ googleApiKey = '', cesiumToken = '' } = {}) {
+export function selectMapStartupRoute({
+  googleApiKey = '',
+  cesiumToken = '',
+} = {}) {
   if (clean(googleApiKey)) return 'google-direct';
   if (clean(cesiumToken)) return 'google-ion';
   return 'osm';

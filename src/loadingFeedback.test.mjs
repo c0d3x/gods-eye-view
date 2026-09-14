@@ -1,39 +1,117 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-const retrySite = (stats = {}) => ({ id: 'military-installations', name: 'Mapped Installations', enabled: true,
-  stats: { status: 'unavailable', error: 'Unavailable', retryAt: Date.now() + 30000, ...stats } });
+const retrySite = (stats = {}) => ({
+  id: 'military-installations',
+  name: 'Mapped Installations',
+  enabled: true,
+  stats: {
+    status: 'unavailable',
+    error: 'Unavailable',
+    retryAt: Date.now() + 30000,
+    ...stats,
+  },
+});
 
 test('installation retry remains visible after failure dwell without a false spinner', () => {
   const summary = aggregateLayerLoading([retrySite()]);
-  const view = presentLoadingFeedback(createLoadingFeedbackState(), summary, 100);
+  const view = presentLoadingFeedback(
+    createLoadingFeedbackState(),
+    summary,
+    100,
+  );
   assert.equal(view.state, 'retry');
   assert.equal(view.label, 'OVERPASS TEMPORARILY UNAVAILABLE');
   assert.match(view.detail, /retrying in 30s/);
-  assert.equal(presentLoadingFeedback(createLoadingFeedbackState(), aggregateLayerLoading([{ ...retrySite(), enabled: false }]), 100), null);
+  assert.equal(
+    presentLoadingFeedback(
+      createLoadingFeedbackState(),
+      aggregateLayerLoading([{ ...retrySite(), enabled: false }]),
+      100,
+    ),
+    null,
+  );
 });
 test('an installation retry never conceals another participant failure', () => {
-  const state = { visible: true, phase: 'terminal', terminal: 'error', activeIds: ['military-installations', 'flights'] };
-  const summary = aggregateLayerLoading([retrySite(), { id: 'flights', enabled: true, stats: { error: 'Failed' } }]);
-  assert.equal(presentLoadingFeedback(state, summary, 100).label, 'LOAD FAILED');
+  const state = {
+    visible: true,
+    phase: 'terminal',
+    terminal: 'error',
+    activeIds: ['military-installations', 'flights'],
+  };
+  const summary = aggregateLayerLoading([
+    retrySite(),
+    { id: 'flights', enabled: true, stats: { error: 'Failed' } },
+  ]);
+  assert.equal(
+    presentLoadingFeedback(state, summary, 100).label,
+    'LOAD FAILED',
+  );
   const healthyNow = aggregateLayerLoading([retrySite()]);
-  assert.equal(presentLoadingFeedback({ ...state, failedEventIds: ['flights'] }, healthyNow, 100).label, 'LOAD FAILED');
+  assert.equal(
+    presentLoadingFeedback(
+      { ...state, failedEventIds: ['flights'] },
+      healthyNow,
+      100,
+    ).label,
+    'LOAD FAILED',
+  );
 });
 test('a fresh installation retry can finish successfully without inheriting the old error', () => {
-  let state = { ...createLoadingFeedbackState(), phase: 'terminal', terminal: 'error', visible: true, activeIds: ['military-installations'] };
-  const loading = aggregateLayerLoading([retrySite({ status: 'loading', error: null, loading: true, retryAt: 0, retrying: true })]);
+  let state = {
+    ...createLoadingFeedbackState(),
+    phase: 'terminal',
+    terminal: 'error',
+    visible: true,
+    activeIds: ['military-installations'],
+  };
+  const loading = aggregateLayerLoading([
+    retrySite({
+      status: 'loading',
+      error: null,
+      loading: true,
+      retryAt: 0,
+      retrying: true,
+    }),
+  ]);
   state = reduceLoadingFeedback(state, loading, 1000);
   state = reduceLoadingFeedback(state, loading, 1200);
-  assert.equal(presentLoadingFeedback(state, loading, 1200).label, 'RETRYING MAPPED SITES');
-  const done = aggregateLayerLoading([retrySite({ status: 'ready', error: null, loading: false, retryAt: 0, retrying: false, count: 3 })]);
+  assert.equal(
+    presentLoadingFeedback(state, loading, 1200).label,
+    'RETRYING MAPPED SITES',
+  );
+  const done = aggregateLayerLoading([
+    retrySite({
+      status: 'ready',
+      error: null,
+      loading: false,
+      retryAt: 0,
+      retrying: false,
+      count: 3,
+    }),
+  ]);
   state = reduceLoadingFeedback(state, done, 1500);
-  assert.equal(presentLoadingFeedback(state, done, 1500).label, 'MAPPED SITES LOADED');
+  assert.equal(
+    presentLoadingFeedback(state, done, 1500).label,
+    'MAPPED SITES LOADED',
+  );
 });
 test('turning off a retrying installation layer does not report the old fetch failure as a disable failure', () => {
-  const stopping = aggregateLayerLoading([{ ...retrySite(), lifecycleState: 'disabling' }]);
-  let state = reduceLoadingFeedback(createLoadingFeedbackState(), stopping, 1000);
+  const stopping = aggregateLayerLoading([
+    { ...retrySite(), lifecycleState: 'disabling' },
+  ]);
+  let state = reduceLoadingFeedback(
+    createLoadingFeedbackState(),
+    stopping,
+    1000,
+  );
   state = reduceLoadingFeedback(state, stopping, 1200);
-  const off = aggregateLayerLoading([{ ...retrySite({ status: 'idle', error: null, retryAt: 0 }), enabled: false }]);
+  const off = aggregateLayerLoading([
+    {
+      ...retrySite({ status: 'idle', error: null, retryAt: 0 }),
+      enabled: false,
+    },
+  ]);
   state = reduceLoadingFeedback(state, off, 1400);
   assert.equal(presentLoadingFeedback(state, off, 1400).label, 'LIVE DATA OFF');
 });
@@ -55,9 +133,19 @@ import {
 import { memberSource, readUiSource } from './testing/uiSources.mjs';
 
 test('universal status notices reuse the standard failure dwell', () => {
-  const notice = createGlobalStatusNotice('Shared satellite is unavailable', 1000);
-  assert.equal(notice.hideAt, null, 'finite dwell waits until first presentation');
-  assert.equal(presentGlobalStatusNotice(notice, 1001).label, 'Shared satellite is unavailable');
+  const notice = createGlobalStatusNotice(
+    'Shared satellite is unavailable',
+    1000,
+  );
+  assert.equal(
+    notice.hideAt,
+    null,
+    'finite dwell waits until first presentation',
+  );
+  assert.equal(
+    presentGlobalStatusNotice(notice, 1001).label,
+    'Shared satellite is unavailable',
+  );
   assert.equal(notice.hideAt, 1001 + LOADING_FAILURE_DWELL_MS);
   assert.deepEqual(presentGlobalStatusNotice(notice, notice.hideAt - 1), {
     state: 'error',
@@ -83,19 +171,34 @@ test('acquiring notices persist without a dwell until explicitly cleared', () =>
 
 test('deferred terminal notices lose ownership to newer acquisition epochs and disposal', () => {
   assert.equal(canPresentDeferredStatusNotice(4, 4, false), true);
-  assert.equal(canPresentDeferredStatusNotice(4, 5, false), false,
-    'a newer ACQUIRING epoch blocks the older deferred failure');
-  assert.equal(canPresentDeferredStatusNotice(5, 5, true), false,
-    'disposal blocks even the current deferred notice');
+  assert.equal(
+    canPresentDeferredStatusNotice(4, 5, false),
+    false,
+    'a newer ACQUIRING epoch blocks the older deferred failure',
+  );
+  assert.equal(
+    canPresentDeferredStatusNotice(5, 5, true),
+    false,
+    'disposal blocks even the current deferred notice',
+  );
 });
 
 test('share-follow failures use the universal top-center status instead of the bottom toast', () => {
   const ui = readUiSource();
-  const handler = memberSource(ui, '  _handleShareTrackingRestoreStatus(result) {');
+  const handler = memberSource(
+    ui,
+    '  _handleShareTrackingRestoreStatus(result) {',
+  );
   assert.match(handler, /this\._showGlobalStatusNotice\(message\)/);
-  assert.match(handler, /this\.initialRestorePromise\.then\(showAfterStartupCover\)/);
+  assert.match(
+    handler,
+    /this\.initialRestorePromise\.then\(showAfterStartupCover\)/,
+  );
   assert.match(handler, /requestAnimationFrame\(\(\) => \{/);
-  assert.match(handler, /startupCover\s*\.addEventListener\(\s*'transitionend',\s*showOnce,\s*\{\s*once:\s*true,?\s*\},?\s*\)/);
+  assert.match(
+    handler,
+    /startupCover\s*\.addEventListener\(\s*'transitionend',\s*showOnce,\s*\{\s*once:\s*true,?\s*\},?\s*\)/,
+  );
   assert.match(handler, /fallbackTimer = setTimeout\(showOnce, 1000\)/);
   assert.doesNotMatch(handler, /this\._showToast\(message\)/);
   assert.doesNotMatch(handler, /pushCockpitSignal/);
@@ -105,55 +208,101 @@ test('share-follow failures use the universal top-center status instead of the b
   assert.match(handler, /this\._shareTrackingNoticeGeneration \+= 1/);
   assert.match(handler, /canPresentDeferredStatusNotice\(/);
   assert.match(handler, /if \(this\._shareTrackingAcquiringKey\) return/);
-  assert.match(handler, /result\s*\.classification\s*===\s*'followed'\s*\|\|\s*result\s*\.classification\s*===\s*'cancelled'/);
+  assert.match(
+    handler,
+    /result\s*\.classification\s*===\s*'followed'\s*\|\|\s*result\s*\.classification\s*===\s*'cancelled'/,
+  );
 });
 
 test('universal notice masks active loading only for its own fixed dwell', () => {
-  const summary = aggregateLayerLoading([{ id: 'satellites', name: 'Satellites', lifecycleState: 'enabling' }]);
+  const summary = aggregateLayerLoading([
+    { id: 'satellites', name: 'Satellites', lifecycleState: 'enabling' },
+  ]);
   let loading = reduceLoadingFeedback(createLoadingFeedbackState(), summary, 0);
   loading = reduceLoadingFeedback(loading, summary, 200);
-  const notice = createGlobalStatusNotice('Shared satellite is unavailable', 300);
+  const notice = createGlobalStatusNotice(
+    'Shared satellite is unavailable',
+    300,
+  );
 
-  assert.equal(presentGlobalLoadingStatus(notice, loading, summary, 301).label, 'Shared satellite is unavailable');
-  assert.equal(presentGlobalLoadingStatus(notice, loading, summary, notice.hideAt).label, 'LOADING LIVE DATA');
+  assert.equal(
+    presentGlobalLoadingStatus(notice, loading, summary, 301).label,
+    'Shared satellite is unavailable',
+  );
+  assert.equal(
+    presentGlobalLoadingStatus(notice, loading, summary, notice.hideAt).label,
+    'LOADING LIVE DATA',
+  );
 });
 
 test('terminal failure preempts a finite notice, whose full dwell starts afterward', () => {
-  const active = aggregateLayerLoading([{ id: 'satellites', name: 'Satellites', lifecycleState: 'enabling' }]);
+  const active = aggregateLayerLoading([
+    { id: 'satellites', name: 'Satellites', lifecycleState: 'enabling' },
+  ]);
   let loading = reduceLoadingFeedback(createLoadingFeedbackState(), active, 0);
   loading = reduceLoadingFeedback(loading, active, 200);
   loading = reduceLoadingFeedback(loading, aggregateLayerLoading([]), 300, {
-    type: 'visibility-failed', layerId: 'satellites', error: new Error('offline'),
+    type: 'visibility-failed',
+    layerId: 'satellites',
+    error: new Error('offline'),
   });
-  const notice = createGlobalStatusNotice('Shared satellite is unavailable', 400);
+  const notice = createGlobalStatusNotice(
+    'Shared satellite is unavailable',
+    400,
+  );
 
   assert.equal(
-    presentGlobalLoadingStatus(notice, loading, aggregateLayerLoading([]), 401).label,
+    presentGlobalLoadingStatus(notice, loading, aggregateLayerLoading([]), 401)
+      .label,
     'LOAD FAILED',
   );
-  assert.equal(notice.hideAt, null, 'masked finite notice has not started its dwell');
+  assert.equal(
+    notice.hideAt,
+    null,
+    'masked finite notice has not started its dwell',
+  );
   loading = reduceLoadingFeedback(loading, aggregateLayerLoading([]), 5300);
   assert.equal(
-    presentGlobalLoadingStatus(notice, loading, aggregateLayerLoading([]), 5300).label,
+    presentGlobalLoadingStatus(notice, loading, aggregateLayerLoading([]), 5300)
+      .label,
     'Shared satellite is unavailable',
   );
   assert.equal(notice.hideAt, 5300 + LOADING_FAILURE_DWELL_MS);
   assert.equal(
-    presentGlobalLoadingStatus(notice, loading, aggregateLayerLoading([]), notice.hideAt - 1).label,
+    presentGlobalLoadingStatus(
+      notice,
+      loading,
+      aggregateLayerLoading([]),
+      notice.hideAt - 1,
+    ).label,
     'Shared satellite is unavailable',
   );
-  assert.equal(presentGlobalLoadingStatus(notice, loading, aggregateLayerLoading([]), notice.hideAt), null);
+  assert.equal(
+    presentGlobalLoadingStatus(
+      notice,
+      loading,
+      aggregateLayerLoading([]),
+      notice.hideAt,
+    ),
+    null,
+  );
 });
 
 test('persistent acquisition never hides an unrelated manager failure', () => {
-  const active = aggregateLayerLoading([{
-    id: 'traffic', name: 'Street Traffic', lifecycleState: 'enabling',
-  }]);
+  const active = aggregateLayerLoading([
+    {
+      id: 'traffic',
+      name: 'Street Traffic',
+      lifecycleState: 'enabling',
+    },
+  ]);
   const idle = aggregateLayerLoading([]);
   let loading = reduceLoadingFeedback(createLoadingFeedbackState(), active, 0);
   loading = reduceLoadingFeedback(loading, active, 200);
   loading = reduceLoadingFeedback(loading, idle, 300, {
-    type: 'visibility-failed', layerId: 'traffic', error: new Error('offline'),
+    type: 'visibility-failed',
+    layerId: 'traffic',
+    error: new Error('offline'),
   });
   const acquiring = createGlobalStatusNotice('ACQUIRING', 100, {
     state: 'acquiring',
@@ -167,30 +316,62 @@ test('persistent acquisition never hides an unrelated manager failure', () => {
     detail: '',
   });
   assert.equal(
-    presentGlobalLoadingStatus(acquiring, loading, idle, 300 + LOADING_FAILURE_DWELL_MS - 1).label,
+    presentGlobalLoadingStatus(
+      acquiring,
+      loading,
+      idle,
+      300 + LOADING_FAILURE_DWELL_MS - 1,
+    ).label,
     'LOAD FAILED',
   );
-  loading = reduceLoadingFeedback(loading, idle, 300 + LOADING_FAILURE_DWELL_MS);
+  loading = reduceLoadingFeedback(
+    loading,
+    idle,
+    300 + LOADING_FAILURE_DWELL_MS,
+  );
   assert.equal(
-    presentGlobalLoadingStatus(acquiring, loading, idle, 300 + LOADING_FAILURE_DWELL_MS).label,
+    presentGlobalLoadingStatus(
+      acquiring,
+      loading,
+      idle,
+      300 + LOADING_FAILURE_DWELL_MS,
+    ).label,
     'ACQUIRING',
     'the still-owned acquisition resumes only after the full failure dwell is visible',
   );
 });
 
 test('replacement, repetition, and hidden-tab elapsed time use the newest fixed deadline', () => {
-  const first = createGlobalStatusNotice('Shared satellite is unavailable', 100);
-  const repeated = createGlobalStatusNotice('Shared satellite is unavailable', 200);
-  const replacement = createGlobalStatusNotice('Shared satellite follow expired', 300);
+  const first = createGlobalStatusNotice(
+    'Shared satellite is unavailable',
+    100,
+  );
+  const repeated = createGlobalStatusNotice(
+    'Shared satellite is unavailable',
+    200,
+  );
+  const replacement = createGlobalStatusNotice(
+    'Shared satellite follow expired',
+    300,
+  );
 
   presentGlobalStatusNotice(first, 100);
   presentGlobalStatusNotice(repeated, 200);
   presentGlobalStatusNotice(replacement, 300);
 
-  assert.ok(repeated.hideAt > first.hideAt, 'a repeated event is a new accessible notice epoch');
-  assert.equal(presentGlobalStatusNotice(replacement, replacement.hideAt - 1).label, 'Shared satellite follow expired');
-  assert.equal(presentGlobalStatusNotice(replacement, replacement.hideAt), null,
-    'elapsed wall time while hidden expires the notice instead of replaying it');
+  assert.ok(
+    repeated.hideAt > first.hideAt,
+    'a repeated event is a new accessible notice epoch',
+  );
+  assert.equal(
+    presentGlobalStatusNotice(replacement, replacement.hideAt - 1).label,
+    'Shared satellite follow expired',
+  );
+  assert.equal(
+    presentGlobalStatusNotice(replacement, replacement.hideAt),
+    null,
+    'elapsed wall time while hidden expires the notice instead of replaying it',
+  );
 });
 
 test('universal notice lifecycle clears on dispose and uses the one top-center live region', () => {
@@ -202,35 +383,82 @@ test('universal notice lifecycle clears on dispose and uses the one top-center l
 
   assert.match(dispose, /this\._globalStatusNotice = null;/);
   assert.match(dispose, /this\._shareTrackingNoticeGeneration \+= 1;/);
-  assert.match(html, /<div id="global-loading-status" role="status" aria-live="polite" aria-atomic="true" hidden>/);
+  assert.match(
+    html,
+    /<div id="global-loading-status" role="status" aria-live="polite" aria-atomic="true" hidden>/,
+  );
 });
 
 test('normalizes lifecycle and refresh loading without owning manager state', () => {
-  assert.equal(normalizeLayerLoading({ lifecycleState: 'enabling' }).loading, true);
-  assert.equal(normalizeLayerLoading({ lifecycleState: 'disabling' }).disabling, true);
-  assert.equal(normalizeLayerLoading({ enabled: true, stats: { loading: true, count: 8 } }).refresh, true);
-  assert.equal(normalizeLayerLoading({ enabled: true, stats: { refreshing: true } }).refresh, true);
+  assert.equal(
+    normalizeLayerLoading({ lifecycleState: 'enabling' }).loading,
+    true,
+  );
+  assert.equal(
+    normalizeLayerLoading({ lifecycleState: 'disabling' }).disabling,
+    true,
+  );
+  assert.equal(
+    normalizeLayerLoading({ enabled: true, stats: { loading: true, count: 8 } })
+      .refresh,
+    true,
+  );
+  assert.equal(
+    normalizeLayerLoading({ enabled: true, stats: { refreshing: true } })
+      .refresh,
+    true,
+  );
   assert.match(
-    normalizeLayerLoading({ stats: { managerRefreshError: 'refresh failed' } }).error,
+    normalizeLayerLoading({ stats: { managerRefreshError: 'refresh failed' } })
+      .error,
     /refresh failed/,
   );
 });
 
 test('delays initial loading so instant operations never flash', () => {
-  const summary = aggregateLayerLoading([{ id: 'a', name: 'A', lifecycleState: 'enabling' }]);
-  const pending = reduceLoadingFeedback(createLoadingFeedbackState(), summary, 100);
+  const summary = aggregateLayerLoading([
+    { id: 'a', name: 'A', lifecycleState: 'enabling' },
+  ]);
+  const pending = reduceLoadingFeedback(
+    createLoadingFeedbackState(),
+    summary,
+    100,
+  );
   assert.equal(pending.visible, false);
-  const finished = reduceLoadingFeedback(pending, aggregateLayerLoading([]), 150);
-  assert.equal(presentLoadingFeedback(finished, aggregateLayerLoading([]), 150), null);
+  const finished = reduceLoadingFeedback(
+    pending,
+    aggregateLayerLoading([]),
+    150,
+  );
+  assert.equal(
+    presentLoadingFeedback(finished, aggregateLayerLoading([]), 150),
+    null,
+  );
 });
 
 test('reveals sustained loading and then a bounded completion state', () => {
-  const summary = aggregateLayerLoading([{ id: 'a', name: 'A', lifecycleState: 'enabling' }]);
-  const pending = reduceLoadingFeedback(createLoadingFeedbackState(), summary, 100);
+  const summary = aggregateLayerLoading([
+    { id: 'a', name: 'A', lifecycleState: 'enabling' },
+  ]);
+  const pending = reduceLoadingFeedback(
+    createLoadingFeedbackState(),
+    summary,
+    100,
+  );
   const visible = reduceLoadingFeedback(pending, summary, 300);
-  assert.equal(presentLoadingFeedback(visible, summary, 300).label, 'LOADING LIVE DATA');
-  const complete = reduceLoadingFeedback(visible, aggregateLayerLoading([]), 350);
-  assert.equal(presentLoadingFeedback(complete, aggregateLayerLoading([]), 350).label, 'LOAD COMPLETE');
+  assert.equal(
+    presentLoadingFeedback(visible, summary, 300).label,
+    'LOADING LIVE DATA',
+  );
+  const complete = reduceLoadingFeedback(
+    visible,
+    aggregateLayerLoading([]),
+    350,
+  );
+  assert.equal(
+    presentLoadingFeedback(complete, aggregateLayerLoading([]), 350).label,
+    'LOAD COMPLETE',
+  );
 });
 
 test('terminal loading feedback centers its label without an empty detail slot', () => {
@@ -246,122 +474,200 @@ test('terminal loading feedback centers its label without an empty detail slot',
 });
 
 test('distinguishes accepted-data refresh from initial loading', () => {
-  const summary = aggregateLayerLoading([{
-    id: 'a', name: 'A', enabled: true, lifecycleState: 'enabled', stats: { loading: true, count: 4 },
-  }]);
+  const summary = aggregateLayerLoading([
+    {
+      id: 'a',
+      name: 'A',
+      enabled: true,
+      lifecycleState: 'enabled',
+      stats: { loading: true, count: 4 },
+    },
+  ]);
   assert.equal(summary.refresh, true);
 });
 
 test('surfaces cancellation and failure terminal states', () => {
-  const summary = aggregateLayerLoading([{ id: 'a', lifecycleState: 'enabling' }]);
-  const pending = reduceLoadingFeedback(createLoadingFeedbackState(), summary, 0);
+  const summary = aggregateLayerLoading([
+    { id: 'a', lifecycleState: 'enabling' },
+  ]);
+  const pending = reduceLoadingFeedback(
+    createLoadingFeedbackState(),
+    summary,
+    0,
+  );
   const visible = reduceLoadingFeedback(pending, summary, 200);
-  assert.equal(reduceLoadingFeedback(visible, aggregateLayerLoading([]), 250, {
-    type: 'visibility-cancelled', layerId: 'a', cancelled: true,
-  }).terminal, 'cancelled');
-  assert.equal(reduceLoadingFeedback(visible, aggregateLayerLoading([]), 250, {
-    type: 'visibility-failed', layerId: 'a', error: new Error('no'),
-  }).terminal, 'error');
+  assert.equal(
+    reduceLoadingFeedback(visible, aggregateLayerLoading([]), 250, {
+      type: 'visibility-cancelled',
+      layerId: 'a',
+      cancelled: true,
+    }).terminal,
+    'cancelled',
+  );
+  assert.equal(
+    reduceLoadingFeedback(visible, aggregateLayerLoading([]), 250, {
+      type: 'visibility-failed',
+      layerId: 'a',
+      error: new Error('no'),
+    }).terminal,
+    'error',
+  );
 });
 
 test('surfaces manager-owned refresh failure and recovery through the shared banner', () => {
-  const refreshing = aggregateLayerLoading([{
-    id: 'satellites',
-    name: 'Satellites',
-    enabled: true,
-    lifecycleState: 'enabled',
-    stats: { refreshing: true, count: 0, lastUpdate: null },
-  }]);
-  let state = reduceLoadingFeedback(createLoadingFeedbackState(), refreshing, 0, {
-    type: 'refresh-transition', layerId: 'satellites', refreshEpoch: 1,
-  });
+  const refreshing = aggregateLayerLoading([
+    {
+      id: 'satellites',
+      name: 'Satellites',
+      enabled: true,
+      lifecycleState: 'enabled',
+      stats: { refreshing: true, count: 0, lastUpdate: null },
+    },
+  ]);
+  let state = reduceLoadingFeedback(
+    createLoadingFeedbackState(),
+    refreshing,
+    0,
+    {
+      type: 'refresh-transition',
+      layerId: 'satellites',
+      refreshEpoch: 1,
+    },
+  );
   state = reduceLoadingFeedback(state, refreshing, 200);
-  assert.equal(presentLoadingFeedback(state, refreshing, 200).label, 'REFRESHING LIVE DATA');
+  assert.equal(
+    presentLoadingFeedback(state, refreshing, 200).label,
+    'REFRESHING LIVE DATA',
+  );
   state = reduceLoadingFeedback(state, aggregateLayerLoading([]), 250, {
-    type: 'refresh-failed', layerId: 'satellites', error: new Error('offline'), refreshEpoch: 1,
+    type: 'refresh-failed',
+    layerId: 'satellites',
+    error: new Error('offline'),
+    refreshEpoch: 1,
   });
-  assert.equal(presentLoadingFeedback(state, aggregateLayerLoading([]), 250).label, 'LOAD FAILED');
+  assert.equal(
+    presentLoadingFeedback(state, aggregateLayerLoading([]), 250).label,
+    'LOAD FAILED',
+  );
 
   const recovered = reduceLoadingFeedback(state, refreshing, 6000, {
-    type: 'refresh-transition', layerId: 'satellites', refreshEpoch: 2,
+    type: 'refresh-transition',
+    layerId: 'satellites',
+    refreshEpoch: 2,
   });
-  const complete = reduceLoadingFeedback(recovered, aggregateLayerLoading([]), 6200, {
-    type: 'refresh', layerId: 'satellites', refreshEpoch: 2,
-  });
+  const complete = reduceLoadingFeedback(
+    recovered,
+    aggregateLayerLoading([]),
+    6200,
+    {
+      type: 'refresh',
+      layerId: 'satellites',
+      refreshEpoch: 2,
+    },
+  );
   assert.equal(complete.terminal, 'complete');
 });
 
 test('AIS first-connect grace expiry reports failure even without a terminal manager event', () => {
-  const waiting = aggregateLayerLoading([{
-    id: 'ais-live-vessels',
-    name: 'AIS Vessels',
-    enabled: true,
-    lifecycleState: 'enabled',
-    stats: { loading: true, count: 0, lastUpdate: null },
-  }]);
+  const waiting = aggregateLayerLoading([
+    {
+      id: 'ais-live-vessels',
+      name: 'AIS Vessels',
+      enabled: true,
+      lifecycleState: 'enabled',
+      stats: { loading: true, count: 0, lastUpdate: null },
+    },
+  ]);
   let state = reduceLoadingFeedback(createLoadingFeedbackState(), waiting, 0);
   state = reduceLoadingFeedback(state, waiting, 200);
 
-  const unavailable = aggregateLayerLoading([{
-    id: 'ais-live-vessels',
-    name: 'AIS Vessels',
-    enabled: true,
-    lifecycleState: 'enabled',
-    stats: {
-      loading: false,
-      count: 0,
-      lastUpdate: null,
-      status: 'unavailable',
-      error: 'awaiting first AIS message…',
+  const unavailable = aggregateLayerLoading([
+    {
+      id: 'ais-live-vessels',
+      name: 'AIS Vessels',
+      enabled: true,
+      lifecycleState: 'enabled',
+      stats: {
+        loading: false,
+        count: 0,
+        lastUpdate: null,
+        status: 'unavailable',
+        error: 'awaiting first AIS message…',
+      },
     },
-  }]);
+  ]);
   state = reduceLoadingFeedback(state, unavailable, 300);
 
   assert.equal(state.terminal, 'error');
-  assert.equal(presentLoadingFeedback(state, unavailable, 300).label, 'LOAD FAILED');
+  assert.equal(
+    presentLoadingFeedback(state, unavailable, 300).label,
+    'LOAD FAILED',
+  );
 });
 
 test('a missing key outranks a simultaneous visibility completion', () => {
-  const enabling = aggregateLayerLoading([{
-    id: 'ais-live-vessels',
-    name: 'AIS Vessels',
-    lifecycleState: 'enabling',
-    stats: { loading: true },
-  }]);
+  const enabling = aggregateLayerLoading([
+    {
+      id: 'ais-live-vessels',
+      name: 'AIS Vessels',
+      lifecycleState: 'enabling',
+      stats: { loading: true },
+    },
+  ]);
   let state = reduceLoadingFeedback(createLoadingFeedbackState(), enabling, 0);
   state = reduceLoadingFeedback(state, enabling, 200);
 
-  const missingKey = aggregateLayerLoading([{
-    id: 'ais-live-vessels',
-    name: 'AIS Vessels',
-    enabled: true,
-    lifecycleState: 'enabled',
-    stats: { loading: false, keyRequired: true },
-  }]);
+  const missingKey = aggregateLayerLoading([
+    {
+      id: 'ais-live-vessels',
+      name: 'AIS Vessels',
+      enabled: true,
+      lifecycleState: 'enabled',
+      stats: { loading: false, keyRequired: true },
+    },
+  ]);
   state = reduceLoadingFeedback(state, missingKey, 250, {
-    type: 'visibility', layerId: 'ais-live-vessels', enabled: true,
+    type: 'visibility',
+    layerId: 'ais-live-vessels',
+    enabled: true,
   });
 
   assert.equal(state.terminal, 'needs-key');
 });
 
 test('a layer that only lacks its key ends the load as KEY REQUIRED, not LOAD FAILED', () => {
-  const enabling = aggregateLayerLoading([{
-    id: 'local-firms', name: 'NASA FIRMS', lifecycleState: 'enabling', stats: { loading: true },
-  }]);
+  const enabling = aggregateLayerLoading([
+    {
+      id: 'local-firms',
+      name: 'NASA FIRMS',
+      lifecycleState: 'enabling',
+      stats: { loading: true },
+    },
+  ]);
   let state = reduceLoadingFeedback(createLoadingFeedbackState(), enabling, 0);
   state = reduceLoadingFeedback(state, enabling, 200);
   // What FIRMS reports without a key; its own layer row keeps the error wording.
-  const keyless = aggregateLayerLoading([{
-    id: 'local-firms',
-    name: 'NASA FIRMS',
-    enabled: true,
-    lifecycleState: 'enabled',
-    stats: { loading: false, keyRequired: true, keySetupId: 'firms', error: 'KEY REQUIRED' },
-  }]);
+  const keyless = aggregateLayerLoading([
+    {
+      id: 'local-firms',
+      name: 'NASA FIRMS',
+      enabled: true,
+      lifecycleState: 'enabled',
+      stats: {
+        loading: false,
+        keyRequired: true,
+        keySetupId: 'firms',
+        error: 'KEY REQUIRED',
+      },
+    },
+  ]);
   state = reduceLoadingFeedback(state, keyless, 300);
   assert.equal(state.terminal, 'needs-key');
-  assert.equal(state.hideAt, 300 + LOADING_FAILURE_DWELL_MS, 'it stays long enough to act on');
+  assert.equal(
+    state.hideAt,
+    300 + LOADING_FAILURE_DWELL_MS,
+    'it stays long enough to act on',
+  );
   assert.deepEqual(presentLoadingFeedback(state, keyless, 300), {
     state: 'needs-key',
     label: 'KEY REQUIRED',
@@ -369,8 +675,14 @@ test('a layer that only lacks its key ends the load as KEY REQUIRED, not LOAD FA
     keySetupId: 'firms',
   });
   // A persistent notice does not hide it.
-  const notice = createGlobalStatusNotice('Recording', 300, { state: 'acquiring', persistent: true });
-  assert.equal(presentGlobalLoadingStatus(notice, state, keyless, 300).state, 'needs-key');
+  const notice = createGlobalStatusNotice('Recording', 300, {
+    state: 'acquiring',
+    persistent: true,
+  });
+  assert.equal(
+    presentGlobalLoadingStatus(notice, state, keyless, 300).state,
+    'needs-key',
+  );
 });
 
 test('a real failure in the same load still reads LOAD FAILED', () => {
@@ -387,20 +699,37 @@ test('a real failure in the same load still reads LOAD FAILED', () => {
       lifecycleState: 'enabled',
       stats: { keyRequired: true, keySetupId: 'firms', error: 'KEY REQUIRED' },
     },
-    { id: 'earthquakes', enabled: true, lifecycleState: 'enabled', stats: { error: 'USGS network error' } },
+    {
+      id: 'earthquakes',
+      enabled: true,
+      lifecycleState: 'enabled',
+      stats: { error: 'USGS network error' },
+    },
   ]);
   state = reduceLoadingFeedback(state, settled, 300);
   assert.equal(state.terminal, 'error');
-  assert.equal(presentLoadingFeedback(state, settled, 300).label, 'LOAD FAILED');
+  assert.equal(
+    presentLoadingFeedback(state, settled, 300).label,
+    'LOAD FAILED',
+  );
 });
 
 test('the KEY REQUIRED banner keeps its detail and offers an ADD KEY button', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
-  assert.match(html, /<button id="global-loading-action" type="button" hidden>Add key<\/button>/);
-  assert.match(css, /#global-loading-status\[data-state='needs-key'\] \{[^}]*pointer-events: auto;/);
+  assert.match(
+    html,
+    /<button id="global-loading-action" type="button" hidden>Add key<\/button>/,
+  );
+  assert.match(
+    css,
+    /#global-loading-status\[data-state='needs-key'\] \{[^}]*pointer-events: auto;/,
+  );
   // Unlike the other terminal states, its detail line (the key's name) shows.
-  assert.doesNotMatch(css, /\[data-state='needs-key'\][^{}]*#global-loading-detail\s*\{\s*display:\s*none/);
+  assert.doesNotMatch(
+    css,
+    /\[data-state='needs-key'\][^{}]*#global-loading-detail\s*\{\s*display:\s*none/,
+  );
 });
 
 test('retains the worst terminal outcome until every concurrent load drains', () => {
@@ -412,22 +741,31 @@ test('retains the worst terminal outcome until every concurrent load drains', ()
     { id: 'b', name: 'B', lifecycleState: 'enabling' },
   ]);
   let state = reduceLoadingFeedback(createLoadingFeedbackState(), both, 0, {
-    type: 'visibility-transition', layerId: 'a',
+    type: 'visibility-transition',
+    layerId: 'a',
   });
   state = reduceLoadingFeedback(state, both, 200, {
-    type: 'visibility-transition', layerId: 'b',
+    type: 'visibility-transition',
+    layerId: 'b',
   });
   state = reduceLoadingFeedback(state, onlyB, 250, {
-    type: 'visibility-failed', layerId: 'a', error: new Error('A failed'),
+    type: 'visibility-failed',
+    layerId: 'a',
+    error: new Error('A failed'),
   });
   assert.deepEqual(state.activeIds, ['a', 'b']);
   assert.equal(state.batchOutcome, 'error');
   state = reduceLoadingFeedback(state, onlyB, 300);
   state = reduceLoadingFeedback(state, aggregateLayerLoading([]), 350, {
-    type: 'visibility', layerId: 'b', enabled: true,
+    type: 'visibility',
+    layerId: 'b',
+    enabled: true,
   });
   assert.equal(state.terminal, 'error');
-  assert.equal(presentLoadingFeedback(state, aggregateLayerLoading([]), 350).label, 'LOAD FAILED');
+  assert.equal(
+    presentLoadingFeedback(state, aggregateLayerLoading([]), 350).label,
+    'LOAD FAILED',
+  );
 });
 
 test('retains cancellation across overlapping success and resets it for a later epoch', () => {
@@ -435,37 +773,54 @@ test('retains cancellation across overlapping success and resets it for a later 
     { id: 'a', name: 'A', lifecycleState: 'enabling' },
     { id: 'b', name: 'B', lifecycleState: 'enabling' },
   ]);
-  const onlyB = aggregateLayerLoading([{ id: 'b', name: 'B', lifecycleState: 'enabling' }]);
+  const onlyB = aggregateLayerLoading([
+    { id: 'b', name: 'B', lifecycleState: 'enabling' },
+  ]);
   let state = reduceLoadingFeedback(createLoadingFeedbackState(), both, 0);
   state = reduceLoadingFeedback(state, onlyB, 200, {
-    type: 'visibility-cancelled', layerId: 'a', cancelled: true,
+    type: 'visibility-cancelled',
+    layerId: 'a',
+    cancelled: true,
   });
   state = reduceLoadingFeedback(state, aggregateLayerLoading([]), 250, {
-    type: 'visibility', layerId: 'b', enabled: true,
+    type: 'visibility',
+    layerId: 'b',
+    enabled: true,
   });
   assert.equal(state.terminal, 'cancelled');
 
-  const next = aggregateLayerLoading([{ id: 'c', name: 'C', lifecycleState: 'enabling' }]);
+  const next = aggregateLayerLoading([
+    { id: 'c', name: 'C', lifecycleState: 'enabling' },
+  ]);
   state = reduceLoadingFeedback(state, next, 300, {
-    type: 'visibility-transition', layerId: 'c',
+    type: 'visibility-transition',
+    layerId: 'c',
   });
   assert.equal(state.batchOutcome, null);
   assert.deepEqual(state.activeIds, ['c']);
   state = reduceLoadingFeedback(state, aggregateLayerLoading([]), 500, {
-    type: 'visibility', layerId: 'c', enabled: true,
+    type: 'visibility',
+    layerId: 'c',
+    enabled: true,
   });
   assert.equal(state.terminal, 'complete');
 });
 
 test('ignores terminal events from layers outside the active loading epoch', () => {
-  const active = aggregateLayerLoading([{ id: 'a', name: 'A', lifecycleState: 'enabling' }]);
+  const active = aggregateLayerLoading([
+    { id: 'a', name: 'A', lifecycleState: 'enabling' },
+  ]);
   let state = reduceLoadingFeedback(createLoadingFeedbackState(), active, 0);
   state = reduceLoadingFeedback(state, active, 200, {
-    type: 'visibility-failed', layerId: 'unrelated', error: new Error('not this batch'),
+    type: 'visibility-failed',
+    layerId: 'unrelated',
+    error: new Error('not this batch'),
   });
   assert.equal(state.batchOutcome, null);
   state = reduceLoadingFeedback(state, aggregateLayerLoading([]), 250, {
-    type: 'visibility', layerId: 'a', enabled: true,
+    type: 'visibility',
+    layerId: 'a',
+    enabled: true,
   });
   assert.equal(state.terminal, 'complete');
 });
@@ -475,26 +830,51 @@ test('a final failure outranks an earlier success in the same loading epoch', ()
     { id: 'a', lifecycleState: 'enabling' },
     { id: 'b', lifecycleState: 'enabling' },
   ]);
-  const onlyB = aggregateLayerLoading([{ id: 'b', lifecycleState: 'enabling' }]);
+  const onlyB = aggregateLayerLoading([
+    { id: 'b', lifecycleState: 'enabling' },
+  ]);
   let state = reduceLoadingFeedback(createLoadingFeedbackState(), both, 0);
   state = reduceLoadingFeedback(state, onlyB, 200, {
-    type: 'visibility', layerId: 'a', enabled: true,
+    type: 'visibility',
+    layerId: 'a',
+    enabled: true,
   });
   state = reduceLoadingFeedback(state, aggregateLayerLoading([]), 250, {
-    type: 'visibility-failed', layerId: 'b', error: new Error('B failed'),
+    type: 'visibility-failed',
+    layerId: 'b',
+    error: new Error('B failed'),
   });
   assert.equal(state.terminal, 'error');
 });
 
 test('describes disable work without reporting it as a completed load', () => {
-  const summary = aggregateLayerLoading([{
-    id: 'a', name: 'A', enabled: true, lifecycleState: 'disabling',
-  }]);
-  const pending = reduceLoadingFeedback(createLoadingFeedbackState(), summary, 0);
+  const summary = aggregateLayerLoading([
+    {
+      id: 'a',
+      name: 'A',
+      enabled: true,
+      lifecycleState: 'disabling',
+    },
+  ]);
+  const pending = reduceLoadingFeedback(
+    createLoadingFeedbackState(),
+    summary,
+    0,
+  );
   const visible = reduceLoadingFeedback(pending, summary, 200);
-  assert.equal(presentLoadingFeedback(visible, summary, 200).label, 'TURNING OFF LIVE DATA');
-  const complete = reduceLoadingFeedback(visible, aggregateLayerLoading([]), 250);
-  assert.equal(presentLoadingFeedback(complete, aggregateLayerLoading([]), 250).label, 'LIVE DATA OFF');
+  assert.equal(
+    presentLoadingFeedback(visible, summary, 200).label,
+    'TURNING OFF LIVE DATA',
+  );
+  const complete = reduceLoadingFeedback(
+    visible,
+    aggregateLayerLoading([]),
+    250,
+  );
+  assert.equal(
+    presentLoadingFeedback(complete, aggregateLayerLoading([]), 250).label,
+    'LIVE DATA OFF',
+  );
 });
 
 test('a flow failure landing after the roads settle still ends the batch as LOAD FAILED', () => {
@@ -502,17 +882,38 @@ test('a flow failure landing after the roads settle still ends the batch as LOAD
   // that started it. The layer keeps stats.loading true while it still owns
   // that request, so the batch cannot close early and report LOAD COMPLETE
   // over a failure that has not landed yet.
-  const sample = (stats) => aggregateLayerLoading([
-    { id: 'traffic', name: 'Street Traffic', enabled: true, lifecycleState: 'enabled', stats },
-  ]);
+  const sample = (stats) =>
+    aggregateLayerLoading([
+      {
+        id: 'traffic',
+        name: 'Street Traffic',
+        enabled: true,
+        lifecycleState: 'enabled',
+        stats,
+      },
+    ]);
   // Roads loading; flow request outstanding.
-  const roadsLoading = sample({ loading: true, count: 0, mode: 'live', error: null });
-  let state = reduceLoadingFeedback(createLoadingFeedbackState(), roadsLoading, 0);
+  const roadsLoading = sample({
+    loading: true,
+    count: 0,
+    mode: 'live',
+    error: null,
+  });
+  let state = reduceLoadingFeedback(
+    createLoadingFeedbackState(),
+    roadsLoading,
+    0,
+  );
   state = reduceLoadingFeedback(state, roadsLoading, 200);
   assert.equal(state.visible, true);
   // Cached roads have painted, but the flow fetch has NOT settled: the layer
   // still reports loading, so the batch stays open.
-  const flowStillPending = sample({ loading: true, count: 544, mode: 'live', error: null });
+  const flowStillPending = sample({
+    loading: true,
+    count: 544,
+    mode: 'live',
+    error: null,
+  });
   state = reduceLoadingFeedback(state, flowStillPending, 400);
   assert.equal(state.phase, 'loading');
   // Flow fails late.
@@ -535,9 +936,14 @@ test('keeps cold idle traffic hidden even with a truthful zero-coverage label', 
   let state = createTrafficSyncFeedbackState();
   const sample = {
     enabled: true,
-    stats: { loading: false, loadingLabel: 'LIVE · TomTom flow · 0% cov', flowCoveragePct: 0 },
+    stats: {
+      loading: false,
+      loadingLabel: 'LIVE · TomTom flow · 0% cov',
+      flowCoveragePct: 0,
+    },
   };
-  for (const now of [0, 220, 440, 2200]) state = reduceTrafficSyncFeedback(state, sample, now);
+  for (const now of [0, 220, 440, 2200])
+    state = reduceTrafficSyncFeedback(state, sample, now);
   assert.equal(state.visible, false);
   assert.equal(state.busy, false);
 });
@@ -551,8 +957,15 @@ test('shows traffic busy work and one fixed busy-to-idle confirmation', () => {
     enabled: true,
     stats: { loading: false, loadingLabel: 'LIVE · TomTom flow · 0% cov' },
   };
-  let state = reduceTrafficSyncFeedback(createTrafficSyncFeedbackState(), busySample, 100);
-  assert.deepEqual({ visible: state.visible, progress: state.progressText }, { visible: true, progress: '...' });
+  let state = reduceTrafficSyncFeedback(
+    createTrafficSyncFeedbackState(),
+    busySample,
+    100,
+  );
+  assert.deepEqual(
+    { visible: state.visible, progress: state.progressText },
+    { visible: true, progress: '...' },
+  );
   state = reduceTrafficSyncFeedback(state, busySample, 320);
   state = reduceTrafficSyncFeedback(state, idleSample, 500);
   const fixedDeadline = state.confirmationUntil;
@@ -575,7 +988,10 @@ test('the settled traffic chip shows exactly one percentage — the coverage it 
   };
   let state = reduceTrafficSyncFeedback(
     createTrafficSyncFeedbackState(),
-    { enabled: true, stats: { loading: true, loadingLabel: 'syncing LIVE traffic flow' } },
+    {
+      enabled: true,
+      stats: { loading: true, loadingLabel: 'syncing LIVE traffic flow' },
+    },
     0,
   );
   state = reduceTrafficSyncFeedback(state, idleSample, 100);
@@ -583,7 +999,11 @@ test('the settled traffic chip shows exactly one percentage — the coverage it 
   assert.equal(state.label, 'LIVE · TomTom flow · 0% cov');
   assert.equal(state.progressText, '');
   const rendered = `${state.label} ${state.progressText}`.trim();
-  assert.equal(rendered.match(/\d+%/g).length, 1, 'the settled chip must carry one percentage');
+  assert.equal(
+    rendered.match(/\d+%/g).length,
+    1,
+    'the settled chip must carry one percentage',
+  );
   assert.doesNotMatch(rendered, /100%/);
 });
 
@@ -607,22 +1027,40 @@ test('the chip renderer clears the progress slot instead of stranding the last v
 test('work still in flight keeps its progress number beside a label that has none', () => {
   const state = reduceTrafficSyncFeedback(
     createTrafficSyncFeedbackState(),
-    { enabled: true, stats: { phaseLabel: 'warming roads', phaseProgressPct: 42 } },
+    {
+      enabled: true,
+      stats: { phaseLabel: 'warming roads', phaseProgressPct: 42 },
+    },
     0,
   );
   assert.deepEqual(
     { busy: state.busy, label: state.label, progress: state.progressText },
     { busy: true, label: 'warming roads', progress: '42%' },
   );
-  assert.doesNotMatch(state.label, /%/, 'a busy label must not carry its own percentage');
+  assert.doesNotMatch(
+    state.label,
+    /%/,
+    'a busy label must not carry its own percentage',
+  );
 });
 
 test('resets traffic feedback on disable and permits a later fresh cycle', () => {
   const busy = { enabled: true, stats: { loading: true } };
-  const idle = { enabled: true, stats: { loading: false, loadingLabel: 'simulated traffic' } };
-  let state = reduceTrafficSyncFeedback(createTrafficSyncFeedbackState(), busy, 0);
+  const idle = {
+    enabled: true,
+    stats: { loading: false, loadingLabel: 'simulated traffic' },
+  };
+  let state = reduceTrafficSyncFeedback(
+    createTrafficSyncFeedbackState(),
+    busy,
+    0,
+  );
   state = reduceTrafficSyncFeedback(state, idle, 100);
-  state = reduceTrafficSyncFeedback(state, { enabled: false, stats: {}, forceShow: true }, 200);
+  state = reduceTrafficSyncFeedback(
+    state,
+    { enabled: false, stats: {}, forceShow: true },
+    200,
+  );
   assert.deepEqual(state, createTrafficSyncFeedbackState());
   state = reduceTrafficSyncFeedback(state, idle, 300);
   assert.equal(state.visible, false);
@@ -635,41 +1073,66 @@ test('new busy work replaces confirmation and force-show remains bounded', () =>
   const idle = { enabled: true, stats: { loadingLabel: 'simulated traffic' } };
   const busy = {
     enabled: true,
-    stats: { phaseProgressPct: -20, prewarmQueueDepth: 1, phaseLabel: 'warming roads' },
+    stats: {
+      phaseProgressPct: -20,
+      prewarmQueueDepth: 1,
+      phaseLabel: 'warming roads',
+    },
   };
-  let state = reduceTrafficSyncFeedback(createTrafficSyncFeedbackState(), idle, 0);
+  let state = reduceTrafficSyncFeedback(
+    createTrafficSyncFeedbackState(),
+    idle,
+    0,
+  );
   state = reduceTrafficSyncFeedback(state, { ...idle, forceShow: true }, 100);
   const forcedDeadline = state.confirmationUntil;
   state = reduceTrafficSyncFeedback(state, { ...idle, forceShow: true }, 300);
   assert.equal(state.confirmationUntil, forcedDeadline);
   state = reduceTrafficSyncFeedback(state, busy, 400);
-  assert.deepEqual({ busy: state.busy, progress: state.progressText }, { busy: true, progress: '0%' });
+  assert.deepEqual(
+    { busy: state.busy, progress: state.progressText },
+    { busy: true, progress: '0%' },
+  );
   state = reduceTrafficSyncFeedback(state, idle, 500);
   assert.equal(state.confirmationUntil, 500 + TRAFFIC_SYNC_CONFIRM_MS);
-  state = reduceTrafficSyncFeedback(state, idle, 500 + TRAFFIC_SYNC_CONFIRM_MS + 1);
+  state = reduceTrafficSyncFeedback(
+    state,
+    idle,
+    500 + TRAFFIC_SYNC_CONFIRM_MS + 1,
+  );
   assert.equal(state.visible, false);
 });
 
 test('aggregates Mapped Installations refresh beside CCTV without changing either owner', () => {
   const summary = aggregateLayerLoading([
     {
-      id: 'cctv', name: 'CCTV', enabled: true, lifecycleState: 'enabled',
+      id: 'cctv',
+      name: 'CCTV',
+      enabled: true,
+      lifecycleState: 'enabled',
       stats: { count: 500, lastUpdate: 10, loading: true },
     },
     {
-      id: 'military-installations', name: 'Mapped Installations', enabled: true,
+      id: 'military-installations',
+      name: 'Mapped Installations',
+      enabled: true,
       lifecycleState: 'enabled',
       stats: { count: 4, lastUpdate: 20, loading: true },
     },
   ]);
   assert.deepEqual(summary.activeIds, ['cctv', 'military-installations']);
   assert.equal(summary.refresh, true);
-  const pending = reduceLoadingFeedback(createLoadingFeedbackState(), summary, 0);
-  const visible = reduceLoadingFeedback(pending, summary, 200);
-  assert.deepEqual(
-    presentLoadingFeedback(visible, summary, 200),
-    { state: 'refresh', label: 'REFRESHING LIVE DATA', detail: 'CCTV · Mapped Installations' },
+  const pending = reduceLoadingFeedback(
+    createLoadingFeedbackState(),
+    summary,
+    0,
   );
+  const visible = reduceLoadingFeedback(pending, summary, 200);
+  assert.deepEqual(presentLoadingFeedback(visible, summary, 200), {
+    state: 'refresh',
+    label: 'REFRESHING LIVE DATA',
+    detail: 'CCTV · Mapped Installations',
+  });
 });
 
 // The reducer above is pure and fully covered; its DRIVER lives inside the
@@ -683,7 +1146,10 @@ test('the loading ticker never runs hidden and stops after loading and notices s
   // safety-net poll, so its `if (document.hidden) return;` is correct there
   // and must not be confused with this self-stopping ticker's leak.
   const armBody = ui.slice(ui.indexOf('_armLoadingFeedbackTicker() {'));
-  assert.ok(armBody.startsWith('_armLoadingFeedbackTicker() {'), 'ticker function not found in ui.js');
+  assert.ok(
+    armBody.startsWith('_armLoadingFeedbackTicker() {'),
+    'ticker function not found in ui.js',
+  );
   const arm = armBody.slice(0, armBody.indexOf('\n  }\n') + 5);
 
   // 1. The ARM guard itself refuses while hidden. Previously the only hidden

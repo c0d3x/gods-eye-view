@@ -137,7 +137,9 @@ export const FIRST_RUN_MISSIONS = Object.freeze({
 function resolveStore(kind, injected) {
   if (injected !== undefined) return injected;
   try {
-    return kind === 'session' ? globalThis.sessionStorage : globalThis.localStorage;
+    return kind === 'session'
+      ? globalThis.sessionStorage
+      : globalThis.localStorage;
   } catch {
     // Privacy-restricted storage should not make first launch silent.
     return null;
@@ -205,8 +207,13 @@ export function shouldShowFirstRun({
   if (params.get('welcome') === '0') return false;
   // The demo/support escape hatch outranks both suppressions on purpose.
   if (params.get('welcome') === '1') return true;
-  if (readStored('local', storage, FIRST_RUN_STORAGE_KEY) === 'suppressed') return false;
-  if (readStored('session', sessionStorageRef, FIRST_RUN_SESSION_KEY) === 'dismissed') return false;
+  if (readStored('local', storage, FIRST_RUN_STORAGE_KEY) === 'suppressed')
+    return false;
+  if (
+    readStored('session', sessionStorageRef, FIRST_RUN_SESSION_KEY) ===
+    'dismissed'
+  )
+    return false;
   return true;
 }
 
@@ -247,7 +254,10 @@ export function rememberFirstRunSessionDismissed(sessionStorageRef) {
  * @param {() => Promise<any>} deps.flyToGlobe
  * @returns {Promise<{ok: boolean, choice: string, result?: object, failedLayerIds?: string[]}>}
  */
-export async function runFirstRunChoice(choice, { setContextMode, setLayerEnabled, flyToGlobe }) {
+export async function runFirstRunChoice(
+  choice,
+  { setContextMode, setLayerEnabled, flyToGlobe },
+) {
   const mission = FIRST_RUN_MISSIONS[choice];
   if (!mission) return { ok: false, choice };
   if (mission.kind === 'none') return { ok: true, choice };
@@ -261,15 +271,19 @@ export async function runFirstRunChoice(choice, { setContextMode, setLayerEnable
   const flight = Promise.resolve()
     .then(() => flyToGlobe())
     .catch(() => null);
-  const outcomes = await Promise.all(mission.layerIds.map(async (layerId) => {
-    try {
-      return { layerId, ok: (await setLayerEnabled(layerId)) !== false };
-    } catch {
-      return { layerId, ok: false };
-    }
-  }));
+  const outcomes = await Promise.all(
+    mission.layerIds.map(async (layerId) => {
+      try {
+        return { layerId, ok: (await setLayerEnabled(layerId)) !== false };
+      } catch {
+        return { layerId, ok: false };
+      }
+    }),
+  );
   await flight;
-  const failedLayerIds = outcomes.filter((entry) => !entry.ok).map((entry) => entry.layerId);
+  const failedLayerIds = outcomes
+    .filter((entry) => !entry.ok)
+    .map((entry) => entry.layerId);
   return { ok: failedLayerIds.length === 0, choice, failedLayerIds };
 }
 
@@ -319,20 +333,25 @@ export function initFirstRunExperience({
   if (!root || root.dataset.initialized === 'true') return null;
   root.dataset.initialized = 'true';
 
-  if (!shouldShowFirstRun({
-    hasShareState: styleManager?.hasShareState,
-    storage,
-    sessionStorageRef,
-    location,
-  })) {
+  if (
+    !shouldShowFirstRun({
+      hasShareState: styleManager?.hasShareState,
+      storage,
+      sessionStorageRef,
+      location,
+    })
+  ) {
     root.remove();
     return null;
   }
 
   // The tile name is owner-switchable from one constant, so paint it from the
   // module rather than trusting the markup to have been edited to match.
-  const environmentalTitle = root.querySelector('[data-first-run-environmental-title]');
-  if (environmentalTitle) environmentalTitle.textContent = environmentalLabel().title;
+  const environmentalTitle = root.querySelector(
+    '[data-first-run-environmental-title]',
+  );
+  if (environmentalTitle)
+    environmentalTitle.textContent = environmentalLabel().title;
 
   const status = root.querySelector('[data-first-run-status]');
   const suppressBox = root.querySelector('[data-first-run-suppress]');
@@ -342,9 +361,15 @@ export function initFirstRunExperience({
   let busy = false;
   let closing = false;
 
-  const focusables = () => [
-    ...root.querySelectorAll('button, input, [href], [tabindex]:not([tabindex="-1"])'),
-  ].filter((node) => !node.hasAttribute('disabled') && node.getClientRects().length > 0);
+  const focusables = () =>
+    [
+      ...root.querySelectorAll(
+        'button, input, [href], [tabindex]:not([tabindex="-1"])',
+      ),
+    ].filter(
+      (node) =>
+        !node.hasAttribute('disabled') && node.getClientRects().length > 0,
+    );
 
   /**
    * Is something painted OVER the card? A measurable box is not a visible card.
@@ -386,10 +411,11 @@ export function initFirstRunExperience({
    * is exactly how every one of those surfaces hides this card; the hit test
    * then covers the overlays that leave the box intact and simply sit on top.
    */
-  const isTopmost = () => root.isConnected
-    && root.classList.contains('visible')
-    && root.getClientRects().length > 0
-    && !coveredByOverlay();
+  const isTopmost = () =>
+    root.isConnected &&
+    root.classList.contains('visible') &&
+    root.getClientRects().length > 0 &&
+    !coveredByOverlay();
 
   const dismiss = ({ restoreFocus = true } = {}) => {
     if (closing) return;
@@ -405,14 +431,18 @@ export function initFirstRunExperience({
     // taking over owns focus. If it has not taken it yet, focus only drops out
     // of the card, so that surface can still claim it.
     if (restoreFocus) {
-      if (typeof previouslyFocused?.focus === 'function' && previouslyFocused.isConnected) {
+      if (
+        typeof previouslyFocused?.focus === 'function' &&
+        previouslyFocused.isConnected
+      ) {
         previouslyFocused.focus({ preventScroll: true });
       } else {
         documentRef.body?.focus?.({ preventScroll: true });
       }
     }
     const active = documentRef.activeElement;
-    if (active && active !== documentRef.body && root.contains(active)) active.blur?.();
+    if (active && active !== documentRef.body && root.contains(active))
+      active.blur?.();
     root.classList.remove('visible');
     // inert keeps the leaving card out of the tab order and the accessibility
     // tree; aria-hidden covers engines without inert.
@@ -431,10 +461,13 @@ export function initFirstRunExperience({
     root.setAttribute('aria-busy', String(next));
     // aria-disabled, not `disabled`: disabling the focused button drops focus to
     // <body> mid-flight and strands a keyboard visitor outside the launcher.
-    for (const button of buttons) button.setAttribute('aria-disabled', String(next));
+    for (const button of buttons)
+      button.setAttribute('aria-disabled', String(next));
     if (!status) return;
-    if (next) status.textContent = FIRST_RUN_MISSIONS[choice]?.busyText || 'Working…';
-    else if (status.dataset.sticky !== 'true') status.textContent = defaultStatus;
+    if (next)
+      status.textContent = FIRST_RUN_MISSIONS[choice]?.busyText || 'Working…';
+    else if (status.dataset.sticky !== 'true')
+      status.textContent = defaultStatus;
   };
 
   const onChoice = async (event) => {
@@ -453,13 +486,16 @@ export function initFirstRunExperience({
             // does not decide panel chrome. This first-run click is an explicit
             // visual choice, so reveal the result exactly as the visible
             // Contacts / Space Missions tabs do.
-            styleManager.setPanelCollapsed?.('global-context-panel', false, { explicit: true });
+            styleManager.setPanelCollapsed?.('global-context-panel', false, {
+              explicit: true,
+            });
           }
           return result;
         },
         // `origin: 'user'` on purpose: a mission tile is a real person choosing
         // these layers, so it persists exactly as clicking those rows would.
-        setLayerEnabled: (layerId) => dataManager.setEnabled(layerId, true, { origin: 'user' }),
+        setLayerEnabled: (layerId) =>
+          dataManager.setEnabled(layerId, true, { origin: 'user' }),
         flyToGlobe: () => styleManager.resetToGlobeView(),
       });
     } catch (error) {
@@ -475,7 +511,8 @@ export function initFirstRunExperience({
     const failed = outcome?.failedLayerIds?.length
       ? outcome.failedLayerIds
       : outcome?.result?.failedLayerIds;
-    const detail = Array.isArray(failed) && failed.length ? ` (${failed.join(', ')})` : '';
+    const detail =
+      Array.isArray(failed) && failed.length ? ` (${failed.join(', ')})` : '';
     if (status) {
       status.dataset.sticky = 'true';
       status.textContent = `Could not open that mission${detail}. Retry or explore manually.`;
@@ -494,7 +531,8 @@ export function initFirstRunExperience({
     if (box) box.checked = !wanted;
     if (!status) return;
     status.dataset.sticky = 'true';
-    status.textContent = 'This browser is blocking storage, so that could not be saved.';
+    status.textContent =
+      'This browser is blocking storage, so that could not be saved.';
   };
 
   function onKeyDown(event) {
@@ -639,13 +677,17 @@ export function initFirstRunExperience({
   const onViewportResize = () => syncScrollAffordance();
   globalThis.addEventListener?.('resize', onViewportResize);
 
-  const surfaceObserver = typeof globalThis.MutationObserver === 'function'
-    ? new globalThis.MutationObserver(syncToExclusiveSurfaces)
-    : null;
+  const surfaceObserver =
+    typeof globalThis.MutationObserver === 'function'
+      ? new globalThis.MutationObserver(syncToExclusiveSurfaces)
+      : null;
   // Attributes only, no subtree: this is a class watch on one element, so it
   // costs nothing per frame and never asks the render governor for a frame.
   if (documentRef.body) {
-    surfaceObserver?.observe(documentRef.body, { attributes: true, attributeFilter: ['class'] });
+    surfaceObserver?.observe(documentRef.body, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
   }
   syncToExclusiveSurfaces();
 

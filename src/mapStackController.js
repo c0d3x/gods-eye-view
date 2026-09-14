@@ -12,7 +12,8 @@ import { keySetupRequirement } from './keySetupCatalog.js';
  * @returns {string}
  */
 export function photorealUnavailableReason(hasCredentials) {
-  if (hasCredentials) return 'Google 3D tiles unavailable — check the key\'s API restrictions, quota, or network';
+  if (hasCredentials)
+    return "Google 3D tiles unavailable — check the key's API restrictions, quota, or network";
   return `${keySetupRequirement('google-maps')} — or a Cesium ion token for the ion-hosted route`;
 }
 
@@ -79,7 +80,8 @@ const ESRI_ATTRIBUTION_HTML =
 // EllipsoidTerrainProvider — see docs/superpowers/specs/2026-07-05-entity-height-datum-design.md
 // §1a). Constructed via `.fromUrl()`, never a hand-built `{z}/{x}/{y}.terrain`
 // URL (review correction, spec §1a).
-const REEARTH_TERRAIN_URL = 'https://terrain.reearth.land/cesium-mesh/ellipsoid';
+const REEARTH_TERRAIN_URL =
+  'https://terrain.reearth.land/cesium-mesh/ellipsoid';
 
 /**
  * Controls the active globe/map stack. Google Photorealistic 3D Tiles remain
@@ -87,13 +89,16 @@ const REEARTH_TERRAIN_URL = 'https://terrain.reearth.land/cesium-mesh/ellipsoid'
  * imagery stacks.
  */
 export class MapStackController {
-  constructor(viewer, {
-    googleTileset = null,
-    cesiumToken = '',
-    initialStack = 'photoreal',
-    onChange = null,
-    onError = null,
-  } = {}) {
+  constructor(
+    viewer,
+    {
+      googleTileset = null,
+      cesiumToken = '',
+      initialStack = 'photoreal',
+      onChange = null,
+      onError = null,
+    } = {},
+  ) {
     this.viewer = viewer;
     this.googleTileset = googleTileset;
     this.cesiumToken = String(cesiumToken || '').trim();
@@ -128,7 +133,10 @@ export class MapStackController {
     // captures a generation and aborts its own commit once superseded.
     this._switchGen = 0;
 
-    if (!this.getStack(this._activeId) || !this.isStackAvailable(this._activeId)) {
+    if (
+      !this.getStack(this._activeId) ||
+      !this.isStackAvailable(this._activeId)
+    ) {
       this._activeId = googleTileset ? 'photoreal' : 'esri-imagery';
     }
   }
@@ -156,14 +164,19 @@ export class MapStackController {
    */
   _unavailableReason(stack) {
     if (stack?.requiresIon) return keySetupRequirement('cesium-ion');
-    if (stack?.kind === 'photoreal') return photorealUnavailableReason(this._hasPhotorealCredentials());
+    if (stack?.kind === 'photoreal')
+      return photorealUnavailableReason(this._hasPhotorealCredentials());
     return `${stack?.label || 'This map stack'} is unavailable`;
   }
 
   /** A direct Google key or an ion token is enough to attempt Google 3D. */
   _hasPhotorealCredentials() {
-    const googleKey = typeof window !== 'undefined' ? window.__GOOGLE_MAPS_API_KEY__ : '';
-    return Boolean(String(googleKey || '').trim()) || Boolean(String(this.cesiumToken || '').trim());
+    const googleKey =
+      typeof window !== 'undefined' ? window.__GOOGLE_MAPS_API_KEY__ : '';
+    return (
+      Boolean(String(googleKey || '').trim()) ||
+      Boolean(String(this.cesiumToken || '').trim())
+    );
   }
 
   getStack(id) {
@@ -358,16 +371,22 @@ export class MapStackController {
       provider = await Cesium.createWorldImageryAsync({ style: stack.style });
     } else if (stack.kind === 'esri-imagery') {
       try {
-        provider = await Cesium.ArcGisMapServerImageryProvider.fromUrl(ESRI_WORLD_IMAGERY_URL, {
-          credit: ESRI_IMAGERY_CREDIT,
-          enablePickFeatures: false,
-        });
+        provider = await Cesium.ArcGisMapServerImageryProvider.fromUrl(
+          ESRI_WORLD_IMAGERY_URL,
+          {
+            credit: ESRI_IMAGERY_CREDIT,
+            enablePickFeatures: false,
+          },
+        );
       } catch (error) {
         // The keyless DEFAULT landing must never strand a first run on a blank
         // globe because Esri is unreachable — fall back to OSM tiles for this
         // session. (The fallback is cached under this stack id like any other
         // provider, so the session won't re-probe Esri; a restart does.)
-        console.warn('[MapStack] Esri World Imagery unavailable, falling back to OSM:', error?.message || error);
+        console.warn(
+          '[MapStack] Esri World Imagery unavailable, falling back to OSM:',
+          error?.message || error,
+        );
         provider = new Cesium.OpenStreetMapImageryProvider({
           url: 'https://tile.openstreetmap.org/',
           credit: DEFAULT_OSM_CREDIT,
@@ -387,7 +406,11 @@ export class MapStackController {
     const resolution = { provider, effectiveStackId, fallbackMessage };
     this._imageryProviders.set(stack.id, resolution);
     if (effectiveStackId === 'osm' && !this._imageryProviders.has('osm')) {
-      this._imageryProviders.set('osm', { provider, effectiveStackId: 'osm', fallbackMessage: null });
+      this._imageryProviders.set('osm', {
+        provider,
+        effectiveStackId: 'osm',
+        fallbackMessage: null,
+      });
     }
     return resolution;
   }
@@ -403,23 +426,30 @@ export class MapStackController {
     if (!errorEvent?.addEventListener) return;
     let failures = 0;
     this._removeImageryErrorListener = errorEvent.addEventListener((error) => {
-      if (gen !== this._switchGen || this._activeImageryProvider !== resolution.provider) return;
+      if (
+        gen !== this._switchGen ||
+        this._activeImageryProvider !== resolution.provider
+      )
+        return;
       const retryCount = Number(error?.timesRetried);
-      failures = Number.isInteger(retryCount) && retryCount >= 0
-        ? Math.max(failures + 1, retryCount + 1)
-        : failures + 1;
+      failures =
+        Number.isInteger(retryCount) && retryCount >= 0
+          ? Math.max(failures + 1, retryCount + 1)
+          : failures + 1;
       if (failures < 2 || this._esriFallbackPending) return;
       this._esriFallbackPending = true;
       const message = 'Esri Satellite tile requests failed; using OSM';
       this._onError?.(message, this.getStack('esri-imagery'));
-      void this.setStack('osm', { silent: true }).then((state) => {
-        if (state?.activeId === 'osm') {
-          this._lastError = message;
-          this._emitChange('error');
-        }
-      }).finally(() => {
-        this._esriFallbackPending = false;
-      });
+      void this.setStack('osm', { silent: true })
+        .then((state) => {
+          if (state?.activeId === 'osm') {
+            this._lastError = message;
+            this._emitChange('error');
+          }
+        })
+        .finally(() => {
+          this._esriFallbackPending = false;
+        });
     });
   }
 
@@ -457,9 +487,11 @@ export class MapStackController {
     const targetMode = enabled ? 'world' : 'keyless';
     if (targetMode === this._terrainMode) return;
     if (enabled) {
-      this.viewer.scene.setTerrain(Cesium.Terrain.fromWorldTerrain({
-        requestVertexNormals: true,
-      }));
+      this.viewer.scene.setTerrain(
+        Cesium.Terrain.fromWorldTerrain({
+          requestVertexNormals: true,
+        }),
+      );
     } else {
       const provider = await this._getKeylessTerrainProvider();
       // A newer switch started while the Re:Earth layer.json fetch was in
@@ -480,9 +512,13 @@ export class MapStackController {
   async _getKeylessTerrainProvider() {
     if (this._reearthTerrainProvider) return this._reearthTerrainProvider;
     try {
-      this._reearthTerrainProvider = await Cesium.CesiumTerrainProvider.fromUrl(REEARTH_TERRAIN_URL);
+      this._reearthTerrainProvider =
+        await Cesium.CesiumTerrainProvider.fromUrl(REEARTH_TERRAIN_URL);
     } catch (error) {
-      console.warn('[mapStackController] Re:Earth terrain unavailable, falling back to flat ellipsoid terrain:', error);
+      console.warn(
+        '[mapStackController] Re:Earth terrain unavailable, falling back to flat ellipsoid terrain:',
+        error,
+      );
       this._reearthTerrainProvider = new Cesium.EllipsoidTerrainProvider();
     }
     return this._reearthTerrainProvider;

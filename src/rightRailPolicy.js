@@ -7,7 +7,10 @@
  * @param {boolean} input.hasExpandedPanel Whether any rail panel is expanded.
  * @returns {boolean} Whether collapsed sibling launchers should be hidden.
  */
-export function shouldHideCollapsedRightPanels({ hudVariant, hasExpandedPanel }) {
+export function shouldHideCollapsedRightPanels({
+  hudVariant,
+  hasExpandedPanel,
+}) {
   return hudVariant === 'tactical' && Boolean(hasExpandedPanel);
 }
 
@@ -40,9 +43,9 @@ export function shouldExpandGlobalContextPanel({
   restoring = false,
 }) {
   return Boolean(
-    GLOBAL_CONTEXT_EXPLICIT_ACTIONS.has(action)
-    && explicitUserAction
-    && succeeded
-    && !restoring
+    GLOBAL_CONTEXT_EXPLICIT_ACTIONS.has(action) &&
+      explicitUserAction &&
+      succeeded &&
+      !restoring,
   );
 }
