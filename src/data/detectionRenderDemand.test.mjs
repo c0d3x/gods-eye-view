@@ -688,17 +688,17 @@ test('the render-governor gate covers the parked case, with teeth on the painter
   );
   assert.match(
     gate,
-    /else \{ if \(consecutive > 0\) restarts \+= 1; consecutive = 0; \}/,
+    /else\s*\{\s*if\s*\(\s*consecutive\s*>\s*0,?\s*\)\s*restarts\s*\+=\s*1;\s*consecutive\s*=\s*0;,?\s*\}/,
     'any activity restarts the run, so it cannot straddle the deferred burst',
   );
   assert.match(
     gate,
-    /check\('the parked scene holds a settled quiet run before the idle window is counted', idleSettle\.quiet/,
+    /check\(\s*'the\s*parked\s*scene\s*holds\s*a\s*settled\s*quiet\s*run\s*before\s*the\s*idle\s*window\s*is\s*counted',\s*idleSettle\s*\.quiet/,
     'quiet that never arrives is asserted as a failure, not skipped past',
   );
   assert.match(
     gate,
-    /check\('the scene holds a settled quiet run again before the second idle window', teardownSettle\.quiet/,
+    /check\(\s*'the\s*scene\s*holds\s*a\s*settled\s*quiet\s*run\s*again\s*before\s*the\s*second\s*idle\s*window',\s*teardownSettle\s*\.quiet/,
   );
   assert.match(
     gate,

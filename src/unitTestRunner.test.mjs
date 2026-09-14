@@ -128,7 +128,7 @@ test('every run gives each test a deadline, and never forces an early exit', () 
   assert.doesNotMatch(runner, /'--test-force-exit'/);
   assert.match(
     runner,
-    /runCheckedTests\(\(summaryFile\) => parallelTestArgs\(plan\.parallel, \{ coverage, summaryFile \}\)\)/,
+    /runCheckedTests\(\s*\(\s*summaryFile,?\s*\)\s*=>\s*parallelTestArgs\(\s*plan\s*\.parallel,\s*\{\s*coverage,\s*summaryFile,?\s*\},?\s*\),?\s*\)/,
   );
 });
 
