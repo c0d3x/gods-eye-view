@@ -27,6 +27,12 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 
 ### Changed
 
+- Turning on the Datacenters or Dams layer no longer freezes the globe. The
+  layer read its bundled dataset and built every feature in one step, which
+  blocked input and rendering for about 180 ms with the 4,351 datacenters. It
+  now loads in slices of 500 features and lets the browser draw and handle
+  input between them.
+
 - The voice stack loads right after startup instead of with it, which takes
   about 120 kB (35 kB gzipped) off the JavaScript the app parses before first
   paint. The mic control appears once it arrives.

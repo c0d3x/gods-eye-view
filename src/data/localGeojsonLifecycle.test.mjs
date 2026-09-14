@@ -83,8 +83,11 @@ for (const phase of ['fetch', 'text', 'parse', 'add']) {
       return response();
     });
     if (phase === 'parse') {
-      const load = Cesium.GeoJsonDataSource.load;
-      t.mock.method(Cesium.GeoJsonDataSource, 'load', async (...args) => pause(await load(...args)));
+      // The loader hands Cesium its features in slices through process().
+      const process = Cesium.GeoJsonDataSource.prototype.process;
+      t.mock.method(Cesium.GeoJsonDataSource.prototype, 'process', async function (...args) {
+        return pause(await process.apply(this, args));
+      });
     }
     if (phase === 'add') {
       t.mock.method(env.viewer.dataSources, 'add', async source => {

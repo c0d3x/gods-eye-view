@@ -15,6 +15,7 @@
       "src/data/infrastructure.test.mjs",
       "src/data/localGeojsonCore.js",
       "src/data/localGeojsonLod.js",
+      "src/data/localGeojsonSlicedLoad.test.mjs",
       "src/main.js",
       "scripts/qa-application.mjs",
       "src/app/application.js",
