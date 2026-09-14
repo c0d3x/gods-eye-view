@@ -28,9 +28,9 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 ### Changed
 
 - `src/ui.js` is being split into modules under `src/ui/`, one panel at a
-  time with the code unchanged: so far the Cockpit view and the Radio
-  panel. The cockpit signal tests now drive the real Cockpit controller
-  instead of code cut out of `ui.js` as text.
+  time with the code unchanged: so far the Cockpit view, the Radio panel
+  and the CCTV panel. The cockpit signal tests now drive the real Cockpit
+  controller instead of code cut out of `ui.js` as text.
 
 - The EGM96 geoid grid behind the app's height corrections loads as a
   0.9 MB compressed data file instead of a 2.8 MB JavaScript module, and the

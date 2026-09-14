@@ -8,6 +8,7 @@ export const UI_SOURCE_FILES = Object.freeze([
   'ui.js',
   'ui/cockpitView.js',
   'ui/radioPanel.js',
+  'ui/cctvPanel.js',
 ]);
 
 /**

@@ -62,8 +62,9 @@ the Cockpit view: StyleManager constructs its controller and disposes of it.
 A StyleManager panel moves as a class of its own that is never constructed,
 such as `RadioPanel` in `src/ui/radioPanel.js`: `adoptMethods()` from
 `src/ui/adoptMethods.js` copies its methods onto StyleManager, where they run
-on StyleManager's state as before. Each panel module keeps its setup and
-teardown together, such as `_initRadioPanel()` and `_disposeRadioPanel()`.
+on StyleManager's state as before. A panel's setup sits in its module, and so
+does any teardown of its own, such as `_initRadioPanel()` and
+`_disposeRadioPanel()`.
 Tests that read UI code as text call `readUiSource()` from
 `src/testing/uiSources.mjs`, which joins `ui.js` with every module in its
 `UI_SOURCE_FILES` list; add each new module there. Individual source adapters
