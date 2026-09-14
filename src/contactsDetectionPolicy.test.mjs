@@ -274,11 +274,9 @@ test('re-entrancy is decided by the saved snapshot, not the engine state', () =>
 test('detection is wired to the Contacts transaction, and cockpit no longer touches it', () => {
   // The trigger lives on the context-mode funnel, gated on the transaction
   // having SETTLED so a failed activation cannot strand detection on.
-  const helper = uiSource.slice(
-    uiSource.indexOf('_syncContactsDetection() {'),
-    uiSource.indexOf('/** Apply a temporary cockpit-only'),
-  );
-  assert.ok(helper.length > 0, 'the Contacts detection helper is present in ui.js');
+  const helperStart = uiSource.indexOf('  _syncContactsDetection() {');
+  assert.ok(helperStart >= 0, 'the Contacts detection helper is present in the UI source');
+  const helper = uiSource.slice(helperStart, uiSource.indexOf('\n  }\n', helperStart));
   assert.match(helper, /if \(this\._contextModeChanging\) return;/, 'fires at settle, not at click');
   assert.match(helper, /active: this\._contextMode === 'flights'/);
   assert.match(helper, /styleOwnsDetection:\s*!this\._detectionUserOverridden/);
@@ -294,11 +292,9 @@ test('detection is wired to the Contacts transaction, and cockpit no longer touc
   );
   // The cockpit vision hook — the old trigger — must be out of the detection
   // business entirely, or leaving the cockpit turns detections off again.
-  const visionHook = uiSource.slice(
-    uiSource.indexOf('_setCockpitVision(mode, active, { revealParameters = false } = {}) {'),
-    uiSource.indexOf('_syncIrBoost() {'),
-  );
-  assert.ok(visionHook.length > 0, 'the cockpit vision hook is present in ui.js');
+  const visionStart = uiSource.indexOf('  _setCockpitVision(mode, active, { revealParameters = false } = {}) {');
+  assert.ok(visionStart >= 0, 'the cockpit vision hook is present in the UI source');
+  const visionHook = uiSource.slice(visionStart, uiSource.indexOf('\n  }\n', visionStart));
   assert.doesNotMatch(visionHook, /etection/, 'cockpit transitions must not touch detection');
 });
 
