@@ -20,6 +20,7 @@ export const UI_SOURCE_FILES = Object.freeze([
   'ui/contextPanel.js',
   'ui/shareState.js',
   'ui/statusFeedback.js',
+  'ui/hudControls.js',
 ]);
 
 /**
