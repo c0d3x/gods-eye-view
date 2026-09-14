@@ -161,10 +161,64 @@ export default defineConfig(({ mode }) => {
       ),
     },
     build: {
-      // The startup chunks carry every data layer until the layers load on
-      // first use (#42). The ceiling sits just above them, so a new oversized
-      // chunk still warns.
-      chunkSizeWarningLimit: 700,
+      rolldownOptions: {
+        output: {
+          // Until the layers load on first use (#42), the app loads all of
+          // their code at startup. Splitting it by feature keeps every chunk
+          // under Vite's 500 kB default and leaves the others cached when one
+          // layer changes. A group also takes the modules it imports, so
+          // shared code goes to whichever group claims it first: the overlay
+          // host, then each layer family, then the rest of src/data and the
+          // panels.
+          codeSplitting: {
+            groups: [
+              {
+                name: 'overlays',
+                test: /[\\/]src[\\/]overlays[\\/]/,
+                priority: 3,
+              },
+              { name: 'cctv', test: /[\\/]src[\\/]data[\\/]cctv/, priority: 2 },
+              {
+                name: 'radio',
+                test: /[\\/]src[\\/]data[\\/]radio/,
+                priority: 2,
+              },
+              {
+                name: 'space',
+                test: /[\\/]src[\\/]data[\\/](satellite|rocketLaunch|issPass)/,
+                priority: 2,
+              },
+              {
+                name: 'aircraft',
+                test: /[\\/]src[\\/]data[\\/](aircraft|flights|militaryFlights)/,
+                priority: 2,
+              },
+              {
+                name: 'traffic',
+                test: /[\\/]src[\\/]data[\\/](traffic|flow)/,
+                priority: 2,
+              },
+              {
+                name: 'bikeshare',
+                test: /[\\/]src[\\/]data[\\/]bikeshare/,
+                priority: 2,
+              },
+              {
+                name: 'vessels',
+                test: /[\\/]src[\\/]data[\\/](aisLive|vessel)/,
+                priority: 2,
+              },
+              {
+                name: 'military',
+                test: /[\\/]src[\\/]data[\\/]military/,
+                priority: 2,
+              },
+              { name: 'data', test: /[\\/]src[\\/]data[\\/]/, priority: 1 },
+              { name: 'ui', test: /[\\/]src[\\/]ui[\\/]/, priority: 0 },
+            ],
+          },
+        },
+      },
     },
     // satellite.js ships an optional WASM propagator whose worker uses
     // top-level await, which only module workers support.
