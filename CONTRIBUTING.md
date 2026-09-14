@@ -92,9 +92,9 @@ In the browser code (`jsconfig.json`) it checks the files that opt in with
 `// @ts-check`; add the comment to a module once its types hold, and CI keeps
 them holding. `server/jsconfig.json` checks every server module,
 `vite.config.js` and the shared modules they import, against Node's types
-and with `strictNullChecks` and `noImplicitAny`: every parameter needs a JSDoc
-type, and a value that may be null or undefined has to be handled before it
-is used.
+and in strict mode (all but `useUnknownInCatchVariables`): every parameter
+needs a JSDoc type, and a value that may be null or undefined has to be
+handled before it is used.
 `pnpm run knip` fails on files, exports and dependencies that nothing uses;
 delete dead code, or tag an export kept on purpose with `/** @public */`.
 

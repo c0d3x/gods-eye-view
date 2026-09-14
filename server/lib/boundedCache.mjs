@@ -62,7 +62,9 @@ export function createBoundedCache({
       dropExpired(at);
       items.set(key, { value, expiresAt: at + ttlMs });
       while (items.size > maxEntries) {
-        items.delete(items.keys().next().value);
+        const oldest = items.keys().next().value;
+        if (oldest === undefined) break;
+        items.delete(oldest);
       }
       return value;
     },

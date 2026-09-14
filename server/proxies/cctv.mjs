@@ -1321,7 +1321,7 @@ export function cctvProxy() {
     // Evict oldest entries if the health map grows beyond the cap
     if (!health.has(cameraId) && health.size >= HEALTH_MAX_ENTRIES) {
       const oldest = health.keys().next().value;
-      health.delete(oldest);
+      if (oldest !== undefined) health.delete(oldest);
     }
     /** @type {Partial<{status: string, sourceKind: string, label: string, message: string}>} */
     const prev = health.get(cameraId) || {};

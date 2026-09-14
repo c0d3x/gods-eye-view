@@ -157,8 +157,8 @@ the package boundaries and the shared context store. `checkJs` stays off
 there, so other files are parsed but not checked. `server/jsconfig.json`
 checks every server module and `vite.config.js`, with the shared `src/`
 modules they import, against Node's types from `@types/node`, pinned to the
-Node 24 line the app supports, with `strictNullChecks` and `noImplicitAny`
-on.
+Node 24 line the app supports, in strict mode except for
+`useUnknownInCatchVariables`.
 `pnpm run knip` follows the imports from the app entry, the overlay worker,
 the scripts, tools, Pinokio launchers and tests (`knip.json`) and fails on
 files, exports and dependencies nothing uses. CI runs both checks on Linux.

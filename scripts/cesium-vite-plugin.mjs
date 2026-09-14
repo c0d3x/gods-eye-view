@@ -110,25 +110,18 @@ function visit(node, callback) {
 }
 
 /**
- * A request reaching dev-server middleware. Node's HTTP server sets `url` on
- * the requests it receives; the typings leave it optional only because client
- * responses share the class.
- * @typedef {import('vite').Connect.IncomingMessage & {url: string}} DevRequest
- */
-
-/**
  * Serve a directory's files with the headers serve-static used for Cesium.
  * @param {string} dir
- * @returns {(req: DevRequest, res: import('node:http').ServerResponse,
- *   next: import('vite').Connect.NextFunction) => void}
+ * @returns {import('vite').Connect.NextHandleFunction}
  */
 function serveDirectory(dir) {
   return async (req, res, next) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next();
     let pathname;
     try {
+      // Node sets url on every request its server receives.
       pathname = decodeURIComponent(
-        new URL(req.url, 'http://localhost').pathname,
+        new URL(req.url || '', 'http://localhost').pathname,
       );
     } catch {
       return next();
@@ -153,7 +146,7 @@ function serveDirectory(dir) {
       res.statusCode = 301;
       res.setHeader(
         'Location',
-        `${(req.originalUrl ?? req.url).split('?')[0]}/`,
+        `${(req.originalUrl ?? req.url ?? '').split('?')[0]}/`,
       );
       return res.end();
     }

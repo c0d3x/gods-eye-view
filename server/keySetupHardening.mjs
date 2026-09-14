@@ -126,6 +126,8 @@ function resolveWindowsNativeTools(environment, fileSystem, architecture) {
   };
 
   try {
+    // Called with a path alone, both variants return a string.
+    /** @type {(path: string) => string} */
     const realpath = fileSystem.realpathSync.native || fileSystem.realpathSync;
     const rootEntry = fileSystem.lstatSync(systemRoot);
     if (!rootEntry.isDirectory() || rootEntry.isSymbolicLink()) return null;

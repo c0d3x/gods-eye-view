@@ -160,7 +160,7 @@ export function tomtomProxy({
   function memSet(key, entry) {
     if (!mem.has(key) && mem.size >= MEM_MAX_ENTRIES) {
       const oldest = mem.keys().next().value;
-      mem.delete(oldest);
+      if (oldest !== undefined) mem.delete(oldest);
     }
     mem.set(key, entry);
   }
