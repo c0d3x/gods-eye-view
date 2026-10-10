@@ -4,9 +4,10 @@
  *
  * The fork keeps upstream's files byte-identical so upstream syncs stay
  * small, which means Biome cannot reformat or lint-fix them. After a sync,
- * run this script so `pnpm run lint` and `pnpm run format:check` hold the
- * fork to Biome's rules everywhere upstream already passes them. Fork changes
- * must not grow the baseline: fix a new finding instead of re-running this.
+ * `pnpm run baseline` reruns this, so `pnpm run lint` and
+ * `pnpm run format:check` hold the fork to Biome's rules everywhere upstream
+ * already passes them. Fork changes must not grow the baseline: fix a new
+ * finding instead of re-running this.
  *
  * Usage: node scripts/biome-baseline.mjs
  */

@@ -37,7 +37,7 @@
     "format": "biome format --write",
     "format:check": "biome format",
     "lint": "biome check --formatter-enabled=false --error-on-warnings",
-    "lint:baseline": "node scripts/biome-baseline.mjs",
+    "baseline": "node scripts/biome-baseline.mjs && node scripts/typecheck.mjs --update && node scripts/knip-baseline.mjs",
     "layer-token:next": "node scripts/next-layer-state-token.mjs",
     "layer-token:check": "node scripts/check-layer-state-tokens.mjs",
     "dev": "vite",
@@ -55,6 +55,8 @@
     "qa:street-level": "node scripts/qa-street-level.mjs",
     "qa:street-level:fixtures": "node scripts/qa-street-level.mjs --fixtures",
     "check:boundaries": "node scripts/check-import-directions.mjs && node scripts/check-package-boundaries.mjs",
+    "typecheck": "node scripts/typecheck.mjs",
+    "knip": "knip",
     "qa:transit": "node scripts/qa-transit.mjs",
     "mcp": "node server/mcp/stdio.js"
   },
@@ -73,10 +75,13 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.13",
+    "@types/node": "24.13.4",
+    "knip": "6.35.1",
     "lefthook": "^2.1.12",
     "prettier": "3.9.6",
     "puppeteer": "^25.10.0",
     "sharp": "^0.35.4",
+    "typescript": "7.0.2",
     "vite": "^8.3.4",
     "ws": "^8.21.0"
   },
