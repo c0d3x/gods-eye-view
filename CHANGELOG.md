@@ -246,6 +246,9 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 - DOMPurify, which Cesium uses to sanitize credit and info-box HTML, is
   updated to 3.4.16 for a DOM XSS fix.
 
+- sharp, which the asset tools use, is updated to 0.35.5 for a vulnerability
+  in its bundled librsvg (CVE-2026-96889).
+
 - The AIS key fingerprint no longer derives from the key, voice debug session
   IDs use cryptographic randomness, and the screenshot sink used by the QA
   scripts listens only on 127.0.0.1 and no longer echoes errors.

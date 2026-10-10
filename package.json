@@ -82,7 +82,7 @@
     "lefthook": "^2.1.12",
     "prettier": "3.9.6",
     "puppeteer": "^25.10.0",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "typescript": "7.0.2"
   },
   "exports": {
