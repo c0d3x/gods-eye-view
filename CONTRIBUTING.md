@@ -54,7 +54,7 @@ Before sending a PR run `pnpm run build`, `pnpm test`, and `pnpm run test:track`
 
 Harnesses find the server in different ways, such as `QA_BASE_URL`, a `--url` argument or a positional URL, and most default to `http://localhost:4173`; each entrypoint's header says which. The QA workflow runs the track regression and a set of harnesses every night; start it by hand from the Actions tab to name other harnesses.
 
-Besides CI, pushes to `main` and pull requests run dependency review, and CodeQL and OpenSSF Scorecard scan the repository every week.
+Besides CI, pushes to `main` and pull requests run dependency review. CodeQL scans every push to `main` and once a week, and OpenSSF Scorecard scans the repository every week.
 
 ## Checking a built app locally
 

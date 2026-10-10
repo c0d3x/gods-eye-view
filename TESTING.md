@@ -296,7 +296,7 @@ environment variable the code reads is documented here or in `.env.example`.
   `pnpm run test:track`.
 - `GEV_REQUIRE_ALLOCATION_GATE`: set to `1` to fail, rather than skip, the
   allocation microbenchmarks on a Node version other than the calibrated
-  Node 24. CI's unit-test job on Node 24.14.0 sets it.
+  Node 24. CI's Allocation budgets job sets it.
 - `GEV_ALLOC_*` (`GEV_ALLOC_ENTRIES`, `GEV_ALLOC_PROFILE`, `GEV_ALLOC_WARMUP`,
   `GEV_ALLOC_CHUNK`, `GEV_ALLOC_CHUNKS`, `GEV_ALLOC_STABILIZATION_CHUNKS`,
   `GEV_ALLOC_SOLVE_MS`): set by the world-overlay allocation probe for its

@@ -1120,7 +1120,7 @@ existing modules.
 
 ## Local build preview
 
-After `pnpm run build`, `pnpm run preview` serves the built app with the same data
+After `npm run build`, `npm run preview` serves the built app with the same data
 provider routes as development, including aircraft, satellites, terrain, traffic,
 FIRMS, GBFS, Overpass and CCTV/media. Unmatched `/api` requests return a JSON 404
 in both modes instead of the application HTML. Browser routes retain SPA fallback.
@@ -3135,9 +3135,9 @@ group in `src/data/layerState.js` and its modules to
 `scripts/package-boundaries.json`. Once a keyless provider registers, the
 layer's `requiresKeyId` becomes null and the key gate moves to the chips.
 
-Street Level has two browser gates. `pnpm run qa:street-level --url <server>`
-runs against real Mapillary and needs `MAPILLARY_CLIENT_TOKEN`. `pnpm run
-qa:street-level:fixtures --url <server>` answers every Mapillary request
+Street Level has two browser gates. `npm run qa:street-level -- --url <server>`
+runs against real Mapillary and needs `MAPILLARY_CLIENT_TOKEN`. `npm run
+qa:street-level:fixtures -- --url <server>` answers every Mapillary request
 from fixtures (`providers/mapillary/coverageFixture.mjs`,
 `scripts/fixtures/street-level/`), so it needs no network and covers the whole
 photo flow. CI runs the fixture gate and `qa:panel-resize`
@@ -4288,7 +4288,7 @@ are omitted rather than framing the wrong part of the globe.
 - Fleet model eligibility is distance-based with on-screen priority and hard caps (`MODEL_MAX`, `MODEL_MAX_ALL`) to avoid draw-call explosions. Each model owns its own `modelMatrix`; shared scratch matrices are forbidden because they caused stacking/flicker.
 - Tracked aircraft use standalone model primitives driven from the already-settled dead-reckoned display position, while the tracked Cesium entity remains billboard-backed so `viewer.trackedEntity` always has a ready bounding sphere.
 - Flights and military layers mirror the same tracking invariants: no warm-up freeze/jump, altitude-scaled framing, trail head glued to the displayed plane, no pull-out when switching targets, and no cross-layer orphan when switching between commercial and military tracks.
-- Regression surface: `pnpm run test:track` drives the real app headless with synthetic aircraft feeds and asserts the tracking invariants without depending on live OpenSky/adsb data. `src/data/trackedModelRegime.test.mjs` pins the tracked contact's threshold math, the enter/exit asymmetry, and the default-on / cockpit / TR-3B / deselect wiring in both layers.
+- Regression surface: `npm run test:track` drives the real app headless with synthetic aircraft feeds and asserts the tracking invariants without depending on live OpenSky/adsb data. `src/data/trackedModelRegime.test.mjs` pins the tracked contact's threshold math, the enter/exit asymmetry, and the default-on / cockpit / TR-3B / deselect wiring in both layers.
 
 ### TR-3B conversion Easter egg (August 2026)
 
@@ -4336,7 +4336,7 @@ are omitted rather than framing the wrong part of the globe.
   marker. The nested launcher menu resolves that marker from its own directory:
   an absent marker exposes Install, a present marker exposes Start, and a
   running server with a captured ready URL exposes Open God's Eye View.
-- Build gate: `pnpm run build`
+- Build gate: `npm run build`
 - Network access: local-only by default (`HOST=localhost` in dev-fresh.sh); LAN is an explicit opt-in via `HOST=0.0.0.0` (launcher prints a key-exposure warning + LAN URL; see SECURITY.md)
 - OpenSky default mode: OAuth (`OPENSKY_AUTH_MODE=oauth`; `anon` works without credentials)
 - Setup doctor resolves `OPENSKY_AUTH_MODE` from the environment and dotenv files. Explicit `anon` and OAuth mode without a client pair report keyless anonymous access (rate-limited); a complete OAuth pair retains the existing presence-only capability wording. Basic and auto modes report the selected mode without guessing which credentials runtime will accept. The proxy's auth behavior is unchanged.
@@ -4586,7 +4586,7 @@ easier to meet (detection is now on more often), but does not create it.
 - Panel positions have a versioned storage name, `godsEyeView.v8.panelPos.<panel-id>`. Docked panels store nothing; a portable panel (CCTV, Street Level) stores `{ left, top, width, height, floating: true }` once a header drag lifts it out of the rail, and a header double-click removes it. Double presses are detected in the header's `pointerdown` handler, because its `preventDefault()` suppresses native `dblclick`. Collapsed state persists for every panel at `godsEyeView.v6.panelCollapsed.<panel-id>` (`'0'` open, `'1'` closed, absent means the panel's own default).
 - Legacy draggable-panel position keys may remain in local storage for backward compatibility, but the map-mode right rail ignores them unless they describe a portable panel's floating window; collapsed states still persist at `godsEyeView.v6.panelCollapsed.<panel-id>`.
 - Flight/military tracked entities cache dead-reckoned positions per frame to avoid callback desync flicker.
-- Aircraft 3D-model and tracking invariants are covered by `pnpm run test:track`; run this before touching `flights.js`, `militaryFlights.js`, `detection.js`, or `trackedReadout.js`.
+- Aircraft 3D-model and tracking invariants are covered by `npm run test:track`; run this before touching `flights.js`, `militaryFlights.js`, `detection.js`, or `trackedReadout.js`.
 - Annotation resolver behavior is pinned by `src/annotations/annotationResolver.test.mjs`; re-run that suite before changing place-resolution scoring.
 - Layer input handlers (click + keydown) are detached on disable for flights/military/satellites/AIS vessels.
 - Traffic tile cache is capped and traffic layer supports explicit destroy cleanup.
@@ -4815,12 +4815,12 @@ Replay transport uses one Play/Pause toggle plus Cancel. During ascent only the 
 - `tools/streetview-headings.mjs`: heading sweep capture; supports neighbor traversal.
 - `tools/pano-pinhole.mjs`: equirectangular-to-pinhole reprojection.
 - `tools/sat-ortho.mjs`: Map Tiles ortho stitch and centered crop with georef corners.
-- `scripts/track-regression.mjs`: headless real-app regression harness for aircraft tracking/model/detection invariants (`pnpm run test:track`).
+- `scripts/track-regression.mjs`: headless real-app regression harness for aircraft tracking/model/detection invariants (`npm run test:track`).
 - `scripts/qa-map-source-tray.mjs`: browser proof for the four-source Map Source
   tray — presentation, keyboard disclosure, responsive bounds, unpinned
   auto-dismiss, ACQUIRING status, and retired/unknown stack-id restore
-  (`QA_BASE_URL=http://localhost:4173 pnpm run qa:map-source-tray`). Add
-  `--keyless` to force the no-ion-token expectations on a keyed server; both
+  (`QA_BASE_URL=http://localhost:4173 npm run qa:map-source-tray`). Add
+  `-- --keyless` to force the no-ion-token expectations on a keyed server; both
   invocations are gates.
 - `scripts/qa-l9-matrix.mjs`: the L9 release-candidate QA matrix in one command
   (`node scripts/qa-l9-matrix.mjs --url http://localhost:4173`). Orchestrates
