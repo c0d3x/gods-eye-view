@@ -42,6 +42,8 @@ const GOOGLE_PLACES_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 /**
  * Read a Places answer within the size cap. A failed answer is logged by its
  * status only: Google's error text stays out of the response and the log.
+ * @param {Response} response
+ * @param {string} label
  */
 async function readPlacesAnswer(response, label) {
   const text = await readResponseTextCapped(
@@ -58,7 +60,12 @@ async function readPlacesAnswer(response, label) {
   }
 }
 
-/** Answer a Places search that failed before Google's answer was read. */
+/**
+ * Answer a Places search that failed before Google's answer was read.
+ * @param {import('node:http').ServerResponse} res
+ * @param {unknown} error
+ * @param {string} label
+ */
 function sendPlacesFailure(res, error, label) {
   if (error instanceof ClientGoneError) return;
   console.warn(`[places] ${label} failed: ${describeUpstreamError(error)}`);

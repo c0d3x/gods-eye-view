@@ -16,7 +16,7 @@ const ADSBDB_MAX_BYTES = 256 * 1024;
  * persisted to disk so restarts don't re-hammer it. Adapted from skylight
  * (MIT) server/src/enrich/routes.ts.
  */
-export function adsbdbProxy(options = {}) {
+export function adsbdbProxy(/** @type {{cachePath?: string}} */ options = {}) {
   const TTL_MS = 24 * 3600_000;
   const CACHE_PATH =
     options.cachePath ?? path.join(process.cwd(), '.gev-cache', 'adsbdb.json');
@@ -33,7 +33,7 @@ export function adsbdbProxy(options = {}) {
     loaded = true;
     try {
       const parsed = JSON.parse(await fsp.readFile(CACHE_PATH, 'utf8'));
-      for (const kind of ['routes', 'aircraft']) {
+      for (const kind of /** @type {const} */ (['routes', 'aircraft'])) {
         const saved = Object.entries(parsed?.[kind] ?? {})
           .filter(([, entry]) => fresh(entry))
           .sort(([, a], [, b]) => a.at - b.at);

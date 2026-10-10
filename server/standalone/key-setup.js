@@ -262,6 +262,7 @@ function keySetupEndpoint({ sourceRoot = defaultSourceRoot } = {}) {
           return respond(res, admission.status, { error: admission.error });
         // readRequestBody keeps draining past the cap, so the 413 reaches the
         // client. Destroying the request reset the connection before any reply.
+        /** @param {NodeJS.ErrnoException | undefined} error */
         const refuseOversized = (error) => {
           if (error?.code !== 'BODY_TOO_LARGE') return; // the client went away
           res.setHeader('Connection', 'close');

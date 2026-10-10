@@ -344,6 +344,15 @@ async function readCappedResponseBytes(upstream, maxBytes) {
  * origin of a camera from the operator's own config (`localConfig`) must
  * resolve only to public addresses, and so must every hop of a feed camera.
  * `fetchImpl` replaces that transport in tests.
+ * @param {string} url
+ * @param {object} [options]
+ * @param {Record<string, string>} [options.headers]
+ * @param {((url: string, init: import('./camera-fetch.js').CameraRequestInit) => Promise<Response>) | null} [options.fetchImpl]
+ * @param {number} [options.timeoutMs]
+ * @param {AbortSignal | null} [options.signal] The client's request.
+ * @param {boolean} [options.localConfig] The URL is from the operator's own
+ *   camera config, so its origin may be a private address.
+ * @param {typeof import('node:dns/promises').lookup} [options.lookup]
  */
 export async function fetchCctvMediaUpstream(
   url,
@@ -582,10 +591,13 @@ export async function fetchCctvImageFromUpstream(
         signal: controller.signal,
       },
       fetchImpl ??
-        cameraTransport({
-          localOrigin: localConfig ? new URL(url).origin : null,
-          lookup,
-        }),
+        // fetchWithinHost only ever passes a URL string.
+        /** @type {typeof fetch} */ (
+          cameraTransport({
+            localOrigin: localConfig ? new URL(url).origin : null,
+            lookup,
+          })
+        ),
     );
     if (!upstream) return null;
     const contentType = upstream.headers.get('content-type') || '';

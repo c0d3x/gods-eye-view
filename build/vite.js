@@ -144,6 +144,6 @@ export function createBrowserViteConfig({
     },
     // satellite.js ships an optional WASM propagator whose worker uses
     // top-level await, which only module workers support.
-    worker: { format: 'es' },
+    worker: { format: /** @type {const} */ ('es') },
   };
 }

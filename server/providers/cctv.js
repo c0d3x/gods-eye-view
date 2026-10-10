@@ -54,7 +54,10 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
   /** Live HLS strategies (see ./cctv/stream.js). Shared across dev and preview.
    * Every other HLS host must resolve only to public addresses. */
   const puller = createHlsPuller({
-    fetchImpl: hlsCameraTransport(localHlsOrigins),
+    // The puller only ever passes a URL string.
+    fetchImpl: /** @type {typeof fetch} */ (
+      hlsCameraTransport(localHlsOrigins)
+    ),
   });
 
   /** Update the health entry for a camera, evicting the oldest entry if at capacity. */
@@ -75,7 +78,17 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
     });
   };
 
-  /** A camera's health message for a failed media fetch, in our own words. */
+  /**
+   * Whether a camera comes from the operator's own config, so its origin may
+   * be a private address.
+   * @param {{localConfig?: unknown} | undefined} source
+   */
+  const isLocalConfigSource = (source) => source?.localConfig === true;
+
+  /**
+   * A camera's health message for a failed media fetch, in our own words.
+   * @param {unknown} error
+   */
   const mediaFailureMessage = (error) => {
     if (error instanceof PrivateAddressError)
       return 'Camera address is not allowed';
@@ -243,7 +256,7 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
               if (entry) puller.release(cameraId, leaseId);
             };
             try {
-              if (source?.localConfig === true) {
+              if (isLocalConfigSource(source)) {
                 localHlsOrigins.add(new URL(mediaUrl).origin);
               }
               entry = await puller.ensure(cameraId, mediaUrl, leaseId);
@@ -339,7 +352,7 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
             const upstream = await fetchCctvMediaUpstream(mediaUrl, {
               headers: upstreamHeaders,
               signal: downstream.signal,
-              localConfig: source?.localConfig === true,
+              localConfig: isLocalConfigSource(source),
             });
             if (downstream.closed) {
               // The headers arrived for a viewer who is no longer there.
@@ -500,7 +513,7 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
           source?.sourceKind === 'txdot-its'
             ? await fetchTxdotSnapshot(upstreamCandidate)
             : await fetchCctvImageFromUpstream(upstreamCandidate, {
-                localConfig: source?.localConfig === true,
+                localConfig: isLocalConfigSource(source),
               });
         if (upstreamImage?.ok) {
           setHealth(cameraId, {

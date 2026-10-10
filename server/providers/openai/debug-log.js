@@ -83,7 +83,11 @@ function isRealtimeDebugLogEnabled(value) {
   return /^(?:1|true|on|yes)$/i.test(String(value ?? '').trim());
 }
 
-/** Tighten a mode left by an older version; some filesystems ignore modes. */
+/**
+ * Tighten a mode left by an older version; some filesystems ignore modes.
+ * @param {string} target
+ * @param {number} mode
+ */
 async function tightenMode(target, mode) {
   await fsp.chmod(target, mode).catch(() => {});
 }
@@ -172,7 +176,7 @@ function createDebugLogHandler({
       // The server's own timestamp comes last, so a record cannot supply one.
       await append(
         `${JSON.stringify({
-          ...record,
+          .../** @type {object} */ (record),
           loggedAt: new Date().toISOString(),
         })}\n`,
       );

@@ -26,7 +26,9 @@ export const TERRAIN_CACHE_MAX_POINTS = 20_000;
  * request order. Larger requests are chunked sequentially, and one failing
  * chunk does not discard the chunks that resolved.
  */
-export function terrainHeightsProxy(options = {}) {
+export function terrainHeightsProxy(
+  /** @type {{cacheDir?: string}} */ options = {},
+) {
   const TTL_MS = 30 * 24 * 3600_000;
   const CACHE_DIR = options.cacheDir ?? path.join(process.cwd(), '.gev-cache');
   const CACHE_PATH = path.join(CACHE_DIR, 'terrain-heights.json');
@@ -141,7 +143,8 @@ export function terrainHeightsProxy(options = {}) {
       try {
         // 64 points come back as a few KB.
         chunkResults = await fetchTerrainChunkWithRetry(chunk, {
-          readJson: (res) => readResponseJsonCapped(res, 4 * 1024 * 1024),
+          readJson: (/** @type {Response} */ res) =>
+            readResponseJsonCapped(res, 4 * 1024 * 1024),
         });
       } catch (error) {
         firstError = firstError || error;

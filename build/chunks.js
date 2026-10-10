@@ -95,7 +95,7 @@ export function appCodeSplitting() {
   return {
     groups: APP_CHUNK_GROUPS.map((group) => ({
       ...group,
-      tags: ['$initial'],
+      tags: /** @type {Array<'$initial'>} */ (['$initial']),
     })),
   };
 }

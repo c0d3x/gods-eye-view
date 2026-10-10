@@ -377,6 +377,8 @@ function openSkySourceIsStale(sourceEpochMs, now = Date.now()) {
 /**
  * A numeric response header, or NaN when it is absent or blank. Number(null)
  * is 0, which would read a missing header as zero credits or a zero wait.
+ * @param {Headers} headers
+ * @param {string} name
  */
 function numericHeader(headers, name) {
   const value = headers.get(name);

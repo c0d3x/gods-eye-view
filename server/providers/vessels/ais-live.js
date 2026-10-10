@@ -284,6 +284,7 @@ function aisWatchdogBudgets() {
 }
 
 /** The AIS key last seen, and a count of the distinct keys seen so far. */
+/** @type {string|null} */
 let _aisKeySeen = null;
 let _aisKeyGeneration = 0;
 

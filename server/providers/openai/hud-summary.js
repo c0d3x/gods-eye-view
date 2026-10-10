@@ -19,7 +19,10 @@ export const HUD_SUMMARY_TIMEOUT_MS = 20_000;
 /** Largest OpenAI answer read for a five-word summary. */
 const HUD_SUMMARY_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 
-/** Parse text as a JSON object; anything else reads as an empty object. */
+/**
+ * Parse text as a JSON object; anything else reads as an empty object.
+ * @param {string} text
+ */
 function parseJsonObject(text) {
   try {
     const value = JSON.parse(text);
@@ -79,7 +82,8 @@ async function handleHudSummary(req, res) {
   try {
     context = JSON.parse((await readRequestBody(req, 64 * 1024)) || '{}');
   } catch (error) {
-    const tooLarge = error?.code === 'BODY_TOO_LARGE';
+    const tooLarge =
+      /** @type {NodeJS.ErrnoException} */ (error)?.code === 'BODY_TOO_LARGE';
     res.statusCode = tooLarge ? 413 : 400;
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-store');
