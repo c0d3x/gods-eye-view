@@ -23,9 +23,11 @@ This guide describes how, and the rules that keep each merge small.
   changing it to pass would make every sync conflict, so three baselines
   record what it fails today: `biome-baseline.json` switches off each Biome
   check for exactly the upstream files that fail it, `typecheck-baseline.json`
-  lists the files with type errors, and `knip-baseline.json` switches off, per
-  file, the issue types knip reports. Every other file, including each fork
-  module, is held to all of the checks. Upstream still formats with Prettier
+  records how many type errors each file has, and `knip-baseline.json`
+  switches off, per file, the issue types knip reports. Every other file,
+  including each fork module, is held to all of the checks, and a fork edit to
+  an upstream file may not add a type error to it. CI fails any change that
+  grows a baseline, except an upstream merge. Upstream still formats with Prettier
   through
   `scripts/format.mjs`; that script, `scripts/format-scope.json`,
   `scripts/format-runtime.json`, `.prettierrc.json` and `.prettierignore` stay
@@ -133,9 +135,15 @@ fork changes, and then fast-forwarded onto `main`.
    new code is covered without changing it: `biome-baseline.json` through
    `scripts/biome-baseline.mjs`, `typecheck-baseline.json` through
    `scripts/typecheck.mjs --update` and `knip-baseline.json` through
-   `scripts/knip-baseline.mjs`. Read the diff: only upstream files belong in
-   a baseline. A fork file there means a fork change breaks a check; fix that
-   instead.
+   `scripts/knip-baseline.mjs`. Then list what grew with
+   `pnpm run check:baselines --base <the main commit before the merge>`, and
+   read it: only upstream files belong in a baseline, and a type error count
+   should only rise in a file the merge changed. A fork file there, or a
+   higher count in an upstream file the merge left alone, means a fork change
+   breaks a check; fix that instead. Commit the baselines with the merge, or
+   push them with it: CI lets a push or pull request that contains an
+   upstream merge grow the baselines, and reports the growth in its log, but
+   fails any other change that grows one.
 2. Run the checks, and fix what fails before pushing:
 
    ```bash

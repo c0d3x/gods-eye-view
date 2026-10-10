@@ -185,13 +185,20 @@ code to what it passes today:
 - `biome-baseline.json`, which `biome.json` extends, switches off each Biome
   check for exactly the upstream files that fail it; Biome's other checks
   still apply to those files.
-- `typecheck-baseline.json` lists the files that have type errors.
+- `typecheck-baseline.json` records how many type errors each file has. A
+  file may not gain one, so a fork edit to an upstream file has to type the
+  lines it adds or changes.
 - `knip-baseline.json` switches off, per file, the issue types knip reports.
 
 Every other file, including each fork module, is held to all of the checks.
 `pnpm run baseline` regenerates the three baselines after an upstream merge
 ([docs/UPSTREAM-SYNC.md](docs/UPSTREAM-SYNC.md#after-the-merge)). Fork changes
-must not grow them: fix a new finding instead of regenerating a baseline. When
+must not grow them: fix a new finding instead of regenerating a baseline. CI
+holds that rule with `pnpm run check:baselines --base <commit>`, which fails
+when a baseline has a file, a rule, an issue type or a type error more than at
+that commit, unless the change merges upstream. Shrinking one is always
+welcome: when `pnpm run typecheck` notes that files have fewer type errors
+than their counts, `pnpm run baseline` lowers the counts. When
 you edit an upstream file that the Biome baseline exempts from formatting,
 keep its Prettier style
 (`node_modules/.bin/prettier --check <file>` confirms it). Upstream's own
