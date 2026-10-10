@@ -3,8 +3,8 @@ import { initAnnotations } from '../annotations/index.js';
 import { initDrawTool } from '../annotations/drawTool.js';
 import { initImageryBoxTool } from '../ui/imageryBoxTool.js';
 import { createRecentImageryPanel } from '../ui/recentImagery.js';
-import { initGevVoiceCommands } from '../voice/gevRealtime.js';
 import { installViews, isEmbeddedInline } from './embed.js';
+import { startDeferredVoice } from './deferredVoice.js';
 import { installScopeMask, destroyScopeMask } from '../scopeMask.js';
 import {
   installRenderGovernor,
@@ -160,33 +160,49 @@ export function createApplicationTools({
   defer(() => {
     if (window.__godsEyeView === debug) delete window.__godsEyeView;
   });
-  const voiceCommands = initGevVoiceCommands({
-    ...voice,
-    floorServices: operations.surface.groundFloor,
-    annotationResolver: operations.annotationResolver,
-    searchNavigation: operations.searchAndFlyTo,
+  // The voice stack is a chunk of its own, loaded once everything above is
+  // attached (src/app/deferredVoice.js).
+  const deferredVoice = startDeferredVoice({
+    load: () => import('../voice/gevRealtime.js'),
+    start: ({ initGevVoiceCommands }) =>
+      initGevVoiceCommands({
+        ...voice,
+        floorServices: operations.surface.groundFloor,
+        annotationResolver: operations.annotationResolver,
+        searchNavigation: operations.searchAndFlyTo,
+        signal,
+        placeSearch,
+        viewer,
+        styleManager,
+        dataManager,
+        sceneDirector,
+        annotations,
+      }),
+    onReady: (voiceCommands) => {
+      debug.voiceCommands = voiceCommands;
+      // The mic control can arrive after the panel stacks were laid out
+      // around the chrome; lay them out again so they keep clear of it.
+      styleManager._scheduleLeftPanelLayout?.();
+      styleManager._scheduleRightPanelLayout?.();
+    },
+    defer,
     signal,
-    placeSearch,
-    viewer,
-    styleManager,
-    dataManager,
-    sceneDirector,
-    annotations,
   });
-  defer(() => {
-    voiceCommands.stop({ removeUi: true });
-    if (window.__gevVoiceCommands === voiceCommands)
-      delete window.__gevVoiceCommands;
-  });
-  debug.voiceCommands = voiceCommands;
   defer(
     installViews({
       shell: styleManager,
       viewer,
       dataManager,
-      run: (name, args) => voiceCommands.runner(name, args, { signal }),
+      run: deferredVoice.run,
       signal,
     }),
   );
-  return { sceneDirector, annotations, voiceCommands };
+  return {
+    sceneDirector,
+    annotations,
+    voiceReady: deferredVoice.ready,
+    get voiceCommands() {
+      return deferredVoice.commands;
+    },
+  };
 }

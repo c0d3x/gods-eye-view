@@ -24,7 +24,6 @@ import {
   geoidHeight,
   isGeoidReady,
 } from './data/geoid.js';
-import { getBasemapLabelContext } from './voice/gevActions.js';
 import {
   hudSummaryMatchesProvenance,
   hudSummaryLayerContext,
@@ -785,6 +784,9 @@ export class IntelHUD {
   }
 
   async _summaryContext() {
+    // The voice actions load in the voice stack's chunk (src/app/tools.js);
+    // the summary reuses it rather than pulling it into startup.
+    const { getBasemapLabelContext } = await import('./voice/gevActions.js');
     const labels = await getBasemapLabelContext(
       this.viewer,
       this.placeSearch,

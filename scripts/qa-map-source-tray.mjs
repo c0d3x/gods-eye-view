@@ -258,7 +258,9 @@ try {
   // launcher on every navigation so its Escape/Space handlers cannot turn a
   // tray assertion into a mission or voice action in a pristine browser.
   await page.goto(`${appUrl}/?welcome=0`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-  await page.waitForFunction(() => window.__godsEyeView?.styleManager, { timeout: 60_000 });
+  // Voice attaches after startup (src/app/deferredVoice.js), and the
+  // location checks read its state.
+  await page.waitForFunction(() => window.__godsEyeView?.styleManager && window.__godsEyeView.voiceCommands, { timeout: 60_000 });
   await page.waitForFunction(
     () => document.getElementById('loading-screen')?.classList.contains('hidden'),
     { timeout: 60_000 },
@@ -1225,7 +1227,9 @@ try {
         waitUntil: 'domcontentloaded',
         timeout: 60_000,
       });
-      await page.waitForFunction(() => window.__godsEyeView?.styleManager, { timeout: 60_000 });
+      // Voice attaches after startup (src/app/deferredVoice.js), and the
+      // location checks read its state.
+      await page.waitForFunction(() => window.__godsEyeView?.styleManager && window.__godsEyeView.voiceCommands, { timeout: 60_000 });
       await page.waitForFunction(
         () => document.getElementById('loading-screen')?.classList.contains('hidden'),
         { timeout: 60_000 },
