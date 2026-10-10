@@ -32,9 +32,11 @@
       "build/vite.js",
       "build/application-html.js",
       "build/allowedHosts.js",
+      "build/api-request-guard.js",
       "build/cesium.js",
       "build/embed-framing.js",
-      "build/panel.js"
+      "build/panel.js",
+      "src/localRequestGate.mjs"
     ],
     "external": ["vite", "cesium"]
   },
