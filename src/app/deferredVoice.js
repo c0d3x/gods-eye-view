@@ -18,9 +18,10 @@
 const RETRY_AFTER_MS = 10_000;
 
 /**
+ * @template {object} M
  * @param {object} options
- * @param {() => Promise<object>} options.load Imports the voice module.
- * @param {(module: object) => VoiceCommands} options.start Starts the voice
+ * @param {() => Promise<M>} options.load Imports the voice module.
+ * @param {(module: M) => VoiceCommands} options.start Starts the voice
  *   commands from the loaded module.
  * @param {(commands: VoiceCommands) => void} [options.onReady] Called once
  *   started.

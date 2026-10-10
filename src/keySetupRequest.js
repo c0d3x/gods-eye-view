@@ -15,7 +15,7 @@ export const KEY_SETUP_OPEN_EVENT = 'gev:open-key-setup';
  * The KEY REQUIRED banner's detail: the variables the missing key sets, from
  * the key registry. An unnamed, unknown or hidden key returns '' rather than
  * guessing, as the layer row's tooltip does.
- * @param {string | undefined} id
+ * @param {string | null | undefined} id
  */
 export function keyRequiredDetail(id) {
   /** @type {{hidden?: boolean, envVars: readonly string[]} | undefined} */

@@ -14,7 +14,7 @@ export function createLaunchSource({
   /** The launch payload, and whether the proxy served it from a stale cache. */
   function getLaunchSnapshot({ signal } = {}) {
     return requestWithDeadline(
-      async (requestSignal) => {
+      async (/** @type {AbortSignal} */ requestSignal) => {
         const response = await fetchImpl('/api/launches', {
           signal: requestSignal,
         });
@@ -38,7 +38,7 @@ export function createLaunchSource({
     },
     getActiveTle({ signal } = {}) {
       return requestWithDeadline(
-        async (requestSignal) => {
+        async (/** @type {AbortSignal} */ requestSignal) => {
           const response = await fetchImpl('/api/celestrak/active', {
             signal: requestSignal,
           });

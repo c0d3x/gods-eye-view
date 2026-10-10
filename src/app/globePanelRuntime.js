@@ -555,7 +555,11 @@ export function panelRuntime(config) {
   let ready = false;
   let queued = null;
   let currentUrl = null;
-  /** A link the Open button may follow: http or https only. */
+  /**
+   * A link the Open button may follow: http or https only.
+   * @param {unknown} value
+   * @returns {string|null}
+   */
   const openableUrl = (value) => {
     try {
       const link = new URL(String(value));

@@ -152,7 +152,10 @@ export class ShellFeedback {
     setSplitFlapText(this._globalLoadingLabel, presentation.label);
     this._globalLoadingDetail.textContent =
       presentation.state === 'needs-key'
-        ? keyRequiredDetail(presentation.requiresKeyId)
+        ? keyRequiredDetail(
+            /** @type {{requiresKeyId?: string|null}} */ (presentation)
+              .requiresKeyId,
+          )
         : presentation.detail;
   }
 

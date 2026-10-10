@@ -29,11 +29,12 @@ const INTERVAL = (15 / 60) * (Math.PI / 180);
 
 /** @type {Int16Array|null} Undulation in centimetres, row-major, once loaded. */
 let grid = null;
+/** @type {Promise<void>|null} */
 let readyPromise = null;
 
 /**
- * @param {Uint8Array} bytes
- * @returns {Promise<Uint8Array>}
+ * @param {Uint8Array<ArrayBuffer>} bytes
+ * @returns {Promise<Uint8Array<ArrayBuffer>>}
  */
 async function gunzip(bytes) {
   const stream = new Blob([bytes])
@@ -47,7 +48,7 @@ async function gunzip(bytes) {
  * unless the server sent it with `Content-Encoding: gzip` (Vite's does, for a
  * .gz file) and the browser has already unpacked it. The grid itself cannot
  * start with gzip's magic number: its first value is 1361 cm, bytes 51 05.
- * @param {Uint8Array} file
+ * @param {Uint8Array<ArrayBuffer>} file
  * @returns {Promise<Int16Array>}
  */
 async function decodeGrid(file) {
@@ -127,23 +128,42 @@ export function ensureGeoidReadyWhenIdle({
     if (typeof globalThis.requestIdleCallback === 'function') {
       globalThis.requestIdleCallback(start, { timeout: timeoutMs });
     } else {
-      globalThis.setTimeout(start, Math.min(timeoutMs, 2000))?.unref?.();
+      // Node's timer is an object, unref'd so it never holds the process
+      // open; a browser's is a number.
+      /** @type {{unref?: () => void}} */ (
+        /** @type {unknown} */ (
+          globalThis.setTimeout(start, Math.min(timeoutMs, 2000))
+        )
+      )?.unref?.();
     }
   });
 }
 
-/** Wraps an angle in radians into [center − π, center + π). */
+/**
+ * Wraps an angle in radians into [center − π, center + π).
+ * @param {number} rads
+ * @param {number} [center]
+ */
 function normalizeRadians(rads, center = 0) {
   return (
     rads - 2 * Math.PI * Math.floor((rads + Math.PI - center) / (2 * Math.PI))
   );
 }
 
-/** Undulation at one grid node, in metres. */
+/**
+ * Undulation at one grid node, in metres. Only called once the grid loaded.
+ * @param {number} row
+ * @param {number} col
+ */
 function node(row, col) {
-  return grid[row * COLS + col] / 100;
+  return /** @type {Int16Array} */ (grid)[row * COLS + col] / 100;
 }
 
+/**
+ * @param {number} a
+ * @param {number} b
+ * @param {number} t
+ */
 function lerp(a, b, t) {
   return a + (b - a) * t;
 }

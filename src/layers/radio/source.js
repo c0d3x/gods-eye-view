@@ -23,7 +23,7 @@ export function createRadioSource({
       if (typeof id !== 'string' || !RADIO_UUID_RE.test(id))
         throw new Error('Invalid radio station id');
       await requestWithDeadline(
-        async (requestSignal) => {
+        async (/** @type {AbortSignal} */ requestSignal) => {
           const response = await fetchImpl(
             `/api/radio/click/${encodeURIComponent(id)}`,
             {

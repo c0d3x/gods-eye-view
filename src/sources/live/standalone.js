@@ -114,7 +114,7 @@ export function createFlightSource({
       if (!['type', 'route'].includes(query.kind))
         throw new LiveSourceError('unsupported', 'Enrichment unavailable');
       return requestWithDeadline(
-        async (requestSignal) => {
+        async (/** @type {AbortSignal} */ requestSignal) => {
           const { response, payload } = await readResponse(
             fetchImpl,
             `/api/adsbdb/${query.kind}/${encodeURIComponent(query.id)}`,

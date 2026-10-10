@@ -13,7 +13,8 @@
 /**
  * @param {URL} url - Resolved against the calling module's `import.meta.url`.
  * @param {{signal?: AbortSignal}} [options]
- * @returns {Promise<Uint8Array>} The file's bytes, exactly as served.
+ * @returns {Promise<Uint8Array<ArrayBuffer>>} The file's bytes, exactly as
+ *   served.
  */
 export async function loadBundledBytes(url, { signal } = {}) {
   signal?.throwIfAborted();

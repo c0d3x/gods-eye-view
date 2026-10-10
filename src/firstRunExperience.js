@@ -426,7 +426,7 @@ export function initFirstRunExperience({
     keyboard.deactivate({ restoreFocus });
     const focused = documentRef.activeElement;
     if (focused && focused !== documentRef.body && root.contains(focused))
-      focused.blur?.();
+      /** @type {HTMLElement} */ (focused).blur?.();
     root.classList.remove('visible');
     // inert keeps the leaving card out of the tab order and the accessibility
     // tree; aria-hidden covers engines without inert.

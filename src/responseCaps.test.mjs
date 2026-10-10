@@ -204,7 +204,7 @@ test('server code reads every upstream body through a capped reader', async () =
     // The MCP handler's own Response, built in-process.
     'server/mcp/plugin.js: res.end(Buffer.from(await response.arrayBuffer()));',
     // A test seam; terrain.js passes readResponseJsonCapped.
-    'src/data/terrainHeightsProxy.js: readJson = (res) => res.json(),',
+    'src/data/terrainHeightsProxy.js: readJson = (/** @type {Response} */ res) => res.json(),',
   ]);
   const uncapped = [];
   for (const file of await serverSources()) {

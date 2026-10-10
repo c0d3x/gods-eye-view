@@ -117,7 +117,7 @@ export async function fetchTerrainChunkWithRetry(
     random = Math.random,
     now = Date.now,
     makeSignal = (timeoutMs) => AbortSignal.timeout(timeoutMs),
-    readJson = (res) => res.json(),
+    readJson = (/** @type {Response} */ res) => res.json(),
     attemptTimeoutMs = 30_000,
     retryBudgetMs = TERRAIN_RETRY_BUDGET_MS,
     maxAttempts = TERRAIN_MAX_ATTEMPTS,

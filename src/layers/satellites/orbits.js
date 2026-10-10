@@ -50,7 +50,11 @@ export function createOrbits({ state: layerState, services, parts, source }) {
    * unless the caller passes scratch to reuse.
    */
 
-  function propagatePosition(satrec, date, result = {}) {
+  function propagatePosition(
+    satrec,
+    date,
+    result = /** @type {GeodeticPosition} */ ({}),
+  ) {
     try {
       const posVel = propagate(satrec, date);
       // satellite.js returns null when SGP4 fails: a decayed or malformed
@@ -78,7 +82,15 @@ export function createOrbits({ state: layerState, services, parts, source }) {
     }
   }
 
-  /** Scratch for the fleet loops, so they allocate nothing per satellite. */
+  /**
+   * @typedef {{longitude: number, latitude: number, altitude: number,
+   *   speedMps: number | null}} GeodeticPosition
+   */
+
+  /**
+   * Scratch for the fleet loops, so they allocate nothing per satellite.
+   * @type {GeodeticPosition}
+   */
   const scratchGeodetic = {
     longitude: 0,
     latitude: 0,

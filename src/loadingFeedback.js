@@ -61,7 +61,7 @@ export function normalizeLayerLoading(layer = {}) {
     unavailable,
     keyRequired,
     // Key-registry id of the key a keyless layer waits for (lifecycle getAll()).
-    requiresKeyId: layer.requiresKeyId ? String(layer.requiresKeyId) : null,
+    requiresKeyId: requiredKeyId(layer),
     degraded,
     cameraRetry:
       layer.id === 'alpr-cameras' && layer.enabled && !disabling
@@ -85,9 +85,19 @@ export function normalizeLayerLoading(layer = {}) {
 }
 
 /**
+ * @param {{requiresKeyId?: unknown}} layer
+ * @returns {string|null}
+ */
+function requiredKeyId(layer) {
+  return layer.requiresKeyId ? String(layer.requiresKeyId) : null;
+}
+
+/**
  * What one participant's stats say about the load. A layer that only lacks
  * its API key needs a key, which is not a failure, even though its own row
  * reports KEY REQUIRED as an error; an error or an unavailable feed is.
+ * @param {{keyRequired?: unknown, error?: unknown, unavailable?: unknown}} record
+ * @returns {'needs-key'|'error'|null}
  */
 function participantOutcome(record) {
   if (record.keyRequired) return 'needs-key';
@@ -443,6 +453,7 @@ export function presentLoadingFeedback(state, summary, nowMs) {
       // Which key is missing; the shell names it from the key registry and
       // offers the way into Provider Settings.
       const needsKey = summary.records.find(
+        /** @param {{id: string, keyRequired: boolean}} record */
         (record) =>
           record.keyRequired && (state.activeIds || []).includes(record.id),
       );

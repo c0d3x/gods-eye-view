@@ -39,9 +39,15 @@ export function createCctvSource({
 } = {}) {
   // A deadline bounds the request and its body, so a stalled server cannot
   // hold the read open; the caller's signal still cancels it.
+  /**
+   * @param {string} path
+   * @param {string} key
+   * @param {number} timeoutMs
+   * @param {{signal?: AbortSignal}} [options]
+   */
   function read(path, key, timeoutMs, { signal } = {}) {
     return requestWithDeadline(
-      async (requestSignal) => {
+      async (/** @type {AbortSignal} */ requestSignal) => {
         const response = await fetchImpl(path, {
           cache: 'no-store',
           signal: requestSignal,
