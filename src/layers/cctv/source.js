@@ -3,6 +3,11 @@ import {
   FRAME_ENDPOINT,
   MEDIA_ENDPOINT,
 } from './sourcePolicy.js';
+import { requestWithDeadline } from '../../sources/requestDeadline.js';
+
+// The server may still be building the catalog from three live feeds.
+export const CATALOG_TIMEOUT_MS = 30_000;
+export const HEALTH_TIMEOUT_MS = 10_000;
 function safeNumber(value, fallback = NaN) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -32,22 +37,32 @@ function mediaUrlFor(camera) {
 export function createCctvSource({
   fetchImpl = (...args) => globalThis.fetch(...args),
 } = {}) {
-  async function read(path, key, { signal } = {}) {
-    signal?.throwIfAborted();
-    const response = await fetchImpl(path, { cache: 'no-store', signal });
-    if (!response.ok) throw new Error('Camera source HTTP ' + response.status);
-    const payload = await response.json();
-    signal?.throwIfAborted();
-    if (!Array.isArray(payload?.[key]))
-      throw new Error('Malformed camera ' + key + ' snapshot');
-    return payload;
+  // A deadline bounds the request and its body, so a stalled server cannot
+  // hold the read open; the caller's signal still cancels it.
+  function read(path, key, timeoutMs, { signal } = {}) {
+    return requestWithDeadline(
+      async (requestSignal) => {
+        const response = await fetchImpl(path, {
+          cache: 'no-store',
+          signal: requestSignal,
+        });
+        if (!response.ok)
+          throw new Error('Camera source HTTP ' + response.status);
+        const payload = await response.json();
+        requestSignal.throwIfAborted();
+        if (!Array.isArray(payload?.[key]))
+          throw new Error('Malformed camera ' + key + ' snapshot');
+        return payload;
+      },
+      { signal, timeoutMs },
+    );
   }
   return {
     getCatalog(options) {
-      return read('/api/cctv/sources', 'sources', options);
+      return read('/api/cctv/sources', 'sources', CATALOG_TIMEOUT_MS, options);
     },
     getHealth(options) {
-      return read('/api/cctv/health', 'cameras', options);
+      return read('/api/cctv/health', 'cameras', HEALTH_TIMEOUT_MS, options);
     },
     getFrameUrl: frameUrlFor,
     getMediaUrl: mediaUrlFor,

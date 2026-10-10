@@ -24,7 +24,10 @@ test('radio source confines directory and click requests to their existing route
     ['/api/radio/stations', `/api/radio/click/${id}`],
   );
   assert.equal(calls[1].options.method, 'POST');
-  assert.ok(calls.every((call) => call.options.signal === controller.signal));
+  assert.equal(calls[0].options.signal, controller.signal);
+  // The click count carries a deadline of its own, still cancelled by the
+  // caller (src/sources/clientDeadlines.test.mjs).
+  assert.ok(calls[1].options.signal instanceof AbortSignal);
   for (const invalid of [
     '../stations',
     'https://example.com',

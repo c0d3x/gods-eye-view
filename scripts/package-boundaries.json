@@ -794,6 +794,7 @@
       "src/sources/live/contract.js",
       "src/sources/live/index.js",
       "src/sources/live/standalone.js",
+      "src/sources/requestDeadline.js",
       "src/sources/live/vessels.js"
     ],
     "external": []
@@ -1026,6 +1027,7 @@
       "src/layers/launches/replay.js",
       "src/layers/launches/selection.js",
       "src/layers/launches/source.js",
+      "src/sources/requestDeadline.js",
       "src/layers/launches/state.js",
       "src/layers/launches/testing.js",
       "src/data/inputOwnership.js"
@@ -1190,6 +1192,7 @@
       "src/layers/cctv/rendering.js",
       "src/layers/cctv/selection.js",
       "src/layers/cctv/source.js",
+      "src/sources/requestDeadline.js",
       "src/layers/cctv/state.js",
       "src/layers/cctv/testing.js",
       "src/overlays/worldOverlayTokens.js",
@@ -1285,6 +1288,7 @@
       "src/layers/radio/rendering.js",
       "src/layers/radio/selection.js",
       "src/layers/radio/source.js",
+      "src/sources/requestDeadline.js",
       "src/layers/radio/state.js",
       "src/layers/radio/tuning.js",
       "src/layers/radio/tuningNoise.js",
@@ -3026,7 +3030,11 @@
   },
   "cctv-source": {
     "exports": ["./layers/cctv/source"],
-    "modules": ["src/layers/cctv/source.js", "src/layers/cctv/sourcePolicy.js"],
+    "modules": [
+      "src/layers/cctv/source.js",
+      "src/layers/cctv/sourcePolicy.js",
+      "src/sources/requestDeadline.js"
+    ],
     "external": []
   },
   "earthquakes-source": {
@@ -3064,12 +3072,19 @@
   },
   "launches-source": {
     "exports": ["./layers/launches/source"],
-    "modules": ["src/layers/launches/source.js"],
+    "modules": [
+      "src/layers/launches/source.js",
+      "src/sources/requestDeadline.js"
+    ],
     "external": []
   },
   "radio-source": {
     "exports": ["./layers/radio/source"],
-    "modules": ["src/layers/radio/policy.js", "src/layers/radio/source.js"],
+    "modules": [
+      "src/layers/radio/policy.js",
+      "src/layers/radio/source.js",
+      "src/sources/requestDeadline.js"
+    ],
     "external": []
   },
   "satellites-source": {

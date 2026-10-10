@@ -33,7 +33,9 @@ test('camera catalog and health use fixed source routes and caller cancellation'
     ['/api/cctv/sources', '/api/cctv/health'],
   );
   for (const { options } of calls) {
-    assert.equal(options.signal, controller.signal);
+    // A deadline of its own, still cancelled by the caller (deadline tests:
+    // src/sources/clientDeadlines.test.mjs).
+    assert.ok(options.signal instanceof AbortSignal);
     assert.equal(options.cache, 'no-store');
   }
 });

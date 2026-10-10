@@ -1,4 +1,9 @@
+import { requestWithDeadline } from '../../sources/requestDeadline.js';
 import { DIRECTORY_ENDPOINT, RADIO_UUID_RE } from './policy.js';
+
+// The click count is fire-and-forget; its deadline keeps a stalled request
+// from holding a connection.
+export const CLICK_TIMEOUT_MS = 10_000;
 
 /** Supply directory metadata and click reporting; audio stays with the broadcaster. */
 export function createRadioSource({
@@ -17,17 +22,21 @@ export function createRadioSource({
     async recordClick(id, { signal } = {}) {
       if (typeof id !== 'string' || !RADIO_UUID_RE.test(id))
         throw new Error('Invalid radio station id');
-      signal?.throwIfAborted();
-      const response = await fetchImpl(
-        `/api/radio/click/${encodeURIComponent(id)}`,
-        {
-          method: 'POST',
-          signal,
+      await requestWithDeadline(
+        async (requestSignal) => {
+          const response = await fetchImpl(
+            `/api/radio/click/${encodeURIComponent(id)}`,
+            {
+              method: 'POST',
+              signal: requestSignal,
+            },
+          );
+          requestSignal.throwIfAborted();
+          if (!response.ok)
+            throw new Error(`Radio click returned ${response.status}`);
         },
+        { signal, timeoutMs: CLICK_TIMEOUT_MS },
       );
-      signal?.throwIfAborted();
-      if (!response.ok)
-        throw new Error(`Radio click returned ${response.status}`);
     },
   };
 }

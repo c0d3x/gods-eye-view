@@ -12,8 +12,11 @@ import {
   readsbIdentities,
 } from './aircraft.js';
 import { normalizeVesselTrack, vesselSnapshot } from './vessels.js';
+import { requestWithDeadline } from '../requestDeadline.js';
 
 const defaultFetch = (...args) => globalThis.fetch(...args);
+// An enrichment lookup holds one of a few in-flight slots until it settles.
+export const ENRICHMENT_TIMEOUT_MS = 10_000;
 const header = (response, name) => response.headers?.get?.(name);
 
 function openSkyError(response) {
@@ -110,14 +113,19 @@ export function createFlightSource({
     async getEnrichment(query, { signal } = {}) {
       if (!['type', 'route'].includes(query.kind))
         throw new LiveSourceError('unsupported', 'Enrichment unavailable');
-      const { response, payload } = await readResponse(
-        fetchImpl,
-        `/api/adsbdb/${query.kind}/${encodeURIComponent(query.id)}`,
-        { signal },
-        'adsbdb',
+      return requestWithDeadline(
+        async (requestSignal) => {
+          const { response, payload } = await readResponse(
+            fetchImpl,
+            `/api/adsbdb/${query.kind}/${encodeURIComponent(query.id)}`,
+            { signal: requestSignal },
+            'adsbdb',
+          );
+          if (!response.ok) throw httpError(response, 'adsbdb');
+          return payload;
+        },
+        { signal, timeoutMs: ENRICHMENT_TIMEOUT_MS },
       );
-      if (!response.ok) throw httpError(response, 'adsbdb');
-      return payload;
     },
   };
 }
