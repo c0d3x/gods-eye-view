@@ -62,6 +62,7 @@ KEY_SETUP_EXTERNAL_KEYS=()
 [[ -n "${OPENSKY_CLIENT_ID:-}" ]] && KEY_SETUP_EXTERNAL_KEYS+=(OPENSKY_CLIENT_ID)
 [[ -n "${OPENSKY_CLIENT_SECRET:-}" ]] && KEY_SETUP_EXTERNAL_KEYS+=(OPENSKY_CLIENT_SECRET)
 [[ -n "${LL2_API_TOKEN:-}" ]] && KEY_SETUP_EXTERNAL_KEYS+=(LL2_API_TOKEN)
+[[ -n "${MAPILLARY_CLIENT_TOKEN:-}" ]] && KEY_SETUP_EXTERNAL_KEYS+=(MAPILLARY_CLIENT_TOKEN)
 KEY_SETUP_EXTERNAL_KEYS_CSV="$(IFS=,; printf '%s' "${KEY_SETUP_EXTERNAL_KEYS[*]:-}")"
 
 if command -v npm >/dev/null 2>&1; then
@@ -82,6 +83,14 @@ read_dotenv_value() {
   node "$SOURCE_ROOT/scripts/read-dotenv-value.mjs" "${variable_name}"
 }
 
+# The Keychain items each key may live in are listed once, in
+# scripts/lib/credentials.mjs, for this launcher and the setup doctor alike.
+read_keychain_value() {
+  command -v security >/dev/null 2>&1 || return 0
+  command -v node >/dev/null 2>&1 || return 0
+  node "$SOURCE_ROOT/scripts/read-keychain-value.mjs" "$1" 2>/dev/null || true
+}
+
 # Vite loads .env for browser build-time configuration, but this launcher needs
 # the Maps key before Vite starts. Preserve a shell-provided value; otherwise
 # read Vite's project-local dotenv ladder without executing it as shell code.
@@ -93,14 +102,8 @@ if [[ -z "${GOOGLE_MAPS_API_KEY_ENV}" ]]; then
 fi
 GOOGLE_MAPS_API_KEY_KEYCHAIN=""
 GOOGLE_MAPS_API_KEY_SOURCE=""
-if command -v security >/dev/null 2>&1; then
-  for acct in "api-key" "default" "key"; do
-    GOOGLE_MAPS_API_KEY_KEYCHAIN="$(security find-generic-password -s "google-maps-api" -a "${acct}" -w 2>/dev/null || true)"
-    if [[ -n "${GOOGLE_MAPS_API_KEY_KEYCHAIN}" ]]; then
-      GOOGLE_MAPS_API_KEY_SOURCE="keychain:${acct}"
-      break
-    fi
-  done
+if [[ -z "${GOOGLE_MAPS_API_KEY_ENV}" ]]; then
+  GOOGLE_MAPS_API_KEY_KEYCHAIN="$(read_keychain_value GOOGLE_MAPS_API_KEY)"
 fi
 
 if [[ -n "${GOOGLE_MAPS_API_KEY_ENV}" ]]; then
@@ -108,18 +111,13 @@ if [[ -n "${GOOGLE_MAPS_API_KEY_ENV}" ]]; then
   GOOGLE_MAPS_API_KEY_SOURCE="${GOOGLE_MAPS_API_KEY_ENV_SOURCE}"
 elif [[ -n "${GOOGLE_MAPS_API_KEY_KEYCHAIN}" ]]; then
   GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY_KEYCHAIN}"
+  GOOGLE_MAPS_API_KEY_SOURCE="keychain"
 else
   GOOGLE_MAPS_API_KEY=""
 fi
 if [[ -z "${GOOGLE_MAPS_API_KEY}" ]]; then
   GOOGLE_MAPS_API_KEY_SOURCE="not configured"
 fi
-
-read_keychain_secret() {
-  local service="$1"
-  local account="$2"
-  security find-generic-password -s "$service" -a "$account" -w 2>/dev/null || true
-}
 
 load_opensky_oauth_from_file() {
   local file_path="$1"
@@ -171,24 +169,10 @@ resolve_opensky_credentials() {
     load_opensky_oauth_from_file "${OPENSKY_CREDENTIALS_FILE}"
   fi
   if [[ "${OPENSKY_AUTH_MODE}" == "oauth" ]] && [[ -z "${OPENSKY_CLIENT_ID}" ]]; then
-    for svc in "opensky-network" "opensky"; do
-      for acct in "client_id" "client-id" "client" "api-key"; do
-        OPENSKY_CLIENT_ID="$(read_keychain_secret "${svc}" "${acct}")"
-        if [[ -n "${OPENSKY_CLIENT_ID}" ]]; then
-          break 2
-        fi
-      done
-    done
+    OPENSKY_CLIENT_ID="$(read_keychain_value OPENSKY_CLIENT_ID)"
   fi
   if [[ "${OPENSKY_AUTH_MODE}" == "oauth" ]] && [[ -z "${OPENSKY_CLIENT_SECRET}" ]]; then
-    for svc in "opensky-network" "opensky"; do
-      for acct in "client_secret" "client-secret" "secret"; do
-        OPENSKY_CLIENT_SECRET="$(read_keychain_secret "${svc}" "${acct}")"
-        if [[ -n "${OPENSKY_CLIENT_SECRET}" ]]; then
-          break 2
-        fi
-      done
-    done
+    OPENSKY_CLIENT_SECRET="$(read_keychain_value OPENSKY_CLIENT_SECRET)"
   fi
 
   if [[ "${OPENSKY_AUTH_MODE}" == "anon" ]]; then
@@ -208,11 +192,13 @@ CESIUM_ION_TOKEN="${CESIUM_ION_TOKEN:-$(read_dotenv_value "CESIUM_ION_TOKEN")}"
 LL2_API_TOKEN="${LL2_API_TOKEN:-$(read_dotenv_value "LL2_API_TOKEN")}"
 TOMTOM_API_KEY="${TOMTOM_API_KEY:-$(read_dotenv_value "TOMTOM_API_KEY")}"
 FIRMS_MAP_KEY="${FIRMS_MAP_KEY:-$(read_dotenv_value "FIRMS_MAP_KEY")}"
-OPENAI_API_KEY="${OPENAI_API_KEY:-$(read_keychain_secret "openai-api" "api-key")}"
-AISSTREAM_API_KEY="${AISSTREAM_API_KEY:-$(read_keychain_secret "aisstream-api" "api-key")}"
-CESIUM_ION_TOKEN="${CESIUM_ION_TOKEN:-$(read_keychain_secret "cesium-ion" "token")}"
-TOMTOM_API_KEY="${TOMTOM_API_KEY:-$(read_keychain_secret "tomtom-api" "api-key")}"
-FIRMS_MAP_KEY="${FIRMS_MAP_KEY:-$(read_keychain_secret "firms-map" "map-key")}"
+MAPILLARY_CLIENT_TOKEN="${MAPILLARY_CLIENT_TOKEN:-$(read_dotenv_value "MAPILLARY_CLIENT_TOKEN")}"
+OPENAI_API_KEY="${OPENAI_API_KEY:-$(read_keychain_value OPENAI_API_KEY)}"
+AISSTREAM_API_KEY="${AISSTREAM_API_KEY:-$(read_keychain_value AISSTREAM_API_KEY)}"
+CESIUM_ION_TOKEN="${CESIUM_ION_TOKEN:-$(read_keychain_value CESIUM_ION_TOKEN)}"
+TOMTOM_API_KEY="${TOMTOM_API_KEY:-$(read_keychain_value TOMTOM_API_KEY)}"
+FIRMS_MAP_KEY="${FIRMS_MAP_KEY:-$(read_keychain_value FIRMS_MAP_KEY)}"
+MAPILLARY_CLIENT_TOKEN="${MAPILLARY_CLIENT_TOKEN:-$(read_keychain_value MAPILLARY_CLIENT_TOKEN)}"
 
 if [[ ! -f "$SOURCE_ROOT/src/data/cctv.js" ]]; then
   echo "error: expected CCTV layer file missing: src/data/cctv.js"
@@ -314,6 +300,7 @@ fi
 [[ -n "${TOMTOM_API_KEY}" ]] && echo "TomTom key (live traffic flow): configured" || echo "TomTom key (live traffic flow): not set — simulated traffic"
 [[ -n "${FIRMS_MAP_KEY}" ]] && echo "NASA FIRMS key (live fires): configured" || echo "NASA FIRMS key (live fires): not set — fires layer requires a key"
 [[ -n "${LL2_API_TOKEN}" ]] && echo "Launch Library 2 token: configured" || echo "Launch Library 2 token: not set — using public access"
+[[ -n "${MAPILLARY_CLIENT_TOKEN}" ]] && echo "Mapillary token (street level): configured" || echo "Mapillary token (street level): not set — Street Level imagery and coverage need it"
 
 # Build the dev server environment explicitly. A value that resolved to
 # nothing is left UNSET instead of being exported empty: Vite backfills its
@@ -372,6 +359,7 @@ put_env_if_set CESIUM_ION_TOKEN "${CESIUM_ION_TOKEN}"
 put_env_if_set TOMTOM_API_KEY "${TOMTOM_API_KEY}"
 put_env_if_set FIRMS_MAP_KEY "${FIRMS_MAP_KEY}"
 put_env_if_set LL2_API_TOKEN "${LL2_API_TOKEN}"
+put_env_if_set MAPILLARY_CLIENT_TOKEN "${MAPILLARY_CLIENT_TOKEN}"
 put_env GEV_LAUNCHER "dev-fresh"
 put_env GEV_KEY_SETUP_EXTERNAL_KEYS "${KEY_SETUP_EXTERNAL_KEYS_CSV}"
 

@@ -6,6 +6,7 @@ import { parseEnv } from 'node:util';
 import { fileURLToPath } from 'node:url';
 import { projectRoot } from './project-root.mjs';
 import { selectMapStartupRoute } from '../src/mapStartup.js';
+import { CREDENTIALS, findKeychainItem } from './lib/credentials.mjs';
 
 const ROOT = projectRoot(import.meta.url);
 const OPENSKY_AUTH_MODE_DEFAULT = 'oauth';
@@ -13,31 +14,8 @@ const OPENSKY_AUTH_MODE_DEFAULT = 'oauth';
 // modes mean oauth, as they do in the proxy and the launcher.
 const OPENSKY_AUTH_MODES = new Set(['oauth', 'anon']);
 
-export const CREDENTIALS = Object.freeze([
-  { name: 'GOOGLE_MAPS_API_KEY', label: 'Google Maps', keychain: [['google-maps-api', 'api-key'], ['google-maps-api', 'default'], ['google-maps-api', 'key']] },
-  { name: 'GOOGLE_MAPS_SERVER_API_KEY', label: 'Google Places / Street View server', keychain: [] },
-  { name: 'CESIUM_ION_TOKEN', label: 'Cesium ion', keychain: [['cesium-ion', 'token']] },
-  { name: 'OPENAI_API_KEY', label: 'OpenAI voice', keychain: [['openai-api', 'api-key']] },
-  { name: 'AISSTREAM_API_KEY', label: 'AISStream vessels', keychain: [['aisstream-api', 'api-key']] },
-  { name: 'FIRMS_MAP_KEY', label: 'NASA FIRMS fires', keychain: [['firms-map', 'map-key']] },
-  { name: 'TOMTOM_API_KEY', label: 'TomTom traffic', keychain: [['tomtom-api', 'api-key']] },
-  {
-    name: 'OPENSKY_CLIENT_ID',
-    label: 'OpenSky client ID',
-    keychain: ['opensky-network', 'opensky'].flatMap((service) => (
-      ['client_id', 'client-id', 'client', 'api-key'].map((account) => [service, account])
-    )),
-  },
-  {
-    name: 'OPENSKY_CLIENT_SECRET',
-    label: 'OpenSky client secret',
-    keychain: ['opensky-network', 'opensky'].flatMap((service) => (
-      ['client_secret', 'client-secret', 'secret'].map((account) => [service, account])
-    )),
-  },
-  { name: 'LL2_API_TOKEN', label: 'Launch Library 2', keychain: [] },
-  { name: 'MAPILLARY_CLIENT_TOKEN', label: 'Mapillary street level', keychain: [['mapillary', 'client-token'], ['mapillary', 'token']] },
-]);
+// The provider keys and their Keychain items live in scripts/lib/credentials.mjs.
+export { CREDENTIALS };
 
 export function isConfiguredValue(value) {
   const normalized = String(value || '').trim();
@@ -122,13 +100,7 @@ export function resolveOpenSkyAuthMode({
 }
 
 function hasKeychainItem(service, account) {
-  if (process.platform !== 'darwin') return false;
-  const result = spawnSync('security', [
-    'find-generic-password',
-    '-s', service,
-    '-a', account,
-  ], { stdio: 'ignore' });
-  return result.status === 0;
+  return findKeychainItem(service, account);
 }
 
 export function resolveCredential(spec, {
