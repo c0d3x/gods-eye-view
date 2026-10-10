@@ -132,3 +132,21 @@ test('the poles and the dateline are inside the accepted range', () => {
   assert.deepEqual(parseCoordinateQuery('90, 180')?.lat, 90);
   assert.deepEqual(parseCoordinateQuery('-90, -180')?.lon, -180);
 });
+
+test('a query too long to be a coordinate is declined without being scanned', () => {
+  const started = performance.now();
+  assert.equal(parseCoordinateQuery(`1${' '.repeat(100_000)}2`), null);
+  assert.equal(parseCoordinateQuery(`0${' '.repeat(100_000)}!`), null);
+  // These took seconds while the parser's regexes backtracked through the run.
+  assert.ok(performance.now() - started < 1000);
+});
+
+test('a run of whitespace between the two numbers still splits them once', () => {
+  assert.deepEqual(parseCoordinateQuery(`40${' '.repeat(60)}-74`), {
+    lat: 40,
+    lon: -74,
+    label: '40.0000° N, 74.0000° W',
+  });
+  assert.equal(parseCoordinateQuery(`40\t\t-74`)?.lon, -74);
+  assert.equal(parseCoordinateQuery(`0${' '.repeat(60)}!`), null);
+});

@@ -11,7 +11,14 @@
 
 /** One decimal-degree component: an optional hemisphere letter on either side. */
 const COMPONENT =
-  /^([NSEW])?\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*°?\s*([NSEW])?$/i;
+  /^([NSEW])?\s*([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*(?:°\s*)?([NSEW])?$/i;
+
+/**
+ * The longest query read as a coordinate. A decimal-degree pair with full
+ * precision, degree signs and letters is under 50 characters, so anything
+ * longer is not one and falls through to the geocoders without being scanned.
+ */
+const MAX_QUERY_LENGTH = 100;
 
 /** Hemisphere letters, by the axis each one can name. */
 const LATITUDE_LETTERS = new Set(['N', 'S']);
@@ -46,9 +53,11 @@ function readComponent(text) {
 function splitComponents(query) {
   const text = String(query).trim();
   if (!text) return null;
+  // Runs of whitespace become one space first, so the split below matches a
+  // single character and never backtracks through a long run.
   const parts = /[,;]/.test(text)
     ? text.split(/[,;]/)
-    : text.split(/\s+(?=[+-]?[.\d]|[NSEW]\s*[+-]?[.\d])/i);
+    : text.replace(/\s+/g, ' ').split(/ (?=[+-]?[.\d]|[NSEW] ?[+-]?[.\d])/i);
   const trimmed = parts.map((part) => part.trim()).filter(Boolean);
   return trimmed.length === 2 ? trimmed : null;
 }
@@ -73,7 +82,7 @@ export function formatCoordinateLabel(lat, lon) {
  * @returns {{ lat: number, lon: number, label: string } | null}
  */
 export function parseCoordinateQuery(query) {
-  if (typeof query !== 'string') return null;
+  if (typeof query !== 'string' || query.length > MAX_QUERY_LENGTH) return null;
   const parts = splitComponents(query);
   if (!parts) return null;
 
