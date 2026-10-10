@@ -57,7 +57,8 @@
       "src/data/adsbLolFallback.js",
       "src/data/aisStreamAdapter.js",
       "src/data/aisWatchdog.js",
-      "src/sources/httpBody.js"
+      "src/sources/httpBody.js",
+      "server/providers/common/bounded-cache.js"
     ],
     "external": ["ws"]
   },
@@ -116,7 +117,8 @@
     "exports": ["./server/providers/terrain"],
     "modules": [
       "server/providers/terrain.js",
-      "src/data/terrainHeightsProxy.js"
+      "src/data/terrainHeightsProxy.js",
+      "server/providers/common/bounded-cache.js"
     ],
     "external": []
   },
@@ -128,7 +130,11 @@
   "traffic-provider": {
     "runtime": "node",
     "exports": ["./server/providers/traffic"],
-    "modules": ["server/providers/traffic.js", "src/data/tomtomTiles.js"],
+    "modules": [
+      "server/providers/traffic.js",
+      "src/data/tomtomTiles.js",
+      "server/providers/common/disk-cache.js"
+    ],
     "external": []
   },
   "traffic-source": {
@@ -242,7 +248,8 @@
       "src/data/routeSteps.js",
       "src/sources/httpBody.js",
       "src/sources/overpass.js",
-      "src/sources/rateLimit.js"
+      "src/sources/rateLimit.js",
+      "server/providers/common/disk-cache.js"
     ],
     "external": []
   },
@@ -262,7 +269,8 @@
       "server/providers/overpass/geometry.js",
       "server/providers/overpass/transport.js",
       "src/sources/httpBody.js",
-      "src/sources/rateLimit.js"
+      "src/sources/rateLimit.js",
+      "server/providers/common/disk-cache.js"
     ],
     "external": []
   },

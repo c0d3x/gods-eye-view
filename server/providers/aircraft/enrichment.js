@@ -1,5 +1,10 @@
 import path from 'node:path';
 import { promises as fsp } from 'node:fs';
+import { createBoundedCache } from '../common/bounded-cache.js';
+
+/** Routes and aircraft each kept by the adsbdb proxy; clients choose the keys. */
+export const ADSBDB_CACHE_MAX_ENTRIES = 5_000;
+
 /**
  * adsbdb.com enrichment proxy: callsign → route (airline + origin/destination
  * airports) and hex → aircraft type/registration. Free community API — cached
@@ -7,10 +12,14 @@ import { promises as fsp } from 'node:fs';
  * persisted to disk so restarts don't re-hammer it. Adapted from skylight
  * (MIT) server/src/enrich/routes.ts.
  */
-export function adsbdbProxy() {
+export function adsbdbProxy(options = {}) {
   const TTL_MS = 24 * 3600_000;
-  const CACHE_PATH = path.join(process.cwd(), '.gev-cache', 'adsbdb.json');
-  let cache = { routes: {}, aircraft: {} };
+  const CACHE_PATH =
+    options.cachePath ?? path.join(process.cwd(), '.gev-cache', 'adsbdb.json');
+  // Each store is keyed by client input, so it is capped (oldest lookups go).
+  const makeStore = () =>
+    createBoundedCache({ maxEntries: ADSBDB_CACHE_MAX_ENTRIES, ttlMs: TTL_MS });
+  const cache = { routes: makeStore(), aircraft: makeStore() };
   let dirty = false;
   let loaded = false;
   const inflight = new Map();
@@ -20,7 +29,12 @@ export function adsbdbProxy() {
     loaded = true;
     try {
       const parsed = JSON.parse(await fsp.readFile(CACHE_PATH, 'utf8'));
-      cache = { routes: parsed.routes ?? {}, aircraft: parsed.aircraft ?? {} };
+      for (const kind of ['routes', 'aircraft']) {
+        const saved = Object.entries(parsed?.[kind] ?? {})
+          .filter(([, entry]) => fresh(entry))
+          .sort(([, a], [, b]) => a.at - b.at);
+        for (const [key, entry] of saved) cache[kind].set(key, entry);
+      }
     } catch {
       /* first run */
     }
@@ -29,7 +43,11 @@ export function adsbdbProxy() {
       dirty = false;
       try {
         await fsp.mkdir(path.dirname(CACHE_PATH), { recursive: true });
-        await fsp.writeFile(CACHE_PATH, JSON.stringify(cache), 'utf8');
+        const saved = {
+          routes: Object.fromEntries(cache.routes.entries()),
+          aircraft: Object.fromEntries(cache.aircraft.entries()),
+        };
+        await fsp.writeFile(CACHE_PATH, JSON.stringify(saved), 'utf8');
       } catch {
         dirty = true;
       } // retry next tick
@@ -69,7 +87,8 @@ export function adsbdbProxy() {
 
   function lookup(kind, key) {
     const store = kind === 'route' ? cache.routes : cache.aircraft;
-    if (fresh(store[key])) return Promise.resolve(store[key].data);
+    const cached = store.get(key);
+    if (fresh(cached)) return Promise.resolve(cached.data);
     const ik = `${kind}:${key}`;
     if (!inflight.has(ik)) {
       inflight.set(
@@ -86,18 +105,20 @@ export function adsbdbProxy() {
                 kind === 'route'
                   ? parseRoute(await res.json())
                   : parseAircraft(await res.json());
-              store[key] = { at: Date.now(), data }; // data may be null — negative cache
+              store.set(key, { at: Date.now(), data }); // data may be null — negative cache
               dirty = true;
               return data;
             }
             if (res.status === 404) {
-              store[key] = { at: Date.now(), data: null }; // known-missing — cache the miss
+              store.set(key, { at: Date.now(), data: null }); // known-missing — cache the miss
               dirty = true;
             }
             // other statuses: leave uncached so we retry later
-            return fresh(store[key]) ? store[key].data : null;
+            const entry = store.get(key);
+            return fresh(entry) ? entry.data : null;
           } catch {
-            return fresh(store[key]) ? store[key].data : null; // network error → stale if any
+            const entry = store.get(key);
+            return fresh(entry) ? entry.data : null; // network error → stale if any
           } finally {
             inflight.delete(ik);
           }

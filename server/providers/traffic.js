@@ -7,6 +7,20 @@ import {
   normalizeBudget as normalizeTomTomBudget,
   isOverBudget as isTomTomOverBudget,
 } from '../../src/data/tomtomTiles.js';
+import { createCachePruner } from './common/disk-cache.js';
+
+/**
+ * Prunes .gev-cache/tomtom/, which gains a file per tile. A tile is fresh for
+ * two minutes; past that it only backs serve-stale, so a day is plenty.
+ * budget.json is the daily request budget, spend protection rather than
+ * cache, so it is never removed.
+ */
+export const tomtomDiskPruner = createCachePruner({
+  directory: path.join(process.cwd(), '.gev-cache', 'tomtom'),
+  maxAgeMs: 86_400_000,
+  maxBytes: 64 * 1024 * 1024,
+  keep: ['budget.json'],
+});
 
 /**
  * TomTom traffic-flow vector-tile proxy with a daily budget governor.
@@ -121,6 +135,7 @@ export function tomtomProxy() {
     try {
       await fsp.mkdir(CACHE_DIR, { recursive: true });
       await fsp.writeFile(tilePath(key), buf);
+      tomtomDiskPruner.afterWrite();
     } catch (err) {
       console.warn(
         `[tomtom-proxy] tile cache write failed for ${key}:`,

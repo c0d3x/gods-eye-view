@@ -10,6 +10,18 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { promises as fsp } from 'node:fs';
 import { overpassPayloadIsData } from './transport.js';
+import { createCachePruner } from '../common/disk-cache.js';
+
+/**
+ * Prunes .gev-cache/overpass/, which gains a file per query. It keeps 90 days,
+ * past every TTL, because a stale answer of any age is served when every
+ * mirror is down.
+ */
+const overpassDiskPruner = createCachePruner({
+  directory: OVERPASS_DISK_DIR,
+  maxAgeMs: 90 * 86_400_000,
+  maxBytes: 64 * 1024 * 1024,
+});
 
 /** @type {Map<string,{status:number,body:string,contentType:string,endpoint:string,cachedAt:number}>} */
 const _overpassCache = new Map();
@@ -61,6 +73,7 @@ function writeOverpassDisk(cacheKey, payload) {
     .then(() =>
       fsp.writeFile(overpassDiskPath(cacheKey), JSON.stringify(payload)),
     )
+    .then(() => overpassDiskPruner.afterWrite())
     .catch((err) =>
       console.warn(
         '[Overpass Proxy] disk cache write failed:',
@@ -127,6 +140,7 @@ function trimOverpassCache() {
 }
 
 export {
+  overpassDiskPruner,
   readOverpassDisk,
   resolveOverpassPreflight,
   _overpassCache,

@@ -1,6 +1,6 @@
 import { openSkyProxy } from './aircraft/opensky.js';
 import { celestrakProxy, rocketLaunchesProxy } from './space.js';
-import { tomtomProxy } from './traffic.js';
+import { tomtomDiskPruner, tomtomProxy } from './traffic.js';
 import { firmsProxy } from './firms.js';
 import { terrainHeightsProxy } from './terrain.js';
 import { adsbdbProxy } from './aircraft/enrichment.js';
@@ -26,6 +26,9 @@ import { weatherProxy } from './weather.js';
 import { firePerimetersProxy } from './firePerimeters.js';
 import { cycloneProxy } from './cyclones.js';
 import { windProxy } from './wind.js';
+import { diskCacheJanitor } from './common/disk-cache.js';
+import { overpassDiskPruner } from './overpass/cache.js';
+import { militaryInstallationDiskPruner } from './military-installations/cache.js';
 
 /**
  * Construct the local provider plugins in their established order.
@@ -33,6 +36,12 @@ import { windProxy } from './wind.js';
  */
 function localProviderPlugins({ realtime } = {}) {
   return [
+    // Prunes the per-query disk caches under .gev-cache/ at startup.
+    diskCacheJanitor([
+      overpassDiskPruner,
+      militaryInstallationDiskPruner,
+      tomtomDiskPruner,
+    ]),
     openSkyProxy(),
     celestrakProxy(),
     tomtomProxy(),

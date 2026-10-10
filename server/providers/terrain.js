@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { promises as fsp } from 'node:fs';
 
+import { createBoundedCache } from './common/bounded-cache.js';
 import {
   fetchTerrainChunkWithRetry,
   parseTerrainPoints,
@@ -8,6 +9,9 @@ import {
   terrainPointKey,
   validTerrainResult,
 } from '../../src/data/terrainHeightsProxy.js';
+
+/** Terrain points kept in memory and on disk; any client can ask for new ones. */
+export const TERRAIN_CACHE_MAX_POINTS = 20_000;
 
 /**
  * Re:Earth terrain point-height proxy: batched lon/lat → ellipsoidal height
@@ -21,9 +25,9 @@ import {
  * request order. Larger requests are chunked sequentially, and one failing
  * chunk does not discard the chunks that resolved.
  */
-export function terrainHeightsProxy() {
+export function terrainHeightsProxy(options = {}) {
   const TTL_MS = 30 * 24 * 3600_000;
-  const CACHE_DIR = path.join(process.cwd(), '.gev-cache');
+  const CACHE_DIR = options.cacheDir ?? path.join(process.cwd(), '.gev-cache');
   const CACHE_PATH = path.join(CACHE_DIR, 'terrain-heights.json');
   // Sized against measured upstream latency, not the documented page cap.
   // Re:Earth serves 87-186 ms/point depending on load (observed 2026-09-12,
@@ -35,8 +39,9 @@ export function terrainHeightsProxy() {
   const UPSTREAM_CHUNK = 64;
   const MAX_POINTS = 2000;
 
-  /** @type {Map<string, {at:number, result:object}>} keyed by canonical 5dp lon/lat. */
-  const mem = new Map();
+  /** Keyed by canonical 5dp lon/lat; the least recently used points go once it
+   * is full. Freshness and serve-stale stay with resolveTerrainHeightRequest. */
+  const mem = createBoundedCache({ maxEntries: TERRAIN_CACHE_MAX_POINTS });
   /** @type {Map<string, Promise<Array<object>>>} single-flight per missing-point subset. */
   const inflight = new Map();
   let diskLoaded = false;
@@ -55,7 +60,11 @@ export function terrainHeightsProxy() {
           ? parsed.points
           : null;
       if (pointEntries) {
-        for (const [key, entry] of Object.entries(pointEntries)) {
+        // Oldest first, so the newest points survive the cap.
+        const saved = Object.entries(pointEntries).sort(
+          ([, a], [, b]) => (Number(a?.at) || 0) - (Number(b?.at) || 0),
+        );
+        for (const [key, entry] of saved) {
           if (
             entry &&
             Number.isFinite(entry.at) &&

@@ -8,8 +8,19 @@ import {
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { promises as fsp } from 'node:fs';
+import { createCachePruner } from '../common/disk-cache.js';
 
 const _militaryInstallationCache = new Map();
+
+/**
+ * Prunes the installation disk cache, which gains a file per query. It keeps
+ * 90 days, past the TTL, because a stale answer is served when Overpass is down.
+ */
+const militaryInstallationDiskPruner = createCachePruner({
+  directory: MILITARY_INSTALLATION_DISK_DIR,
+  maxAgeMs: 90 * 86_400_000,
+  maxBytes: 32 * 1024 * 1024,
+});
 
 /**
  * Resolve the READ tiers for one installation request, in order: fresh memory,
@@ -140,6 +151,8 @@ async function writeMilitaryInstallationDisk(
     await fsp.mkdir(dir, { recursive: true });
     await fsp.writeFile(temp, JSON.stringify(entry));
     await fsp.rename(temp, target);
+    if (dir === MILITARY_INSTALLATION_DISK_DIR)
+      militaryInstallationDiskPruner.afterWrite();
     return true;
   } catch (err) {
     console.warn(
@@ -161,6 +174,7 @@ function trimMilitaryInstallationCache() {
 
 export {
   _militaryInstallationCache,
+  militaryInstallationDiskPruner,
   trimMilitaryInstallationCache,
   writeMilitaryInstallationDisk,
   resolveMilitaryInstallationTier,
