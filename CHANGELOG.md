@@ -243,6 +243,9 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 - The launchers and `opensky-import-client.sh` no longer put API keys in
   process argument lists.
 
+- DOMPurify, which Cesium uses to sanitize credit and info-box HTML, is
+  updated to 3.4.16 for a DOM XSS fix.
+
 - The AIS key fingerprint no longer derives from the key, voice debug session
   IDs use cryptographic randomness, and the screenshot sink used by the QA
   scripts listens only on 127.0.0.1 and no longer echoes errors.

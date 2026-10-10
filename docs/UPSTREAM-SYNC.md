@@ -95,7 +95,9 @@ fork changes, and then fast-forwarded onto `main`.
   in `CYBER_SONAR_CESIUM_VERSION` (`src/cyberSonarGpu.js`). Follow upstream
   when it moves Cesium and that constant together; otherwise upgrade Cesium
   only with a revalidation of those patches. Dependabot does not offer Cesium
-  upgrades for the same reason.
+  upgrades for the same reason. When Cesium moves, move the `@cesium/widgets`
+  override in `pnpm-workspace.yaml` to the widgets release that shipped with
+  it, so the app keeps a single `@cesium/engine`.
 - **`build/vite.js`**: upstream loads Cesium with `vite-plugin-cesium`, and the
   fork with `build/cesium.js`. Keep the fork's plugin when upstream edits
   that part.

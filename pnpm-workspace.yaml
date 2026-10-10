@@ -14,3 +14,9 @@ allowBuilds:
 # dependencies. Hoisting it here keeps those tests unchanged.
 publicHoistPattern:
   - '@cesium/engine'
+overrides:
+  # cesium 1.138.0 accepts any @cesium/widgets 14.x, and 14.4 onward needs a
+  # newer @cesium/engine than the one cesium itself uses, which would put two
+  # engines in the dev bundle. 14.3.0 shipped with 1.138.0 (see Cesium's pin
+  # in package.json).
+  '@cesium/widgets': 14.3.0
