@@ -29,7 +29,10 @@ export function buildSyntheticCctvSvg({ cameraId, label, city, status }) {
   const hue = seed % 360;
   const hue2 = (hue + 46) % 360;
   const now = new Date();
-  const ts = now.toISOString().replace('T', ' ').replace('Z', 'Z').slice(0, 20);
+  const ts = now
+    .toISOString()
+    .replace('T', ' ')
+    .replace(/\.\d+Z$/, 'Z');
   const safeLabel = escapeXml(label);
   const safeCity = escapeXml(city || 'GLOBAL GRID');
   const safeId = escapeXml(cameraId);

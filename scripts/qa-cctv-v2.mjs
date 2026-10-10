@@ -214,6 +214,13 @@ const SERIALIZE_GEOM_SRC = `
   }
 `;
 
+/**
+ * A page function with serializeGeom() defined, taking the camera id as an
+ * argument instead of splicing it into the code.
+ */
+const inPageWithGeom = (body) =>
+  new Function('camId', `${SERIALIZE_GEOM_SRC}\n${body}`);
+
 // In-page helper: bearing (degrees, mount -> cap-center) shift between two
 // serializeGeom() snapshots of the SAME camera. Plain-JS spherical bearing
 // math over ECEF points (no Cesium namespace) — a local east/north basis is
@@ -544,10 +551,10 @@ async function main() {
     // 2026-07-04: every click on the monitor plane picks its own camera, and
     // re-running activation rewrote the plane entity → visible flash). No new
     // probe, no geometry rewrite.
-    const geomBeforeReselect = await page.evaluate(`(() => {
-      ${SERIALIZE_GEOM_SRC}
-      return JSON.stringify(serializeGeom(${JSON.stringify(activeId)}));
-    })()`);
+    const geomBeforeReselect = await page.evaluate(
+      inPageWithGeom('return JSON.stringify(serializeGeom(camId));'),
+      activeId,
+    );
     await page.evaluate((id) => {
       window.__godsEyeView.dataManager.layers
         .get('cctv')
@@ -555,10 +562,10 @@ async function main() {
     }, activeId);
     await sleep(400);
     const cAfterReselect = await readCounters();
-    const geomAfterReselect = await page.evaluate(`(() => {
-      ${SERIALIZE_GEOM_SRC}
-      return JSON.stringify(serializeGeom(${JSON.stringify(activeId)}));
-    })()`);
+    const geomAfterReselect = await page.evaluate(
+      inPageWithGeom('return JSON.stringify(serializeGeom(camId));'),
+      activeId,
+    );
     record(
       're-selecting the active camera is a no-op (no probe, no geometry rewrite)',
       cAfterReselect.pickFromRay - cAfterActivate.pickFromRay === 0 &&
@@ -695,8 +702,7 @@ async function main() {
     // Group 2: geometry contract
     // =========================================================================
     console.log('Checking geometry contract (frustum + plane)...');
-    const geomInfo = await page.evaluate(`(function(camId){
-      ${SERIALIZE_GEOM_SRC}
+    const geomInfo = await page.evaluate(inPageWithGeom(`
       const g = serializeGeom(camId);
       const viewer = window.__godsEyeView.viewer;
       // Overlay unification: the plane label is no longer a native entity —
@@ -707,7 +713,7 @@ async function main() {
       const planeEnt = viewer.entities.getById('cctv-' + camId + '-plane');
       g.planeShow = planeEnt ? planeEnt.show : null;
       return g;
-    })(${JSON.stringify(activeId)})`);
+    `), activeId);
 
     const allPolylinesPresent = [
       'ray-tl',
@@ -782,7 +788,8 @@ async function main() {
         );
         await sleep(400);
         geomForCorners = await page.evaluate(
-          `(function(camId){ ${SERIALIZE_GEOM_SRC} return serializeGeom(camId); })(${JSON.stringify(activeId)})`,
+          inPageWithGeom('return serializeGeom(camId);'),
+          activeId,
         );
         const dimsAfter = geomForCorners.plane
           ? JSON.stringify(geomForCorners.plane.dimensions)
@@ -884,10 +891,7 @@ async function main() {
     // resamples on a timer in v2, so this is a pure drift regression.
     console.log('Checking geometry byte-stability over 30s idle...');
     const serializeGeom = (camId) =>
-      page.evaluate(`(function(camId){
-      ${SERIALIZE_GEOM_SRC}
-      return serializeGeom(camId);
-    })(${JSON.stringify(camId)})`);
+      page.evaluate(inPageWithGeom('return serializeGeom(camId);'), camId);
     const geomBefore30s = await serializeGeom(activeId);
     await sleep(30000);
     const geomAfter30s = await serializeGeom(activeId);

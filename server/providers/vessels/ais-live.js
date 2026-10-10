@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { createAisStreamAdapter } from '../../../src/data/aisStreamAdapter.js';
 import { parseSilenceTimeoutEnv } from '../../../src/data/aisWatchdog.js';
@@ -278,14 +277,24 @@ function aisWatchdogBudgets() {
   };
 }
 
+/** The AIS key last seen, and a count of the distinct keys seen so far. */
+let _aisKeySeen = null;
+let _aisKeyGeneration = 0;
+
 /**
- * Fingerprint the credential so a key change can clear the terminal
- * auth-failed state. Only a truncated digest is kept — never the key.
+ * Name the current credential so a key change can clear the terminal
+ * auth-failed state: a counter that moves whenever the key does. Nothing
+ * derived from the key itself leaves this module.
+ * @returns {string|null} `key-<n>`, or null while no key is set.
  */
-function aisKeyFingerprint() {
+export function aisKeyFingerprint() {
   const key = process.env.AISSTREAM_API_KEY;
   if (!key) return null;
-  return createHash('sha256').update(String(key)).digest('hex').slice(0, 12);
+  if (key !== _aisKeySeen) {
+    _aisKeySeen = key;
+    _aisKeyGeneration += 1;
+  }
+  return `key-${_aisKeyGeneration}`;
 }
 
 /**

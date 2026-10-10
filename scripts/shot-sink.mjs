@@ -2,7 +2,7 @@
 // Minimal screenshot sink: the browser POSTs a data:image/... URL (grabbed from
 // the real-GPU Cesium canvas) and this writes it to qa-shots/height-datum/<name>.
 // Keeps large image payloads OUT of the agent's context — browser → sink → disk.
-// Usage: node scripts/shot-sink.mjs   (listens on :4399)
+// Usage: node scripts/shot-sink.mjs   (listens on 127.0.0.1:4399)
 import http from 'node:http';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -35,9 +35,13 @@ http.createServer((req, res) => {
         writeFileSync(file, Buffer.from(m[2], 'base64'));
         res.writeHead(200); res.end(file);
         console.log(`saved ${file} (${Math.round(m[2].length / 1024)} KB b64)`);
-      } catch (e) { res.writeHead(500); res.end(String(e)); }
+      } catch (error) {
+        console.error('could not save the screenshot:', error);
+        res.writeHead(500, { 'Content-Type': 'text/plain' });
+        res.end('could not save the screenshot');
+      }
     });
     return;
   }
   res.writeHead(404); res.end('nope');
-}).listen(PORT, () => console.log(`shot-sink on http://localhost:${PORT} → ${OUT}`));
+}).listen(PORT, '127.0.0.1', () => console.log(`shot-sink on http://127.0.0.1:${PORT} → ${OUT}`));

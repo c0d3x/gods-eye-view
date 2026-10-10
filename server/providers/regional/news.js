@@ -1,14 +1,19 @@
 import { fetchRegionalText, fetchRegionalJson } from './http.js';
 import { normalizeRegionalArticles } from '../../../src/data/regionalModel.js';
 
+/**
+ * Plain text from an RSS field: unwraps CDATA, decodes entities and drops
+ * tags. `&amp;` is decoded last, so text that was escaped twice is decoded
+ * only once.
+ */
 function decodeRssText(value) {
   return String(value || '')
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -109,4 +114,4 @@ async function fetchRegionalNews(place) {
   }
 }
 
-export { fetchRegionalNews };
+export { decodeRssText, fetchRegionalNews };
