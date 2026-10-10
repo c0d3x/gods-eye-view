@@ -171,8 +171,15 @@ export class IntelHUD {
     this._orbitNum = 47000 + Math.floor(Math.random() * 1000);
     this._passNum = 100 + Math.floor(Math.random() * 200);
 
+    // A background tab requests no AI summary; on return, one catches up if
+    // the view changed meanwhile.
+    this._onPageVisibility = () => {
+      if (!document.hidden && this._visible) void this._updateSummary(true);
+    };
+
     this._buildDOM();
     this.viewer.camera.moveEnd.addEventListener(this._onCameraMoveEnd);
+    document.addEventListener('visibilitychange', this._onPageVisibility);
     this._startTimers();
   }
 
@@ -706,6 +713,7 @@ export class IntelHUD {
       return;
     }
     if (!force && !this._summaryDirty) return;
+    if (document.hidden) return;
     if (this.summaryPolicy.canRequest?.() === false) return;
 
     const revision = this._summaryRevision;
@@ -725,7 +733,7 @@ export class IntelHUD {
       this._setSummaryText(fallbackText, animate);
       return;
     }
-    if (revision !== this._summaryRevision) return;
+    if (revision !== this._summaryRevision || document.hidden) return;
     const signature = JSON.stringify(context);
     if (!force && signature === this._lastSummarySignature) {
       this._summaryDirty = false;
@@ -952,6 +960,7 @@ export class IntelHUD {
     clearInterval(this._summaryInterval);
     clearInterval(this._summaryTypingInterval);
     this.viewer.camera.moveEnd.removeEventListener(this._onCameraMoveEnd);
+    document.removeEventListener('visibilitychange', this._onPageVisibility);
     this._dataManagerUnsubscribe?.();
     this._summaryRequest?.abort();
   }
