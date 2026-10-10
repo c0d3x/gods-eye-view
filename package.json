@@ -34,8 +34,10 @@
   ],
   "scripts": {
     "doctor": "node scripts/setup-doctor.mjs",
-    "format": "node scripts/format.mjs --write",
-    "format:check": "node scripts/format.mjs --check",
+    "format": "biome format --write",
+    "format:check": "biome format",
+    "lint": "biome check --formatter-enabled=false --error-on-warnings",
+    "lint:baseline": "node scripts/biome-baseline.mjs",
     "layer-token:next": "node scripts/next-layer-state-token.mjs",
     "layer-token:check": "node scripts/check-layer-state-tokens.mjs",
     "dev": "vite",
@@ -73,7 +75,9 @@
     "sharp": "^0.35.4",
     "vite": "^6.0.0",
     "vite-plugin-cesium": "^1.2.23",
-    "ws": "^8.21.0"
+    "ws": "^8.21.0",
+    "@biomejs/biome": "2.5.13",
+    "lefthook": "^2.1.12"
   },
   "exports": {
     "./infrastructure": "./src/data/infrastructure.js",
