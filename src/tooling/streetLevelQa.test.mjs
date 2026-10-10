@@ -611,18 +611,18 @@ test('CI runs the gates hermetically against a production build, strict, with ev
   // server's status route reads it at run time: both steps carry it.
   assert.match(
     gate,
-    /MAPILLARY_CLIENT_TOKEN: 'MLY\|0\|qa-fixture'\s+run: npm run build/,
+    /MAPILLARY_CLIENT_TOKEN: 'MLY\|0\|qa-fixture'\s+run: pnpm run build/,
   );
   assert.match(
     gate,
-    /MAPILLARY_CLIENT_TOKEN: 'MLY\|0\|qa-fixture'\s+run: \|\s+npx vite preview --port 4173 --strictPort/,
+    /MAPILLARY_CLIENT_TOKEN: 'MLY\|0\|qa-fixture'\s+run: \|\s+pnpm exec vite preview --port 4173 --strictPort/,
   );
-  assert.doesNotMatch(gate, /npx vite --port/);
+  assert.doesNotMatch(gate, /(?:npx|pnpm exec) vite --port/);
   assert.equal(
     (gate.match(/MAPILLARY_CLIENT_TOKEN: 'MLY\|0\|qa-fixture'/g) || []).length,
     2,
   );
-  assert.match(gate, /qa:street-level:fixtures -- --strict/);
+  assert.match(gate, /qa:street-level:fixtures --strict/);
   assert.match(
     gate,
     /if: failure\(\)[\s\S]*actions\/upload-artifact@[0-9a-f]{40}/,
