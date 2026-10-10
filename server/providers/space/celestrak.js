@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { promises as fsp } from 'node:fs';
 import { celestrakTleUrl } from '../../../src/data/spaceProviderRequests.js';
+import { PROJECT_URL } from '../../../src/data/projectUrl.js';
 
 /**
  * Vite plugin: CelesTrak TLE proxy.
@@ -55,8 +56,7 @@ export function celestrakProxy() {
       // CelesTrak 403s bulk groups (e.g. `active`) unless the request carries a
       // descriptive User-Agent with a contact point.
       headers: {
-        'User-Agent':
-          'gods-eye-view-celestrak-proxy/1.0 (+https://github.com/bilawalsidhu/gods-eye-view)',
+        'User-Agent': `gods-eye-view-celestrak-proxy/1.0 (+${PROJECT_URL})`,
       },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);

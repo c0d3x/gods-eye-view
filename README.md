@@ -2,13 +2,15 @@
 
 # 🌐 God's Eye View
 
-[![CI](https://github.com/bilawalsidhu/gods-eye-view/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/bilawalsidhu/gods-eye-view/actions/workflows/ci.yml) [![Reached #1 on GitHub Trending](https://img.shields.io/badge/%231_GitHub_Trending-thank_you!-F0A63C?style=flat-square&logo=github)](https://x.com/bilawalsidhu/status/2093798887815348521)
+[![CI](https://github.com/c0d3x/gods-eye-view/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/c0d3x/gods-eye-view/actions/workflows/ci.yml) [![Reached #1 on GitHub Trending](https://img.shields.io/badge/%231_GitHub_Trending-thank_you!-F0A63C?style=flat-square&logo=github)](https://x.com/bilawalsidhu/status/2093798887815348521)
 
 ### A spy-satellite simulator in your browser — then you realize the sources are public and the data is real.
 
 Photorealistic 3D globe. Live aircraft, ships, satellites, earthquakes, traffic, and public cameras. Hands-free voice control powered by a realtime AI agent.
 
 _No place left behind._
+
+**This repository is a fork of [bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view)**, the project Bilawal Sidhu created. It tracks upstream and adds its own fixes and tooling.
 
 ![Orbital HUD, a tracked live globe, FLIR terrain — then OPEN SOURCED](docs/media/hero-open-source-reveal.gif)
 
@@ -109,6 +111,9 @@ app's **POWER UP** panel; [Keys & Costs](#-api-keys) explains the options.
 2. Open [God's Eye View in Pinokio](https://pinokio.co/apps/github-com-bilawalsidhu-gods-eye-view).
 3. Click **Install**, then **Start**.
 
+Pinokio's listing installs the upstream project, not this fork. To run this
+fork, use Path 2.
+
 Available on **Windows, macOS, and Linux**. The Pinokio maintainer reports
 cross-platform testing of the fixed installer. The launcher installs the
 locked dependencies, finds a free local port, and opens the app.
@@ -123,7 +128,7 @@ Use **Node.js 24.x (24.14.0 or later) or 26.x**. The setup doctor warns about
 Node 25, which is end-of-life.
 
 ```bash
-git clone https://github.com/bilawalsidhu/gods-eye-view.git
+git clone https://github.com/c0d3x/gods-eye-view.git
 cd gods-eye-view
 npm ci
 npm run doctor

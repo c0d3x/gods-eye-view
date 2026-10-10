@@ -66,7 +66,7 @@ test('configured failover accepts empty data and keeps the application identity'
     endpoints,
     fetchImpl: async (url, options) => {
       seen.push(url);
-      assert.equal(options.headers['User-Agent'], 'gods-eye-view/0.1 (+https://github.com/bilawalsidhu/gods-eye-view)');
+      assert.equal(options.headers['User-Agent'], 'gods-eye-view/0.1 (+https://github.com/c0d3x/gods-eye-view)');
       assert.equal(options.redirect, 'error');
       return new Response(seen.length === 1 ? url : DATA.body, { status: seen.length === 1 ? 406 : 200 });
     },
