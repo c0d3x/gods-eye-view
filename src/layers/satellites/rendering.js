@@ -142,23 +142,25 @@ export function createRendering({
    * excluded: they refresh on the round-robin budget in _propagateDenseChunk.
    */
 
-  function _propagateAll() {
-    const now = new Date();
+  function _propagateAll(now = new Date()) {
     let updated = 0;
 
     for (const [noradId, sat] of layerState._catalog) {
       if (sat.group === 'dense') continue;
-      const pos = parts.orbits.propagatePosition(sat.satrec, now);
+      // Skips, for good, a row whose element set SGP4 can no longer propagate.
+      const pos = parts.orbits.propagateCatalogRecord(sat, now);
       if (!pos) continue;
 
-      const cartesian = Cesium.Cartesian3.fromDegrees(
-        pos.longitude,
-        pos.latitude,
-        pos.altitude,
-      );
       const point = layerState._points.get(noradId);
       if (point) {
-        point.position = cartesian;
+        // The point primitive copies the position, so one scratch serves the loop.
+        point.position = Cesium.Cartesian3.fromDegrees(
+          pos.longitude,
+          pos.latitude,
+          pos.altitude,
+          undefined,
+          layerState._scratchCartesian,
+        );
         updated++;
       }
     }

@@ -46,13 +46,17 @@ export function createOrbits({ state: layerState, services, parts, source }) {
   /**
    * Propagate satellite position at a given JS Date.
    * Returns geodetic position plus inertial speed from the same SGP4 propagation
-   * epoch, or null on error.
+   * epoch, or null on error. The position is written into `result`: a new object
+   * unless the caller passes scratch to reuse.
    */
 
-  function propagatePosition(satrec, date) {
+  function propagatePosition(satrec, date, result = {}) {
     try {
       const posVel = propagate(satrec, date);
-      if (!posVel.position || typeof posVel.position === 'boolean') return null;
+      // satellite.js returns null when SGP4 fails: a decayed or malformed
+      // element set. Reading .position off that threw a TypeError here.
+      if (!posVel?.position || typeof posVel.position === 'boolean')
+        return null;
 
       const gmst = gstime(date);
       const geo = eciToGeodetic(posVel.position, gmst);
@@ -64,15 +68,39 @@ export function createOrbits({ state: layerState, services, parts, source }) {
         ? Math.hypot(velocity.x, velocity.y, velocity.z) * 1000
         : null;
 
-      return {
-        longitude: degreesLong(geo.longitude),
-        latitude: degreesLat(geo.latitude),
-        altitude: geo.height * 1000, // km → meters
-        speedMps: Number.isFinite(speedMps) ? speedMps : null,
-      };
+      result.longitude = degreesLong(geo.longitude);
+      result.latitude = degreesLat(geo.latitude);
+      result.altitude = geo.height * 1000; // km → meters
+      result.speedMps = Number.isFinite(speedMps) ? speedMps : null;
+      return result;
     } catch {
       return null;
     }
+  }
+
+  /** Scratch for the fleet loops, so they allocate nothing per satellite. */
+  const scratchGeodetic = {
+    longitude: 0,
+    latitude: 0,
+    altitude: 0,
+    speedMps: null,
+  };
+
+  /**
+   * Propagate one catalog row for a fleet tick. SGP4 fails for good on a
+   * decayed or malformed element set, so a row that fails is marked and skipped
+   * from then on, instead of failing again on every tick; the next TLE refresh
+   * builds a fresh row. getStats() counts the marked rows.
+   * @param {{satrec: object, failed?: boolean}} sat Catalog row.
+   * @param {Date} date
+   * @returns {object|null} Shared scratch holding the position, valid until the
+   *   next call, or null once the row has failed.
+   */
+  function propagateCatalogRecord(sat, date) {
+    if (sat.failed) return null;
+    const pos = propagatePosition(sat.satrec, date, scratchGeodetic);
+    if (!pos) sat.failed = true;
+    return pos;
   }
 
   function orbitalPeriodSeconds(satrec) {
@@ -100,7 +128,7 @@ export function createOrbits({ state: layerState, services, parts, source }) {
       const t = new Date(baseTime + i * stepSec * 1000);
       try {
         const posVel = propagate(satrec, t);
-        if (!posVel.position || typeof posVel.position === 'boolean') continue;
+        if (!posVel?.position || typeof posVel.position === 'boolean') continue;
         const geo = eciToGeodetic(posVel.position, fixedGmst);
         positions.push(
           Cesium.Cartesian3.fromDegrees(
@@ -373,6 +401,7 @@ export function createOrbits({ state: layerState, services, parts, source }) {
     orbitFrameModelMatrix,
     parseTLE,
     propagatePosition,
+    propagateCatalogRecord,
     orbitalPeriodSeconds,
     computeOrbitPath,
     getNextIssPass,

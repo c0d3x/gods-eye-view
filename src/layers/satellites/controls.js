@@ -536,8 +536,13 @@ export function createControls({ state: layerState, services, parts, source }) {
     },
 
     getStats() {
+      // Rows whose element sets SGP4 can no longer propagate (decayed or
+      // malformed); they are skipped until the next TLE refresh.
+      let failed = 0;
+      for (const sat of layerState._catalog.values()) if (sat.failed) failed++;
       return {
         count: layerState._count,
+        failed,
         lastUpdate: layerState._lastUpdate,
         stale: false,
         status:
