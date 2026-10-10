@@ -29,7 +29,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          # The layer-token check compares against origin/main.
+          # The layer-token check compares against origin/main, and the
+          # baseline check against the commit before the change.
           fetch-depth: 0
 
       # Installs the pnpm version pinned by packageManager in package.json.
@@ -63,6 +64,16 @@ jobs:
 
       - name: Type-check
         run: pnpm run typecheck
+
+      # Only an upstream merge may grow a baseline; any other change must
+      # shrink them or leave them be. The base is the commit before the push,
+      # the pull request's base, or HEAD^ for a manual run; a new branch has
+      # none. The check reads only Git, so one Node version runs it.
+      - name: Check that the baselines only shrink
+        if: matrix.node == '24.14.0'
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'push' && github.event.before || 'HEAD^' }}
+        run: pnpm run check:baselines --base "$BASE"
 
       - name: Find unused code
         run: pnpm run knip
