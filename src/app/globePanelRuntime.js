@@ -555,6 +555,17 @@ export function panelRuntime(config) {
   let ready = false;
   let queued = null;
   let currentUrl = null;
+  /** A link the Open button may follow: http or https only. */
+  const openableUrl = (value) => {
+    try {
+      const link = new URL(String(value));
+      return link.protocol === 'https:' || link.protocol === 'http:'
+        ? link.href
+        : null;
+    } catch {
+      return null;
+    }
+  };
   const postView = (view) =>
     window.postMessage({ type: 'gev:view', id: nextId++, view }, '*');
   function show(result) {
@@ -562,8 +573,10 @@ export function panelRuntime(config) {
     const view = data?.view;
     const url = data?.url || view?.url;
     if (!view || !url) return;
-    currentUrl = url;
-    open.hidden = false;
+    // The server sends the app's own address. Anything else, such as a
+    // javascript: or data: URL, is never opened.
+    currentUrl = openableUrl(url);
+    open.hidden = !currentUrl;
     if (ready) return postView(view);
     queued = view;
     if (started) return;
