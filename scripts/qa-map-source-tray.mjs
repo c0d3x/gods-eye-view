@@ -927,7 +927,9 @@ try {
       label: document.getElementById('global-loading-label').textContent.trim(),
       detail: document.getElementById('global-loading-detail').textContent.trim(),
     });
-    const waitForQueuedNotice = async (label, timeoutMs = 1000) => {
+    // The share failure appears on the next animation frame, and a
+    // SwiftShader frame of the globe can take seconds (#50).
+    const waitForQueuedNotice = async (label, timeoutMs = 15_000) => {
       const deadline = performance.now() + timeoutMs;
       while (styleManager._feedback._globalStatusNotice?.label !== label
           && performance.now() < deadline) {
@@ -936,6 +938,20 @@ try {
       return styleManager._feedback._globalStatusNotice?.label === label;
     };
     const baseNow = performance.now();
+    // Every update in this sequence runs on the synthetic clock: the harness
+    // steps, the deferred notice frame and both chip tickers. On a slow page
+    // the real clock would otherwise age the notices between steps (#50).
+    const feedback = styleManager._feedback;
+    const ownUpdate = Object.hasOwn(feedback, '_updateGlobalLoadingFeedback');
+    const originalUpdate = feedback._updateGlobalLoadingFeedback;
+    let syntheticNow = baseNow;
+    feedback._updateGlobalLoadingFeedback = function () {
+      return originalUpdate.call(this, syntheticNow);
+    };
+    const advance = (ms) => {
+      syntheticNow = baseNow + ms;
+      styleManager._updateGlobalLoadingFeedback();
+    };
     try {
       styleManager._feedback._loadingFeedbackState = {
         phase: 'idle', visible: false, startedAt: 0, showAt: 0, hideAt: 0,
@@ -954,15 +970,15 @@ try {
         enabled: false,
         stats: {},
       }];
-      styleManager._updateGlobalLoadingFeedback(baseNow);
-      styleManager._updateGlobalLoadingFeedback(baseNow + 200);
+      advance(0);
+      advance(200);
       dataManager.getAll = () => [];
       styleManager._feedback._loadingFeedbackEvent = {
         type: 'visibility-failed',
         layerId: 'qa-unrelated-layer',
         error: new Error('QA offline'),
       };
-      styleManager._updateGlobalLoadingFeedback(baseNow + 300);
+      advance(300);
       const failureStart = snapshot();
       styleManager._handleShareTrackingRestoreStatus({
         classification: 'source-unavailable',
@@ -974,13 +990,13 @@ try {
         'Shared flight could not be restored — feed unavailable',
       );
       const shareFailureQueued = snapshot();
-      styleManager._updateGlobalLoadingFeedback(baseNow + 5299);
+      advance(5299);
       const failureEnd = snapshot();
-      styleManager._updateGlobalLoadingFeedback(baseNow + 5300);
+      advance(5300);
       const shareFailureStart = snapshot();
-      styleManager._updateGlobalLoadingFeedback(baseNow + 10299);
+      advance(10299);
       const shareFailureEnd = snapshot();
-      styleManager._updateGlobalLoadingFeedback(baseNow + 10300);
+      advance(10300);
       const settled = snapshot();
       return {
         failureStart,
@@ -992,6 +1008,8 @@ try {
         settled,
       };
     } finally {
+      if (ownUpdate) feedback._updateGlobalLoadingFeedback = originalUpdate;
+      else delete feedback._updateGlobalLoadingFeedback;
       dataManager.getAll = originalGetAll;
       styleManager._handleShareTrackingRestoreStatus({
         classification: 'cancelled',

@@ -97,3 +97,26 @@ test('the navigation reader finds explicit and default deadlines', () => {
   ]);
   assert.equal(defaultNavigationTimeout('page.goto(url);'), null);
 });
+
+test("the tray's notice-dwell check steps its own clock", () => {
+  const source = read('scripts/qa-map-source-tray.mjs');
+  const start = source.indexOf('const acquiringFailureArbitration =');
+  const end = source.indexOf(
+    "'manager failure then queued share failure each receives its full visible dwell'",
+  );
+  assert.ok(start > 0 && end > start, 'the dwell check exists');
+  const check = source.slice(start, end);
+  // The tickers and the deferred notice frame call the feedback owner, so the
+  // synthetic clock has to replace its method, and the check restores it.
+  assert.match(
+    check,
+    /feedback\._updateGlobalLoadingFeedback = function \(\) \{\s+return originalUpdate\.call\(this, syntheticNow\);/,
+  );
+  assert.match(check, /delete feedback\._updateGlobalLoadingFeedback;/);
+  assert.doesNotMatch(check, /_updateGlobalLoadingFeedback\(baseNow/);
+  // The queued notice waits for a frame, which SwiftShader can make slow.
+  const wait = check.match(
+    /waitForQueuedNotice = async \(label, timeoutMs = ([\d_]+)\)/,
+  );
+  assert.ok(wait && number(wait[1]) >= 15_000, wait?.[0]);
+});
