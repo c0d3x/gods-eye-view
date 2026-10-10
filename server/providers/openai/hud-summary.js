@@ -4,7 +4,30 @@ import {
 } from '../../../src/hudSummaryResponse.js';
 import { enforceRateLimit, openAiRateLimiter } from './rate-limit.js';
 import { readRequestBody } from '../common/request.js';
+import { readResponseTextCapped } from '../common/http.js';
+import {
+  ClientGoneError,
+  describeUpstreamError,
+  fetchWithTimeout,
+  upstreamErrorStatus,
+} from '../common/fetch.js';
 import { OPENAI_HUD_SUMMARY_MODEL_DEFAULT } from './constants.js';
+
+/** Deadline for the HUD summary call to OpenAI, body included. */
+export const HUD_SUMMARY_TIMEOUT_MS = 20_000;
+
+/** Largest OpenAI answer read for a five-word summary. */
+const HUD_SUMMARY_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+
+/** Parse text as a JSON object; anything else reads as an empty object. */
+function parseJsonObject(text) {
+  try {
+    const value = JSON.parse(text);
+    return value && typeof value === 'object' ? value : {};
+  } catch {
+    return {};
+  }
+}
 
 function extractOpenAiResponseText(data) {
   if (typeof data?.output_text === 'string' && data.output_text.trim()) {
@@ -51,26 +74,52 @@ async function handleHudSummary(req, res) {
   // consuming a paid-endpoint quota slot.
   if (!enforceRateLimit(openAiRateLimiter(), req, res)) return;
 
+  // A malformed or oversized request is the caller's fault, not OpenAI's.
+  let context;
   try {
-    const body = await readRequestBody(req, 64 * 1024);
-    const context = JSON.parse(body || '{}');
-    const response = await fetch('https://api.openai.com/v1/responses', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model:
-          process.env.OPENAI_HUD_SUMMARY_MODEL ||
-          OPENAI_HUD_SUMMARY_MODEL_DEFAULT,
-        instructions: HUD_SUMMARY_INSTRUCTIONS,
-        input: JSON.stringify(context),
-        reasoning: { effort: 'minimal' },
-        max_output_tokens: 100,
+    context = JSON.parse((await readRequestBody(req, 64 * 1024)) || '{}');
+  } catch (error) {
+    const tooLarge = error?.code === 'BODY_TOO_LARGE';
+    res.statusCode = tooLarge ? 413 : 400;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'no-store');
+    if (tooLarge) res.setHeader('Connection', 'close');
+    res.end(
+      JSON.stringify({
+        error: tooLarge
+          ? 'HUD summary request too large'
+          : 'Invalid HUD summary request',
       }),
-    });
-    const data = await response.json().catch(() => ({}));
+    );
+    return;
+  }
+
+  try {
+    const response = await fetchWithTimeout(
+      'https://api.openai.com/v1/responses',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model:
+            process.env.OPENAI_HUD_SUMMARY_MODEL ||
+            OPENAI_HUD_SUMMARY_MODEL_DEFAULT,
+          instructions: HUD_SUMMARY_INSTRUCTIONS,
+          input: JSON.stringify(context),
+          reasoning: { effort: 'minimal' },
+          max_output_tokens: 100,
+        }),
+      },
+      { timeoutMs: HUD_SUMMARY_TIMEOUT_MS, response: res },
+    );
+    const text = await readResponseTextCapped(
+      response,
+      HUD_SUMMARY_MAX_RESPONSE_BYTES,
+    );
+    const data = parseJsonObject(text);
     const summary = toFiveWordHudSummary(extractOpenAiResponseText(data));
     res.statusCode = response.ok && summary ? 200 : response.status || 502;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -85,10 +134,14 @@ async function handleHudSummary(req, res) {
         error: response.ok ? null : 'OpenAI HUD summary request failed',
       }),
     );
-  } catch {
-    console.warn('[hud-summary] request failed');
-    res.statusCode = 502;
+  } catch (error) {
+    if (error instanceof ClientGoneError) return;
+    console.warn(
+      `[hud-summary] request failed: ${describeUpstreamError(error)}`,
+    );
+    res.statusCode = upstreamErrorStatus(error);
     res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Cache-Control', 'no-store');
     res.end(
       JSON.stringify({
         error: 'OpenAI HUD summary request failed',

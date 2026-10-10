@@ -2,6 +2,7 @@ import { createRequire } from 'node:module';
 import { createAisStreamAdapter } from '../../../src/data/aisStreamAdapter.js';
 import { parseSilenceTimeoutEnv } from '../../../src/data/aisWatchdog.js';
 import { clampInt } from '../common/query.js';
+import { describeUpstreamError } from '../common/fetch.js';
 import {
   AISSTREAM_CACHE_MAX,
   AISSTREAM_STALE_MS,
@@ -139,12 +140,16 @@ export function aisLiveProxy() {
           }),
         );
       } catch (error) {
+        // The exception text stays in the server log, by name only.
+        console.warn(
+          `[AIS Live] request failed: ${describeUpstreamError(error)}`,
+        );
         res.statusCode = 502;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
         res.end(
           JSON.stringify({
-            error: error?.message || 'AIS live stream error',
+            error: 'AIS live stream error',
             rows: [],
           }),
         );

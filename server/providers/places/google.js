@@ -4,6 +4,14 @@ import {
 } from './google-key.js';
 import { makeCostRateLimiter, clientKey } from '../common/rate-limit.js';
 import { admitSameSite } from '../common/same-site.js';
+import { readResponseTextCapped } from '../common/http.js';
+import {
+  ClientGoneError,
+  describeUpstreamError,
+  fetchWithTimeout,
+  upstreamErrorMessage,
+  upstreamErrorStatus,
+} from '../common/fetch.js';
 import {
   projectNearbyPlaces,
   projectTextSearchPlaces,
@@ -24,6 +32,46 @@ let _googleRateLimiter;
  * suggests a tighter 60 when the host is not localhost; that still applies.
  */
 export const GOOGLE_DEFAULT_PER_MIN = 120;
+
+/** Deadline for one Places search, body included. */
+const GOOGLE_PLACES_TIMEOUT_MS = 10_000;
+
+/** Largest Places answer read; a 20-place search is tens of KB. */
+const GOOGLE_PLACES_MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Read a Places answer within the size cap. A failed answer is logged by its
+ * status only: Google's error text stays out of the response and the log.
+ */
+async function readPlacesAnswer(response, label) {
+  const text = await readResponseTextCapped(
+    response,
+    GOOGLE_PLACES_MAX_RESPONSE_BYTES,
+  );
+  if (!response.ok)
+    console.warn(`[places] ${label}: upstream HTTP ${response.status}`);
+  try {
+    const data = JSON.parse(text);
+    return data && typeof data === 'object' ? data : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Answer a Places search that failed before Google's answer was read. */
+function sendPlacesFailure(res, error, label) {
+  if (error instanceof ClientGoneError) return;
+  console.warn(`[places] ${label} failed: ${describeUpstreamError(error)}`);
+  res.statusCode = upstreamErrorStatus(error);
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.end(
+    JSON.stringify({
+      error: upstreamErrorMessage('Google Places', error),
+      places: [],
+    }),
+  );
+}
 
 /** Google cost endpoints (nearby-places + text-search). Null only when set to 0. */
 function googleRateLimiter() {
@@ -115,7 +163,7 @@ export function googlePlacesContextProxy({
       );
 
       try {
-        const response = await fetchImpl(
+        const response = await fetchWithTimeout(
           endpoints.nearby ||
             'https://places.googleapis.com/v1/places:searchNearby',
           {
@@ -146,30 +194,28 @@ export function googlePlacesContextProxy({
               },
             }),
           },
+          { timeoutMs: GOOGLE_PLACES_TIMEOUT_MS, response: res, fetchImpl },
         );
-        const data = await response.json().catch(() => ({}));
+        const data = await readPlacesAnswer(response, 'nearby search');
         const places = projectNearbyPlaces(data, latitude, longitude);
 
         res.statusCode = response.ok ? 200 : response.status;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.setHeader('Cache-Control', 'private, max-age=300');
+        res.setHeader(
+          'Cache-Control',
+          response.ok ? 'private, max-age=300' : 'no-store',
+        );
         res.end(
           JSON.stringify({
             places,
+            // Never Google's own error text: our words, by status.
             error: response.ok
               ? null
-              : data.error?.message || 'Google Places request failed',
+              : upstreamErrorMessage('Google Places', response.status),
           }),
         );
       } catch (error) {
-        res.statusCode = 502;
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.end(
-          JSON.stringify({
-            error: error?.message || 'Google Places request failed',
-            places: [],
-          }),
-        );
+        sendPlacesFailure(res, error, 'nearby search');
       }
     });
 
@@ -237,7 +283,7 @@ export function googlePlacesContextProxy({
       );
 
       try {
-        const response = await fetchImpl(
+        const response = await fetchWithTimeout(
           endpoints.textSearch ||
             'https://places.googleapis.com/v1/places:searchText',
           {
@@ -267,30 +313,28 @@ export function googlePlacesContextProxy({
               maxResultCount: 5,
             }),
           },
+          { timeoutMs: GOOGLE_PLACES_TIMEOUT_MS, response: res, fetchImpl },
         );
-        const data = await response.json().catch(() => ({}));
+        const data = await readPlacesAnswer(response, 'text search');
         const places = projectTextSearchPlaces(data, latitude, longitude);
 
         res.statusCode = response.ok ? 200 : response.status;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.setHeader('Cache-Control', 'private, max-age=300');
+        res.setHeader(
+          'Cache-Control',
+          response.ok ? 'private, max-age=300' : 'no-store',
+        );
         res.end(
           JSON.stringify({
             places,
+            // Never Google's own error text: our words, by status.
             error: response.ok
               ? null
-              : data.error?.message || 'Google Places request failed',
+              : upstreamErrorMessage('Google Places', response.status),
           }),
         );
       } catch (error) {
-        res.statusCode = 502;
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.end(
-          JSON.stringify({
-            error: error?.message || 'Google Places request failed',
-            places: [],
-          }),
-        );
+        sendPlacesFailure(res, error, 'text search');
       }
     });
   }

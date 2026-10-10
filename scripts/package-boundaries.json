@@ -58,7 +58,8 @@
       "src/data/aisStreamAdapter.js",
       "src/data/aisWatchdog.js",
       "src/sources/httpBody.js",
-      "server/providers/common/bounded-cache.js"
+      "server/providers/common/bounded-cache.js",
+      "server/providers/common/fetch.js"
     ],
     "external": ["ws"]
   },
@@ -84,7 +85,8 @@
       "src/localRequestGate.mjs",
       "src/data/routeSteps.js",
       "src/sources/httpBody.js",
-      "src/sources/rateLimit.js"
+      "src/sources/rateLimit.js",
+      "server/providers/common/fetch.js"
     ],
     "external": []
   },
@@ -212,7 +214,8 @@
       "server/providers/common/rate-limit.js",
       "src/sources/rateLimit.js",
       "server/providers/common/http.js",
-      "src/sources/httpBody.js"
+      "src/sources/httpBody.js",
+      "server/providers/common/fetch.js"
     ],
     "external": ["pbf"]
   },
@@ -335,7 +338,10 @@
       "src/voice/actionSchemas.js",
       "src/voice/layerManifest.js",
       "server/providers/openai/toolDescriptions.js",
-      "src/sources/rateLimit.js"
+      "src/sources/rateLimit.js",
+      "server/providers/common/fetch.js",
+      "server/providers/common/http.js",
+      "src/sources/httpBody.js"
     ],
     "external": []
   },

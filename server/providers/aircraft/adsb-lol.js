@@ -1,3 +1,17 @@
+import {
+  describeUpstreamError,
+  fetchWithTimeout,
+  upstreamErrorMessage,
+  upstreamErrorStatus,
+} from '../common/fetch.js';
+import { readResponseTextCapped } from '../common/http.js';
+
+/** Deadline for one adsb.lol call, body included. */
+const ADSBLOL_TIMEOUT_MS = 12_000;
+
+/** Largest adsb.lol answer read; the military feed is a few hundred KB. */
+const ADSBLOL_MAX_BYTES = 16 * 1024 * 1024;
+
 /**
  * Vite plugin: adsb.lol military aircraft proxy with 12 s response cache.
  *
@@ -5,7 +19,8 @@
  * fails — a thrown fetch OR a non-OK status such as 429 — the proxy serves its
  * cached body as STALE instead of relaying the failure, and it backs off from
  * upstream for the Retry-After period (bounded) so a rate limit is never
- * hammered mid-cooldown. A failure with nothing cached is relayed as-is.
+ * hammered mid-cooldown. A failure with nothing cached is relayed with its
+ * status and the proxy's own message, never adsb.lol's error text.
  *
  * Why the non-OK case matters: the browser layer treats a relayed 429 as a
  * 45 s cooldown during which EVERY refresh (the 15 s poll and any tracking
@@ -98,11 +113,18 @@ export function adsbLolProxy() {
           );
           return;
         }
-        const upstream = await fetch('https://api.adsb.lol/v2/mil', {
-          headers: { 'User-Agent': 'gods-eye-view-adsblol-proxy/1.0' },
-        });
+        // Not tied to this client's connection: a finished call still
+        // refreshes the shared cache.
+        const upstream = await fetchWithTimeout(
+          'https://api.adsb.lol/v2/mil',
+          { headers: { 'User-Agent': 'gods-eye-view-adsblol-proxy/1.0' } },
+          { timeoutMs: ADSBLOL_TIMEOUT_MS },
+        );
         if (upstream.ok) {
-          const body = await upstream.text();
+          const body = await readResponseTextCapped(
+            upstream,
+            ADSBLOL_MAX_BYTES,
+          );
           _cache = body;
           _cacheAt = Date.now();
           _cooldownUntil = 0;
@@ -129,11 +151,15 @@ export function adsbLolProxy() {
             return;
           }
         }
-        const body = await upstream.text();
+        // Never relay adsb.lol's own error page or text.
+        upstream.body?.cancel().catch(() => {});
+        console.warn(`[adsb.lol Proxy] upstream HTTP ${upstream.status}`);
         serve(
           res,
           upstream.status,
-          body,
+          JSON.stringify({
+            error: upstreamErrorMessage('adsb.lol', upstream.status),
+          }),
           'MISS',
           _cooldownUntil > Date.now()
             ? {
@@ -144,12 +170,14 @@ export function adsbLolProxy() {
             : {},
         );
       } catch (e) {
-        console.error('[adsb.lol Proxy]', e.message);
+        console.error(`[adsb.lol Proxy] ${describeUpstreamError(e)}`);
         if (_cache) {
           serve(res, 200, _cache, 'STALE');
           return;
         }
-        res.writeHead(502, { 'Content-Type': 'application/json' });
+        res.writeHead(upstreamErrorStatus(e), {
+          'Content-Type': 'application/json',
+        });
         res.end(JSON.stringify({ error: 'ADS-B proxy error' }));
       }
     });

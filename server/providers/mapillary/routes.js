@@ -1,5 +1,6 @@
 import { sameSiteGated } from '../common/same-site.js';
 import { makeRateLimiter, clientKey } from '../common/rate-limit.js';
+import { describeUpstreamError } from '../common/fetch.js';
 import { fetchTile, TileRequestError, TileUpstreamError } from './tiles.js';
 import { mapillaryToken, TILE_ROUTE_MAX_PER_MIN } from './constants.js';
 
@@ -73,7 +74,12 @@ async function handleTile(req, res, allow) {
       // An upstream 400 must not read as a malformed request to this proxy.
       return sendJson(res, 502, { error: error.message });
     }
-    sendJson(res, 502, { error: error?.message || 'Tile fetch failed' });
+    // Anything else is not this proxy's own wording: a network or parse
+    // failure. Its text stays in the server log, by name only.
+    console.warn(
+      `[mapillary] tile fetch failed: ${describeUpstreamError(error)}`,
+    );
+    sendJson(res, 502, { error: 'Tile fetch failed' });
   }
 }
 

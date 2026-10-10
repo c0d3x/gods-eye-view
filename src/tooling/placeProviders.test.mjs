@@ -160,9 +160,11 @@ for (const preview of [false, true]) {
     t.mock.method(globalThis, 'fetch', async () =>
       Response.json({ error: { message: 'Denied' } }, { status: 403 }),
     );
+    // Google's own error text stays server-side.
     assert.deepEqual((await request(search, '?q=museum&lat=30&lon=-97')).body, {
       places: [],
-      error: 'Denied',
+      error:
+        'Google Places refused the request; check the API key and its permissions',
     });
   });
 }
