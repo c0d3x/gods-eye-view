@@ -15,7 +15,7 @@ export function createLifecycle({
   const { state } = vesselState;
   const { restoreSpriteOrder, restoreSpriteOrderOnEnable } = services.sprites;
   const { holdContinuousRender, releaseContinuousRender } = services.render;
-  const { ensureGeoidReady } = services.geoid;
+  const { ensureGeoidReadyWhenIdle } = services.geoid;
   const { registerPickOwner, unregisterPickOwner } = services.picking;
 
   function clearFirstConnectTimer() {
@@ -172,14 +172,15 @@ export function createLifecycle({
       components.rendering.ensureCollections(activeViewer);
       components.selection.installInteraction(activeViewer);
       components.rendering.setVisible(true);
-      // Height-datum fix: warm the geoid grid once per layer-enable, never
-      // blocking a poll. The first refresh may land pre-resolve (N = 0), and
-      // the next is up to 60 s out — so re-floor in place on resolve. A load
-      // failure leaves N = 0 forever, which is safe: sprites are depth-test-
-      // free, so vessels stay visible either way.
+      // Height-datum fix: warm the geoid grid once per layer-enable, at the
+      // page's next idle moment, never blocking a poll. The first refresh may
+      // land pre-resolve (N = 0), and the next is up to 60 s out — so re-floor
+      // in place on resolve. A load failure leaves N = 0 until the next enable
+      // retries, which is safe: sprites are depth-test-free, so vessels stay
+      // visible either way.
       if (!vesselState._geoidReady) {
         const sessionId = state.feed.sessionId;
-        ensureGeoidReady()
+        ensureGeoidReadyWhenIdle()
           .then(() => {
             if (!state.feed.enabled || state.feed.sessionId !== sessionId)
               return;

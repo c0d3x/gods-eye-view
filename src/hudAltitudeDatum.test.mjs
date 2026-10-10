@@ -98,14 +98,14 @@ test('hud.js corrects the camera height to MSL through the geoid module', () => 
     'hud.js must take the datum correction from ./data/geoid.js, not re-derive one',
   );
   assert.equal(
-    has(/ensureGeoidReady\(\)\s*\n\s*\.then\(/),
+    has(/ensureGeoidReadyWhenIdle\(\)\s*\n\s*\.then\(/),
     true,
-    'the geoid grid must be loaded opportunistically, never awaited on a readout tick',
+    'the geoid grid must be loaded at idle time, never awaited on a readout tick',
   );
   assert.equal(
     has(/this\._geoidRequested = true;/),
     true,
-    'the ~2.7 MB grid must be requested once, on demand — not at HUD construction',
+    'the 0.9 MB grid must be requested once, on demand — not at HUD construction',
   );
   assert.equal(
     has(/\.catch\(\(\) => \{\s*\/\* readout falls back to the uncorrected height \*\/\s*\}\)/),
@@ -170,14 +170,20 @@ test('the sensor model keeps the ellipsoidal height it was tuned against', () =>
 
 // ── The cold → resolved transition, driven live ─────────────────────────────
 //
-// The grid is a lazy ~2.7 MB chunk, so the first telemetry ticks of a session
+// The grid is a lazily fetched 0.9 MB file, so the first telemetry ticks of a session
 // paint UNCORRECTED. The corner readout picks the correction up on the very
 // next tick once it lands; the summary line has no such cadence — it repaints
 // on camera settle or its own 15 s retry. That left a window at SFO where the
 // corner read `ALT: 17m` beside a summary still reading `ALT -15M`, for up to
 // fifteen seconds. Both must move in the SAME tick.
 
-test('a cold tick paints both readouts uncorrected, and resolving flips both in one tick', async () => {
+test('the grid is requested at idle time, and resolving flips both readouts in one tick', async () => {
+  const idle = [];
+  const previousIdle = globalThis.requestIdleCallback;
+  globalThis.requestIdleCallback = (callback, options) => {
+    idle.push({ callback, options });
+    return idle.length;
+  };
   const env = installHudEnvironment();
   let hud;
   try {
@@ -185,14 +191,22 @@ test('a cold tick paints both readouts uncorrected, and resolving flips both in 
     const alt = () => env.elements.get('hud-alt').textContent;
     const summary = () => env.elements.get('hud-summary').textContent;
 
-    // Tick 1 — cold. This is also the tick that requests the grid.
+    // Tick 1 — cold. The HUD does not fetch the grid while the globe is still
+    // loading; it asks for it once the page is next idle.
     hud._updateCameraData();
     assert.match(alt(), /^ALT: -15m/, `cold corner readout, got ${alt()}`);
     assert.match(summary(), /\| ALT -15M \|/, `cold summary tag, got ${summary()}`);
+    assert.equal(idle.length, 1, 'the first tick schedules the grid for idle time');
+    assert.ok(idle[0].options?.timeout > 0, 'with a deadline, so a busy page still gets it');
 
-    // The HUD registered its own continuation on this same shared promise
-    // during tick 1, and it registered first, so awaiting here means its
+    // Still cold on the next tick, and the request is not repeated.
+    hud._updateCameraData();
+    assert.equal(idle.length, 1, 'the grid is requested once');
+
+    // The page goes idle and the HUD asks for the grid. It registers its
+    // continuation on the shared promise first, so awaiting here means its
     // readiness flag is already set. No timers, no 15 s retry.
+    idle[0].callback();
     await ensureGeoidReady();
     await Promise.resolve();
 
@@ -218,6 +232,8 @@ test('a cold tick paints both readouts uncorrected, and resolving flips both in 
   } finally {
     hud?.destroy();
     env.restore();
+    if (previousIdle === undefined) delete globalThis.requestIdleCallback;
+    else globalThis.requestIdleCallback = previousIdle;
   }
 });
 
@@ -232,10 +248,8 @@ test('the corrected readouts are the MSL datum, not a coincidence of the SFO sig
   let hud;
   try {
     hud = new IntelHUD(env.viewer);
-    hud._updateCameraData(); // cold: requests the grid, paints uncorrected
-    assert.match(env.elements.get('hud-alt').textContent, /^ALT: 100m/);
-    await ensureGeoidReady();
-    await Promise.resolve();
+    // The grid is already in, so even the first tick is corrected: the HUD
+    // uses a grid any module loaded without waiting for its own request.
     hud._updateCameraData();
     assert.match(
       env.elements.get('hud-alt').textContent,

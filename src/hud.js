@@ -20,8 +20,9 @@ import { CITY_POIS } from './locations.js';
 import { composeLocalityTag } from './hudLocality.js';
 import {
   ellipsoidalToMslDisplayM,
-  ensureGeoidReady,
+  ensureGeoidReadyWhenIdle,
   geoidHeight,
+  isGeoidReady,
 } from './data/geoid.js';
 import { getBasemapLabelContext } from './voice/gevActions.js';
 import {
@@ -134,8 +135,8 @@ export class IntelHUD {
     this._firstMetricsShown = false;
     this._firstSummaryKicked = false;
     // ALT readout datum: the camera height Cesium reports is ELLIPSOIDAL, the
-    // number a viewer reads is MSL. N comes from the same lazy ~2.7 MB EGM96
-    // chunk the flight layers use — requested on the first telemetry tick of a
+    // number a viewer reads is MSL. N comes from the same lazily fetched EGM96
+    // grid the flight layers use — requested on the first telemetry tick of a
     // VISIBLE HUD, never at construction, so a hidden HUD costs nothing — and
     // cached per coarse cell. Until it resolves, or if it never does,
     // `ellipsoidalToMslDisplayM` passes the raw height straight through.
@@ -305,10 +306,15 @@ export class IntelHUD {
    * @returns {number|null} N in metres, or null while the grid is unavailable.
    */
   _geoidUndulationM(latDeg, lonDeg) {
+    // A grid another module already loaded is used at once.
+    if (!this._geoidReady && isGeoidReady()) this._geoidReady = true;
     if (!this._geoidReady) {
       if (!this._geoidRequested) {
         this._geoidRequested = true;
-        ensureGeoidReady()
+        // The grid is fetched once the page is idle, not on the first frame
+        // while Cesium is still loading the globe. Until then the readout
+        // shows the uncorrected height, as it does while the grid loads.
+        ensureGeoidReadyWhenIdle()
           .then(() => {
             this._geoidReady = true;
           })

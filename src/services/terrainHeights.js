@@ -321,7 +321,7 @@ export function createTerrainHeights({
         // Proxy down (or cold cache had nothing to serve-stale) — fall back to
         // geoid math for every point in this chunk. `ensureGeoidReady()` is
         // awaited lazily, only on the fallback path, so the common (proxy
-        // healthy) case never pays for the geoid grid's dynamic import.
+        // healthy) case never pays for the geoid grid's download.
         await ensureGeoidReady();
         requestSignal?.throwIfAborted();
         for (const item of chunk) {

@@ -93,6 +93,45 @@ export async function ensureGeoidReady() {
   return readyPromise;
 }
 
+/**
+ * Whether the grid has loaded, so geoidHeight() can be called right now. A
+ * readout that polls can use a grid another module loaded without awaiting.
+ * @returns {boolean}
+ */
+export function isGeoidReady() {
+  return grid !== null;
+}
+
+/**
+ * How long a warm-up waits for an idle moment before loading the grid anyway,
+ * so a page that is never idle still gets it.
+ */
+const GEOID_IDLE_TIMEOUT_MS = 5000;
+
+/**
+ * Like ensureGeoidReady(), but starts the 0.9 MB download only once the page
+ * is idle, or after `timeoutMs` at the latest, so it does not compete with the
+ * app's own startup. For callers that can run uncorrected until the grid
+ * arrives: a readout, or a layer that re-anchors when it resolves. When the
+ * grid is already loading or loaded, this returns at once. Safari has no
+ * requestIdleCallback, so there it waits two seconds.
+ * @param {{timeoutMs?: number}} [options]
+ * @returns {Promise<void>}
+ */
+export function ensureGeoidReadyWhenIdle({
+  timeoutMs = GEOID_IDLE_TIMEOUT_MS,
+} = {}) {
+  if (readyPromise) return readyPromise;
+  return new Promise((resolve) => {
+    const start = () => resolve(ensureGeoidReady());
+    if (typeof globalThis.requestIdleCallback === 'function') {
+      globalThis.requestIdleCallback(start, { timeout: timeoutMs });
+    } else {
+      globalThis.setTimeout(start, Math.min(timeoutMs, 2000))?.unref?.();
+    }
+  });
+}
+
 /** Wraps an angle in radians into [center − π, center + π). */
 function normalizeRadians(rads, center = 0) {
   return (

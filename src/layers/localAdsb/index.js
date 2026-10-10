@@ -90,7 +90,7 @@ const DEFAULT_DISPLAY = Object.freeze({
  *   readout operations supplied by the application; optionally `display`
  *   (`getParams()` → `{ models3d, models3dMode }`), `enrichment` (a source
  *   with `getEnrichment`), `trails` (`createTrail`), `geoid`
- *   (`ensureGeoidReady`, `geoidHeight`) and `groundSnap`
+ *   (`ensureGeoidReadyWhenIdle`, `geoidHeight`) and `groundSnap`
  *   (`createGroundSnap`).
  * @param {() => number} [options.now] Clock, injectable for tests.
  * @param {(url: string) => string} [options.resolveAsset] Model URL resolver.
@@ -711,8 +711,9 @@ export function createLocalAdsbLayer({
           ...(loadModel ? { loadModel } : {}),
         });
       }
+      // Warmed at the page's next idle moment, not during startup.
       services.geoid
-        ?.ensureGeoidReady?.()
+        ?.ensureGeoidReadyWhenIdle?.()
         ?.then(() => {
           geoidReady = true;
           for (const marker of markers.values()) marker.geoidN = null;

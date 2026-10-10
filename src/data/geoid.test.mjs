@@ -16,7 +16,9 @@ import { gunzipSync } from 'node:zlib';
 import {
   ellipsoidalToMslDisplayM,
   ensureGeoidReady,
+  ensureGeoidReadyWhenIdle,
   geoidHeight,
+  isGeoidReady,
   orthometricToEllipsoidal,
 } from './geoid.js';
 
@@ -35,6 +37,32 @@ test('geoidHeight throws before ensureGeoidReady() has resolved', () => {
   // contract via the type check further down instead of re-importing.
   // (See "ready-gate" test below for the real not-ready behavior.)
   assert.equal(typeof geoidHeight, 'function');
+});
+
+// Runs before any other test here loads the grid, so it sees the cold state.
+test('ensureGeoidReadyWhenIdle() loads the grid at the next idle moment', async () => {
+  const idle = [];
+  const previous = globalThis.requestIdleCallback;
+  globalThis.requestIdleCallback = (callback, options) => {
+    idle.push({ callback, options });
+    return idle.length;
+  };
+  try {
+    assert.equal(isGeoidReady(), false);
+    const ready = ensureGeoidReadyWhenIdle();
+    assert.equal(idle.length, 1, 'the load waits for an idle moment');
+    assert.ok(idle[0].options?.timeout > 0, 'with a deadline, so a busy page still gets it');
+    assert.equal(isGeoidReady(), false);
+    idle[0].callback();
+    await ready;
+    assert.equal(isGeoidReady(), true);
+    // Once the grid is in, a later caller gets it without waiting again.
+    await ensureGeoidReadyWhenIdle();
+    assert.equal(idle.length, 1);
+  } finally {
+    if (previous === undefined) delete globalThis.requestIdleCallback;
+    else globalThis.requestIdleCallback = previous;
+  }
 });
 
 test('ensureGeoidReady() resolves and is idempotent (safe to call repeatedly)', async () => {
@@ -150,10 +178,51 @@ test('a failed grid load is not cached: the next caller tries again', async (t) 
   const fresh = await import('./geoid.js?retry-after-failure');
   const readFileSync = t.mock.method(fs, 'readFileSync', () => new Uint8Array(10));
   await assert.rejects(fresh.ensureGeoidReady(), /the grid is 10 bytes, not 2076480/);
-  assert.throws(() => fresh.geoidHeight(0, 0), /ensureGeoidReady/);
+  assert.equal(fresh.isGeoidReady(), false);
   readFileSync.mock.restore();
   await fresh.ensureGeoidReady();
-  assert.equal(fresh.geoidHeight(0, 0), 17.16);
+  assert.equal(fresh.isGeoidReady(), true);
+});
+
+test('a failed idle-time load is retried by the next idle warm-up', async (t) => {
+  const fs = process.getBuiltinModule('node:fs');
+  const fresh = await import('./geoid.js?idle-retry-after-failure');
+  const readFileSync = t.mock.method(fs, 'readFileSync', () => new Uint8Array(10));
+  const idle = [];
+  t.mock.method(globalThis, 'setTimeout', (callback) => {
+    idle.push(callback);
+    return 0;
+  });
+  const first = fresh.ensureGeoidReadyWhenIdle();
+  idle.shift()();
+  await assert.rejects(first, /the grid is 10 bytes/);
+  readFileSync.mock.restore();
+  const second = fresh.ensureGeoidReadyWhenIdle();
+  assert.equal(idle.length, 1, 'a failed load leaves nothing cached to hand back');
+  idle.shift()();
+  await second;
+  assert.equal(fresh.isGeoidReady(), true);
+});
+
+test('layer warm-ups wait for idle time; tracking still loads the grid at once', async () => {
+  const { readFileSync } = await import('node:fs');
+  const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
+  // An enable warm-up can run uncorrected for a beat, so it must not compete
+  // with startup for the download.
+  for (const path of [
+    '../layers/flights/lifecycle.js',
+    '../layers/military/lifecycle.js',
+    '../layers/vessels/lifecycle.js',
+    '../layers/localAdsb/index.js',
+  ]) {
+    const source = read(path);
+    assert.match(source, /ensureGeoidReadyWhenIdle(\?\.)?\(\)/, `${path} warms the grid at idle time`);
+    assert.doesNotMatch(source, /ensureGeoidReady\b(?!WhenIdle)/, `${path} must not load the grid at once`);
+  }
+  // Tracking a contact needs N right away for its waypoints.
+  for (const path of ['../layers/flights/tracking.js', '../layers/military/tracking.js']) {
+    assert.match(read(path), /await ensureGeoidReady\(\);/, `${path} loads the grid at once`);
+  }
 });
 
 // ── ellipsoidalToMslDisplayM — the ALT-readout datum correction ─────────────

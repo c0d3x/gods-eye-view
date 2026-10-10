@@ -16,7 +16,7 @@ export function createLifecycle({
   } = services.sprites;
   const { onMilitaryLayerActiveChange } = services.militaryRegistry;
   const { holdContinuousRender, releaseContinuousRender } = services.render;
-  const { ensureGeoidReady } = services.geoid;
+  const { ensureGeoidReadyWhenIdle } = services.geoid;
   const { registerPickOwner, unregisterPickOwner } = services.picking;
 
   const methods = {
@@ -142,12 +142,14 @@ export function createLifecycle({
       parts.tracking._setCockpitContactMode(
         document.body.classList.contains('cockpit-mode'),
       );
-      // Height-datum fix: warm the geoid grid once per layer-enable. The poll loop
-      // only reads geoidHeight() synchronously after this resolves (guarded by
-      // _geoidReady) — never awaited per-aircraft, never blocking a poll tick.
+      // Height-datum fix: warm the geoid grid once per layer-enable, at the
+      // page's next idle moment so it does not compete with startup. The poll
+      // loop only reads geoidHeight() synchronously after this resolves
+      // (guarded by _geoidReady) — never awaited per-aircraft, never blocking
+      // a poll tick.
       if (!flightState.records.geoidReady) {
         const lifetime = flightState.lifetime;
-        ensureGeoidReady()
+        ensureGeoidReadyWhenIdle()
           .then(() => {
             if (!lifetime.signal.aborted) flightState.records.geoidReady = true;
           })
