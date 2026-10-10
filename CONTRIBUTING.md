@@ -48,7 +48,7 @@ Before sending a PR run `pnpm run build`, `pnpm test`, and `pnpm run test:track`
 
 `pnpm run test:track` and the QA harnesses in `scripts/qa-*.mjs` drive the dev server in headless Chrome.
 
-1. Get Chrome once. pnpm skips Puppeteer's download at install time (see `pnpm-workspace.yaml`), so run `pnpm exec puppeteer browsers install chrome`, or set `PUPPETEER_EXECUTABLE_PATH` to a Chrome you have.
+1. Get Chrome once. pnpm skips Puppeteer's download at install time (see `pnpm-workspace.yaml`), so run `pnpm run qa:setup` to download Puppeteer's pinned Chrome, or set `PUPPETEER_EXECUTABLE_PATH` to a Chrome you have.
 2. Start the dev server with `pnpm run dev`.
 3. Run `pnpm run test:track`, or a single harness such as `node scripts/qa-application.mjs`.
 
