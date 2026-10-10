@@ -103,6 +103,10 @@ fork changes, and then fast-forwarded onto `main`.
   fails when a file names upstream's repository outside the credits, its
   history links and its maintainer tooling. A new contact header in
   upstream's code should use `PROJECT_URL` from `src/data/projectUrl.js`.
+- **`CHANGELOG.md`**: keep the fork's file, which follows Keep a Changelog
+  and feeds the Release workflow (`scripts/changelog.mjs`), and leave out
+  upstream's entries. Add one entry under `[Unreleased]` that names what the
+  merge brings in and links upstream's changelog at the merged commit.
 - **Docs**: take upstream's new content and keep the fork's changes, which are
   mostly the pnpm commands, the fork's links and the Biome instructions.
   `docs/CURRENT-STATE.md` is upstream's running log, and upstream adds a

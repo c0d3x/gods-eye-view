@@ -44,143 +44,106 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
     - The OpenAI and Google Places proxies are rate-limited by default.
     - The MCP server and embed mode are hardened.
 
-- `pnpm run knip` finds files, exports and dependencies that nothing uses, and
-  CI runs it. Its first pass found 63 exports nothing imported: ten were dead
-  code and are gone, and the rest are now private to their modules.
+- `pnpm run typecheck` runs TypeScript 7 in strict mode over every browser
+  and server module, and `pnpm run knip` finds files, exports and
+  dependencies that nothing uses. CI runs both. Upstream's code was never
+  written for either, so `typecheck-baseline.json` lists the files with type
+  errors today and `knip-baseline.json` the issues knip finds in upstream's
+  files. Every other file, including all of the fork's own modules, must pass.
 
-- `pnpm run typecheck` runs TypeScript over the JSDoc types of the files that
-  opt in with `// @ts-check`: the package boundaries, the shared context store
-  and a growing set of smaller modules. CI runs it. The data layer contract and
-  the context store have typedefs.
+- `docs/UPSTREAM-SYNC.md` describes how to merge upstream into this fork, and
+  `pnpm run baseline` regenerates the Biome, TypeScript and knip baselines
+  after a merge.
 
-- Bug report and task templates on the New issue page, with a link to
-  private vulnerability reporting. CONTRIBUTING explains how to run one test
-  file and how to set up the QA harnesses, the README's project tree matches
-  the repository again, and KNOWN-ISSUES lists only open issues.
+- Bug report, feature request and task forms on the New issue page, with a
+  link to private vulnerability reporting. CONTRIBUTING explains how to run
+  one test file, how to set up the QA harnesses, and how Biome and the
+  baselines work.
 
 - The setup doctor (`pnpm run doctor`) checks more of what breaks a setup, and
   says how to fix each problem: the pnpm version against `packageManager`,
   whether `node_modules` matches `pnpm-lock.yaml` and the lockfile matches
   `package.json`, whether `ws` loads, whether the dev server's port is free,
-  Lefthook's Git hook, Chrome for the QA scripts, and the OpenSky settings
-  (the auth mode, a client ID without its secret, the credentials file, and a
-  username and password OpenSky no longer accepts). It lists the optional TfL
-  app key too, and a `.node-version` file names Node 24.14.0 for version
-  managers.
+  Lefthook's Git hook, Chrome for the QA scripts, and the OpenSky settings.
+  It lists the optional TfL app key too, and a `.node-version` file names
+  Node 24.14.0 for version managers.
+
+- `pnpm run qa:setup` downloads Puppeteer's Chrome for Testing for the QA
+  harnesses, `pnpm run test:track` and `tools/cesium-render.mjs`.
 
 ### Changed
 
-- `pnpm run typecheck` also checks the server: every module under `server/`,
-  `vite.config.js`, and the shared browser modules they import, against Node's
-  type declarations (`@types/node`, pinned to the Node 24 line the app
-  supports). Both projects check in strict mode. The fixes for what they found
-  change types, not behavior, with one exception: the infrastructure package's
-  `localDatasetError` now reads a name and message only from an `Error`, and
-  reports any other thrown value as `dataset unavailable`.
+- The fork now builds on upstream's layout. Upstream restructured the same
+  code the fork had restructured, in a different way, so the fork's own
+  version is gone: the route plugins split out of `vite.config.js` into
+  `server/proxies/`, `server/lib/`, `server/ais/` and `server/realtime/`; the
+  panel modules split out of `src/ui.js`; the shared core of the Live Flights
+  and Military Flights layers; and the split of `docs/CURRENT-STATE.md`.
+  Upstream's `server/providers/`, `build/`, `src/app/`, `src/layers/` and
+  `src/ui/` take their place, and the fork's behavior changes are re-applied
+  there. The two aircraft layers are again separate implementations,
+  upstream's.
 
-- The nightly QA run covers the first-run launcher and Map Source tray
-  harnesses again. Their timing-sensitive checks now hold under
-  SwiftShader's software rendering: a longer navigation deadline, a
-  long-Space check that hears the key repeat anywhere on the page and
-  waits for the hold to claim the key, focus-ring checks that wait for
-  the Data Layers list to stop reflowing, and a notice-dwell check that
-  keeps to its own clock. The track regression's corridor check allows
-  for the display clamp's cell hysteresis.
+- Biome formats and lints every JavaScript file again, except for the checks
+  that upstream's files fail today, which `biome-baseline.json` switches off
+  file by file. Upstream's files stay byte-identical, so later merges stay
+  small. Lefthook runs Biome on staged files before each commit.
 
-- Biome formats and lints every JavaScript file in the repository, and the
-  config JSON. `biome.json` names its scope by glob instead of listing files,
-  so new modules are covered as they are added; the bundled data in
-  `src/data/local_data` keeps its own layout. Adopting the rest of the code
-  took Biome's lint fixes, among them optional chains, template literals,
-  block bodies for `forEach` callbacks and the removal of functions nothing
-  called. The formatting-only commits are listed in `.git-blame-ignore-revs`.
+- Back to the fork's dependencies: pnpm instead of npm, Vite 8 instead of 6,
+  satellite.js 7 and mgrs 2.2, and the fork's own Cesium plugin
+  (`build/cesium.js`) instead of `vite-plugin-cesium`. Vite 8 builds workers as
+  ES modules, which satellite.js 7's WASM worker needs.
 
-- `src/ui.js` is split into modules under `src/ui/`, one per panel, view
-  or control, with the code unchanged. `ui.js` keeps StyleManager's
-  construction and wiring, and goes from 10,513 lines to 1,308. The cockpit
-  signal tests now drive the real Cockpit controller instead of code cut
-  out of `ui.js` as text.
+- CesiumJS is pinned to 1.138.0, down from the fork's 1.145.0. Upstream's
+  Cyber Sonar patches Cesium's shaders and switches itself on only for the
+  version it was validated against, so Dependabot no longer offers Cesium
+  upgrades either.
 
-- The EGM96 geoid grid behind the app's height corrections loads as a
-  0.9 MB compressed data file instead of a 2.8 MB JavaScript module, and the
-  Natural Earth region and marine outlines and the San Francisco
-  neighborhoods load as data files too. The browser no longer parses 5.6 MB
-  of data as JavaScript. Geoid heights are the same as before, and the
-  `egm96-universal` dependency is gone.
+- The production build splits startup code into feature chunks, each under
+  500 kB, instead of one 2.4 MB chunk, and the chunk-size warning limit drops
+  from 1,500 to 1,100 kB.
 
-- The Live Flights and Military Flights layers share one implementation,
-  `src/data/aircraftLayerCore.js`, which `flights.js` and `militaryFlights.js`
-  configure for their feeds. The two files had been near-copies of each
-  other, so a fix to one often missed the other. Formatted with Biome, the
-  two copies come to 10,659 lines; the core and both configurations are
-  7,363, and both layers behave as before.
+- The voice stack loads right after startup, in chunks of its own, instead of
+  with it. The mic control appears once it arrives.
 
-- Turning on the Datacenters or Dams layer no longer freezes the globe. The
-  layer read its bundled dataset and built every feature in one step, which
-  blocked input and rendering for about 180 ms with the 4,351 datacenters. It
-  now loads in slices of 500 features and lets the browser draw and handle
-  input between them.
+- The EGM96 geoid grid behind the app's height corrections ships as a 0.9 MB
+  compressed data file instead of a 2.8 MB JavaScript module, and downloads
+  when the page is first idle (within 5 s) instead of during startup. Geoid
+  heights are the same as before.
 
-- The voice stack loads right after startup instead of with it, which takes
-  about 120 kB (35 kB gzipped) off the JavaScript the app parses before first
-  paint. The mic control appears once it arrives.
+- Turning on the Datacenters or Dams layer no longer blocks the page for one
+  long task. The layer builds its entities in slices of 500 and lets the
+  browser draw and handle input between them.
 
-- `vite.config.js` now holds only configuration and plugin wiring; it was
-  7,800 lines. Every route plugin is a module under `server/proxies/`: radio,
-  Overpass and routes, CCTV, military installations, regional briefs and
-  weather effects, GBFS, OpenSky, TomTom, Google Places, CelesTrak, rocket
-  launches, FIRMS, terrain heights, adsbdb, the adsb.lol military feed and
-  the track backfill. The AIS relay behind `/api/ais-live` lives in
-  `server/ais/` with its socket adapter and watchdog, the voice agent's
-  routes and tool schema in `server/realtime/`, and Provider Settings in
-  `server/keySetupEndpoint.mjs`. The helpers they share (capped upstream
-  reads, request coalescing, the disk cache limits and the rest) live in
-  `server/lib/`. Routes and responses are unchanged, and every `/api` route
-  now has at least one test, including those that had none: the
-  installations, route, regional brief, weather effects, GBFS, OpenSky,
-  TomTom, adsb.lol, track backfill and Provider Settings status routes, and
-  the AIS relay's reconnect and backoff, watchdog tick and shutdown.
+- The voice debug log is off unless `GEV_REALTIME_DEBUG_LOG=1`. While it is
+  off, `/api/realtime/debug-log` answers 404 and the browser posts nothing.
 
-- Server code no longer lives in the browser tree. The Provider Settings
-  core, its credential-file hardening, the terrain-heights resolver, the
-  AISStream adapter and its watchdog moved to `server/`; the provider catalog
-  the browser also reads is now `src/keySetupCatalog.js`. The dev server's
-  shared helpers (JSON responses, request bodies, rate limiting and the Google
-  server key) each exist once, in `server/lib/`, and
-  `pnpm run check:boundaries` fails when browser code imports from `server/`.
-  An oversized HUD summary request now gets 413 instead of 400.
-
-- `docs/CURRENT-STATE.md`, 2,806 lines of current behavior, subsystem
-  reference and dated notes, is now the index of ten subsystem pages under
-  `docs/current-state/`, none longer than 500 lines. Links to it still land
-  on the index. Its dated milestone notes moved into this changelog's July
-  2026 history.
-
-- Repository metadata, the clone commands, CODEOWNERS and the contact point
-  the server gives CelesTrak and Nominatim now name this fork,
-  `c0d3x/gods-eye-view`. The README notes that it is a
+- Repository metadata, the clone commands, CODEOWNERS, the issue forms and the
+  contact point the CelesTrak, Nominatim, Overpass and transit proxies send
+  now name this fork, `c0d3x/gods-eye-view`. The README notes that it is a
   fork of `bilawalsidhu/gods-eye-view`, and that the Pinokio listing still
   installs the upstream project.
 
-- Installing the dependencies no longer downloads Chrome, which only the QA
-  scripts, `pnpm run test:track` and `tools/cesium-render.mjs` use. Run
-  `pnpm run qa:setup` to download Puppeteer's Chrome for Testing, or set
-  `PUPPETEER_EXECUTABLE_PATH` to a Chrome you have. `vite` and `ws` move from
-  devDependencies to dependencies, since the app runs on the Vite dev server,
-  so `pnpm install --prod` is enough to run it.
+- pnpm commands everywhere: in the docs, the code's messages, CI and the
+  Pinokio installer. Arguments go straight after the script name.
 
-- `.env.example` lists every variable the server reads. The AISStream URL,
-  the Caltrans and TfL camera packs and the TfL app key were missing, and two
-  CCTV flags that nothing reads are gone. TESTING.md documents the test and
-  QA variables, and a test fails when the code reads a variable documented in
-  neither.
+- Installing the dependencies no longer downloads Chrome; run
+  `pnpm run qa:setup` for the QA harnesses. `vite` and `ws` move from
+  devDependencies to dependencies, since the app runs on the Vite dev server.
+
+- `.env.example` lists every variable the server reads, TESTING.md documents
+  the test and QA variables, and a test fails when the code reads a variable
+  documented in neither.
 
 - `scripts/dev-secure.sh` (`pnpm run dev:secure`) is now `dev-fresh.sh` pinned
-  to 127.0.0.1, whatever `HOST` says. Its old copy of the launcher refused to
-  start without a Google Maps key, ignored `.env` and most keys, and had
-  drifted from the normal launcher. The launcher and the setup doctor now read
-  the macOS Keychain through one table of items, in
-  `scripts/lib/credentials.mjs`.
+  to 127.0.0.1. The launcher, the setup doctor and the voice bench read the
+  macOS Keychain through one table of items, in `scripts/lib/credentials.mjs`,
+  and the launcher now reads the Mapillary token from it too.
+
+- CI runs on pnpm, lints with Biome, measures coverage on Node 24, runs the
+  allocation budgets in a job of their own and can be run by hand. Upstream's
+  Street Level browser gate runs as well. The Release, CodeQL, Scorecard,
+  dependency-review and nightly QA workflows are the fork's again.
 
 ### Removed
 
@@ -189,24 +152,100 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
   work. Both now mean `oauth`, with a warning, and the proxy and the launcher
   no longer read `OPENSKY_USERNAME` or `OPENSKY_PASSWORD`.
 
+- The `egm96-universal` and `vite-plugin-cesium` dependencies.
+
 ### Fixed
 
 - Cockpit's altitude readout for a military aircraft shows the altitude the
   aircraft reports, as it does for a civil one, instead of the height the
-  globe draws it at. The military layer read a field its records never had,
-  so the readout fell back to the render height, which includes the geoid.
+  globe draws it at.
 
-- The unit-test runner fails a run in which a test file stopped early. Node
-  counts such a file as passing, with only the tests it reached; one run
-  silently skipped 30 of the AIS layer's 73 tests. The runner now lists any
-  queued test that never finished and fails the run, and no longer passes
-  `--test-force-exit`, which ends a file's process as soon as Node decides its
-  tests are done.
+- Satellites whose element sets SGP4 can no longer propagate are skipped until
+  the next TLE refresh instead of failing on every tick, and the layer's stats
+  report how many.
+
+- Space Missions no longer keeps continuous rendering on for the Satellites
+  layer while no dots, orbit rings or tracked satellite are shown.
+
+- The military aircraft registry no longer grows for the whole session: an
+  aircraft unseen for 6 hours is forgotten, and the registry holds at most
+  4,096.
+
+- A layer that only lacks its API key, such as NASA FIRMS, ends its load as
+  KEY REQUIRED and names the missing key, instead of LOAD FAILED. On a local
+  dev server, an ADD KEY button opens Provider Settings.
+
+- The CCTV catalog and health reads, the launch feed, the TLE catalog, flight
+  enrichment and the radio click count give up after a deadline instead of
+  waiting on a stalled server.
+
+- The first-run launcher moves keyboard focus out before it hides itself, and
+  is made inert, so the browser no longer blocks its `aria-hidden` and screen
+  readers aren't left on hidden content.
+
+- The "Panel layout updated" notice appears for positions saved by any older
+  layout version, and those old positions are deleted.
+
+- Keyboard focus rings are no longer cut off when Tab scrolls a control to the
+  edge of a scrolling panel.
+
+- Provider Settings answers 413 for an oversized save instead of resetting the
+  connection, and a malformed HUD summary request gets 400 (an oversized one
+  413) instead of 502.
 
 - The OpenSky proxy read a missing rate-limit header as zero. A 429 without a
   retry-after header cooled down for 30 seconds instead of 2 minutes, and a
   snapshot without `X-Rate-Limit-Remaining` stayed cached for 5 minutes
   instead of 9 seconds.
+
+- Synthetic CCTV frame timestamps end in `Z`, and RSS titles that were escaped
+  twice are decoded only once.
+
+- The unit-test runner fails a run in which a test file stopped early, which
+  Node counts as passing with only the tests it reached. It also gives every
+  test a 60-second deadline and runs the tests under `server/` too.
+
+### Security
+
+- Every `/api` route refuses requests that another site's page sends through
+  your browser. Browsers must send `Sec-Fetch-Site: same-origin` or `none`, or
+  a matching `Origin`, and request bodies must be JSON apart from Overpass
+  forms. Non-browser clients, including MCP tool calls, still work, and so
+  does an authentication proxy in front of the server.
+
+- The dev and preview servers no longer send CORS headers, and no longer serve
+  `.gev-logs/`, `.gev-cache/` (which holds the MCP panel key) or `.claude/`.
+
+- The server redacts every voice debug-log record, including ephemeral keys,
+  Google keys, JWTs and `Authorization` values. Records are capped at 256 KiB
+  (413 above that), and the log directory and files are created 0700 and
+  0600.
+
+- The CCTV proxy no longer reaches private addresses, whether for a feed's
+  camera or on a redirect away from a configured camera's origin. It follows
+  at most three redirects, each pinned to checked public addresses. It relays
+  only raster images, video and HLS playlists, refuses SVG frames, and sends
+  `nosniff` and a sandboxing Content-Security-Policy with every response.
+
+- The CCTV Street View fallback has its own per-client Google rate limit, and
+  caches its frames by position for 30 minutes.
+
+- The OpenAI HUD summary, Google Places and adsb.lol calls time out with 504.
+  Provider error text and exception messages no longer reach the browser, and
+  failed Places answers are not cacheable.
+
+- Every upstream response body is size-capped, and AISStream messages are
+  capped at 1 MiB.
+
+- The terrain, adsbdb and Street View caches are bounded, and `.gev-cache/` is
+  pruned by age and size.
+
+- The launchers and `opensky-import-client.sh` no longer put API keys in
+  process argument lists.
+
+- The AIS key fingerprint no longer derives from the key, voice debug session
+  IDs use cryptographic randomness, and the screenshot sink used by the QA
+  scripts listens only on 127.0.0.1 and no longer echoes errors.
 
 ## [0.2.0] - 2026-09-13
 
