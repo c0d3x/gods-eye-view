@@ -58,6 +58,14 @@ export function panelBuildPlugin({ outDir = PANEL_OUT_DIR } = {}) {
       server.middlewares.use(async (req, res, next) => {
         const { pathname } = new URL(req.url || '/', 'http://localhost');
         if (!pathname.startsWith(PANEL_BASE)) return next();
+        // Vite adds the server's headers (BROWSER_HEADERS: the CSP, no
+        // framing, nosniff) only to what its own middleware serves. The
+        // panel build is the whole app, Provider Settings included, so it
+        // gets them too.
+        for (const [name, value] of Object.entries(
+          server.config.server?.headers ?? {},
+        ))
+          res.setHeader(name, value);
         const { readFile } = await import('node:fs/promises');
         const { extname, resolve, sep } = await import('node:path');
         const root = resolve(server.config.root, outDir);
