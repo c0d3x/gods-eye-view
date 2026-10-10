@@ -117,7 +117,7 @@ export async function checkPackageBoundaries(root) {
         write: false,
         minify: false,
         assetsInlineLimit: 0,
-        rollupOptions: {
+        rolldownOptions: {
           input,
           // A declared dependency also owns its package subpath exports
           // (for example `@jtarrio/webrtlsdr/rtlsdr.js`).

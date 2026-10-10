@@ -1,6 +1,6 @@
 import { applicationHtmlPlugin } from './application-html.js';
-import cesium from 'vite-plugin-cesium';
 import { DEFAULT_ALLOWED_HOSTS, hostCheckPlugin } from './allowedHosts.js';
+import cesium from './cesium.js';
 import { embedFramingPlugin } from './embed-framing.js';
 import { panelBuildPlugin } from './panel.js';
 
@@ -113,5 +113,8 @@ export function createBrowserViteConfig({
       ),
     },
     build: { chunkSizeWarningLimit: 1500 },
+    // satellite.js ships an optional WASM propagator whose worker uses
+    // top-level await, which only module workers support.
+    worker: { format: 'es' },
   };
 }

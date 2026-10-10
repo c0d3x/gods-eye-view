@@ -4,13 +4,12 @@
  * See build/panel.js.
  */
 
-import { readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from 'vite';
 import standaloneConfig from '../server/standalone/vite.config.js';
 import {
-  PANEL_BASE,
   PANEL_OUT_DIR,
   PANEL_WORKER_FILES,
   PANEL_WORKER_PRELUDE_PATH,
@@ -27,12 +26,6 @@ await build({
   root,
   ...panelBuildConfig(config),
 });
-
-// Cesium's plugin copies its files under the base path inside outDir.
-const nested = join(outDir, PANEL_BASE, 'cesium');
-await rm(join(outDir, 'cesium'), { recursive: true, force: true });
-await rename(nested, join(outDir, 'cesium'));
-await rm(join(outDir, PANEL_BASE.split('/')[1]), { recursive: true });
 
 // Cesium's workers load these files themselves; embed them in a prelude the
 // panel runs ahead of Cesium's workers script.

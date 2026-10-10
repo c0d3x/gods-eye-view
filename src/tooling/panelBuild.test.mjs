@@ -28,7 +28,7 @@ test('the panel build is one script and one stylesheet under /panel/', () => {
   assert.equal(config.base, PANEL_BASE);
   assert.equal(config.build.outDir, 'dist/panel');
   assert.equal(config.build.cssCodeSplit, false);
-  assert.equal(config.build.rollupOptions.output.inlineDynamicImports, true);
+  assert.equal(config.build.rolldownOptions.output.inlineDynamicImports, true);
   assert.equal(config.build.chunkSizeWarningLimit, 1500);
 });
 

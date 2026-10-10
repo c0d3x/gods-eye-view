@@ -100,7 +100,7 @@ Test modules and the Node-only allocation benchmark are outside browser runtime.
 
 `gods-eye-view/build/vite` is a separate Node-only export. `build/vite.js`
 creates standard Cesium/Vite browser settings from explicit inputs. It imports
-only the declared `vite-plugin-cesium` build dependency, discovers no environment,
+only Vite and its own Cesium plugin (`build/cesium.js`), discovers no environment,
 and constructs no provider middleware. Call it from a Vite configuration:
 
 ```js
@@ -113,7 +113,7 @@ export default createBrowserViteConfig({
 });
 ```
 
-Consumers supply compatible Vite and vite-plugin-cesium development dependencies.
+Consumers supply compatible Vite and Cesium dependencies.
 The package's `node` export condition has no browser fallback. The boundary gate
 builds this group for Node, with the declared build dependency external; its
 owned module list is checked just like browser groups. Browser groups cannot

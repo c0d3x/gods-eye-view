@@ -24,8 +24,8 @@ export function panelBuildConfig(config) {
       emptyOutDir: true,
       modulePreload: false,
       cssCodeSplit: false,
-      rollupOptions: {
-        ...config.build?.rollupOptions,
+      rolldownOptions: {
+        ...config.build?.rolldownOptions,
         output: { inlineDynamicImports: true },
       },
     },

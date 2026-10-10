@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { transformWithEsbuild } from 'vite';
+import { minify } from 'vite';
 import { BillboardCollection, Color, PointPrimitive } from 'cesium';
 import {
   syncCyberSonarAnimation,
@@ -29,9 +29,9 @@ test('production-transformed sonar defaults retain the document method receiver'
     new URL('./cyberSonar.js', import.meta.url),
     'utf8',
   );
-  const { code } = await transformWithEsbuild(source, 'cyberSonar.js', {
-    target: 'es2019',
-    minify: true,
+  // Vite 8 minifies production builds with Oxc.
+  const { code } = await minify('cyberSonar.js', source, {
+    compress: { target: 'es2019' },
   });
   const compiled = await import(
     `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`

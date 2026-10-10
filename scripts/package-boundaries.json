@@ -32,10 +32,11 @@
       "build/vite.js",
       "build/application-html.js",
       "build/allowedHosts.js",
+      "build/cesium.js",
       "build/embed-framing.js",
       "build/panel.js"
     ],
-    "external": ["vite-plugin-cesium"]
+    "external": ["vite", "cesium"]
   },
   "live-providers": {
     "runtime": "node",

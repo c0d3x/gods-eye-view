@@ -178,7 +178,7 @@ test('consumer build includes only infrastructure code and resolves assets under
     build: {
       write: false,
       assetsInlineLimit: 0,
-      rollupOptions: {
+      rolldownOptions: {
         input: fileURLToPath(
           import.meta.resolve('gods-eye-view/infrastructure'),
         ),
@@ -194,6 +194,8 @@ test('consumer build includes only infrastructure code and resolves assets under
     'infrastructure.js',
     'infrastructureData.js',
     'infrastructureOverlayEntry.js',
+    // The click handler's pointer check, which Rolldown lists as its own module.
+    'inputOwnership.js',
     'localGeojsonCore.js',
     'localGeojsonLod.js',
   ]);
