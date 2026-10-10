@@ -205,9 +205,6 @@ test('server code reads every upstream body through a capped reader', async () =
     'server/mcp/plugin.js: res.end(Buffer.from(await response.arrayBuffer()));',
     // A test seam; terrain.js passes readResponseJsonCapped.
     'src/data/terrainHeightsProxy.js: readJson = (res) => res.json(),',
-    // The capped reader's fallback for a body that can't be streamed; it
-    // checks the size right after reading.
-    'server/providers/common/http.js: const text = await upstream.text();',
   ]);
   const uncapped = [];
   for (const file of await serverSources()) {

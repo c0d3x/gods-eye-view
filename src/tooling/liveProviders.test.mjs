@@ -409,14 +409,14 @@ test('track backfill proxy returns 502 on an oversized upstream body and caches 
   let callCount = 0;
   t.mock.method(globalThis, 'fetch', async () => {
     callCount++;
-    return {
-      ok: true,
-      status: 200,
-      headers: new Map(),
-      body: (async function* () {
-        yield Buffer.alloc(6 * 1024 * 1024, 'x');
-      })(),
-    };
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array(6 * 1024 * 1024).fill(0x78));
+          controller.close();
+        },
+      }),
+    );
   });
 
   const res1 = await tracks('/api/flights/track', '?icao24=def456');
