@@ -251,6 +251,43 @@ test('military poll refreshes tracked callsign/altitude/kts and marks a missed p
   }
 });
 
+test('the tracked readout reports the barometric altitude, not the render height', () => {
+  // Cockpit's altitude readout is getTrackedInfo().altitudeM. Military records
+  // carry the aviation altitude as sticky barometric feet; where the globe
+  // draws the aircraft (geometric, or baro plus the geoid) is renderAltitudeM.
+  const icao24 = 'ae01cf';
+  _setTrackedMilitaryRefreshStateForTest({
+    icao24,
+    entity: { gevLabelModel: { title: '', details: [] } },
+    billboard: {
+      position: Cesium.Cartesian3.fromDegrees(-97.0, 31.0, 8_590),
+      color: Cesium.Color.WHITE,
+      show: false,
+    },
+    billboardCollection: { show: false, remove() {} },
+    viewer: { camera: { positionCartographic: null }, scene: {} },
+    tracked: true,
+    meta: {
+      callsign: 'RCH452',
+      klass: 'widebody',
+      altitudeFt: 28_000,
+      renderAltitudeM: 8_590,
+      speedMps: 200,
+      track: 90,
+      onGround: false,
+      wasAirborne: true,
+      turnRateDps: 0,
+      rawLat: 31.0,
+      rawLon: -97.0,
+    },
+  });
+
+  const info = militaryFlightsLayer.getTrackedInfo();
+  assert.equal(info.icao24, icao24);
+  assert.equal(info.altitudeM, 28_000 * 0.3048);
+  assert.equal(info.renderAltitudeM, 8_590);
+});
+
 test('cached military snapshots retain their observation time and expose stale fallback', async (t) => {
   let now = 1_800_000_000_000;
   const receivedAt = now;
