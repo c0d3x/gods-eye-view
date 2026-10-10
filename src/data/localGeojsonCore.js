@@ -41,6 +41,29 @@ export const GROUND_SAMPLE_MAX_ARMED_RETRIES = 30;
 /** Ignore sub-metre camera-derived stem-tip noise at camera settle. */
 export const LOCAL_STEM_TIP_EPSILON_M = 0.5;
 const LOCAL_STEM_TIP_EPSILON_SQ = LOCAL_STEM_TIP_EPSILON_M ** 2;
+/** Items a local dataset load handles before it yields to the browser. */
+export const LOCAL_LOAD_SLICE_SIZE = 500;
+
+/**
+ * Give the browser a turn, so input and rendering run before the next slice
+ * of a large load: scheduler.yield() where the browser has it, otherwise a
+ * MessageChannel task, which the fake timers some tests use do not hold back.
+ * @returns {Promise<void>}
+ */
+export function yieldToMain() {
+  if (typeof globalThis.scheduler?.yield === 'function') {
+    return globalThis.scheduler.yield();
+  }
+  if (typeof MessageChannel !== 'function') return Promise.resolve();
+  return new Promise((resolve) => {
+    const { port1, port2 } = new MessageChannel();
+    port1.onmessage = () => {
+      port1.close();
+      resolve();
+    };
+    port2.postMessage(null);
+  });
+}
 
 /**
  * Build the owner-approved local-infrastructure card copy.
@@ -314,6 +337,8 @@ export function createLocalGeoJsonLayer(
       new Cesium.ScreenSpaceEventHandler(canvas),
     projectToWindow = (scene, position) =>
       Cesium.SceneTransforms.worldToWindowCoordinates(scene, position),
+    loadSliceSize = LOCAL_LOAD_SLICE_SIZE,
+    yieldDuringLoad = yieldToMain,
   },
   {
     overlayHost,
@@ -326,6 +351,11 @@ export function createLocalGeoJsonLayer(
     hideOsmCredit,
   },
 ) {
+  // Infinity means one slice per load; an invalid size falls back.
+  const sliceSize = Math.min(
+    Math.max(1, Math.floor(Number(loadSliceSize) || LOCAL_LOAD_SLICE_SIZE)),
+    Number.MAX_SAFE_INTEGER,
+  );
   let _dataSource = null;
   let _enabled = false;
   let _clickHandler = null;
@@ -571,6 +601,7 @@ export function createLocalGeoJsonLayer(
         if (!_loadPromise)
           _loadPromise = (async () => {
             _loadController = new AbortController();
+            const loadSignal = _loadController.signal;
             const baseColor = Cesium.Color.fromCssColorString(color);
 
             // Fetch and parse JSON Lines (.geojsonl) into a FeatureCollection.
@@ -601,20 +632,38 @@ export function createLocalGeoJsonLayer(
                 _cachedFeatures = features;
               }
 
-              const geojson = {
-                type: 'FeatureCollection',
-                features,
-              };
-
-              // Natively parse into entities and use it as our _dataSource
-              loaded = await Cesium.GeoJsonDataSource.load(geojson, {
+              // Natively parse into entities and use it as our _dataSource.
+              // A large dataset is handed to Cesium in slices, yielding to the
+              // browser between them, so no single task blocks input or
+              // rendering on every enable. process() adds to the source without
+              // clearing it, so the slices build the same entities, in the same
+              // order, as one GeoJsonDataSource.load() would.
+              loaded = new Cesium.GeoJsonDataSource(name);
+              const styling = {
                 clampToGround: true,
                 stroke: baseColor,
                 fill: baseColor.withAlpha(0.3),
                 strokeWidth: 2,
                 markerSize: 8,
                 markerColor: baseColor,
-              });
+              };
+              for (
+                let start = 0;
+                start === 0 || start < features.length;
+                start += sliceSize
+              ) {
+                if (start > 0) {
+                  await yieldDuringLoad();
+                  if (_destroyed || loadSignal.aborted) return;
+                }
+                await loaded.process(
+                  {
+                    type: 'FeatureCollection',
+                    features: features.slice(start, start + sliceSize),
+                  },
+                  styling,
+                );
+              }
 
               if (_destroyed) return;
               loaded.name = name;
@@ -640,6 +689,15 @@ export function createLocalGeoJsonLayer(
               _stemGeometryDirty = true;
 
               for (let i = 0; i < entities.length; i++) {
+                if (i > 0 && i % sliceSize === 0) {
+                  await yieldDuringLoad();
+                  // The source has joined the scene: take it out again.
+                  if (_destroyed || loadSignal.aborted) {
+                    viewer.dataSources.remove(loaded, true);
+                    removeEntityContextsForLayer(id);
+                    return;
+                  }
+                }
                 const feature = entities[i];
                 feature.__localLayerId = id; // Tag it so our click handler knows it belongs to this layer
 

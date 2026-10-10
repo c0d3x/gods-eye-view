@@ -639,7 +639,7 @@ function windowThatFailsOnce() {
 }
 
 test('a post-processing failure after the scene accepts the source rolls it back, and the retry does not double-add', async () => {
-  // The window between GeoJsonDataSource.load() and the end of entity
+  // The window between Cesium building the entities and the end of entity
   // post-processing. Publishing early made every later enable() skip the
   // loader; rolling back before the add settled left Cesium to insert the
   // "removed" source afterwards, which the retry would then double up on.
