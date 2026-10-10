@@ -419,18 +419,28 @@ export function initFirstRunExperience({
     if (closing) return;
     closing = true;
     rememberFirstRunSessionDismissed(sessionStorageRef);
-    root.classList.remove('visible');
-    root.setAttribute('aria-hidden', 'true');
     globalThis.removeEventListener?.('resize', onViewportResize);
     surfaceObserver?.disconnect();
+    // Focus leaves BEFORE the card hides: Chrome refuses aria-hidden on a
+    // subtree that still holds focus, and a screen reader can be left on
+    // content that is gone. Return the keyboard where it was, not to a node
+    // that is being removed — but never when yielding, because the surface
+    // taking over owns focus. If it has not taken it yet, focus only drops out
+    // of the card, so that surface can still claim it.
+    keyboard.deactivate({ restoreFocus });
+    const focused = documentRef.activeElement;
+    if (focused && focused !== documentRef.body && root.contains(focused))
+      focused.blur?.();
+    root.classList.remove('visible');
+    // inert keeps the leaving card out of the tab order and the accessibility
+    // tree; aria-hidden covers engines without inert.
+    root.inert = true;
+    root.setAttribute('aria-hidden', 'true');
     const remove = () => root.remove();
     root.addEventListener('transitionend', remove, { once: true });
     // `transitionend` never fires under prefers-reduced-motion (no transition),
     // so a bounded fallback is what actually removes the node there.
     globalThis.setTimeout?.(remove, 400);
-    // Return the keyboard where it was, not to a node that is being removed —
-    // but never when yielding, because the surface taking over owns focus now.
-    keyboard.deactivate({ restoreFocus });
   };
 
   const setBusy = (next, choice = '') => {
@@ -544,6 +554,7 @@ export function initFirstRunExperience({
     if (revealed || closing) return;
     revealed = true;
     root.hidden = false;
+    root.inert = false;
     globalThis.requestAnimationFrame?.(() => {
       if (closing) return;
       root.classList.add('visible');
