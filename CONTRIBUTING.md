@@ -2,18 +2,28 @@
 
 Thanks for being here. God's Eye View is an open foundation for live spatial intelligence in the browser, and it gets better when more people run it, break it, and extend it.
 
+This repository, c0d3x/gods-eye-view, is a fork of
+[bilawalsidhu/gods-eye-view](https://github.com/bilawalsidhu/gods-eye-view),
+the project Bilawal Sidhu created. It merges upstream's changes regularly;
+[docs/UPSTREAM-SYNC.md](docs/UPSTREAM-SYNC.md) describes how, and
+[Working on this fork](#working-on-this-fork) what that means for a change.
+
 ## Getting set up
 
-Use Node.js 24.14.x or 26.x (also enforced by `package.json`).
+Use Node.js 24.14.x or 26.x (also enforced by `package.json`) and pnpm 11.
+Once pnpm is installed (for example with `npm install --global pnpm@11`), it
+switches to the exact version pinned in `package.json`. Version managers that
+read `.node-version` (fnm, mise, nodenv, asdf) take Node 24.14.0 from it; nvm
+reads only `.nvmrc`, so use the commands below.
 
 ```bash
 git clone https://github.com/c0d3x/gods-eye-view.git
 cd gods-eye-view
 nvm install 24.14.0
 nvm use 24.14.0
-npm install
-npm run doctor
-./scripts/dev-fresh.sh        # or: npm run dev (keys are optional)
+pnpm install
+pnpm run doctor
+./scripts/dev-fresh.sh        # or: pnpm run dev (keys are optional)
 ```
 
 No key is required to start: the app boots on keyless Esri World Imagery with
@@ -22,14 +32,31 @@ Google Maps provides direct photorealistic 3D and place search; Cesium ion
 provides ion-hosted Google 3D plus optional Bing/world-terrain stacks.
 On macOS the launcher pulls optional keys from
 the Keychain; on any platform you can pass them as env vars or use a `.env`.
-People who only want to run the app can instead install the repository directly
-through Pinokio; the terminal path above remains the contributor path.
+People who only want to run the app can install the upstream project through
+Pinokio; the terminal path above is how to run this fork.
 
-Open `http://localhost:4173`. Before sending a PR run `npm run build`, `npm test`, and `npm run test:track` (dev server must be up) — **all three must stay green.**
+Open `http://localhost:4173`.
+
+## Running tests
+
+Before sending a PR run `pnpm run build`, `pnpm test`, and `pnpm run test:track` (dev server must be up) — **all three must stay green.** Also run `pnpm run lint`, `pnpm run format:check` and `pnpm run check:boundaries`.
+
+- `pnpm test` runs the unit suite, every `*.test.mjs` file under `src/`, and then the allocation budgets, which only run on Node 24.
+- To run one file, call Node's test runner on it: `node --test src/setupDoctor.test.mjs`. Add `--test-name-pattern="OpenSky"` to run only the tests whose names match.
+
+### QA harnesses
+
+`pnpm run test:track` and the QA harnesses in `scripts/qa-*.mjs` drive the dev server in headless Chrome.
+
+1. Get Chrome once. pnpm skips Puppeteer's download at install time (see `pnpm-workspace.yaml`), so run `pnpm exec puppeteer browsers install chrome`, or set `PUPPETEER_EXECUTABLE_PATH` to a Chrome you have.
+2. Start the dev server with `pnpm run dev`.
+3. Run `pnpm run test:track`, or a single harness such as `node scripts/qa-application.mjs`.
+
+Harnesses find the server in different ways, such as `QA_BASE_URL`, a `--url` argument or a positional URL, and most default to `http://localhost:4173`; each entrypoint's header says which.
 
 ## Checking a built app locally
 
-Run `npm run build` followed by `npm run preview`. Preview serves the built
+Run `pnpm run build` followed by `pnpm run preview`. Preview serves the built
 frontend and local data-provider APIs. Keep optional server credentials in the
 ignored `.env`; browser keys are embedded during the build, so rebuild after
 changing them. Provider Settings and `/api/setup/*` are development-only: edit
@@ -54,8 +81,8 @@ head -40 scripts/qa-radio.mjs  # what this runnable gate proves and how to run i
 Runnable gate entrypoints document what they assert and how to invoke them.
 Most need a dev server; some also need a specific provider key or port. Follow
 the entrypoint's header rather than assuming every matching file accepts the
-same arguments. Only a couple (`qa:map-source-tray`, `qa:transit`) have an
-`npm run` alias.
+same arguments. A few (`qa:map-source-tray`, `qa:panel-resize`,
+`qa:street-level`, `qa:transit`) have a `pnpm run` alias.
 
 If you aren't sure which gate covers your change, search `docs/CURRENT-STATE.md`
 for the feature: it names the gate for many of them, and it's the authoritative
@@ -66,7 +93,7 @@ gate for the feature you changed.
 > **CI does not cover this for you.** The workflow runs the setup policy
 > checks, the formatting and package-boundary checks, the unit suite and the
 > production build, plus a Windows onboarding job. It runs neither
-> `npm run test:track` nor any `qa-*.mjs` gate — both need a live dev server
+> `pnpm run test:track` nor any `qa-*.mjs` gate — both need a live dev server
 > and a browser. Include the applicable local run in your PR's validation
 > evidence.
 
@@ -81,12 +108,12 @@ New layers first use the remaining unreserved single-character digits (`0`
 through `9`), then the two-character base-36 namespace (`00` through `zz`). On the
 current published ledger, `0`, `1` and `2` are already owned, so the next
 choices are `3` through `9`, then `00`. After rebasing onto the latest `main`, run
-`npm run layer-token:next -- <layer-id>`, add that result to both the permanent
+`pnpm run layer-token:next <layer-id>`, add that result to both the permanent
 JSON reservation ledger and registry entry, and keep the exact registered-layer
 count assertion up to date. The token is assigned against the merge-time base, not
 claimed when a PR opens, so another merged layer may require rerunning the
 command after a rebase. Never repurpose a published or retired token.
-Run `npm run layer-token:check -- --base-ref origin/main` after the rebase;
+Run `pnpm run layer-token:check --base-ref origin/main` after the rebase;
 this checks that every published assignment remains reserved and that new
 assignments consume free digits before the two-character tokens, in order.
 Pull-request CI runs the same check against `main`.
@@ -95,11 +122,11 @@ The helper reads the local ledger; it does not run during a rebase or edit files
 If another PR publishes your provisional token first, keep every published
 registry entry and ledger reservation from the refreshed `main`. Temporarily
 remove only your still-unpublished layer's registry entry and ledger row so the
-local registry is valid again, then rerun `npm run layer-token:next -- <layer-id>`.
+local registry is valid again, then rerun `pnpm run layer-token:next <layer-id>`.
 For example, if PR A publishes `0` while PR B still provisionally uses `0`,
 PR B removes only its own provisional entry, reruns the helper, and receives
 `3`. Put `3` on PR B's registry entry and ledger row, update its pinned count
-and token tests, then rerun `npm run layer-token:check -- --base-ref origin/main`.
+and token tests, then rerun `pnpm run layer-token:check --base-ref origin/main`.
 An invalid duplicate ledger can fail during module import before the helper
 prints anything; never fix that by renaming or deleting PR A's published token.
 
@@ -130,13 +157,28 @@ The highest-leverage places to jump in:
 
 ## Formatting and reusable components
 
-Run `npm run format` before submitting changes, then `npm run format:check`
-and `npm run check:boundaries`. Runtime JavaScript under the owned roots in
-`scripts/format-runtime.json` is discovered automatically, including new files.
-Tests and other adopted files remain listed in `scripts/format-scope.json`.
-Git-ignored files and `.prettierignore` exclusions are not automatically adopted.
-Keep mechanical formatting separate from behavioral edits. CI checks formatting
-and package boundaries on Linux and Windows.
+Run `pnpm run format` before submitting changes, then `pnpm run format:check`,
+`pnpm run lint` and `pnpm run check:boundaries`. Formatting and linting use
+Biome, with its recommended lint rules and sorted imports, on the JavaScript
+and config JSON that `files.includes` in `biome.json` names by glob, so new
+modules and tests are covered without a list to update. `pnpm install` also
+installs a Lefthook pre-commit hook that formats, lints and sorts the imports
+of staged files; set `LEFTHOOK=0` to skip it for one commit. Keep mechanical
+formatting separate from behavioral edits.
+
+Upstream's code is formatted with Prettier and was never linted with Biome,
+and the fork keeps upstream's files byte-identical so upstream syncs stay
+small. `biome-baseline.json`, which `biome.json` extends, switches off each
+Biome check for exactly the upstream files that fail it today; Biome's other
+checks still apply to those files, and every other file is held to all of
+Biome's rules. `pnpm run lint:baseline` regenerates the baseline after an
+upstream merge. Fork changes must not grow it: fix a new finding instead of
+regenerating the baseline. When you edit an upstream file that the baseline
+exempts from formatting, keep its Prettier style
+(`node_modules/.bin/prettier --check <file>` confirms it). Upstream's own
+Prettier script, `scripts/format.mjs`, and its `scripts/format-scope.json` and
+`scripts/format-runtime.json` lists stay in place, unchanged; this fork's
+scripts do not run them.
 
 Reusable package exports own their state and receive application operations
 through explicit callbacks. They must not import the standalone bootstrap or
@@ -148,17 +190,60 @@ ownership and adoption process.
 ## Pull requests
 
 1. Branch off `main`.
-2. Keep `npm run build`, `npm test`, and `npm run test:track` green and avoid new console errors, plus the [feature gate](#feature-regression-gates) for the area you touched.
-3. If you change runtime behavior, update `docs/CURRENT-STATE.md` and `CHANGELOG.md` in the same PR.
+2. Keep `pnpm run build`, `pnpm test`, and `pnpm run test:track` green and avoid new console errors, plus the [feature gate](#feature-regression-gates) for the area you touched.
+3. If you change runtime behavior, add an entry to `CHANGELOG.md` under `## [Unreleased]`, in its Added, Changed, Fixed or Security section, and update the doc that describes the behavior in the same PR. `docs/CURRENT-STATE.md` is upstream's running log: correct it where your change makes it wrong, and leave the rest to upstream.
 4. If you add or change a data source, update [DATA_SOURCES.md](DATA_SOURCES.md) with its license and attribution. **Don't add data you don't have the right to redistribute** — fetch it at runtime instead.
 5. Describe what you changed and how you verified it (screenshots welcome for anything visual).
 
+## Working on this fork
+
+- Keep upstream's files byte-identical where you can. Put fork behavior in a
+  fork-owned module, next to the code it serves or under
+  `server/providers/common/`, and keep the call-site edit in upstream's file
+  small.
+- Use upstream's helpers when upstream already has one that does the job.
+- Don't reformat upstream code you aren't changing.
+- Register a new module that belongs to an exported package group in
+  `scripts/package-boundaries.json`; `pnpm run check:boundaries` says when.
+
+## Issues
+
+- Bug reports and feature requests use the forms on the New issue page.
+  Report security problems privately instead, as [SECURITY.md](SECURITY.md)
+  describes.
+- Planned work is a **Task** issue: the problem, the fix, the checks that say
+  it is done, and how to verify it. The pinned roadmap issue orders them.
+- A commit that finishes an issue says `Fixes #<number>` in its message, so
+  GitHub closes the issue when the commit reaches `main`.
+
+## Releasing
+
+Releases follow [Semantic Versioning](https://semver.org/): a minor version for
+new features, a patch version for fixes only. The fork numbers and tags its
+own releases, separately from upstream's.
+
+1. Set `version` in `package.json`.
+2. In `CHANGELOG.md`, move the entries under `## [Unreleased]` to a new
+   `## [x.y.z] - YYYY-MM-DD` heading, with a one-line summary under it, and
+   leave `## [Unreleased]` empty above it.
+3. Commit to `main` and push.
+4. Tag the commit and push only that tag: `git tag vX.Y.Z`, then
+   `git push origin vX.Y.Z`. Never `git push --tags`, which would also push
+   any upstream tags in your clone
+   ([docs/UPSTREAM-SYNC.md](docs/UPSTREAM-SYNC.md#the-upstream-remote)).
+
+The Release workflow runs the CI checks, checks the tag against
+`package.json`, and publishes a GitHub Release titled with the tag and the
+summary line, with that version's changelog section as its notes. Run it by
+hand from the Actions tab with a version to preview the notes without
+publishing anything.
+
 ## Maintainers
 
-God's Eye View is maintained by [Bilawal Sidhu](https://github.com/bilawalsidhu)
+God's Eye View is maintained upstream by [Bilawal Sidhu](https://github.com/bilawalsidhu)
 and [Sameh Khamis](https://github.com/samehkhamis) at
-[Halfpixel](https://halfpixel.ai). Either maintainer can review and merge
-contributions.
+[Halfpixel](https://halfpixel.ai). This fork is maintained by
+[@c0d3x](https://github.com/c0d3x), who reviews and merges contributions here.
 
 ## Ground rules
 

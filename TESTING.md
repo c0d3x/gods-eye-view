@@ -2,8 +2,8 @@
 
 > [!NOTE]
 > This is a **manual field-test scenario script** for the June-2026 whiteboard +
-> tracking work. The AUTOMATED gates live elsewhere: `npm test` (unit),
-> `npm run test:track` (tracking invariants), and the headless harnesses under
+> tracking work. The AUTOMATED gates live elsewhere: `pnpm test` (unit),
+> `pnpm run test:track` (tracking invariants), and the headless harnesses under
 > `scripts/qa-*.mjs` — together these are the full automated test surface.
 
 This guide covers the work hardened over **4 adversarial-review batches** on
