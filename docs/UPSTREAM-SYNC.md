@@ -12,8 +12,9 @@ This guide describes how, and the rules that keep each merge small.
   merge rarely meets a fork change on the same lines. Examples:
   `src/data/projectUrl.js` (the contact point the proxies send),
   `build/cesium.js` (the Cesium Vite plugin) and the three baselines below.
-  `git diff --stat upstream/main main` lists every file the fork changes; keep
-  that list short.
+  `git diff --stat upstream/main main` lists every file the fork changes.
+  Upstream files on that list are where syncs conflict, so prefer a fork-owned
+  module over another edit to one of them.
 - **The fork's tooling sits beside upstream's.** The fork installs with pnpm
   instead of npm, lints and formats with Biome, runs Biome on staged files
   through a Lefthook pre-commit hook, type-checks in strict mode, finds unused
@@ -35,11 +36,13 @@ This guide describes how, and the rules that keep each merge small.
 
 ## The upstream remote
 
-Add the remote once, without tags:
+Add the remote once, without tags, and enable the merge driver that keeps
+the fork's `CHANGELOG.md` (see `.gitattributes`):
 
 ```bash
 git remote add upstream https://github.com/bilawalsidhu/gods-eye-view.git
 git config remote.upstream.tagOpt --no-tags
+git config merge.ours.driver true
 ```
 
 `tagOpt --no-tags` stops `git fetch upstream` from copying upstream's release
@@ -107,13 +110,15 @@ fork changes, and then fast-forwarded onto `main`.
   upstream's code should use `PROJECT_URL` from `src/data/projectUrl.js`.
 - **`CHANGELOG.md`**: keep the fork's file, which follows Keep a Changelog
   and feeds the Release workflow (`scripts/changelog.mjs`), and leave out
-  upstream's entries. Add one entry under `[Unreleased]` that names what the
-  merge brings in and links upstream's changelog at the merged commit.
+  upstream's entries. With the `ours` merge driver enabled, the merge keeps
+  it without a conflict. Add one entry under `[Unreleased]` that names what
+  the merge brings in and links upstream's changelog at the merged commit.
 - **Docs**: take upstream's new content and keep the fork's changes, which are
   mostly the pnpm commands, the fork's links and the Biome instructions.
   `docs/CURRENT-STATE.md` is upstream's running log, and upstream adds a
-  section at its top with each change; the fork changes little there, so
-  merges of it stay clean.
+  section at its top with each change. The fork edits it only where a fork
+  change alters what it says, and keeps upstream's npm commands, which work
+  as they are, so its conflicts stay rare and small.
 - **`.github/`**: `ci.yml` is upstream's workflow with the fork's changes:
   pnpm, newer pinned actions, lint, type-check, knip, coverage and a separate
   allocation-budget job. Take upstream's changes to it in their pnpm form and

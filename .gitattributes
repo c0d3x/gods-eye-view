@@ -18,3 +18,9 @@
 *.glb binary
 *.wav binary
 *.pbf binary
+
+# The fork keeps its own changelog, and an upstream merge leaves upstream's
+# entries out (docs/UPSTREAM-SYNC.md). The `ours` driver keeps the fork's
+# file without a conflict; enable it once per clone with
+# `git config merge.ours.driver true`.
+CHANGELOG.md merge=ours
