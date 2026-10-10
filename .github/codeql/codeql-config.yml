@@ -1,0 +1,7 @@
+# What CodeQL analyzes. Unit tests and the QA harnesses run against local,
+# fixed inputs, so their findings (substring URL checks in assertions, for
+# one) are not reachable by an attacker, and they reappear with every
+# upstream sync. The app, the server and the other scripts are analyzed.
+paths-ignore:
+  - '**/*.test.mjs'
+  - 'scripts/qa-*.mjs'
