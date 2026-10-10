@@ -245,6 +245,17 @@ test('default per-pack camera caps fit inside the default catalog cap', () => {
   );
 });
 
+test('DriveBC credit keeps no angle brackets, even from an unclosed tag', () => {
+  assert.equal(
+    driveBcImageCredit('Images courtesy of <b>TransLink</b> <script'),
+    'Images courtesy of TransLink script',
+  );
+  assert.equal(
+    driveBcImageCredit('Images courtesy of <<b>TransLink'),
+    'Images courtesy of TransLink',
+  );
+});
+
 test('DriveBC credit keeps partner attribution and drops operational notes', () => {
   assert.equal(
     driveBcImageCredit(

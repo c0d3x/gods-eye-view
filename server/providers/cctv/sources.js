@@ -722,6 +722,9 @@ export async function loadFintrafficSourcesFromOpenData() {
 export function driveBcImageCredit(raw) {
   const text = String(raw || '')
     .replace(/<[^>]*>/g, '')
+    // A tag left unclosed, or nested inside another, keeps a bracket; the
+    // credit is plain text, so none survive.
+    .replace(/[<>]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
   if (!text) return '';
