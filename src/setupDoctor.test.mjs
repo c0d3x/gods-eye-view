@@ -200,6 +200,13 @@ test('doctor resolves OpenSky auth mode with launcher-compatible precedence', ()
       }),
       'oauth',
     );
+    assert.equal(
+      resolveOpenSkyAuthMode({
+        environment: { OPENSKY_AUTH_MODE: 'basic' },
+        rootDir: root,
+      }),
+      'oauth',
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -227,28 +234,19 @@ test('doctor retains OAuth capability wording for a complete client pair', () =>
   );
 });
 
-test('doctor reports Basic mode without inferring runtime auth from OAuth credentials', () => {
+test('doctor reads the retired Basic and auto modes as oauth, as the proxy does', () => {
   const oauthCredentials = {
     OPENSKY_CLIENT_ID: { configured: true },
     OPENSKY_CLIENT_SECRET: { configured: true },
   };
-  for (const credentials of [{}, oauthCredentials]) {
+  for (const openSkyAuthMode of ['basic', 'auto']) {
     assert.equal(
-      buildCapabilitySummary(credentials, { openSkyAuthMode: 'basic' }).flights,
-      'OpenSky Basic mode selected (credential presence and validity not verified)',
+      buildCapabilitySummary({}, { openSkyAuthMode }).flights,
+      'OpenSky keyless anonymous access (rate-limited)',
     );
-  }
-});
-
-test('doctor reports auto mode without assuming its eventual credential choice', () => {
-  const oauthCredentials = {
-    OPENSKY_CLIENT_ID: { configured: true },
-    OPENSKY_CLIENT_SECRET: { configured: true },
-  };
-  for (const credentials of [{}, oauthCredentials]) {
     assert.equal(
-      buildCapabilitySummary(credentials, { openSkyAuthMode: 'auto' }).flights,
-      'OpenSky auto mode selected (runtime credential choice and validity not verified)',
+      buildCapabilitySummary(oauthCredentials, { openSkyAuthMode }).flights,
+      'OpenSky OAuth credentials present (runtime mode and validity not verified)',
     );
   }
 });

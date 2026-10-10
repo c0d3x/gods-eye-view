@@ -9,7 +9,9 @@ import { selectMapStartupRoute } from '../src/mapStartup.js';
 
 const ROOT = projectRoot(import.meta.url);
 const OPENSKY_AUTH_MODE_DEFAULT = 'oauth';
-const OPENSKY_AUTH_MODES = new Set(['basic', 'oauth', 'auto', 'anon']);
+// OpenSky accepts only OAuth client credentials, so the retired basic and auto
+// modes mean oauth, as they do in the proxy and the launcher.
+const OPENSKY_AUTH_MODES = new Set(['oauth', 'anon']);
 
 export const CREDENTIALS = Object.freeze([
   { name: 'GOOGLE_MAPS_API_KEY', label: 'Google Maps', keychain: [['google-maps-api', 'api-key'], ['google-maps-api', 'default'], ['google-maps-api', 'key']] },
@@ -156,15 +158,9 @@ export function buildCapabilitySummary(
   const openSkyMode = OPENSKY_AUTH_MODES.has(requestedOpenSkyMode)
     ? requestedOpenSkyMode
     : OPENSKY_AUTH_MODE_DEFAULT;
-  const flights = openSkyMode === 'anon'
-    ? 'OpenSky keyless anonymous access (rate-limited)'
-    : openSkyMode === 'basic'
-      ? 'OpenSky Basic mode selected (credential presence and validity not verified)'
-      : openSkyMode === 'auto'
-        ? 'OpenSky auto mode selected (runtime credential choice and validity not verified)'
-        : hasOAuthCredentials
-          ? 'OpenSky OAuth credentials present (runtime mode and validity not verified)'
-          : 'OpenSky keyless anonymous access (rate-limited)';
+  const flights = openSkyMode !== 'anon' && hasOAuthCredentials
+    ? 'OpenSky OAuth credentials present (runtime mode and validity not verified)'
+    : 'OpenSky keyless anonymous access (rate-limited)';
   const route = selectMapStartupRoute({
     googleApiKey: configured('GOOGLE_MAPS_API_KEY') ? 'configured' : '',
     cesiumToken: configured('CESIUM_ION_TOKEN') ? 'configured' : '',

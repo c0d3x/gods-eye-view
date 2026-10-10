@@ -65,8 +65,6 @@ test('OpenSky state and track routes share tokens, retain cache and use regional
     OPENSKY_CLIENT_ID: 'fixture-client',
     OPENSKY_CLIENT_SECRET: 'fixture-secret',
     OPENSKY_AUTH_MODE: 'oauth',
-    OPENSKY_USERNAME: undefined,
-    OPENSKY_PASSWORD: undefined,
   });
   let now = Date.now();
   t.mock.method(Date, 'now', () => now);
@@ -144,8 +142,6 @@ test('OpenSky global snapshot attempts are time-limited, retried once, then fall
     OPENSKY_CLIENT_ID: undefined,
     OPENSKY_CLIENT_SECRET: undefined,
     OPENSKY_AUTH_MODE: 'anon',
-    OPENSKY_USERNAME: undefined,
-    OPENSKY_PASSWORD: undefined,
   });
   t.mock.method(console, 'warn', () => {});
   const timedOut = () =>
