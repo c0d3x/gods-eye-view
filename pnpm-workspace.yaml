@@ -1,0 +1,19 @@
+# pnpm settings for this single-package repository.
+#
+# pnpm fails the install when a dependency has an install script that is not
+# reviewed here. Record each decision when a dependency adds one.
+allowBuilds:
+  # Vite 6's bundler. Its postinstall only checks the platform binary that
+  # pnpm already installs as an optional dependency.
+  esbuild: false
+  # Optional macOS file watcher; its bundled binary is used without node-gyp.
+  fsevents: false
+  # Installs the Git hooks in lefthook.yml (skipped when CI is set).
+  lefthook: true
+  # Would download Chrome on every install, though only the QA harnesses use
+  # it. `pnpm run qa:setup` downloads it for them.
+  puppeteer: false
+# Upstream's tests import @cesium/engine, which npm hoists from cesium's own
+# dependencies. Hoisting it here keeps those tests unchanged.
+publicHoistPattern:
+  - '@cesium/engine'

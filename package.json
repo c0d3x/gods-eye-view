@@ -17,6 +17,7 @@
   "engines": {
     "node": ">=24.14.0 <25 || >=26 <27"
   },
+  "packageManager": "pnpm@11.26.0",
   "keywords": [
     "cesium",
     "3d-globe",
