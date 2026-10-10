@@ -11,13 +11,21 @@ This guide describes how, and the rules that keep each merge small.
   live in fork-owned modules, with small edits at upstream's call sites, so a
   merge rarely meets a fork change on the same lines. Examples:
   `src/data/projectUrl.js` (the contact point the proxies send),
-  `build/cesium.js` (the Cesium Vite plugin) and `biome-baseline.json`.
+  `build/cesium.js` (the Cesium Vite plugin) and the three baselines below.
   `git diff --stat upstream/main main` lists every file the fork changes; keep
   that list short.
 - **The fork's tooling sits beside upstream's.** The fork installs with pnpm
   instead of npm, lints and formats with Biome, runs Biome on staged files
-  through a Lefthook pre-commit hook, and builds with Vite 8 and its own
-  Cesium plugin. Upstream still formats with Prettier through
+  through a Lefthook pre-commit hook, type-checks in strict mode, finds unused
+  code with knip, and builds with Vite 8 and its own Cesium plugin.
+  Upstream's code is not held to Biome, strict TypeScript or knip, and
+  changing it to pass would make every sync conflict, so three baselines
+  record what it fails today: `biome-baseline.json` switches off each Biome
+  check for exactly the upstream files that fail it, `typecheck-baseline.json`
+  lists the files with type errors, and `knip-baseline.json` switches off, per
+  file, the issue types knip reports. Every other file, including each fork
+  module, is held to all of the checks. Upstream still formats with Prettier
+  through
   `scripts/format.mjs`; that script, `scripts/format-scope.json`,
   `scripts/format-runtime.json`, `.prettierrc.json` and `.prettierignore` stay
   in place, untouched, and the fork's scripts do not run them.
@@ -71,8 +79,9 @@ fork changes, and then fast-forwarded onto `main`.
   `pnpm-lock.yaml` up to date with upstream's `package.json`, and commit the
   lockfile with the merge.
 - **`package.json`**: take upstream's new dependencies, scripts and exports.
-  Keep the fork's `homepage`, `repository` and `bugs`, `packageManager`, the
-  Biome `lint`, `format` and `format:check` scripts, Vite 8 without
+  Keep the fork's `homepage`, `repository` and `bugs`, `packageManager`, its
+  scripts (`lint`, `format` and `format:check` through Biome, `baseline`,
+  `typecheck`, `knip`, `test:allocations` and `test:coverage`), Vite 8 without
   `vite-plugin-cesium`, and Cesium pinned at exactly `1.138.0`. Check
   `version` as well: an upstream release bump merges in like any other change,
   and the fork's version is its own.
@@ -85,7 +94,8 @@ fork changes, and then fast-forwarded onto `main`.
   which patches Cesium's shaders and switches itself on only for the version
   in `CYBER_SONAR_CESIUM_VERSION` (`src/cyberSonarGpu.js`). Follow upstream
   when it moves Cesium and that constant together; otherwise upgrade Cesium
-  only with a revalidation of those patches.
+  only with a revalidation of those patches. Dependabot does not offer Cesium
+  upgrades for the same reason.
 - **`build/vite.js`**: upstream loads Cesium with `vite-plugin-cesium`, and the
   fork with `build/cesium.js`. Keep the fork's plugin when upstream edits
   that part.
@@ -98,23 +108,31 @@ fork changes, and then fast-forwarded onto `main`.
   `docs/CURRENT-STATE.md` is upstream's running log, and upstream adds a
   section at its top with each change; the fork changes little there, so
   merges of it stay clean.
-- **`.github/`**: the workflows, code owners and issue forms are the fork's.
-  When upstream changes them, keep the fork's version and carry over anything
-  worth having, such as a new check, in its pnpm form.
+- **`.github/`**: `ci.yml` is upstream's workflow with the fork's changes:
+  pnpm, newer pinned actions, lint, type-check, knip, coverage and a separate
+  allocation-budget job. Take upstream's changes to it in their pnpm form and
+  keep the fork's. The Release, CodeQL, Scorecard, dependency review and
+  nightly QA workflows, Dependabot, the code owners and the task issue form
+  are the fork's own; keep them as they are. Upstream's other issue forms
+  carry the fork's links and pnpm commands.
 
 ## After the merge
 
-1. Run `pnpm run lint:baseline`. It regenerates `biome-baseline.json`, which
-   switches off each Biome check for exactly the upstream files that fail it,
-   so upstream's new code is covered without reformatting it. Read the diff:
-   only upstream files belong in the baseline. A fork file there means a fork
-   change breaks a rule; fix that instead.
+1. Run `pnpm run baseline`. It regenerates the three baselines, so upstream's
+   new code is covered without changing it: `biome-baseline.json` through
+   `scripts/biome-baseline.mjs`, `typecheck-baseline.json` through
+   `scripts/typecheck.mjs --update` and `knip-baseline.json` through
+   `scripts/knip-baseline.mjs`. Read the diff: only upstream files belong in
+   a baseline. A fork file there means a fork change breaks a check; fix that
+   instead.
 2. Run the checks, and fix what fails before pushing:
 
    ```bash
    pnpm test
    pnpm run lint
    pnpm run format:check
+   pnpm run typecheck
+   pnpm run knip
    pnpm run build
    pnpm run check:boundaries
    ```

@@ -39,9 +39,9 @@ Open `http://localhost:4173`.
 
 ## Running tests
 
-Before sending a PR run `pnpm run build`, `pnpm test`, and `pnpm run test:track` (dev server must be up) — **all three must stay green.** Also run `pnpm run lint`, `pnpm run format:check` and `pnpm run check:boundaries`.
+Before sending a PR run `pnpm run build`, `pnpm test`, and `pnpm run test:track` (dev server must be up) — **all three must stay green.** Also run `pnpm run lint`, `pnpm run format:check`, `pnpm run typecheck`, `pnpm run knip` and `pnpm run check:boundaries`; CI runs them too.
 
-- `pnpm test` runs the unit suite, every `*.test.mjs` file under `src/`, and then the allocation budgets, which only run on Node 24.
+- `pnpm test` runs the unit suite, every `*.test.mjs` file under `src/` and `server/`, and then the allocation budgets, which only run on Node 24. `pnpm run test:allocations` runs only the budgets, and `pnpm run test:coverage` runs the suite without them and writes a coverage report to `coverage/`.
 - To run one file, call Node's test runner on it: `node --test src/setupDoctor.test.mjs`. Add `--test-name-pattern="OpenSky"` to run only the tests whose names match.
 
 ### QA harnesses
@@ -52,7 +52,9 @@ Before sending a PR run `pnpm run build`, `pnpm test`, and `pnpm run test:track`
 2. Start the dev server with `pnpm run dev`.
 3. Run `pnpm run test:track`, or a single harness such as `node scripts/qa-application.mjs`.
 
-Harnesses find the server in different ways, such as `QA_BASE_URL`, a `--url` argument or a positional URL, and most default to `http://localhost:4173`; each entrypoint's header says which.
+Harnesses find the server in different ways, such as `QA_BASE_URL`, a `--url` argument or a positional URL, and most default to `http://localhost:4173`; each entrypoint's header says which. The QA workflow runs the track regression and a set of harnesses every night; start it by hand from the Actions tab to name other harnesses.
+
+Besides CI, pushes to `main` and pull requests run dependency review, and CodeQL and OpenSSF Scorecard scan the repository every week.
 
 ## Checking a built app locally
 
@@ -158,7 +160,8 @@ The highest-leverage places to jump in:
 ## Formatting and reusable components
 
 Run `pnpm run format` before submitting changes, then `pnpm run format:check`,
-`pnpm run lint` and `pnpm run check:boundaries`. Formatting and linting use
+`pnpm run lint`, `pnpm run typecheck`, `pnpm run knip` and
+`pnpm run check:boundaries`. Formatting and linting use
 Biome, with its recommended lint rules and sorted imports, on the JavaScript
 and config JSON that `files.includes` in `biome.json` names by glob, so new
 modules and tests are covered without a list to update. `pnpm install` also
@@ -166,16 +169,31 @@ installs a Lefthook pre-commit hook that formats, lints and sorts the imports
 of staged files; set `LEFTHOOK=0` to skip it for one commit. Keep mechanical
 formatting separate from behavioral edits.
 
-Upstream's code is formatted with Prettier and was never linted with Biome,
-and the fork keeps upstream's files byte-identical so upstream syncs stay
-small. `biome-baseline.json`, which `biome.json` extends, switches off each
-Biome check for exactly the upstream files that fail it today; Biome's other
-checks still apply to those files, and every other file is held to all of
-Biome's rules. `pnpm run lint:baseline` regenerates the baseline after an
-upstream merge ([docs/UPSTREAM-SYNC.md](docs/UPSTREAM-SYNC.md#after-the-merge)).
-Fork changes must not grow it: fix a new finding instead of regenerating the
-baseline. When you edit an upstream file that the baseline
-exempts from formatting, keep its Prettier style
+`pnpm run typecheck` runs TypeScript in strict mode over the JSDoc types of
+the browser code (`jsconfig.json`) and the server code
+(`server/jsconfig.json`), tests excluded: every parameter needs a JSDoc type,
+a value that may be null or undefined has to be handled before it is used, and
+a caught error has to be checked before it is read. `pnpm run knip` fails on
+files, exports and dependencies that nothing uses; delete dead code, or tag an
+export kept on purpose with `/** @public */`.
+
+Upstream's code is formatted with Prettier and is not held to Biome, strict
+TypeScript or knip, and the fork keeps upstream's files byte-identical so
+upstream syncs stay small. Three baselines hold upstream's
+code to what it passes today:
+
+- `biome-baseline.json`, which `biome.json` extends, switches off each Biome
+  check for exactly the upstream files that fail it; Biome's other checks
+  still apply to those files.
+- `typecheck-baseline.json` lists the files that have type errors.
+- `knip-baseline.json` switches off, per file, the issue types knip reports.
+
+Every other file, including each fork module, is held to all of the checks.
+`pnpm run baseline` regenerates the three baselines after an upstream merge
+([docs/UPSTREAM-SYNC.md](docs/UPSTREAM-SYNC.md#after-the-merge)). Fork changes
+must not grow them: fix a new finding instead of regenerating a baseline. When
+you edit an upstream file that the Biome baseline exempts from formatting,
+keep its Prettier style
 (`node_modules/.bin/prettier --check <file>` confirms it). Upstream's own
 Prettier script, `scripts/format.mjs`, and its `scripts/format-scope.json` and
 `scripts/format-runtime.json` lists stay in place, unchanged; this fork's
