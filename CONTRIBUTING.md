@@ -172,8 +172,9 @@ small. `biome-baseline.json`, which `biome.json` extends, switches off each
 Biome check for exactly the upstream files that fail it today; Biome's other
 checks still apply to those files, and every other file is held to all of
 Biome's rules. `pnpm run lint:baseline` regenerates the baseline after an
-upstream merge. Fork changes must not grow it: fix a new finding instead of
-regenerating the baseline. When you edit an upstream file that the baseline
+upstream merge ([docs/UPSTREAM-SYNC.md](docs/UPSTREAM-SYNC.md#after-the-merge)).
+Fork changes must not grow it: fix a new finding instead of regenerating the
+baseline. When you edit an upstream file that the baseline
 exempts from formatting, keep its Prettier style
 (`node_modules/.bin/prettier --check <file>` confirms it). Upstream's own
 Prettier script, `scripts/format.mjs`, and its `scripts/format-scope.json` and

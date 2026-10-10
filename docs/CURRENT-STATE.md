@@ -3026,6 +3026,10 @@ Historical planning documents may not match runtime behavior.
   identity, a fork of `bilawalsidhu/gods-eye-view`. Runtime behavior is defined
   by this document and the current source tree rather than historical branch
   notes.
+- This file is upstream's running log: upstream adds a section at its top with
+  each change, and the fork merges it with as few edits as possible (see
+  [upstream sync](UPSTREAM-SYNC.md)). The fork's own changes are recorded in
+  `CHANGELOG.md`.
 
 ## Runtime Stack
 
