@@ -9,6 +9,11 @@ import {
   reduceTrafficSyncFeedback,
 } from '../loadingFeedback.js';
 import { setSplitFlapText, disposeSplitFlap } from '../splitFlap.js';
+import {
+  isKeySetupAvailable,
+  keyRequiredDetail,
+  requestKeySetup,
+} from '../keySetupRequest.js';
 export class ShellFeedback {
   constructor({ readLayers }) {
     this.readLayers = readLayers;
@@ -31,6 +36,15 @@ export class ShellFeedback {
     this._globalLoadingLabel = document.getElementById('global-loading-label');
     this._globalLoadingDetail = document.getElementById(
       'global-loading-detail',
+    );
+    // KEY REQUIRED's ADD KEY button opens Provider Settings (keySetup.js).
+    this._globalLoadingAction = document.getElementById(
+      'global-loading-action',
+    );
+    this._onGlobalLoadingAction = () => requestKeySetup(document);
+    this._globalLoadingAction?.addEventListener(
+      'click',
+      this._onGlobalLoadingAction,
     );
     this._trafficSyncChip = document.getElementById('traffic-sync-chip');
     this._trafficSyncLabel = document.getElementById('traffic-sync-label');
@@ -121,6 +135,10 @@ export class ShellFeedback {
       this._armLoadingFeedbackTicker();
     }
     this._globalLoadingStatus.hidden = !presentation;
+    // The button can only help where Provider Settings exists.
+    if (this._globalLoadingAction)
+      this._globalLoadingAction.hidden =
+        presentation?.state !== 'needs-key' || !isKeySetupAvailable(document);
     if (!presentation) {
       delete this._globalLoadingStatus.dataset.state;
       return;
@@ -132,7 +150,10 @@ export class ShellFeedback {
     // live layer roster inside an ellipsised, width-capped span — flapping a
     // list that churns as layers join would be noise, not delight.
     setSplitFlapText(this._globalLoadingLabel, presentation.label);
-    this._globalLoadingDetail.textContent = presentation.detail;
+    this._globalLoadingDetail.textContent =
+      presentation.state === 'needs-key'
+        ? keyRequiredDetail(presentation.requiresKeyId)
+        : presentation.detail;
   }
 
   _showGlobalStatusNotice(message, options = {}) {
@@ -216,6 +237,10 @@ export class ShellFeedback {
         this._loadingVisibilityHandler,
       );
     this._loadingVisibilityHandler = null;
+    this._globalLoadingAction?.removeEventListener(
+      'click',
+      this._onGlobalLoadingAction,
+    );
     disposeSplitFlap(this._globalLoadingLabel);
     disposeSplitFlap(this._trafficSyncLabel);
     this._toast?.classList.remove('visible');

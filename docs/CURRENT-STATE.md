@@ -1460,9 +1460,10 @@ fetching, trailing-24-hour filtering and partial-success caching are unchanged.
 > not recognise. The earthquakes half
 > still delivers in full. The shared loading reducer now treats an explicitly
 > declared missing optional key as a configured terminal state rather than a
-> failed multi-layer mission, so the global chip completes without showing
-> `LOAD FAILED`. A genuine lifecycle or fetch failure still retains failure
-> priority.
+> failed multi-layer mission, so the global chip ends the load as
+> `KEY REQUIRED`, naming the key, rather than `LOAD FAILED`; on a local dev
+> server its ADD KEY button opens Provider Settings. A genuine lifecycle or
+> fetch failure still retains failure priority.
 >
 > **Acceptance changed with that ruling (2026-08-23).** `qa-firstrun` no longer
 > asserts "a keyless Environmental never shows a failure chip" — that stopped

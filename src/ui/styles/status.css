@@ -161,6 +161,30 @@
 #global-loading-status[data-state='cancelled'] #global-loading-detail {
   color: #ffd488;
 }
+#global-loading-status[data-state='needs-key'] {
+  border-color: rgba(255, 212, 136, 0.55);
+  /* The one state with a control in it: the ADD KEY button. */
+  pointer-events: auto;
+}
+#global-loading-status[data-state='needs-key'] #global-loading-label,
+#global-loading-status[data-state='needs-key'] #global-loading-detail {
+  color: #ffd488;
+}
+#global-loading-action {
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 4px;
+  background: #ffd488;
+  color: #03101a;
+  font: inherit;
+  font-weight: 700;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+#global-loading-action[hidden] {
+  display: none;
+}
 #global-loading-status[data-state='acquiring'] {
   border-color: rgba(0, 212, 255, 0.42);
   box-shadow:

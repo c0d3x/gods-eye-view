@@ -60,6 +60,8 @@ export function normalizeLayerLoading(layer = {}) {
     error,
     unavailable,
     keyRequired,
+    // Key-registry id of the key a keyless layer waits for (lifecycle getAll()).
+    requiresKeyId: layer.requiresKeyId ? String(layer.requiresKeyId) : null,
     degraded,
     cameraRetry:
       layer.id === 'alpr-cameras' && layer.enabled && !disabling
@@ -82,16 +84,27 @@ export function normalizeLayerLoading(layer = {}) {
   };
 }
 
+/**
+ * What one participant's stats say about the load. A layer that only lacks
+ * its API key needs a key, which is not a failure, even though its own row
+ * reports KEY REQUIRED as an error; an error or an unavailable feed is.
+ */
+function participantOutcome(record) {
+  if (record.keyRequired) return 'needs-key';
+  if (record.error || record.unavailable) return 'error';
+  return null;
+}
+
 function terminalFromParticipantStats(summary, participantIds) {
   if (!participantIds?.length) return null;
   const participants = new Set(participantIds);
-  return summary.records.some(
-    (record) =>
-      participants.has(record.id) &&
-      (record.error || record.unavailable || record.keyRequired),
-  )
-    ? 'error'
-    : null;
+  let outcome = null;
+  for (const record of summary.records) {
+    if (participants.has(record.id)) {
+      outcome = mergeTerminalOutcome(outcome, participantOutcome(record));
+    }
+  }
+  return outcome;
 }
 
 /** Aggregate all manager layers without changing their lifecycle authority. */
@@ -195,7 +208,7 @@ export function presentGlobalLoadingStatus(
     summary,
     nowMs,
   );
-  if (['error', 'retry'].includes(loadingPresentation?.state))
+  if (['error', 'needs-key', 'retry'].includes(loadingPresentation?.state))
     return loadingPresentation;
   return presentGlobalStatusNotice(notice, nowMs) || loadingPresentation;
 }
@@ -281,7 +294,9 @@ function terminalFromEvent(event) {
 }
 
 function mergeTerminalOutcome(current, next) {
-  const severity = { complete: 1, cancelled: 2, error: 3 };
+  // A missing key outranks completion and cancellation, but a real failure
+  // anywhere in the same load still reads LOAD FAILED.
+  const severity = { complete: 1, cancelled: 2, 'needs-key': 3, error: 4 };
   if (!next) return current || null;
   if (!current || severity[next] > severity[current]) return next;
   return current;
@@ -336,7 +351,7 @@ export function reduceLoadingFeedback(previous, summary, nowMs, event = null) {
     const eventLayerId = String(event?.layerId || '');
     const eventParticipates =
       eventLayerId && state.activeIds.includes(eventLayerId);
-    const terminal =
+    let terminal =
       mergeTerminalOutcome(
         mergeTerminalOutcome(
           state.batchOutcome,
@@ -344,11 +359,16 @@ export function reduceLoadingFeedback(previous, summary, nowMs, event = null) {
         ),
         eventParticipates ? terminalFromEvent(event) : null,
       ) || 'complete';
+    // Turning a keyless layer off neither fails nor needs a key.
+    if (state.operation === 'disabling' && terminal === 'needs-key') {
+      terminal = 'complete';
+    }
     const wasVisible = state.visible || now >= state.showAt;
     if (!wasVisible && terminal === 'complete')
       return createLoadingFeedbackState();
+    // KEY REQUIRED carries a button, so it stays as long as a failure does.
     const dwell =
-      terminal === 'error'
+      terminal === 'error' || terminal === 'needs-key'
         ? LOADING_FAILURE_DWELL_MS
         : LOADING_TERMINAL_DWELL_MS;
     return {
@@ -419,6 +439,20 @@ export function presentLoadingFeedback(state, summary, nowMs) {
   }
   if (!state?.visible) return null;
   if (state.phase === 'terminal') {
+    if (state.terminal === 'needs-key') {
+      // Which key is missing; the shell names it from the key registry and
+      // offers the way into Provider Settings.
+      const needsKey = summary.records.find(
+        (record) =>
+          record.keyRequired && (state.activeIds || []).includes(record.id),
+      );
+      return {
+        state: 'needs-key',
+        label: 'KEY REQUIRED',
+        detail: '',
+        requiresKeyId: needsKey?.requiresKeyId || null,
+      };
+    }
     const labels = {
       complete: 'LOAD COMPLETE',
       cancelled: 'LOAD CANCELLED',

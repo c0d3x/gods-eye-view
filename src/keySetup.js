@@ -1,3 +1,4 @@
+import { KEY_SETUP_OPEN_EVENT } from './keySetupRequest.js';
 import { createSurfaceKeyboard } from './ui/surfaceKeyboard.js';
 import {
   readStoredCloudVoiceAuthMode,
@@ -448,6 +449,10 @@ export async function initKeySetup({
   };
 
   chip.addEventListener('click', openDialog);
+  // A KEY REQUIRED banner offers the same way in (src/ui/shellFeedback.js).
+  documentRef.addEventListener?.(KEY_SETUP_OPEN_EVENT, openDialog, {
+    signal: lifetime.signal,
+  });
   closeButton?.addEventListener('click', close);
   applyButton?.addEventListener('click', onApply);
   // Remove buttons are rendered per row; delegate so re-renders stay wired.
