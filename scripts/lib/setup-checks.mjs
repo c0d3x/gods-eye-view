@@ -328,7 +328,7 @@ export async function checkQaBrowser({
     level: 'info',
     summary:
       'Chrome for Testing is not installed; only pnpm run test:track and the QA scripts need it',
-    hint: 'Run pnpm exec puppeteer browsers install chrome.',
+    hint: 'Run pnpm run qa:setup.',
   };
 }
 

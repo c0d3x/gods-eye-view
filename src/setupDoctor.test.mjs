@@ -756,7 +756,7 @@ test('doctor finds the Chrome the QA scripts launch', async () => {
     absent.summary,
     /only pnpm run test:track and the QA scripts need it/,
   );
-  assert.equal(absent.hint, 'Run pnpm exec puppeteer browsers install chrome.');
+  assert.equal(absent.hint, 'Run pnpm run qa:setup.');
   const withoutPuppeteer = await checkQaBrowser({
     environment: {},
     loadPuppeteer: async () => {
