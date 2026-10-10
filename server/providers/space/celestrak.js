@@ -2,6 +2,7 @@ import path from 'node:path';
 import { promises as fsp } from 'node:fs';
 import { celestrakTleUrl } from '../../../src/data/spaceProviderRequests.js';
 import { PROJECT_URL } from '../../../src/data/projectUrl.js';
+import { readResponseTextCapped } from '../common/http.js';
 
 /**
  * Vite plugin: CelesTrak TLE proxy.
@@ -60,7 +61,8 @@ export function celestrakProxy() {
       },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const body = await res.text();
+    // Every active TLE is about 2 MB.
+    const body = await readResponseTextCapped(res, 16 * 1024 * 1024);
     // An upstream error page parses to zero TLEs — treat as failure, keep cache.
     if (!/^1 /m.test(body)) throw new Error('no TLE lines in response');
     return { at: Date.now(), body };

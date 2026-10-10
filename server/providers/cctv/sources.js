@@ -56,6 +56,7 @@ import {
   CALGARY_DOWNTOWN,
   CALGARY_MAX_CATALOG_BYTES,
   CCTV_SOURCE_FETCH_TIMEOUT_MS,
+  CCTV_SOURCE_LIST_MAX_BYTES,
   DELDOT_CCTV_URL,
   DEFAULT_DELDOT_MAX_SOURCES,
   DELDOT_ANCHORS,
@@ -88,7 +89,10 @@ import {
   prioritizeSources,
 } from './normalize.js';
 import { directionToHeading } from '../../../src/data/directionText.js';
-import { readResponseJsonCapped } from '../common/http.js';
+import {
+  readResponseJsonCapped,
+  readResponseTextCapped,
+} from '../common/http.js';
 /**
  * Fetch and parse Austin traffic camera records from the city Open Data portal.
  *
@@ -110,7 +114,10 @@ export async function loadAustinSourcesFromOpenData() {
       console.warn('[CCTV] Austin source download failed:', resp.status);
       return [];
     }
-    const payload = await resp.json();
+    const payload = await readResponseJsonCapped(
+      resp,
+      CCTV_SOURCE_LIST_MAX_BYTES,
+    );
     const columns = Array.isArray(payload?.meta?.view?.columns)
       ? payload.meta.view.columns
       : [];
@@ -219,7 +226,10 @@ export async function loadCaltransSourcesFromOpenData() {
         signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS),
       });
       if (!resp.ok) throw new Error(`D${district} HTTP ${resp.status}`);
-      const payload = await resp.json();
+      const payload = await readResponseJsonCapped(
+        resp,
+        CCTV_SOURCE_LIST_MAX_BYTES,
+      );
       const rows = Array.isArray(payload?.data) ? payload.data : [];
       return { district, rows };
     }),
@@ -337,7 +347,10 @@ export async function loadTflSourcesFromOpenData() {
       console.warn('[CCTV] TfL JamCam download failed:', resp.status);
       return [];
     }
-    const places = await resp.json();
+    const places = await readResponseJsonCapped(
+      resp,
+      CCTV_SOURCE_LIST_MAX_BYTES,
+    );
     if (!Array.isArray(places)) return [];
 
     const cameras = [];
@@ -481,7 +494,7 @@ export async function loadOntarioSourcesFromOpenData() {
       console.warn('[CCTV] Ontario 511 camera download failed:', resp.status);
       return [];
     }
-    const rows = await resp.json();
+    const rows = await readResponseJsonCapped(resp, CCTV_SOURCE_LIST_MAX_BYTES);
     if (!Array.isArray(rows)) return [];
 
     const cameras = [];
@@ -608,7 +621,10 @@ export async function loadFintrafficSourcesFromOpenData() {
       console.warn('[CCTV] Fintraffic station download failed:', resp.status);
       return [];
     }
-    const payload = await resp.json();
+    const payload = await readResponseJsonCapped(
+      resp,
+      CCTV_SOURCE_LIST_MAX_BYTES,
+    );
     const features = Array.isArray(payload?.features) ? payload.features : [];
     if (!features.length) return [];
 
@@ -749,7 +765,7 @@ export async function loadDriveBcSourcesFromOpenData() {
       console.warn('[CCTV] DriveBC camera download failed:', resp.status);
       return [];
     }
-    const rows = await resp.json();
+    const rows = await readResponseJsonCapped(resp, CCTV_SOURCE_LIST_MAX_BYTES);
     if (!Array.isArray(rows)) return [];
 
     const cameras = [];
@@ -945,7 +961,10 @@ export async function loadTxdotSourcesFromOpenData() {
         signal: AbortSignal.timeout(CCTV_SOURCE_FETCH_TIMEOUT_MS),
       });
       if (!resp.ok) throw new Error(`${district} HTTP ${resp.status}`);
-      return { district, payload: await resp.json() };
+      return {
+        district,
+        payload: await readResponseJsonCapped(resp, CCTV_SOURCE_LIST_MAX_BYTES),
+      };
     }),
   );
 
@@ -1171,8 +1190,8 @@ export async function loadTarkteeSourcesFromDatex() {
       return [];
     }
     const [locXml, imgXml] = await Promise.all([
-      locResp.text(),
-      imgResp.text(),
+      readResponseTextCapped(locResp, CCTV_SOURCE_LIST_MAX_BYTES),
+      readResponseTextCapped(imgResp, CCTV_SOURCE_LIST_MAX_BYTES),
     ]);
     const locations = parseTarkteeDatexLocations(locXml);
     const images = parseTarkteeDatexImages(imgXml);
@@ -1387,7 +1406,7 @@ export async function loadNswSourcesFromOpenData() {
       console.warn('[CCTV] NSW camera download failed:', resp.status);
       return [];
     }
-    const body = await resp.json();
+    const body = await readResponseJsonCapped(resp, CCTV_SOURCE_LIST_MAX_BYTES);
     const features = Array.isArray(body?.features) ? body.features : [];
     const cameras = features.map(nswCameraToSource).filter(Boolean);
     const maxRaw = Number(

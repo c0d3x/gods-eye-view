@@ -1,4 +1,5 @@
 import { Readable } from 'node:stream';
+import { readResponseBytesCapped } from '../common/http.js';
 import { hashSeed, escapeXml } from './normalize.js';
 import {
   CCTV_FRAME_FETCH_TIMEOUT_MS,
@@ -166,8 +167,12 @@ export async function proxyMediaResponse(
 
   const stream = toReadable(upstream.body);
   if (!stream) {
-    const buf = Buffer.from(await upstream.arrayBuffer());
-    res.end(buf);
+    // The headers are out, so a body past the cap can only end the response.
+    const bytes = await readResponseBytesCapped(
+      upstream,
+      CCTV_MEDIA_MAX_BODY_BYTES,
+    ).catch(() => null);
+    res.end(bytes ?? undefined);
     return;
   }
 

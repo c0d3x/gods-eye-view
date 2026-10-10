@@ -2,6 +2,7 @@ import { normalizeAdsbLolPointResponse } from '../../../src/data/adsbLolFallback
 import {
   coalesceProxyRequest,
   readResponseJsonCapped,
+  readResponseTextCapped,
 } from '../common/http.js';
 import { requiredFiniteQueryNumber } from '../common/query.js';
 // ---------------------------------------------------------------------------
@@ -45,7 +46,9 @@ async function fetchOpenSkyStates(headers) {
         headers,
         signal: AbortSignal.timeout(OPENSKY_ATTEMPT_TIMEOUT_MS),
       });
-      return { upstream, body: await upstream.text() };
+      // The global snapshot is a few MB.
+      const body = await readResponseTextCapped(upstream, 32 * 1024 * 1024);
+      return { upstream, body };
     } catch (error) {
       if (attempt >= 2) throw error;
       console.warn(
@@ -150,7 +153,7 @@ export async function getOpenSkyToken() {
 
       let data = null;
       try {
-        data = await res.json();
+        data = await readResponseJsonCapped(res, 64 * 1024);
       } catch {
         data = null;
       }

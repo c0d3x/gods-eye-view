@@ -103,7 +103,8 @@ export function terrainRetryAfterMs(value, nowMs = Date.now()) {
  * 429, and 5xx retry; other HTTP failures and malformed successes fail fast.
  * Retry sleeps and retry attempts share a 10s budget after attempt one.
  *
- * Dependencies are injectable for deterministic offline tests.
+ * Dependencies are injectable for deterministic offline tests. The dev server
+ * passes a `readJson` that caps the response size.
  * @param {Array<[number, number]>} points
  * @param {object} [options]
  * @returns {Promise<Array<object>>}
@@ -116,6 +117,7 @@ export async function fetchTerrainChunkWithRetry(
     random = Math.random,
     now = Date.now,
     makeSignal = (timeoutMs) => AbortSignal.timeout(timeoutMs),
+    readJson = (res) => res.json(),
     attemptTimeoutMs = 30_000,
     retryBudgetMs = TERRAIN_RETRY_BUDGET_MS,
     maxAttempts = TERRAIN_MAX_ATTEMPTS,
@@ -143,7 +145,7 @@ export async function fetchTerrainChunkWithRetry(
         error.retryAfter = res.headers?.get?.('retry-after') ?? null;
         throw error;
       }
-      const json = await res.json();
+      const json = await readJson(res);
       if (!Array.isArray(json?.results)) {
         const error = new Error(
           'malformed upstream response (no results array)',

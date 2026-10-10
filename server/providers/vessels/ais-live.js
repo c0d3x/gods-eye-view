@@ -259,7 +259,8 @@ function aisAdapter() {
     createSocket: (url) => {
       const WebSocketCtor = aisWebSocketImpl();
       if (!WebSocketCtor) throw new Error('ws transport unavailable');
-      return new WebSocketCtor(url);
+      // AISStream messages are a few KB; ws would otherwise accept 100 MiB.
+      return new WebSocketCtor(url, { maxPayload: 1 << 20 });
     },
     resolveUrl: () => aisWatchdogPolicy().url,
     buildSubscription: aisStreamSubscription,

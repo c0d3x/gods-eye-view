@@ -7,6 +7,7 @@ import {
   upsertDotenvValues,
 } from '../../src/keySetupCore.mjs';
 import { defaultSourceRoot } from '../providers/common/source-root.js';
+import { readRequestBody } from '../providers/common/request.js';
 import path from 'node:path';
 import { readEnvironmentSource as readPinokioEnvironmentSource } from '../../scripts/pinokio-environment.mjs';
 import fs from 'node:fs';
@@ -259,18 +260,14 @@ function keySetupEndpoint({ sourceRoot = defaultSourceRoot } = {}) {
         const admission = admit(req);
         if (!admission.ok)
           return respond(res, admission.status, { error: admission.error });
-        let body = '';
-        let overflowed = false;
-        req.on('data', (chunk) => {
-          body += chunk;
-          if (body.length > 8192) {
-            overflowed = true;
-            req.destroy();
-          }
-        });
-        req.on('end', () => {
-          if (overflowed)
-            return respond(res, 413, { error: 'Request too large' });
+        // readRequestBody keeps draining past the cap, so the 413 reaches the
+        // client. Destroying the request reset the connection before any reply.
+        const refuseOversized = (error) => {
+          if (error?.code !== 'BODY_TOO_LARGE') return; // the client went away
+          res.setHeader('Connection', 'close');
+          respond(res, 413, { error: 'Request too large' });
+        };
+        readRequestBody(req, 8192).then((body) => {
           let parsed;
           try {
             parsed = JSON.parse(body || '{}');
@@ -335,7 +332,7 @@ function keySetupEndpoint({ sourceRoot = defaultSourceRoot } = {}) {
               );
             });
           }, 250);
-        });
+        }, refuseOversized);
       });
     },
   };

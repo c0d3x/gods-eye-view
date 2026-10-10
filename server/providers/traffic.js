@@ -8,6 +8,7 @@ import {
   isOverBudget as isTomTomOverBudget,
 } from '../../src/data/tomtomTiles.js';
 import { createCachePruner } from './common/disk-cache.js';
+import { readResponseBytesCapped } from './common/http.js';
 
 /**
  * Prunes .gev-cache/tomtom/, which gains a file per tile. A tile is fresh for
@@ -162,7 +163,9 @@ export function tomtomProxy() {
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const buf = Buffer.from(await res.arrayBuffer());
+    // A vector tile is tens of KB.
+    const bytes = await readResponseBytesCapped(res, 4 * 1024 * 1024);
+    const buf = Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     if (buf.length === 0) throw new Error('empty tile body');
     return buf;
   }

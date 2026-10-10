@@ -1,9 +1,13 @@
 import path from 'node:path';
 import { promises as fsp } from 'node:fs';
 import { createBoundedCache } from '../common/bounded-cache.js';
+import { readResponseJsonCapped } from '../common/http.js';
 
 /** Routes and aircraft each kept by the adsbdb proxy; clients choose the keys. */
 export const ADSBDB_CACHE_MAX_ENTRIES = 5_000;
+
+/** Largest adsbdb answer read; a route or an aircraft is a few KB. */
+const ADSBDB_MAX_BYTES = 256 * 1024;
 
 /**
  * adsbdb.com enrichment proxy: callsign → route (airline + origin/destination
@@ -101,10 +105,12 @@ export function adsbdbProxy(options = {}) {
                 : `https://api.adsbdb.com/v0/aircraft/${encodeURIComponent(key)}`;
             const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
             if (res.ok) {
+              const payload = await readResponseJsonCapped(
+                res,
+                ADSBDB_MAX_BYTES,
+              );
               const data =
-                kind === 'route'
-                  ? parseRoute(await res.json())
-                  : parseAircraft(await res.json());
+                kind === 'route' ? parseRoute(payload) : parseAircraft(payload);
               store.set(key, { at: Date.now(), data }); // data may be null — negative cache
               dirty = true;
               return data;

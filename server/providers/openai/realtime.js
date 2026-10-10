@@ -13,6 +13,7 @@ import {
   OPENAI_REALTIME_TRANSCRIBE_MODEL_DEFAULT,
 } from './constants.js';
 import { realtimeInstructions } from './instructions.js';
+import { readResponseTextCapped } from '../common/http.js';
 import { GEV_REALTIME_TOOLS } from './tools.js';
 import {
   preferCodexOAuth,
@@ -316,7 +317,8 @@ function createRealtimeTokenHandler({
         },
         body: JSON.stringify(sessionConfig),
       });
-      const body = await response.text();
+      // A client secret is a few hundred bytes.
+      const body = await readResponseTextCapped(response, 2 * 1024 * 1024);
       res.statusCode = response.status;
       // Which tier/model this secret was actually minted for. The upstream
       // success body is passed through untouched (the client parses it

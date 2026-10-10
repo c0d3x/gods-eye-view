@@ -2,6 +2,10 @@ import path from 'node:path';
 import { promises as fsp } from 'node:fs';
 
 import { filterTrailing24h, parseFirmsCsv } from '../../src/data/firmsCsv.js';
+import {
+  readResponseJsonCapped,
+  readResponseTextCapped,
+} from './common/http.js';
 
 /**
  * NASA FIRMS live active-fire proxy with a memory + disk cache.
@@ -85,7 +89,10 @@ export function firmsProxy() {
     const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(key)}/${source}/world/2`;
     const res = await fetch(url, { signal: AbortSignal.timeout(60_000) });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const records = parseFirmsCsv(await res.text());
+    // Two days of one satellite, worldwide, runs to tens of MB.
+    const records = parseFirmsCsv(
+      await readResponseTextCapped(res, 128 * 1024 * 1024),
+    );
     if (records === null) throw new Error('non-CSV upstream response');
     return records;
   }
@@ -148,7 +155,7 @@ export function firmsProxy() {
           const url = `https://firms.modaps.eosdis.nasa.gov/mapserver/mapkey_status/?MAP_KEY=${encodeURIComponent(key)}`;
           const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const body = await res.json();
+          const body = await readResponseJsonCapped(res, 64 * 1024);
           const used = Number(body?.current_transactions);
           const limit = Number(body?.transaction_limit);
           return Number.isFinite(used) && Number.isFinite(limit)

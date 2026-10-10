@@ -2,6 +2,7 @@ import path from 'node:path';
 import { promises as fsp } from 'node:fs';
 
 import { createBoundedCache } from './common/bounded-cache.js';
+import { readResponseJsonCapped } from './common/http.js';
 import {
   fetchTerrainChunkWithRetry,
   parseTerrainPoints,
@@ -138,7 +139,10 @@ export function terrainHeightsProxy(options = {}) {
       const chunk = points.slice(i, i + UPSTREAM_CHUNK);
       let chunkResults = [];
       try {
-        chunkResults = await fetchTerrainChunkWithRetry(chunk);
+        // 64 points come back as a few KB.
+        chunkResults = await fetchTerrainChunkWithRetry(chunk, {
+          readJson: (res) => readResponseJsonCapped(res, 4 * 1024 * 1024),
+        });
       } catch (error) {
         firstError = firstError || error;
       }
