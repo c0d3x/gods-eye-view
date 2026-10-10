@@ -15,7 +15,7 @@ Import credentials from JSON (`clientId`/`clientSecret` or `client_id`/`client_s
 
 ```bash
 ./scripts/opensky-import-client.sh ~/Downloads/credentials.json
-# or: npm run opensky:import -- ~/Downloads/credentials.json
+# or: pnpm run opensky:import ~/Downloads/credentials.json
 ```
 
 Then launch:

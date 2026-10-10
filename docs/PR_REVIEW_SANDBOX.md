@@ -29,10 +29,10 @@ tree. The example below is a Linux starting point, not a universal sandbox polic
 2. Provision supported Node, Chrome for Testing or compatible Chromium, and a
    pinned browser MCP server in a separate tool directory. Pin the tool's version
    and lock its dependencies; avoid downloading a moving `latest` during review.
-3. After static inspection, run `npm ci` for the PR in a credential-free,
+3. After static inspection, run `pnpm install --frozen-lockfile` for the PR in a credential-free,
    restricted provisioning environment. Allow only the dependency/download hosts
    actually needed, then restrict runtime networking. Do not run contributor
-   lifecycle scripts on the host. A dedicated populated npm cache can support
+   lifecycle scripts on the host. A dedicated populated pnpm store can support
    an offline install; record any skipped scripts or incomplete installation.
 4. Start from `--unshare-all`, `--clearenv`, a private `/tmp`, and explicit mounts.
    Mount toolchains and libraries read-only; make only the disposable review tree
@@ -123,7 +123,7 @@ bwrap --unshare-all --die-with-parent --new-session \
   "${review_gpu_args[@]}" "${review_display_args[@]}" \
   --chdir /app /bin/bash -c '
     set -e
-    npm run dev -- --host 127.0.0.1 --port 4173 --strictPort \
+    pnpm run dev --host 127.0.0.1 --port 4173 --strictPort \
       > /evidence/server.log 2>&1 &
     app_pid=$!
     /opt/chrome/chrome --ozone-platform=wayland \
@@ -226,7 +226,7 @@ options makes Bubblewrap mandatory for Mac maintainers.
   sizes, loading/empty/failure states, and teardown. Inspect console and network
   activity; capture evidence in the disposable evidence directory.
 - Run the workflow's unit/build/tracking checks inside the restricted environment.
-  Stop the dev server, launch `npm run preview` on the recorded port, and repeat
+  Stop the dev server, launch `pnpm run preview` on the recorded port, and repeat
   relevant UX checks on the built candidate. Retarget MCP to that server.
 - For performance changes, measure representative GEV scenes on base and candidate
   separately, with matching browser, viewport, camera, layers, fixtures, warmup,

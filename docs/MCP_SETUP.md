@@ -7,9 +7,9 @@ one before going on.
 ## 1. Run the app
 
 ```sh
-npm install
-npm run build:panel   # the in-conversation globe; rerun after app changes
-npm run dev           # http://localhost:4173, keep it running
+pnpm install
+pnpm run build:panel   # the in-conversation globe; rerun after app changes
+pnpm run dev           # http://localhost:4173, keep it running
 ```
 
 The MCP server reads from this app.
@@ -62,7 +62,7 @@ Diego in God's Eye View with military flights on."*
 - **The server does not appear:** run the command from step 2 in a terminal;
   it should print `God's Eye View MCP server reading http://localhost:4173`
   and wait. A path or `args` mistake fails here.
-- **The panel says it could not load:** `npm run build:panel` was not run, or
+- **The panel says it could not load:** `pnpm run build:panel` was not run, or
   the dev server is down.
 - **Logs:** the server writes each call, and why one failed, to stderr. Claude
   Desktop keeps it in its logs folder as `mcp-server-gods-eye-view.log`; in

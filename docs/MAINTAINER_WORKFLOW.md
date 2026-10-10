@@ -79,16 +79,16 @@ connection, cleanup, and Mac alternatives. Bubblewrap does not run natively on M
 
 ## 4. Validate the candidate
 
-Use a supported Node version from trusted `package.json`/CI and `npm ci` in the
+Use a supported Node version from trusted `package.json`/CI and `pnpm install --frozen-lockfile` in the
 selected environment. Skipping lifecycle scripts does not make later execution
 safe for PRs warranting isolation. For runtime changes, record local results for:
 
 | Check | Command or evidence |
 | --- | --- |
-| Setup, formatting, boundaries | `npm run doctor -- --json`; `npm run format:check`; `npm run check:boundaries` |
-| Tests and production build | `npm test`; `npm run build` |
-| Tracking regression | Candidate dev server at `localhost:4173`, then `npm run test:track` with compatible Chromium |
-| Built app | Stop the dev server, run `npm run preview`, and inspect the built candidate |
+| Setup, formatting, boundaries | `pnpm run doctor --json`; `pnpm run format:check`; `pnpm run check:boundaries` |
+| Tests and production build | `pnpm test`; `pnpm run build` |
+| Tracking regression | Candidate dev server at `localhost:4173`, then `pnpm run test:track` with compatible Chromium |
+| Built app | Stop the dev server, run `pnpm run preview`, and inspect the built candidate |
 
 Confirm tools target the candidate. Exercise changed/adjacent flows, loading,
 empty/failure/disabled states, teardown, keyboard, viewports, console, and network.

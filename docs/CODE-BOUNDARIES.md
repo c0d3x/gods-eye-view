@@ -1,10 +1,13 @@
 # Formatting and component boundaries
 
-Run `npm run format` to format the files in `scripts/format-scope.json` plus
-automatically discovered runtime JavaScript in `scripts/format-runtime.json`, and
-`npm run format:check` to check that same list without writing. CI checks the
-combined scope on Linux and Windows. Prettier is pinned in the development
-dependencies; use the installed version so local and CI output agree. The shared
+In this fork, `pnpm run format` formats with Biome, and `pnpm run format:check`
+and `pnpm run lint` check without writing; [CONTRIBUTING.md](../CONTRIBUTING.md)
+explains the baseline that keeps upstream's files unchanged. Upstream formats
+with Prettier instead, and its script stays in the tree unused:
+`node scripts/format.mjs --write` formats the files in
+`scripts/format-scope.json` plus automatically discovered runtime JavaScript in
+`scripts/format-runtime.json`, and `--check` checks that same list without
+writing. Prettier is pinned in the development dependencies. The shared
 configuration specifies two spaces, single quotes, semicolons and LF endings.
 
 Owned runtime modules are discovered automatically; add their tests and other
@@ -42,7 +45,7 @@ See [application construction](APPLICATION.md) and the
 
 ## Import direction gates
 
-`npm run check:boundaries` runs two complementary checks:
+`pnpm run check:boundaries` runs two complementary checks:
 
 1. `scripts/check-import-directions.mjs` parses every runtime JS/MJS/CJS file in
    `src/` and `server/`, including files unused by the current bundle. Static,

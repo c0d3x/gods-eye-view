@@ -3,7 +3,7 @@
 The project depends on third-party npm packages whose own licenses apply. This
 file records the packages added for the browser-local SDR feature and the
 Street Level viewer; the complete resolved dependency inventory remains in
-`package-lock.json`.
+`pnpm-lock.yaml`.
 
 ## Web RTL-SDR
 

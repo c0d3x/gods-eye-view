@@ -21,7 +21,7 @@ To use them from Claude or Codex, see [MCP setup](MCP_SETUP.md).
 Dependencies point downward only. `gods-eye-view/tools` and
 `gods-eye-view/tools/mcp` are portable exports: they reach no application,
 rendering, Node, Cesium or browser-global code, which
-`npm run check:boundaries` enforces. In the application, only voice reaches
+`pnpm run check:boundaries` enforces. In the application, only voice reaches
 them: `withToolCatalog` in `src/voice/gevRealtime.js` imports the
 function-calling adapter, and the standalone entry supplies the catalog.
 
@@ -138,7 +138,7 @@ resource's `csp` lists. `panel_request` refuses Provider Settings
 `/api/openai`), `/mcp` and the development server's internal routes, in any
 letter case, encoding or dot suffix.
 
-The panel loads the app's panel build, which `npm run build:panel` writes to
+The panel loads the app's panel build, which `pnpm run build:panel` writes to
 `dist/panel` and the servers serve at `/panel/`: one app script, one
 stylesheet, and Cesium's script, which carries its workers and starts them
 from memory (`CESIUM_WORKERS`). Files those workers load themselves are
@@ -229,14 +229,14 @@ loads it the first time voice calls a query.
 
 ## Running locally
 
-Start the app (`npm run dev` or `npm run preview`), then register the stdio
+Start the app (`pnpm run dev` or `pnpm run preview`), then register the stdio
 server with an MCP client, for example Claude Code:
 
 ```bash
-claude mcp add gods-eye-view -- npm --prefix /path/to/gods-eye-view run --silent mcp
+claude mcp add gods-eye-view -- pnpm --dir /path/to/gods-eye-view --silent run mcp
 ```
 
-`npm run mcp -- --api-base http://localhost:4173` selects another server.
+`pnpm run mcp --api-base http://localhost:4173` selects another server.
 
 The development and preview servers also serve the same tools over HTTP at
 `/mcp`, for clients that connect by URL:
