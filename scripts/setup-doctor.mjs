@@ -7,8 +7,36 @@ import { fileURLToPath } from 'node:url';
 import { projectRoot } from './project-root.mjs';
 import { selectMapStartupRoute } from '../src/mapStartup.js';
 import { CREDENTIALS, findKeychainItem } from './lib/credentials.mjs';
+import {
+  checkGitHook,
+  checkLockfile,
+  checkOpenSky,
+  checkPnpmVersion,
+  checkPort,
+  checkQaBrowser,
+  checkWs,
+  devServerAddress,
+  readOpenSkyCredentialsFile,
+} from './lib/setup-checks.mjs';
 
 const ROOT = projectRoot(import.meta.url);
+
+/** Credential sources that only ./scripts/dev-fresh.sh reads. */
+const LAUNCHER_SOURCES = new Set(['macOS Keychain', 'OpenSky credentials file']);
+
+// The checks live in scripts/lib/setup-checks.mjs.
+export {
+  checkGitHook,
+  checkLockfile,
+  checkOpenSky,
+  checkPnpmVersion,
+  checkPort,
+  checkQaBrowser,
+  checkWs,
+  devServerAddress,
+  readOpenSkyCredentialsFile,
+};
+export { lockfileSpecifiers } from './lib/setup-checks.mjs';
 const OPENSKY_AUTH_MODE_DEFAULT = 'oauth';
 // OpenSky accepts only OAuth client credentials, so the retired basic and auto
 // modes mean oauth, as they do in the proxy and the launcher.
@@ -56,10 +84,10 @@ export function hasRequiredDependencies(rootDir = ROOT) {
   }
 }
 
-/** Return the npm command and spawn mode required by the target platform. */
-export function npmProcessSpec(platform = process.platform) {
-  const windows = platform === 'win32';
-  return { command: windows ? 'npm.cmd' : 'npm', shell: windows };
+/** Return the pnpm command and spawn mode required by the target platform. */
+export function pnpmProcessSpec(platform = process.platform) {
+  // Windows installs pnpm as pnpm.cmd or pnpm.exe; its shell resolves either.
+  return { command: 'pnpm', shell: platform === 'win32' };
 }
 
 /** Read one key from Vite's dotenv file ladder without depending on Vite. */
@@ -99,6 +127,14 @@ export function resolveOpenSkyAuthMode({
   return OPENSKY_AUTH_MODES.has(mode) ? mode : OPENSKY_AUTH_MODE_DEFAULT;
 }
 
+/** A setting from the environment, or else from the dotenv files. */
+function readSetting(name, { environment, rootDir, authoritativeEnvironment }) {
+  const value = String(environment[name] ?? '').trim();
+  if (value) return value;
+  if (authoritativeEnvironment && Object.hasOwn(environment, name)) return '';
+  return readDoctorDotenvValue(name, rootDir).trim();
+}
+
 function hasKeychainItem(service, account) {
   return findKeychainItem(service, account);
 }
@@ -109,11 +145,15 @@ export function resolveCredential(spec, {
   environment = process.env,
   rootDir = ROOT,
   keychainLookup = hasKeychainItem,
+  credentialsFile = {},
 } = {}) {
   const environmentDefinesKey = Object.prototype.hasOwnProperty.call(environment, spec.name);
   if (isConfiguredValue(environment[spec.name])) return { configured: true, source: 'environment' };
   if (authoritativeEnvironment && environmentDefinesKey) return { configured: false, source: null };
   if (isConfiguredValue(readDoctorDotenvValue(spec.name, rootDir))) return { configured: true, source: 'dotenv files' };
+  // dev-fresh.sh reads OPENSKY_CREDENTIALS_FILE after the dotenv files and
+  // before the Keychain.
+  if (isConfiguredValue(credentialsFile[spec.name])) return { configured: true, source: 'OpenSky credentials file' };
   if (includeKeychain && spec.keychain.some(([service, account]) => keychainLookup(service, account))) {
     return { configured: true, source: 'macOS Keychain' };
   }
@@ -156,28 +196,93 @@ export function buildCapabilitySummary(
   };
 }
 
-export function inspectSetup({ includeKeychain = true, authoritativeEnvironment = false, rootDir = ROOT } = {}) {
+/**
+ * Diagnose this checkout. `includeKeychain` and `includeCredentialsFile` add
+ * the sources only ./scripts/dev-fresh.sh reads; `developerChecks` adds the
+ * port, Git hook and QA browser checks, which a Pinokio install has no use for.
+ */
+export async function inspectSetup({
+  includeKeychain = true,
+  includeCredentialsFile = includeKeychain,
+  authoritativeEnvironment = false,
+  developerChecks = true,
+  environment = process.env,
+  rootDir = ROOT,
+} = {}) {
+  const setting = (name) => readSetting(name, { environment, rootDir, authoritativeEnvironment });
   const node = classifyNodeVersion();
-  const npm = npmProcessSpec();
-  const npmResult = spawnSync(npm.command, ['--version'], {
+  const pnpmSpec = pnpmProcessSpec();
+  const pnpmResult = spawnSync(pnpmSpec.command, ['--version'], {
+    cwd: rootDir,
     encoding: 'utf8',
-    shell: npm.shell,
+    shell: pnpmSpec.shell,
   });
+  let packageManager = '';
+  try {
+    ({ packageManager = '' } = JSON.parse(readFileSync(path.join(rootDir, 'package.json'), 'utf8')));
+  } catch {
+    // hasRequiredDependencies reports an unreadable package.json.
+  }
+  const pnpmVersion = String(pnpmResult.stdout || '').trim();
+  const pnpm = pnpmResult.status === 0
+    ? { available: true, version: pnpmVersion, ...checkPnpmVersion(pnpmVersion, packageManager) }
+    : { available: false, version: null };
+
+  // The launcher reads the credentials file only in oauth mode.
+  const openSkyMode = setting('OPENSKY_AUTH_MODE');
+  const credentialsFilePath = includeCredentialsFile && openSkyMode.toLowerCase() !== 'anon'
+    ? setting('OPENSKY_CREDENTIALS_FILE')
+    : '';
+  const credentialsFile = credentialsFilePath
+    ? { path: credentialsFilePath, ...readOpenSkyCredentialsFile(credentialsFilePath, rootDir) }
+    : null;
   const credentials = Object.fromEntries(CREDENTIALS.map((spec) => [
     spec.name,
-    resolveCredential(spec, { includeKeychain, authoritativeEnvironment, rootDir }),
+    resolveCredential(spec, {
+      includeKeychain,
+      authoritativeEnvironment,
+      environment,
+      rootDir,
+      credentialsFile: credentialsFile?.values,
+    }),
   ]));
   const dependenciesInstalled = hasRequiredDependencies(rootDir);
+
+  const checks = [
+    { id: 'lockfile', label: 'Lockfile', ...checkLockfile(rootDir) },
+    { id: 'ws', label: 'ws', ...checkWs(rootDir) },
+  ];
+  if (developerChecks) {
+    const address = devServerAddress(setting);
+    checks.push(
+      { id: 'port', label: `Port ${address.port}`, ...(await checkPort(address)) },
+      { id: 'git-hook', label: 'Git hook', ...checkGitHook({ rootDir, environment }) },
+      { id: 'qa-browser', label: 'QA browser', ...(await checkQaBrowser({ environment })) },
+    );
+  }
+  checks.push({
+    id: 'opensky',
+    label: 'OpenSky',
+    ...checkOpenSky({
+      mode: openSkyMode,
+      credentials,
+      credentialsFile,
+      retired: ['OPENSKY_USERNAME', 'OPENSKY_PASSWORD'].filter((name) => isConfiguredValue(setting(name))),
+    }),
+  });
+
   return {
-    ready: node.level !== 'error' && npmResult.status === 0 && dependenciesInstalled,
+    ready: node.level !== 'error' &&
+      pnpm.available &&
+      dependenciesInstalled &&
+      checks.every((check) => check.level !== 'error'),
     node: { version: process.versions.node, ...node },
-    npm: npmResult.status === 0
-      ? { available: true, version: String(npmResult.stdout || '').trim() }
-      : { available: false, version: null },
+    pnpm,
     dependenciesInstalled,
+    checks,
     credentials,
     capabilities: buildCapabilitySummary(credentials, {
-      openSkyAuthMode: resolveOpenSkyAuthMode({ authoritativeEnvironment, rootDir }),
+      openSkyAuthMode: resolveOpenSkyAuthMode({ authoritativeEnvironment, environment, rootDir }),
     }),
   };
 }
@@ -185,21 +290,32 @@ export function inspectSetup({ includeKeychain = true, authoritativeEnvironment 
 function symbol(level) {
   if (level === 'ok') return 'OK';
   if (level === 'warn') return 'WARN';
+  if (level === 'info') return '--';
   return 'ERROR';
 }
 
+/** A check's report line, and the hint on how to fix it on the next. */
+function checkLines(label, { level = 'ok', summary, hint } = {}) {
+  const lines = [`[${symbol(level)}] ${summary ? `${label}: ${summary}` : label}`];
+  if (hint) lines.push(`       ${hint}`);
+  return lines;
+}
+
 export function formatSetupReport(report, { readyMessage } = {}) {
-  const hasKeychainSource = Object.values(report.credentials || {})
-    .some((credential) => credential?.source === 'macOS Keychain');
-  const resolvedReadyMessage = readyMessage || (hasKeychainSource
+  const needsLauncher = Object.values(report.credentials || {})
+    .some((credential) => LAUNCHER_SOURCES.has(credential?.source));
+  const resolvedReadyMessage = readyMessage || (needsLauncher
     ? 'Ready. Run ./scripts/dev-fresh.sh, then open http://localhost:4173.'
-    : 'Ready. Run npm run dev, then open http://localhost:4173.');
+    : 'Ready. Run pnpm run dev, then open http://localhost:4173.');
   const lines = [
     "God's Eye View setup doctor",
     '',
     `[${symbol(report.node.level)}] Node ${report.node.version}: ${report.node.summary}`,
-    report.npm.available ? `[OK] npm ${report.npm.version}` : '[ERROR] npm was not found',
-    report.dependenciesInstalled ? '[OK] dependencies installed' : '[WARN] dependencies missing; run npm install',
+    ...(report.pnpm.available
+      ? checkLines(`pnpm ${report.pnpm.version}`, report.pnpm)
+      : ['[ERROR] pnpm was not found; install pnpm 11']),
+    report.dependenciesInstalled ? '[OK] dependencies installed' : '[WARN] dependencies missing; run pnpm install',
+    ...(report.checks || []).flatMap((check) => checkLines(check.label, check)),
     '',
     `Map:     ${report.capabilities.map}`,
     `Flights: ${report.capabilities.flights}`,
@@ -212,7 +328,7 @@ export function formatSetupReport(report, { readyMessage } = {}) {
     'Configured providers:',
     ...CREDENTIALS.map((spec) => {
       const state = report.credentials[spec.name];
-      return state.configured
+      return state?.configured
         ? `  [OK] ${spec.label} (${state.source})`
         : `  [--] ${spec.label}`;
     }),
@@ -226,7 +342,7 @@ export function formatSetupReport(report, { readyMessage } = {}) {
 
 const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : '';
 if (invokedPath === fileURLToPath(import.meta.url)) {
-  const report = inspectSetup();
+  const report = await inspectSetup();
   if (process.argv.includes('--json')) console.log(JSON.stringify(report, null, 2));
   else console.log(formatSetupReport(report));
   if (!report.ready) process.exitCode = 1;

@@ -39,7 +39,10 @@ test('doctor inspects the selected project dependencies and dotenv without discl
       path.join(root, '.env'),
       'GOOGLE_MAPS_SERVER_API_KEY=fixture-server-secret\n',
     );
-    const report = inspectSetup({ rootDir: root, includeKeychain: false });
+    const report = await inspectSetup({
+      rootDir: root,
+      includeKeychain: false,
+    });
     assert.equal(report.dependenciesInstalled, true);
     assert.equal(
       report.credentials.GOOGLE_MAPS_SERVER_API_KEY.configured,
@@ -48,7 +51,7 @@ test('doctor inspects the selected project dependencies and dotenv without discl
     assert.doesNotMatch(JSON.stringify(report), /fixture-server-secret/);
     await rm(path.join(root, 'node_modules'), { recursive: true });
     assert.equal(
-      inspectSetup({ rootDir: root, includeKeychain: false })
+      (await inspectSetup({ rootDir: root, includeKeychain: false }))
         .dependenciesInstalled,
       false,
     );

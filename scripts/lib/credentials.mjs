@@ -65,6 +65,7 @@ export const CREDENTIALS = Object.freeze([
     keychain: openSkyItems(['client_secret', 'client-secret', 'secret']),
   },
   { name: 'LL2_API_TOKEN', label: 'Launch Library 2', keychain: [] },
+  { name: 'TFL_APP_KEY', label: 'TfL cameras', keychain: [] },
   {
     name: 'MAPILLARY_CLIENT_TOKEN',
     label: 'Mapillary street level',

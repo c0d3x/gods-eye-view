@@ -213,9 +213,10 @@ export function updateFromRemote(io = {}) {
  * What running this script does: disclose, apply, install.
  *
  * @param {object} [io] - The seam above, plus `install` and `fail`.
- * @returns {{apply: string|null, fallback: boolean, stopped?: boolean}} The plan.
+ * @returns {Promise<{apply: string|null, fallback: boolean, stopped?: boolean}>}
+ *   The plan, once the install has finished.
  */
-export function runPinokioUpdate(io = {}) {
+export async function runPinokioUpdate(io = {}) {
   const {
     install = installPinokioDependencies,
     fail = (code) => process.exit(code),
@@ -228,12 +229,12 @@ export function runPinokioUpdate(io = {}) {
     fail(1);
     return plan;
   }
-  install();
+  await install();
   return plan;
 }
 
 // Guarded like pinokio-start.mjs so the report above can be exercised without
 // pulling and reinstalling as an import side effect.
 if (isDirectInvocation(process.argv[1], MODULE_PATH)) {
-  runPinokioUpdate();
+  await runPinokioUpdate();
 }

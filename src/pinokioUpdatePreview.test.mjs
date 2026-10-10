@@ -290,7 +290,7 @@ test('a stop means nothing is installed, and the script fails', async (t) => {
   await app.push('second commit', 'second\n');
   const installs = [];
   const failures = [];
-  const plan = runPinokioUpdate({
+  const plan = await runPinokioUpdate({
     ...app.io,
     read: (args) =>
       args[0] === 'rev-parse' &&
@@ -314,7 +314,7 @@ test('an ordinary update installs once and does not fail', async (t) => {
   const disclosed = await app.push('second commit', 'second\n');
   const installs = [];
   const failures = [];
-  const plan = runPinokioUpdate({
+  const plan = await runPinokioUpdate({
     ...app.io,
     install: () => installs.push('install'),
     fail: (code) => failures.push(code),
@@ -328,7 +328,7 @@ test('an ordinary update installs once and does not fail', async (t) => {
 test('an up-to-date checkout still reinstalls', async (t) => {
   const app = await fixture(t);
   const installs = [];
-  const plan = runPinokioUpdate({
+  const plan = await runPinokioUpdate({
     ...app.io,
     install: () => installs.push('install'),
     fail: () => assert.fail('an up-to-date checkout is not a failure'),
@@ -418,13 +418,13 @@ test('a failed git read is null, and an empty successful read is an empty string
 
 test('the update and reinstall stay behind the direct-invocation guard', () => {
   // Without the guard, importing this module to test it would update the
-  // checkout and run npm ci as an import side effect.
+  // checkout and run pnpm install as an import side effect.
   assert.match(
     source,
     /if \(isDirectInvocation\(process\.argv\[1\], MODULE_PATH\)\) \{/,
   );
   const entrypoint = source.slice(
-    source.indexOf('export function runPinokioUpdate'),
+    source.indexOf('export async function runPinokioUpdate'),
   );
   // Order is the whole point of the fix: disclose and apply, then install.
   assert.ok(

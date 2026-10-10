@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyPinokioEnvironment } from './pinokio-environment.mjs';
-import { formatSetupReport, inspectSetup, npmProcessSpec } from './setup-doctor.mjs';
+import { formatSetupReport, inspectSetup, pnpmProcessSpec } from './setup-doctor.mjs';
 
 const MODULE_PATH = fileURLToPath(import.meta.url);
 const ROOT = realpathSync(path.resolve(path.dirname(MODULE_PATH), '..'));
@@ -21,21 +21,24 @@ export function runChecked(command, args, { shell = false } = {}) {
   if (result.status !== 0) process.exit(result.status || 1);
 }
 
-export function installPinokioDependencies() {
+export async function installPinokioDependencies() {
   applyPinokioEnvironment();
   rmSync(READY_FILE, { force: true });
-  const npm = npmProcessSpec();
-  runChecked(npm.command, ['ci'], { shell: npm.shell });
+  const pnpm = pnpmProcessSpec();
+  runChecked(pnpm.command, ['install', '--frozen-lockfile'], { shell: pnpm.shell });
 
   // Pinokio starts Vite directly and loads only its ENVIRONMENT file plus the
   // normal dotenv ladder. Unlike dev-fresh.sh, it does not import macOS
   // Keychain items, so its install report must describe that exact runtime.
-  const report = inspectSetup({
+  const report = await inspectSetup({
     includeKeychain: false,
     // The raw app ENVIRONMENT file was applied above. Even an empty field now
     // shadows Vite's dotenv ladder, so diagnosis must stop there instead of
     // claiming a dotenv-only value will reach the launched app.
     authoritativeEnvironment: true,
+    // Pinokio picks a free port itself, and its users neither commit nor run
+    // the QA scripts.
+    developerChecks: false,
   });
   console.log(`\n${formatSetupReport(report, {
     readyMessage: 'Ready. Return to Pinokio and choose Start.',
@@ -60,5 +63,5 @@ export function isDirectInvocation(
 }
 
 if (isDirectInvocation()) {
-  installPinokioDependencies();
+  await installPinokioDependencies();
 }
