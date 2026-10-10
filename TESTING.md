@@ -254,3 +254,53 @@ Director authoring and sharing acceptance: `node scripts/qa-director-sharing.mjs
 checks installed import previews, draft validation, file-bundle round trips,
 cancellation, resource ownership and narrow-screen controls. Run alongside the
 scene-controls, camera, pack, interaction and timing harnesses.
+
+## Test and QA environment variables
+
+The app never reads these; they tune the test runner, the browser harnesses
+and the maintenance scripts. `src/tooling/envDocs.test.mjs` checks that every
+environment variable the code reads is documented here or in `.env.example`.
+
+- `QA_BASE_URL`: the app URL most QA harnesses drive. Default
+  `http://localhost:4173`; the others take `--url`.
+- `PUPPETEER_EXECUTABLE_PATH`: the Chrome the harnesses launch. By default
+  they use Puppeteer's pinned Chrome for Testing, which `pnpm run qa:setup`
+  downloads, then a system Chrome. With it set, `pnpm run qa:setup` checks
+  that the file exists and downloads nothing.
+- `PUPPETEER_SKIP_DOWNLOAD`: stops Puppeteer's install script from
+  downloading Chrome for Testing. pnpm 11 does not run that script at all
+  (`pnpm-workspace.yaml`); the Pinokio installer sets it for older pnpm
+  releases, which run every install script.
+- `QA_HEADFUL`: set to `1` to show the browser in `qa-draw-tool`,
+  `qa-nepal-media-playback` and `qa-recent-imagery`.
+- `QA_FAIL_ON_RETRY`: set to `1` to make `qa-panel-resize`, `qa-panelDrag`
+  and `qa-street-level` fail on a retried header press, like their
+  `--fail-on-retry` flag.
+- Screenshot directories, each under the gitignored `qa-shots/` by default:
+  `QA_SHOTS_DIR` (`qa-infra-lod`, `qa-map-source-tray`), `QA_SHOTS`
+  (`qa-transit`, `qa-transit-recovery`), `QA_SHOT_DIR` (`qa-draw-tool`,
+  `qa-recent-imagery`), `QA_NAMES_DIR` (`qa-military-names`), `QA_OUTPUT_DIR`
+  (`qa-nepal-media-playback`) and `QA_POLISH_DIR` (`qa-final-polish-credits`).
+- `QA_SHOT_PREFIX`: a prefix for `qa-draw-tool`'s screenshot names.
+- `QA_LABEL`: the label `qa-view-target-prewarm` puts on its evidence files,
+  so a before and after pair can sit side by side. Default `after`.
+- `QA_TAG`: the prefix of `qa-transit`'s screenshot names. Default `keyed`.
+- `QA_SECTIONS`: the comma-separated sections `qa-transit` runs, from
+  `cities`, `playback`, `disable` and `context`. Default `all`.
+- `QA_MAP_SOURCE_TRAY_KEYLESS`: set to `1` to make `qa-map-source-tray` expect
+  the keyless map sources on a server that has keys, like its `--keyless`
+  flag.
+- `QA_SOURCE_BASE`: the URL path `qa-director-interactions` imports the app's
+  modules from. Default `/src`.
+- `GEV_TEST_VERBOSE`: set to print the page's console messages during
+  `pnpm run test:track`.
+- `GEV_REQUIRE_ALLOCATION_GATE`: set to `1` to fail, rather than skip, the
+  allocation microbenchmarks on a Node version other than the calibrated
+  Node 24. CI's unit-test job on Node 24.14.0 sets it.
+- `GEV_ALLOC_*` (`GEV_ALLOC_ENTRIES`, `GEV_ALLOC_PROFILE`, `GEV_ALLOC_WARMUP`,
+  `GEV_ALLOC_CHUNK`, `GEV_ALLOC_CHUNKS`, `GEV_ALLOC_STABILIZATION_CHUNKS`,
+  `GEV_ALLOC_SOLVE_MS`): set by the world-overlay allocation probe for its
+  measurement worker. Don't set them by hand.
+- `GEV_BASE` and `OUT`: the running server `scripts/precompute-cctv-heights.mjs`
+  asks for ground heights (default `http://localhost:4173`), and the file it
+  writes (default the `CCTV_GROUND_HEIGHTS_FILE` default in `.env.example`).
