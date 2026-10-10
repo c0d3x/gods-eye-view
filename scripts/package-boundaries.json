@@ -196,7 +196,10 @@
       "server/providers/cctv/street-view.js",
       "server/providers/common/bounded-cache.js",
       "server/providers/common/rate-limit.js",
-      "src/sources/rateLimit.js"
+      "src/sources/rateLimit.js",
+      "server/providers/cctv/camera-fetch.js",
+      "server/providers/common/public-address.js",
+      "server/providers/common/fetch.js"
     ],
     "external": []
   },
@@ -231,7 +234,9 @@
       "src/data/radioCountry.js",
       "server/providers/common/http.js",
       "src/sources/radioBrowser.js",
-      "src/sources/httpBody.js"
+      "src/sources/httpBody.js",
+      "server/providers/common/public-address.js",
+      "server/providers/common/fetch.js"
     ],
     "external": []
   },

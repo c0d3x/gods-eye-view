@@ -1,6 +1,6 @@
 import https from 'node:https';
 import { Readable } from 'node:stream';
-import { isNonGlobalIpv4 } from './stations.js';
+import { isPublicAddress } from '../common/public-address.js';
 export function radioMirrorOrigin(value) {
   const hostname = String(value ?? '')
     .toLowerCase()
@@ -11,58 +11,7 @@ export function radioMirrorOrigin(value) {
 
 /** Return whether a resolved Radio Browser address is safe for an outbound request. */
 export function isPublicRadioAddress(value) {
-  const address = String(value ?? '')
-    .trim()
-    .toLowerCase()
-    .replace(/^\[|\]$/g, '');
-  if (!address) return false;
-  if (!address.includes(':')) {
-    const ipv4 = address.split('.');
-    return (
-      ipv4.length === 4 &&
-      ipv4.every((part) => /^\d{1,3}$/.test(part) && Number(part) <= 255) &&
-      !isNonGlobalIpv4(address)
-    );
-  }
-  const pieces = address.split('::');
-  if (pieces.length > 2) return false;
-  const left = pieces[0] ? pieces[0].split(':') : [];
-  const right = pieces[1] ? pieces[1].split(':') : [];
-  const missing = 8 - left.length - right.length;
-  if (
-    (pieces.length === 1 && missing !== 0) ||
-    (pieces.length === 2 && missing < 1)
-  )
-    return false;
-  const groups = [...left, ...Array(Math.max(0, missing)).fill('0'), ...right];
-  if (
-    groups.length !== 8 ||
-    groups.some((group) => !/^[0-9a-f]{1,4}$/.test(group))
-  )
-    return false;
-  const numeric = groups.reduce(
-    (total, group) => (total << 16n) | BigInt(`0x${group}`),
-    0n,
-  );
-  const inCidr = (base, prefix) => {
-    const shift = 128n - BigInt(prefix);
-    return numeric >> shift === base >> shift;
-  };
-  const base = (text) =>
-    text
-      .split(':')
-      .reduce(
-        (total, group) => (total << 16n) | BigInt(`0x${group || '0'}`),
-        0n,
-      );
-  const cidr = (text, prefix) => inCidr(base(text), prefix);
-  return (
-    cidr('2000:0:0:0:0:0:0:0', 3) &&
-    !cidr('2001:0:0:0:0:0:0:0', 23) &&
-    !cidr('2001:db8:0:0:0:0:0:0', 32) &&
-    !cidr('2002:0:0:0:0:0:0:0', 16) &&
-    !cidr('3fff:0:0:0:0:0:0:0', 20)
-  );
+  return isPublicAddress(value);
 }
 
 export function radioProxyDestination(value) {

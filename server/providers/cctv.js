@@ -19,7 +19,14 @@ import {
 import { sanitizeCctvRangeHeader } from './cctv/range.js';
 import { createHlsPuller } from './cctv/stream.js';
 import { createStreetViewFallback } from './cctv/street-view.js';
+import {
+  CameraRedirectError,
+  CCTV_RELAY_SAFETY_HEADERS,
+  hlsCameraTransport,
+  mediaTypeKind,
+} from './cctv/camera-fetch.js';
 import { clientKey } from './common/rate-limit.js';
+import { PrivateAddressError } from './common/public-address.js';
 export { CCTV_FRAME_FETCH_TIMEOUT_MS, fetchCctvImageFromUpstream };
 /**
  * Vite plugin: CCTV camera proxy with source registry, frame/media serving,
@@ -42,8 +49,13 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
    * CCTV_MAX_SOURCES ceiling so health/status observability is never evicted
    * for any catalog the proxy can actually serve. */
   const HEALTH_MAX_ENTRIES = CCTV_MAX_SOURCES_CEILING;
-  /** Live HLS strategies (see ./cctv/stream.js). Shared across dev and preview. */
-  const puller = createHlsPuller();
+  /** Origins of HLS cameras from the operator's own config. */
+  const localHlsOrigins = new Set();
+  /** Live HLS strategies (see ./cctv/stream.js). Shared across dev and preview.
+   * Every other HLS host must resolve only to public addresses. */
+  const puller = createHlsPuller({
+    fetchImpl: hlsCameraTransport(localHlsOrigins),
+  });
 
   /** Update the health entry for a camera, evicting the oldest entry if at capacity. */
   const setHealth = (cameraId, patch) => {
@@ -61,6 +73,15 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
       message: patch.message || prev.message || '',
       updatedAt: Date.now(),
     });
+  };
+
+  /** A camera's health message for a failed media fetch, in our own words. */
+  const mediaFailureMessage = (error) => {
+    if (error instanceof PrivateAddressError)
+      return 'Camera address is not allowed';
+    if (error instanceof CameraRedirectError)
+      return 'Camera redirect was not followed';
+    return 'Media fetch failed';
   };
 
   /** Snapshot all camera health entries as an array. */
@@ -211,6 +232,7 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
               res.writeHead(body ? 200 : 404, {
                 'Content-Type': 'video/mp2t',
                 'Cache-Control': 'no-store',
+                ...CCTV_RELAY_SAFETY_HEADERS,
               });
               res.end(body || undefined);
               return;
@@ -221,6 +243,9 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
               if (entry) puller.release(cameraId, leaseId);
             };
             try {
+              if (source?.localConfig === true) {
+                localHlsOrigins.add(new URL(mediaUrl).origin);
+              }
               entry = await puller.ensure(cameraId, mediaUrl, leaseId);
               if (downstream.closed) {
                 cancelPending();
@@ -249,6 +274,7 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
                 'Cache-Control': 'no-store',
                 'X-CCTV-Source': 'hls-pull',
                 'X-CCTV-Session': entry.token,
+                ...CCTV_RELAY_SAFETY_HEADERS,
               });
               res.end(playlist);
             } catch {
@@ -308,9 +334,12 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
             // not accept is dropped and the request proceeds without one.
             const requestRange = sanitizeCctvRangeHeader(req.headers?.range);
             if (requestRange) upstreamHeaders.Range = requestRange;
+            // Redirects are followed by hand, and every host but the
+            // operator's own configured origin must be a public address.
             const upstream = await fetchCctvMediaUpstream(mediaUrl, {
               headers: upstreamHeaders,
               signal: downstream.signal,
+              localConfig: source?.localConfig === true,
             });
             if (downstream.closed) {
               // The headers arrived for a viewer who is no longer there.
@@ -346,18 +375,42 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
               return;
             }
 
-            if (
-              isVideoFeedType(feedType) &&
-              !(
-                contentType.startsWith('video/') ||
-                contentType.includes('mpegurl')
-              )
-            ) {
+            const mediaKind = mediaTypeKind(contentType, {
+              videoFeed: isVideoFeedType(feedType),
+            });
+            if (!mediaKind) {
+              // Raster images, video and HLS only: anything else (an HTML
+              // page, an SVG) would be served from the app's own origin.
+              try {
+                await upstream.body?.cancel();
+              } catch {
+                /* already closed */
+              }
               setHealth(cameraId, {
                 status: 'degraded',
                 sourceKind: 'upstream',
                 label: source?.provider || 'Configured source',
-                message: `Unexpected media type ${contentType || 'unknown'}`,
+                message: 'Camera sent an unsupported media type',
+              });
+              res.writeHead(502, {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-store',
+              });
+              res.end(
+                JSON.stringify({
+                  error: 'Camera sent an unsupported media type',
+                }),
+              );
+              return;
+            }
+            if (isVideoFeedType(feedType) && mediaKind !== 'video') {
+              // Never the upstream's own Content-Type: GET /health shows
+              // this message as the camera's status label.
+              setHealth(cameraId, {
+                status: 'degraded',
+                sourceKind: 'upstream',
+                label: source?.provider || 'Configured source',
+                message: 'Camera sent a still image instead of video',
               });
             } else {
               setHealth(cameraId, {
@@ -398,7 +451,7 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
               status: 'degraded',
               sourceKind: 'upstream',
               label: source?.provider || 'Configured source',
-              message: 'Media fetch failed',
+              message: mediaFailureMessage(error),
             });
             res.writeHead(timedOut ? 504 : 502, {
               'Content-Type': 'application/json',
@@ -446,7 +499,9 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
         const upstreamImage =
           source?.sourceKind === 'txdot-its'
             ? await fetchTxdotSnapshot(upstreamCandidate)
-            : await fetchCctvImageFromUpstream(upstreamCandidate);
+            : await fetchCctvImageFromUpstream(upstreamCandidate, {
+                localConfig: source?.localConfig === true,
+              });
         if (upstreamImage?.ok) {
           setHealth(cameraId, {
             status: 'ok',
@@ -458,6 +513,7 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
             'Content-Type': upstreamImage.contentType,
             'Cache-Control': 'no-store',
             'X-CCTV-Source': 'upstream-image',
+            ...CCTV_RELAY_SAFETY_HEADERS,
           });
           res.end(upstreamImage.body);
           return;
@@ -482,6 +538,7 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
             'Content-Type': sv.contentType,
             'Cache-Control': 'no-store',
             'X-CCTV-Source': 'streetview',
+            ...CCTV_RELAY_SAFETY_HEADERS,
           });
           res.end(sv.body);
           return;
@@ -510,6 +567,7 @@ export function cctvProxy({ sourceRoot = process.cwd() } = {}) {
           'Content-Type': 'image/svg+xml',
           'Cache-Control': 'no-store',
           'X-CCTV-Source': 'synthetic',
+          ...CCTV_RELAY_SAFETY_HEADERS,
         });
         res.end(svg);
       } catch (error) {

@@ -9,6 +9,12 @@ import {
   NSW_IMAGE_ORIGIN,
   NSW_IMAGE_USER_AGENT,
 } from './constants.js';
+import {
+  cameraTransport,
+  CCTV_RELAY_SAFETY_HEADERS,
+  fetchCameraResponse,
+  mediaTypeKind,
+} from './camera-fetch.js';
 /**
  * Generate a synthetic SVG billboard image for a CCTV camera placeholder.
  *
@@ -100,8 +106,9 @@ export function toReadable(body) {
  * Pipe an upstream fetch Response (image or video) to the client HTTP response.
  *
  * Forwards Content-Type, Content-Length, Content-Range, Accept-Ranges, and
- * Cache-Control headers from the upstream. Falls back to buffered arrayBuffer
- * if the body is not streamable.
+ * Cache-Control headers from the upstream, with the relay safety headers. The
+ * caller has already checked the type (mediaTypeKind). Falls back to buffered
+ * arrayBuffer if the body is not streamable.
  *
  * @param {import('http').ServerResponse} res
  * @param {Response} upstream - fetch() Response object.
@@ -129,6 +136,7 @@ export async function proxyMediaResponse(
     'Content-Type': contentType,
     'Cache-Control': cacheControl,
     'X-CCTV-Source': sourceHeader,
+    ...CCTV_RELAY_SAFETY_HEADERS,
   };
   if (contentLength) headers['Content-Length'] = contentLength;
   if (contentRange) headers['Content-Range'] = contentRange;
@@ -325,14 +333,22 @@ async function readCappedResponseBytes(upstream, maxBytes) {
   }
 }
 
-/** Open registered media within a header deadline; leave timely live bodies running. */
+/**
+ * Open registered media within a header deadline; leave timely live bodies
+ * running. Redirects are followed by hand (fetchCameraResponse): a hop off the
+ * origin of a camera from the operator's own config (`localConfig`) must
+ * resolve only to public addresses, and so must every hop of a feed camera.
+ * `fetchImpl` replaces that transport in tests.
+ */
 export async function fetchCctvMediaUpstream(
   url,
   {
     headers = {},
-    fetchImpl = fetch,
+    fetchImpl = null,
     timeoutMs = CCTV_MEDIA_FETCH_TIMEOUT_MS,
     signal: downstream = null,
+    localConfig = false,
+    lookup,
   } = {},
 ) {
   const controller = new AbortController();
@@ -343,7 +359,16 @@ export async function fetchCctvMediaUpstream(
   if (downstream?.aborted) controller.abort();
   else downstream?.addEventListener?.('abort', onDownstreamAbort);
   try {
-    return await fetchImpl(url, { headers, signal: controller.signal });
+    return await fetchCameraResponse(url, {
+      headers,
+      signal: controller.signal,
+      fetchImpl:
+        fetchImpl ??
+        cameraTransport({
+          localOrigin: localConfig ? new URL(url).origin : null,
+          lookup,
+        }),
+    });
   } finally {
     clearTimeout(timeoutId);
     downstream?.removeEventListener?.('abort', onDownstreamAbort);
@@ -513,20 +538,28 @@ export function cctvUpstreamUserAgent(url) {
  * A timeout is treated like every other upstream miss so the caller can
  * continue through the Street View and synthetic fallback chain. `fetchImpl`
  * and `timeoutMs` are injectable only to keep the timeout contract unit-testable.
+ * Only raster images are accepted: an SVG can carry script.
  *
  * @param {string} url - Server-registered upstream image URL.
  * @param {object} [options]
- * @param {typeof fetch} [options.fetchImpl=fetch] - Fetch implementation.
+ * @param {typeof fetch | null} [options.fetchImpl] - Makes each request in
+ *   place of cameraTransport, which pins every host but the operator's own
+ *   configured origin to public addresses.
  * @param {number} [options.timeoutMs=CCTV_FRAME_FETCH_TIMEOUT_MS] - Abort timeout.
  * @param {number} [options.maxBytes=CCTV_FRAME_MAX_BODY_BYTES] - Snapshot byte cap.
+ * @param {boolean} [options.localConfig=false] - The URL is from the
+ *   operator's own camera config, so its origin may be a private address.
+ * @param {typeof import('node:dns/promises').lookup} [options.lookup]
  * @returns {Promise<{ok:true,body:Buffer,contentType:string}|null>}
  */
 export async function fetchCctvImageFromUpstream(
   url,
   {
-    fetchImpl = fetch,
+    fetchImpl = null,
     timeoutMs = CCTV_FRAME_FETCH_TIMEOUT_MS,
     maxBytes = CCTV_FRAME_MAX_BODY_BYTES,
+    localConfig = false,
+    lookup,
   } = {},
 ) {
   if (!url || !/^https?:\/\//i.test(url)) return null;
@@ -543,11 +576,15 @@ export async function fetchCctvImageFromUpstream(
         headers: { 'User-Agent': cctvUpstreamUserAgent(url) },
         signal: controller.signal,
       },
-      fetchImpl,
+      fetchImpl ??
+        cameraTransport({
+          localOrigin: localConfig ? new URL(url).origin : null,
+          lookup,
+        }),
     );
     if (!upstream) return null;
     const contentType = upstream.headers.get('content-type') || '';
-    if (!upstream.ok || !contentType.startsWith('image/')) {
+    if (!upstream.ok || mediaTypeKind(contentType) !== 'image') {
       controller.abort();
       return null;
     }

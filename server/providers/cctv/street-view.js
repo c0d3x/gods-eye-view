@@ -2,6 +2,7 @@ import { createBoundedCache } from '../common/bounded-cache.js';
 import { readResponseBytesCapped } from '../common/http.js';
 import { makeCostRateLimiter } from '../common/rate-limit.js';
 import { googleServerApiKey } from '../places/google-key.js';
+import { mediaTypeKind } from './camera-fetch.js';
 import {
   CCTV_FRAME_FETCH_TIMEOUT_MS,
   CCTV_FRAME_MAX_BODY_BYTES,
@@ -109,7 +110,7 @@ export function createStreetViewFallback({
         signal: AbortSignal.timeout(CCTV_FRAME_FETCH_TIMEOUT_MS),
       });
       const svType = svResp.headers.get('content-type') || '';
-      if (!svResp.ok || !svType.startsWith('image/')) {
+      if (!svResp.ok || mediaTypeKind(svType) !== 'image') {
         await svResp.body?.cancel().catch(() => {});
         return null;
       }

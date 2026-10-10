@@ -21,6 +21,14 @@ import {
   loadVegvesenSourcesFromOpenData,
 } from './sources.js';
 
+/**
+ * Packs the operator configures (CCTV_SOURCES_FILE, CCTV_SOURCES_JSON). Their
+ * cameras are marked `localConfig`: one may sit on the operator's own network,
+ * so the proxy fetches its configured origin as is. Every other pack is an
+ * open-data feed whose camera hosts must resolve to public addresses.
+ */
+const OPERATOR_PACKS = new Set(['file', 'env']);
+
 /** Env kill switch: unset or anything but "0" means enabled. */
 const envEnabled = (name) => String(process.env[name] || '1').trim() !== '0';
 
@@ -218,7 +226,11 @@ export function createCctvCatalog({ sourceRoot = process.cwd() } = {}) {
       name,
       sources: items
         .filter((item) => item && typeof item === 'object')
-        .map((item) => ({ ...normalizeSourceItem(item), pack: name }))
+        .map((item) => ({
+          ...normalizeSourceItem(item),
+          pack: name,
+          ...(OPERATOR_PACKS.has(name) && { localConfig: true }),
+        }))
         .filter((item) => item.id),
       available: Number.isFinite(items.available)
         ? items.available
