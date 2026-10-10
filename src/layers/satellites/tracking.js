@@ -117,6 +117,7 @@ export function createTracking({ state: layerState, services, parts, source }) {
     }
     layerState._trackedNorad = null;
     parts.labels._syncIssOverlay();
+    parts.lifecycle._syncContinuousRenderHold();
     clearTrackedSubjectContext('satellites');
     layerState._contextRefreshedAtMs = 0;
     _emitAwarenessEvent('gev:awareness-subject-cleared', {
@@ -399,6 +400,7 @@ export function createTracking({ state: layerState, services, parts, source }) {
     layerState._trackedFrameNumber = -1;
     layerState._trackedFrameGeo = null;
     parts.labels._syncIssOverlay();
+    parts.lifecycle._syncContinuousRenderHold(); // the camera follows it every frame
 
     // Hide the primitive — the tracked ENTITY renders the dot below. The
     // entity must own a point graphic so the Viewer's tracking camera can

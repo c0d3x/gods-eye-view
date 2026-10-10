@@ -417,6 +417,7 @@ export function createControls({ state: layerState, services, parts, source }) {
           );
         parts.labels._syncIssOverlay();
       }
+      parts.lifecycle._syncContinuousRenderHold();
       if (catalogChanged && catalog === 'dense') {
         layerState._denseLoadPromise = parts.catalog._loadDenseCatalog();
       } else if (catalog === 'core') {

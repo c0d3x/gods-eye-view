@@ -11,6 +11,23 @@ export function createLifecycle({
   const { holdContinuousRender, releaseContinuousRender } = services.render;
   const { registerPickOwner, unregisterPickOwner } = services.picking;
 
+  /**
+   * Hold continuous rendering only while something here moves every frame: the
+   * dots, the orbit rings, or a tracked satellite the camera follows. Space
+   * Missions keeps this layer on with dots and rings hidden, just to look up
+   * TLEs, and must not keep the render loop from idling. A disabled layer has
+   * nothing to sync: disable() and destroy() release the hold themselves.
+   */
+  function _syncContinuousRenderHold() {
+    if (!layerState._enabled) return;
+    const animating =
+      layerState._params.showPoints ||
+      layerState._params.showOrbits ||
+      layerState._trackedNorad !== null;
+    if (animating) holdContinuousRender('satellites');
+    else releaseContinuousRender('satellites');
+  }
+
   const methods = {
     // Catalog data refresh; propagation remains preRender-owned.
 
@@ -62,7 +79,8 @@ export function createLifecycle({
 
     enable(viewer) {
       layerState._enabled = true;
-      holdContinuousRender('satellites'); // per-frame animator (perf wave 2)
+      // Per-frame animator (perf wave 2), held only while something moves.
+      _syncContinuousRenderHold();
       if (layerState._pointCollection)
         layerState._pointCollection.show =
           parts.controls.satelliteVisualsVisible(
@@ -175,5 +193,5 @@ export function createLifecycle({
     },
   };
 
-  return { methods };
+  return { methods, _syncContinuousRenderHold };
 }
