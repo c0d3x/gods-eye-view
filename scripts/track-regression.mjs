@@ -472,7 +472,9 @@ async function main() {
     }, SYNTH, APP_ORIGIN);
 
     console.log('Loading app...');
-    await page.goto(APP_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    // The nightly runs this first, against a cold dev server, under SwiftShader:
+    // allow 90 s per navigation, as the QA harnesses do (#50).
+    await page.goto(APP_URL, { waitUntil: 'domcontentloaded', timeout: 90000 });
     if (HEADFUL) await page.bringToFront();
 
     // Wait for the app to expose its globals (Cesium viewer + dataManager).
@@ -685,7 +687,7 @@ async function main() {
       trackedShareUrl,
     );
 
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 90000 });
     await page.waitForFunction(
       () => window.__godsEyeView?.dataManager?.layers?.size >= 12,
       { timeout: 60000, polling: 200 },
@@ -726,7 +728,7 @@ async function main() {
     // Prove the URL itself owns the result. Remove the same-origin saved
     // preference, then open the captured link as a clean recipient would.
     await evalPage(() => localStorage.removeItem('gev:layer-state:v2'));
-    await page.goto(trackedShareUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.goto(trackedShareUrl, { waitUntil: 'domcontentloaded', timeout: 90000 });
     await page.waitForFunction(
       () => window.__godsEyeView?.dataManager?.layers?.size >= 12,
       { timeout: 60000, polling: 200 },
@@ -768,7 +770,7 @@ async function main() {
     // page would never reload and the app would keep its existing tracking.
     // Leave the document first so this is a real cold boot of the shared link.
     await page.goto('about:blank', { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.goto(trackedShareUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.goto(trackedShareUrl, { waitUntil: 'domcontentloaded', timeout: 90000 });
     await page.waitForFunction(
       () => window.__godsEyeView?.dataManager?.layers?.size >= 12,
       { timeout: 60000, polling: 200 },

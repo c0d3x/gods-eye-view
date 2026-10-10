@@ -14,6 +14,9 @@ const browser = await puppeteer.launch({
 });
 try {
   const page = await browser.newPage();
+  // The dev server serves the app as hundreds of modules, and SwiftShader
+  // loads them slowly, so allow more than Puppeteer's 30 s default (#50).
+  page.setDefaultNavigationTimeout(90_000);
   const errors = [];
   page.on('console', (message) => {
     if (

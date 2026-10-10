@@ -257,7 +257,8 @@ try {
   // This harness owns the Map Source keyboard. Suppress the separate first-run
   // launcher on every navigation so its Escape/Space handlers cannot turn a
   // tray assertion into a mission or voice action in a pristine browser.
-  await page.goto(`${appUrl}/?welcome=0`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+  // A cold dev-server load under SwiftShader can take most of a minute (#50).
+  await page.goto(`${appUrl}/?welcome=0`, { waitUntil: 'domcontentloaded', timeout: 90_000 });
   // Voice attaches after startup (src/app/deferredVoice.js), and the
   // location checks read its state.
   await page.waitForFunction(() => window.__godsEyeView?.styleManager && window.__godsEyeView.voiceCommands, { timeout: 60_000 });
@@ -1225,7 +1226,7 @@ try {
     } else {
       await page.goto(`${appUrl}/?welcome=0#v=2&lat=30.27&lon=-97.74&map=${legacyId}`, {
         waitUntil: 'domcontentloaded',
-        timeout: 60_000,
+        timeout: 90_000,
       });
       // Voice attaches after startup (src/app/deferredVoice.js), and the
       // location checks read its state.
