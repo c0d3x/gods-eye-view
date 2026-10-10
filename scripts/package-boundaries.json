@@ -1537,6 +1537,7 @@
       "src/data/flowMatch.js",
       "src/data/focusDeemphasis.js",
       "src/data/geoid.js",
+      "src/data/bundledBytes.js",
       "src/data/groundFloor.js",
       "src/data/groundSnap.js",
       "src/data/iconOrientation.js",
@@ -2205,7 +2206,6 @@
       "hls.js",
       "@mapbox/vector-tile",
       "cesium",
-      "egm96-universal",
       "mgrs",
       "pbf",
       "satellite.js",
@@ -2288,6 +2288,7 @@
       "src/data/flowMatch.js",
       "src/data/focusDeemphasis.js",
       "src/data/geoid.js",
+      "src/data/bundledBytes.js",
       "src/data/iconOrientation.js",
       "src/data/infrastructure.js",
       "src/data/installationFeedback.js",
@@ -2726,7 +2727,6 @@
     "external": [
       "hls.js",
       "cesium",
-      "egm96-universal",
       "satellite.js",
       "@mapbox/vector-tile",
       "pbf",
@@ -2745,6 +2745,7 @@
       "src/app/surfaceServices.js",
       "src/data/dataCredits.js",
       "src/data/geoid.js",
+      "src/data/bundledBytes.js",
       "src/data/local_data/natural_earth/marine.json",
       "src/data/local_data/natural_earth/regions.json",
       "src/data/local_data/neighborhoods/san-francisco.json",
@@ -2788,14 +2789,7 @@
       "src/sources/capability.js",
       "src/data/cameraArrival.js"
     ],
-    "external": [
-      "cesium",
-      "egm96-universal",
-      "satellite.js",
-      "@mapbox/vector-tile",
-      "pbf",
-      "mgrs"
-    ]
+    "external": ["cesium", "satellite.js", "@mapbox/vector-tile", "pbf", "mgrs"]
   },
   "layer-lifecycle": {
     "exports": ["./data/lifecycle"],
@@ -3178,6 +3172,7 @@
       "src/data/detectionCohort.js",
       "src/data/detectionPolicy.js",
       "src/data/geoid.js",
+      "src/data/bundledBytes.js",
       "src/data/groundFloor.js",
       "src/data/gtfsRealtime.js",
       "src/data/iconOrientation.js",
@@ -3225,7 +3220,7 @@
       "src/sources/featureSource.js",
       "src/sources/capability.js"
     ],
-    "external": ["cesium", "egm96-universal", "pbf"]
+    "external": ["cesium", "pbf"]
   },
   "transit-layer": {
     "exports": ["./layers/transit"],

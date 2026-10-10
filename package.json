@@ -66,7 +66,6 @@
     "@mapbox/vector-tile": "^3.0.0",
     "@meri-imperiumi/eccodes-wasm": "^2.48.2",
     "cesium": "1.138.0",
-    "egm96-universal": "^1.1.1",
     "hls.js": "^1.7.3",
     "mapillary-js": "^4.1.2",
     "mgrs": "^2.2.0",

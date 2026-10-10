@@ -80,7 +80,6 @@ export function createBrowserViteConfig({
         '@jtarrio/signals/demod/demodulator.js',
         '@jtarrio/signals/demod/modes.js',
         '@jtarrio/webrtlsdr/rtlsdr.js',
-        'egm96-universal',
         // Loaded on demand when the first street-level image opens.
         'mapillary-js',
       ],
