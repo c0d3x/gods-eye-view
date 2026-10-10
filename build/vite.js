@@ -2,6 +2,7 @@ import { applicationHtmlPlugin } from './application-html.js';
 import { DEFAULT_ALLOWED_HOSTS, hostCheckPlugin } from './allowedHosts.js';
 import { apiRequestGuardPlugin } from './api-request-guard.js';
 import cesium from './cesium.js';
+import { appCodeSplitting } from './chunks.js';
 import { embedFramingPlugin } from './embed-framing.js';
 import { panelBuildPlugin } from './panel.js';
 
@@ -134,7 +135,13 @@ export function createBrowserViteConfig({
         realtimeDebugLog === true,
       ),
     },
-    build: { chunkSizeWarningLimit: 1500 },
+    build: {
+      // Startup code is split by feature (build/chunks.js), and each startup
+      // chunk stays under Vite's 500 kB default. The limit sits just above
+      // the largest chunk loaded on demand, Mapillary's viewer (1,069 kB).
+      chunkSizeWarningLimit: 1100,
+      rolldownOptions: { output: { codeSplitting: appCodeSplitting() } },
+    },
     // satellite.js ships an optional WASM propagator whose worker uses
     // top-level await, which only module workers support.
     worker: { format: 'es' },
