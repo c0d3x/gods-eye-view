@@ -190,7 +190,11 @@
       "scripts/google-server-key.mjs",
       "src/data/cctvFootprint.js",
       "src/sources/cctvTypes.js",
-      "src/sources/httpBody.js"
+      "src/sources/httpBody.js",
+      "server/providers/cctv/street-view.js",
+      "server/providers/common/bounded-cache.js",
+      "server/providers/common/rate-limit.js",
+      "src/sources/rateLimit.js"
     ],
     "external": []
   },
