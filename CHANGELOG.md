@@ -145,6 +145,17 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
   Street Level browser gate runs as well. The Release, CodeQL, Scorecard,
   dependency-review and nightly QA workflows are the fork's again.
 
+- `pnpm run typecheck` holds each upstream file to its own error count in
+  `typecheck-baseline.json`, so a fork edit can no longer add type errors to a
+  file that already had some, and the fork's earlier edits are typed (43 of
+  the 48 errors they had added are gone). CI also fails a change that grows
+  any of the three baselines, except across an upstream merge;
+  `pnpm run check:baselines --base <commit>` runs the same check locally.
+
+- `CHANGELOG.md` keeps the fork's version through upstream merges (a
+  `merge=ours` rule in `.gitattributes`), and CodeQL leaves out unit tests and
+  the QA harnesses.
+
 ### Removed
 
 - Drop OpenSky's Basic-auth modes. OpenSky's API accepts only OAuth2 client
@@ -205,6 +216,24 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
   Node counts as passing with only the tests it reached. It also gives every
   test a 60-second deadline and runs the tests under `server/` too.
 
+- Rain radar, satellite clouds and lightning no longer show "Frame
+  unavailable; previous observation retained" after the tab has been in the
+  background. They stop polling and loading imagery while the tab is hidden,
+  and show the latest observation when you return.
+
+- The HUD AI summary no longer calls OpenAI from a background tab, which with
+  live layers such as Transit on came to about four paid summaries a minute.
+  It asks for one fresh summary when you return, if the view changed.
+
+- A coordinate query with a long run of spaces no longer freezes the tab; the
+  parser declines queries over 100 characters and its patterns run in linear
+  time.
+
+- The nightly QA run allows 90 seconds for each page load, and the Map Source
+  tray's notice check and the track regression's corridor check hold under
+  SwiftShader again. The track regression waits for the voice stack instead
+  of skipping its voice checks.
+
 ### Security
 
 - Every `/api` route refuses requests that another site's page sends through
@@ -252,6 +281,13 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 - The AIS key fingerprint no longer derives from the key, voice debug session
   IDs use cryptographic randomness, and the screenshot sink used by the QA
   scripts listens only on 127.0.0.1 and no longer echoes errors.
+
+- On the dev server, `/panel/` sends the same Content-Security-Policy,
+  `X-Frame-Options: DENY` and `nosniff` as the rest of the app, so another
+  site can no longer frame the app and its Provider Settings there.
+
+- The globe panel's Open in God's Eye View button follows only http and https
+  links, and DriveBC image credits keep no angle brackets.
 
 ## [0.2.0] - 2026-09-13
 
