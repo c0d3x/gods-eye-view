@@ -1,4 +1,5 @@
 /** Own panel position preferences, viewport clamping and drag listeners. */
+import { takePanelLayoutResetNotice } from './panelLayoutStorage.js';
 import { RESIZE_DIRECTIONS, resizeBox } from './panelResize.js';
 
 /** Versioned localStorage namespace prefix to invalidate stale panel layouts. */
@@ -211,15 +212,16 @@ export class PanelPositionControls {
     return rects;
   }
 
+  /**
+   * One-time toast when panel positions saved under an older storage version
+   * are superseded by the current layout defaults (positions reset; collapsed
+   * states are preserved). The superseded positions are deleted.
+   */
   _maybeNotifyLayoutReset() {
     try {
-      const marker = `godsEyeView.${PANEL_POSITION_STORAGE_VERSION}.layoutResetNotified`;
-      if (localStorage.getItem(marker)) return;
-      localStorage.setItem(marker, '1');
-      const hadOldPositions = Object.keys(localStorage).some((key) =>
-        key.startsWith('godsEyeView.v6.panelPos.'),
-      );
-      if (hadOldPositions) {
+      if (
+        takePanelLayoutResetNotice(localStorage, PANEL_POSITION_STORAGE_VERSION)
+      ) {
         this._showToast(
           'Panel layout updated — positions reset to new defaults',
         );
