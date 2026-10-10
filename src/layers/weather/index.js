@@ -71,8 +71,13 @@ export function createWeatherLayer({
   let hostHidden = false;
   let hostStatus = null;
   let unregisterClock = null;
+  /** @type {AbortController | null} */
   let frameRequest = null;
   let noFrame = false;
+  // A hidden page never renders, so a frame started there cannot finish
+  // loading. Work skipped while hidden runs again when the page is visible.
+  let resumeOnVisible = false;
+  let refreshOnVisible = false;
   const maxGap = () =>
     radar
       ? RADAR_MAX_GAP_MS
@@ -105,10 +110,30 @@ export function createWeatherLayer({
   const suspended = () => hostHidden || documentRef?.hidden || motion?.matches;
   const onVisibility = () => {
     if (suspended()) rendering?.cancelPrefetch?.();
+    if (documentRef?.hidden && frameRequest) {
+      frameRequest.abort();
+      resumeOnVisible = true;
+    }
     if (clock) void clock.refresh();
     else if (suspended()) stop();
+    if (!documentRef?.hidden) resumeVisible();
     notify();
   };
+  function resumeVisible() {
+    const refresh = refreshOnVisible;
+    const resume = resumeOnVisible;
+    refreshOnVisible = resumeOnVisible = false;
+    if (!enabled || !(refresh || resume)) return;
+    error = null;
+    if (refresh && !request) void layer.update(viewer);
+    // In shared history the clock refresh above re-applies the target time.
+    else if (resume && manifest && (!clock || isLatest()))
+      void show(
+        isLatest() || !manifest.times.includes(shownTime())
+          ? manifest.latest
+          : shownTime(),
+      );
+  }
 
   function checkHost(resume = true) {
     const host = getHost();
@@ -206,6 +231,10 @@ export function createWeatherLayer({
     checkHost(false);
     if (!enabled || hostHidden || !manifest?.times?.includes(time))
       return false;
+    if (documentRef?.hidden) {
+      resumeOnVisible = true;
+      return false;
+    }
     signal?.throwIfAborted();
     frameRequest?.abort();
     const controller = new AbortController();
@@ -312,9 +341,14 @@ export function createWeatherLayer({
       loading = false;
       error = null;
       followLatest = true;
+      resumeOnVisible = refreshOnVisible = false;
     },
     async update(_viewer, { signal } = {}) {
       if (!enabled) return false;
+      if (documentRef?.hidden) {
+        refreshOnVisible = true;
+        return true;
+      }
       checkHost(false);
       clearTimeout(timer);
       timer = null;
