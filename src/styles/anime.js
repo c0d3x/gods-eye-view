@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Anime / Studio Ghibli Style — Cel-shading + Saturation boost
  * Transforms the world into an animated film look

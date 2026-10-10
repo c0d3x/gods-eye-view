@@ -1,5 +1,5 @@
-import assert from 'node:assert/strict';
 import test from 'node:test';
+import assert from 'node:assert/strict';
 import { validatePinokioSharing } from '../scripts/pinokio-preflight.mjs';
 
 test('Pinokio stays local by default', () => {
@@ -18,11 +18,10 @@ test('Pinokio refuses Cloudflare sharing on the current supported release', () =
 
 test('Pinokio refuses its post-ready LAN sharing path too', () => {
   assert.throws(
-    () =>
-      validatePinokioSharing({
-        PINOKIO_SHARE_LOCAL: 'true',
-        PINOKIO_SHARE_VAR: '__gev_sharing_disabled__',
-      }),
+    () => validatePinokioSharing({
+      PINOKIO_SHARE_LOCAL: 'true',
+      PINOKIO_SHARE_VAR: '__gev_sharing_disabled__',
+    }),
     /PINOKIO_SHARE_LOCAL=false/,
   );
 });
@@ -50,11 +49,10 @@ test('Pinokio matches the platform truthiness contract after trimming', () => {
 
 test('a strong passcode cannot bypass the current sharing refusal', () => {
   assert.throws(
-    () =>
-      validatePinokioSharing({
-        PINOKIO_SHARE_CLOUDFLARE: 'true',
-        PINOKIO_SHARE_PASSCODE: 'correct-horse-battery',
-      }),
+    () => validatePinokioSharing({
+      PINOKIO_SHARE_CLOUDFLARE: 'true',
+      PINOKIO_SHARE_PASSCODE: 'correct-horse-battery',
+    }),
     /logs successful tunnel-login passcodes/,
   );
 });

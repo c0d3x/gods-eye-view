@@ -1,29 +1,40 @@
+import { paintTransitBracket } from './detectionDraw.js';
 import * as Cesium from 'cesium';
+import { governorRequestRender } from '../renderGovernor.js';
+import {
+  DETECTION_ENABLE_FADE_MS,
+  countAnimatingRenderEntries,
+  detectionNeedsFollowUpFrame,
+  detectionPaintSkipDecision,
+  scanlineOffsetPx,
+} from './detectionRenderDemand.js';
+import {
+  acquireAlpha,
+  appendCornerBracket,
+  appendTransitBracket,
+  resolveTier,
+  measureTrackLabel,
+  nearFarScale,
+  rectIntersectsAny,
+} from './detectionDraw.js';
 import {
   getKeyholeFadeTuning,
   keyholeLabelAlphaFromGeometry,
 } from '../celestialRing.js';
 import { registerWorldOverlayPaintLane } from '../overlays/worldOverlay.js';
-import { paintDetectionCallout } from '../overlays/worldOverlayDraw.js';
 import {
   DETECTION_STYLE,
   DETECTION_THEME_MAP,
   SKY_PLATE_SCALE,
 } from '../overlays/worldOverlayTokens.js';
-import { governorRequestRender } from '../renderGovernor.js';
+import { skyBackdropFactor } from './iconOrientation.js';
+import { paintDetectionCallout } from '../overlays/worldOverlayDraw.js';
+import { allocateLayerQuotas, LabelArbiter } from './labelArbiter.js';
 import {
   BoundedCohort,
   cohortCapForQuota,
   stableIdentityHash,
 } from './detectionCohort.js';
-import {
-  acquireAlpha,
-  appendCornerBracket,
-  measureTrackLabel,
-  nearFarScale,
-  rectIntersectsAny,
-  resolveTier,
-} from './detectionDraw.js';
 import {
   ALLOCATION_ELASTIC,
   canonicalizeDensity,
@@ -32,19 +43,17 @@ import {
   detectionHorizontalSector,
   labelBudgetFor,
   normalizeAllocationStrategy,
+  normalizeProfile,
   profileForDensity,
   viewScaleForAltitude,
 } from './detectionPolicy.js';
 import { detectionBracketOpacity } from './detectionPresentation.js';
 import {
-  countAnimatingRenderEntries,
-  DETECTION_ENABLE_FADE_MS,
-  detectionNeedsFollowUpFrame,
-  detectionPaintSkipDecision,
-  scanlineOffsetPx,
-} from './detectionRenderDemand.js';
-import { skyBackdropFactor } from './iconOrientation.js';
-import { allocateLayerQuotas, LabelArbiter } from './labelArbiter.js';
+  createCyberSonarSampler,
+  cyberSonarFrameDelay,
+  isCyberContactSonarActive as isCyberSonarActive,
+  isCyberContactThemeActive as isCyberMapThemeActive,
+} from '../cyberSonar.js';
 
 /**
  * @module detection
@@ -203,6 +212,8 @@ let _lastRenderMs = 0;
 let _lastPaintMs = 0;
 let _lastSolveMs = 0;
 let _throttleSkipCount = 0;
+let _lastCyberSonarPaintAt = Number.NEGATIVE_INFINITY;
+let _cyberSonarRenderTimer = null;
 /** @type {Function|null} External callback invoked when the detection mode changes */
 let _onModeChange = null;
 /** @type {{surface:HTMLCanvasElement|null,setActive:Function,requestPaint:Function,unregister:Function}|null} */
@@ -216,6 +227,8 @@ let _hostLane = null;
  * @type {{surface:HTMLCanvasElement|null,setActive:Function,requestPaint:Function,unregister:Function}|null}
  */
 let _calloutLane = null;
+let _transitBracketPaths = new Map();
+let _transitBracketAlpha = 1;
 /**
  * Callouts solved by the sensor lane this frame, replayed by the callout lane.
  * The array and its rows are POOLED — `_calloutCount` is the live length — so a
@@ -320,6 +333,7 @@ export function initDetection(viewer, layers, onModeChange) {
 
 /** Release the host lane and all retained detection runtime state. */
 export function destroyDetection() {
+  _clearCyberSonarRenderTimer();
   if (_cockpitModeListener && typeof window !== 'undefined') {
     window.removeEventListener(
       'gev:cockpit-mode-changed',
@@ -334,6 +348,7 @@ export function destroyDetection() {
   _hostLane = null;
   _calloutLane?.unregister?.();
   _calloutLane = null;
+  _transitBracketPaths.clear();
   _calloutCount = 0;
   _viewer = null;
   _layers = [];
@@ -356,6 +371,25 @@ export function destroyDetection() {
   _lastPaintMs = 0;
   _lastSolveMs = 0;
   _throttleSkipCount = 0;
+  _lastCyberSonarPaintAt = Number.NEGATIVE_INFINITY;
+}
+
+function _clearCyberSonarRenderTimer() {
+  if (_cyberSonarRenderTimer != null) {
+    globalThis.clearTimeout?.(_cyberSonarRenderTimer);
+    _cyberSonarRenderTimer = null;
+  }
+}
+
+function _scheduleCyberSonarRender(nowMs) {
+  if (_cyberSonarRenderTimer != null || !globalThis.setTimeout) return;
+  const delay = cyberSonarFrameDelay(_lastCyberSonarPaintAt, nowMs);
+  _cyberSonarRenderTimer = globalThis.setTimeout(() => {
+    _cyberSonarRenderTimer = null;
+    if (isCyberSonarActive()) {
+      governorRequestRender('cyber-sonar-cadence');
+    }
+  }, delay);
 }
 
 /**
@@ -529,7 +563,14 @@ export function markDetectionSourcesChanged(reason = 'sources-changed') {
 
 /** Read-only diagnostics for unit/browser QA. */
 export function getDetectionDiagnostics() {
-  return _lastDiagnostics ? JSON.parse(JSON.stringify(_lastDiagnostics)) : null;
+  if (!_lastDiagnostics) return null;
+  const result = JSON.parse(JSON.stringify(_lastDiagnostics));
+  // Readback only: expose painted plates so pixel QA can exclude occluded
+  // sprites/strokes. Nothing is copied on the production paint path.
+  result.calloutRects = _calloutPool
+    .slice(0, _calloutCount)
+    .map(({ x, y, w, h, alpha }) => ({ x, y, w, h, alpha }));
+  return result;
 }
 
 function _publishDiagnostics() {
@@ -669,7 +710,18 @@ function _applyModeState() {
 function _shouldPaintDetectionLane(frame) {
   if (_mode === MODE_OFF || _suspended) return false;
   const layoutChanged = frame.layoutRevision !== _hostLayoutRevision;
+  const nowMs = Number.isFinite(frame.timestamp) ? frame.timestamp : _nowMs();
   _frameCount++;
+  if (isCyberSonarActive()) {
+    const sonarDelay = cyberSonarFrameDelay(_lastCyberSonarPaintAt, nowMs);
+    if (!layoutChanged && sonarDelay > 0) {
+      _scheduleCyberSonarRender(nowMs);
+      return false;
+    }
+  } else {
+    _clearCyberSonarRenderTimer();
+    _lastCyberSonarPaintAt = Number.NEGATIVE_INFINITY;
+  }
   // The skip and the follow-up request come from ONE decision, so the valve
   // cannot drop a frame without handing its request forward — see
   // `detectionPaintSkipDecision`. (Skipping is a deferral, never a cancellation:
@@ -716,6 +768,14 @@ function _paintDetectionLane(frame) {
   _lastRenderMs = performance.now() - start;
   _lastSolveMs = result.solveMs || 0;
   _lastPaintMs = Math.max(0, _lastRenderMs - _lastSolveMs);
+  const nowMs = Number.isFinite(frame.timestamp) ? frame.timestamp : _nowMs();
+  if (isCyberSonarActive() && _lastDiagnostics?.visibleCount > 0) {
+    _lastCyberSonarPaintAt = nowMs;
+    _scheduleCyberSonarRender(nowMs);
+  } else {
+    _clearCyberSonarRenderTimer();
+    _lastCyberSonarPaintAt = Number.NEGATIVE_INFINITY;
+  }
   if (_lastDiagnostics) {
     _lastDiagnostics.frameTotalMs = _lastRenderMs;
     _lastDiagnostics.paintMs = _lastPaintMs;
@@ -735,7 +795,7 @@ function _paintDetectionLane(frame) {
       // The frame's OWN timestamp, not a fresh sample — re-reading the clock here
       // is what dropped the terminal frame of a fade (paint at 219 ms, policy at
       // 220 ms, and the settled alpha never painted).
-      nowMs: Number.isFinite(frame.timestamp) ? frame.timestamp : _nowMs(),
+      nowMs,
       enabledAtMs: _enableTime,
       fadeMs: FADE_MS,
       animatingLabelCount: result.animatingCount || 0,
@@ -983,7 +1043,8 @@ function _stashCallout(entry, acquireFade, keyhole) {
     placement.centerY,
     keyhole,
   );
-  const alpha = acquireFade * temporalAlpha * radialAlpha;
+  const alpha =
+    acquireFade * temporalAlpha * radialAlpha * (candidate.sonarFactor ?? 1);
   if (alpha <= 0.001) return;
 
   let row = _calloutPool[_calloutCount];
@@ -1048,9 +1109,20 @@ function _stashCallout(entry, acquireFade, keyhole) {
  * @param {Object} frame Host paint frame.
  */
 function _paintCalloutLane(frame) {
-  if (_mode === MODE_OFF || _suspended || _calloutCount === 0) return;
+  if (_mode === MODE_OFF || _suspended) return;
   const ctx = frame.ctx;
   if (!ctx) return;
+  for (const bands of _transitBracketPaths.values()) {
+    for (const entry of bands) {
+      if (entry)
+        paintTransitBracket(
+          ctx,
+          entry.path,
+          entry.color,
+          entry.alpha * _transitBracketAlpha,
+        );
+    }
+  }
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
   for (let i = 0; i < _calloutCount; i++) {
@@ -1122,6 +1194,7 @@ function _materializeCandidate(
     keyholeAlpha,
     placements,
     color: obj._candidateColor,
+    sonarFactor: obj._candidateSonarFactor ?? 1,
     // Costed here rather than in the object sweep: the sweep walks every
     // observation in view, while this runs only for callouts that actually
     // placed — a budgeted handful per frame.
@@ -1140,6 +1213,7 @@ function _materializeCandidate(
  * for a bounded cohort on solve ticks.
  */
 function _drawOverlay(frame) {
+  _transitBracketPaths.clear();
   const { width, height } = frame;
   if (!_ctx || width <= 0 || height <= 0) {
     return {
@@ -1155,6 +1229,9 @@ function _drawOverlay(frame) {
   // with every arbiter call in this function — so the frame that paints an
   // animation's final state is the same frame that ends its demand.
   const now = Number.isFinite(frame.timestamp) ? frame.timestamp : _nowMs();
+  const sonarActive = isCyberSonarActive();
+  const cyberMapActive = isCyberMapThemeActive();
+  const sonarSampler = createCyberSonarSampler(width, height, now);
   const bracketPresentationOpacity = detectionBracketOpacity(_cockpitActive);
   const shouldSolve =
     _labelSolveDirty || now - _lastLabelSolveAt >= LABEL_SOLVE_INTERVAL_MS;
@@ -1257,7 +1334,7 @@ function _drawOverlay(frame) {
   _ctx.font = FONT;
   if (!_charWidth) _charWidth = _ctx.measureText('0000000000').width / 10 || 6;
   const tiers = _theme.tiers || null;
-  const colorFor = (key) => tiers?.[key] || _theme.line;
+  const colorFor = (key) => (tiers && tiers[key]) || _theme.line;
   const bracketPaths = new Map();
   const pathFor = (map, color, alpha) => {
     const band = Math.max(
@@ -1322,6 +1399,9 @@ function _drawOverlay(frame) {
       );
       halfW = _clamp((isTracked ? 14 : 9) * bscale, 7, 48);
       halfH = _clamp((isTracked ? 11 : 7) * bscale, 5, 38);
+    } else if (obj.tier?.startsWith('transit_') && obj.bracketHalfWidth > 0) {
+      halfW = obj.bracketHalfWidth;
+      halfH = obj.bracketHalfHeight;
     } else {
       halfW = _mode === MODE_DENSE ? (isTracked ? 28 : 11) : 16;
       halfH = _mode === MODE_DENSE ? (isTracked ? 22 : 7) : 10;
@@ -1334,14 +1414,24 @@ function _drawOverlay(frame) {
     // The bracket follows the same linear radial keyhole fade as its callout.
     const color = colorFor(resolveTier(obj));
     const keyholeAlpha = keyholeLabelAlphaFromGeometry(sx, sy, keyhole);
-    const bracketAlpha = detectionBracketAlpha(
+    const sonarFactor =
+      sonarActive && !obj.skipLabel ? sonarSampler.at(sx, sy) : 1;
+    const sonarLabelFactor = sonarSampler.label(sonarFactor);
+    const admissionAlpha = detectionBracketAlpha(
       obj.type,
       keyholeAlpha,
       keyholeOutsideOpacity,
+      cyberMapActive,
     );
+    const bracketAlpha = admissionAlpha * sonarFactor;
     if (bracketAlpha > 0) {
-      appendCornerBracket(
-        pathFor(bracketPaths, color, bracketAlpha),
+      const transit = obj.tier?.startsWith('transit_');
+      (transit ? appendTransitBracket : appendCornerBracket)(
+        pathFor(
+          transit ? _transitBracketPaths : bracketPaths,
+          color,
+          bracketAlpha,
+        ),
         sx,
         sy,
         halfW,
@@ -1371,13 +1461,15 @@ function _drawOverlay(frame) {
 
     obj._cohortSourceId = sourceId;
     obj._cohortPriority = _semanticPriority(obj);
-    obj._cohortBand = bracketAlpha >= 0.999 ? 8 : Math.floor(bracketAlpha * 8);
+    obj._cohortBand =
+      admissionAlpha >= 0.999 ? 8 : Math.floor(admissionAlpha * 8);
     obj._cohortHash = stableIdentityHash(layerId, sourceId);
     obj._candidateScreenX = sx;
     obj._candidateScreenY = sy;
     obj._candidateHalfW = halfW;
     obj._candidateHalfH = halfH;
     obj._candidateColor = color;
+    obj._candidateSonarFactor = sonarLabelFactor;
     obj._candidatePrimary = primary;
     obj._candidateMicro = micro;
 
@@ -1473,6 +1565,7 @@ function _drawOverlay(frame) {
 
   const fade = acquireAlpha(_enableTime, now, FADE_MS);
   const bracketWidth = _mode === MODE_DENSE ? 1 : 1.25;
+  _transitBracketAlpha = fade * bracketPresentationOpacity;
 
   // Brackets — batched by tier color and linear radial-opacity band.
   _ctx.lineWidth = bracketWidth;

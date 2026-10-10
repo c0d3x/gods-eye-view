@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * @file One-shot loader that caches success and rate-limits failure.
  *

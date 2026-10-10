@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * NASA FIRMS area-CSV parsing — pure functions, no Cesium/DOM/network.
  *
@@ -6,9 +5,15 @@
  * VIIRS header (confirmed live 2026-07-16):
  *   latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,satellite,
  *   instrument,confidence,version,bright_ti5,frp,daynight
+ * MODIS header:
+ *   latitude,longitude,brightness,scan,track,acq_date,acq_time,satellite,
+ *   instrument,confidence,version,bright_t31,frp,daynight
  *
  * Quirks this module owns:
- * - `confidence` is CATEGORICAL for VIIRS (`l`/`n`/`h`) — passed through raw.
+ * - `confidence` is CATEGORICAL for VIIRS (`l`/`n`/`h`) and numeric 0-100 for
+ *   MODIS — passed through raw.
+ * - Brightness maps from `bright_ti4`/`brightness`; the secondary band maps
+ *   from `bright_ti5`/`bright_t31`.
  * - `acq_time` is NOT zero-padded ("45" = 00:45 UTC) — kept as-is in records;
  *   {@link acquisitionMsUtc} does the padding.
  * - Upstream errors come back as HTML or plain text ("Invalid MAP_KEY"),
@@ -91,8 +96,6 @@ export function parseFirmsCsv(text) {
   const iAcqTime = col.get('acq_time');
   const iSatellite = col.get('satellite');
   const iInstrument = col.get('instrument');
-  // Without coordinates every row would be skipped below.
-  if (iLat === undefined || iLon === undefined) return [];
 
   const records = [];
   for (let i = headerIndex + 1; i < lines.length; i += 1) {
@@ -107,12 +110,12 @@ export function parseFirmsCsv(text) {
     records.push({
       lat,
       lon,
-      frp: finiteOrZero(cell(parts, iFrp)),
+      frp: finiteOrZero(parts[iFrp]),
       // Categorical (l/n/h) or numeric — passed through raw; display
       // normalization happens client-side (normalizeConfidence).
       confidence: cell(parts, iConfidence),
-      brightness: finiteOrZero(cell(parts, iBrightness)),
-      brightnessTi5: finiteOrZero(cell(parts, iBrightnessTi5)),
+      brightness: finiteOrZero(parts[iBrightness]),
+      brightnessTi5: finiteOrZero(parts[iBrightnessTi5]),
       daynight: cell(parts, iDaynight),
       acqDate: cell(parts, iAcqDate),
       acqTime: cell(parts, iAcqTime), // NOT zero-padded — kept verbatim
@@ -158,10 +161,9 @@ export function acquisitionMsUtc(acqDate, acqTime) {
  * The 2 h forward slack absorbs upstream/local clock skew; records with an
  * unparseable acquisition time are dropped. Timestamps are memoized per
  * unique date:time pair — granule timestamps repeat heavily.
- * @template {{acqDate: string, acqTime: string|number}} T
- * @param {Array<T>} records - Parser records.
+ * @param {Array<{acqDate: string, acqTime: string|number}>} records - Parser records.
  * @param {number} nowMs - Reference epoch milliseconds.
- * @returns {Array<T>} Filtered records (original objects, order preserved).
+ * @returns {Array<Object>} Filtered records (original objects, order preserved).
  */
 export function filterTrailing24h(records, nowMs) {
   if (!Array.isArray(records) || !Number.isFinite(nowMs)) return [];
@@ -179,20 +181,13 @@ export function filterTrailing24h(records, nowMs) {
   });
 }
 
-/**
- * Trimmed string cell at index, '' for missing columns.
- * @param {string[]} parts
- * @param {number|undefined} index
- */
+/** Trimmed string cell at index, '' for missing columns. */
 function cell(parts, index) {
   if (index === undefined || parts[index] === undefined) return '';
   return parts[index].trim();
 }
 
-/**
- * Numeric cell → finite number, else 0.
- * @param {unknown} value
- */
+/** Numeric cell → finite number, else 0. */
 function finiteOrZero(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;

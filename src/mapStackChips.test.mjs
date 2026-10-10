@@ -1,3 +1,6 @@
+import { readShellSource } from './testSupport/readShellSource.mjs';
+import { expandApplicationHtml } from '../build/application-html.js';
+import { readStylesheet } from './testSupport/readStylesheet.mjs';
 // MAP STACK chip row — the dropdown's replacement control surface.
 //
 // The owner's complaint was two clicks (open panel → open dropdown) to change
@@ -6,19 +9,17 @@
 // stack data, a click dispatches the same selection the `change` handler used
 // to, and the lit chip tracks controller state rather than the click. Run with:
 // npm test
-
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { test } from 'node:test';
 import {
   MAP_STACK_CHIP_CLASS,
+  PRESENTED_MAP_STACK_IDS,
   mapStackChipModel,
   mapStackChipModels,
-  PRESENTED_MAP_STACK_IDS,
   renderMapStackChips,
   syncMapStackChips,
 } from './mapStackChips.js';
-import { readUiSource } from './testing/uiSources.mjs';
 
 /** Minimal element stand-in — the row only needs create/append/attr/class. */
 function makeElement(tagName = 'div') {
@@ -58,8 +59,7 @@ function makeElement(tagName = 'div') {
       return element.attributes[name] ?? null;
     },
     addEventListener(type, handler) {
-      element.listeners[type] ||= [];
-      element.listeners[type].push(handler);
+      (element.listeners[type] ||= []).push(handler);
     },
     click() {
       for (const handler of element.listeners.click || []) handler();
@@ -381,34 +381,6 @@ test("models carry the stack's own reason and never invent an active chip", () =
   assert.deepEqual(mapStackChipModels(undefined, 'osm'), []);
 });
 
-test('the controller is the single source of the unavailability reason', () => {
-  const controller = readFileSync(
-    new URL('./mapStackController.js', import.meta.url),
-    'utf8',
-  );
-
-  assert.doesNotMatch(
-    controller,
-    /bing-road/,
-    'Bing Road is retired: an old map=bing-road link must take the unknown-id photoreal fallback',
-  );
-
-  assert.match(
-    controller,
-    /getStacks\(\) \{[\s\S]*?unavailableReason: available \? null : this\._unavailableReason\(stack\)/,
-    'getStacks() must expose why a stack is unavailable, not just that it is',
-  );
-  assert.match(
-    controller,
-    /if \(!this\.isStackAvailable\(stack\.id\)\) \{\s*const message = this\._unavailableReason\(stack\);/,
-    'the toast and the chip tooltip must read the same reason',
-  );
-  assert.match(
-    controller,
-    /_unavailableReason\(stack\) \{[\s\S]*?stack\?\.requiresIon/,
-  );
-});
-
 test('a missing row or document is inert rather than throwing during boot', () => {
   assert.deepEqual(renderMapStackChips(null, CONTROLLER_STACKS, { doc }), []);
   assert.deepEqual(
@@ -419,7 +391,7 @@ test('a missing row or document is inert rather than throwing during boot', () =
 });
 
 test('the active cyan survives hover', () => {
-  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  const css = readStylesheet(new URL('../style.css', import.meta.url));
   const hover = css.indexOf('.map-stack-chip:hover');
   const active = css.indexOf('.map-stack-chip.active {');
   const unavailable = css.indexOf('.map-stack-chip.unavailable');
@@ -445,7 +417,7 @@ test('the keyboard focus ring survives on the ACTIVE chip', () => {
   // `outline: none` — so a focus state built only from those properties is
   // INVISIBLE on the active chip. The ring must live on a property no other
   // chip-state rule sets.
-  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  const css = readStylesheet(new URL('../style.css', import.meta.url));
   const stripComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '');
   const chipRules = [
     ...css.matchAll(/([^{}]*\.map-stack-chip[^{}]*)\{([^{}]*)\}/g),
@@ -511,8 +483,10 @@ test('the keyboard focus ring survives on the ACTIVE chip', () => {
 });
 
 test('the Visual Presets tray owns Map Source and the retired left panel is absent', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const ui = readUiSource();
+  const html = expandApplicationHtml(
+    readFileSync(new URL('../index.html', import.meta.url), 'utf8'),
+  );
+  const ui = readShellSource();
 
   assert.doesNotMatch(
     html,
@@ -537,74 +511,53 @@ test('the Visual Presets tray owns Map Source and the retired left panel is abse
     /<button id="control-panel-toggle"[\s\S]*?data-dock-toggle-target="control-panel"[\s\S]*?aria-controls="control-panel-popover"/,
     'the compact wing must expose a semantic keyboard disclosure',
   );
-  assert.match(ui, /event\.key !== 'Escape'[\s\S]*?disclosure\?\.focus/);
+  const panels = readFileSync(
+    new URL('./ui/panelDisclosure.js', import.meta.url),
+    'utf8',
+  );
+  assert.match(panels, /event\.key !== 'Escape'[\s\S]*?disclosure\?\.focus/);
   assert.match(
     ui,
-    /querySelector\(\s*'\s*\.map-stack-chip\s*\.active',?\s*\)\s*\|\|\s*panelEl\s*\.querySelector\(\s*'\s*\.map-stack-chip',?\s*\)/,
+    /querySelector\(\s*'\.map-stack-chip\.active',?\s*\)\s*\|\|\s*panel\.querySelector\('\.map-stack-chip'\)/,
   );
 
-  assert.match(
-    ui,
-    /renderMapStackChips\(\s*this\s*\._mapStackChips,\s*this\s*\.mapStackController\s*\.getStacks\(,?\s*\),\s*\{\s*[\s\S]*?onSelect:\s*\(\s*stackId,?\s*\)\s*=>\s*\{\s*this\s*\._setMapStack\(\s*stackId,?\s*\);,?\s*\}/,
-    'chips must dispatch through the same _setMapStack path the dropdown used',
-  );
-  assert.match(
-    ui,
-    /_renderMapStackState\(state\) \{[\s\S]*?syncMapStackChips\(this\._mapStackChips, state\.activeId\)/,
-    'the active chip must be re-synced from controller state',
-  );
-  assert.match(
-    ui,
-    /window\s*\.addEventListener\(\s*'gev:map-stack-changed',\s*this\s*\._mapStackChangeHandler,?\s*\)/,
-    'provider-driven fallback must re-sync the UI without a user click',
-  );
-  assert.match(
-    ui,
-    /window\s*\.removeEventListener\(\s*'gev:map-stack-changed',\s*this\s*\._mapStackChangeHandler,?\s*\)/,
-    'the provider-driven state listener must be released with StyleManager',
-  );
-});
-
-test('Esri fallbacks report and attribute the imagery source actually rendered', () => {
-  const controller = readFileSync(
-    new URL('./mapStackController.js', import.meta.url),
+  const controls = readFileSync(
+    new URL('./ui/mapSourceControls.js', import.meta.url),
     'utf8',
   );
   assert.match(
-    controller,
-    /effectiveStackId = 'osm';[\s\S]*?fallbackMessage = 'Esri Satellite is unavailable; using OSM'/,
-    'construction failure must resolve truthfully to OSM',
+    ui,
+    /return this\._mapSourceControls\.select\(stackId, \{ syncShare \}\)/,
+    'the application action uses the component selection path',
   );
   assert.match(
-    controller,
-    /this\._activeId = activation\?\.effectiveStackId \|\| stack\.id/,
-    'the active chip must follow the effective provider, not the requested stack',
+    controls,
+    /onSelect: [\s\S]*?select\(id\)/,
+    'chip clicks use the same component selection path',
   );
   assert.match(
-    controller,
-    /this\._syncEsriAttribution\(resolution\.effectiveStackId\)/,
-    'Esri credit must follow the effective provider',
-  );
-});
-
-test('repeated active Esri tile failures fall back to OSM and one transient does not', () => {
-  const controller = readFileSync(
-    new URL('./mapStackController.js', import.meta.url),
-    'utf8',
-  );
-  assert.match(controller, /let failures = 0/);
-  assert.match(
-    controller,
-    /if \(failures < 2 \|\| this\._esriFallbackPending\) return/,
-  );
-  assert.match(controller, /this\.setStack\('osm', \{ silent: true \}\)/);
-  assert.match(
-    controller,
-    /state\?\.activeId === 'osm'[\s\S]*?this\._emitChange\('error'\)/,
+    controls,
+    /await controller\.setStack\(stackId\)/,
+    'selection still delegates source loading to the map controller',
   );
   assert.match(
-    controller,
-    /gen\s*!==\s*this\s*\._switchGen\s*\|\|\s*this\s*\._activeImageryProvider\s*!==\s*resolution\s*\.provider/,
-    'a stale provider error must not replace a newer user selection',
+    controls,
+    /render\(controller\.getState\(\)\)/,
+    'the active chip is re-synced from actual controller state',
+  );
+  assert.match(
+    ui,
+    /window\.addEventListener\('gev:map-stack-changed', onChange\)/,
+    'provider-driven fallback reaches the component without a user click',
+  );
+  assert.match(
+    ui,
+    /window\.removeEventListener\('gev:map-stack-changed', onChange\)/,
+    'the provider-driven subscription has an explicit remover',
+  );
+  assert.match(
+    controls,
+    /unsubscribe\?\.\(\)/,
+    'component destruction releases its subscription',
   );
 });

@@ -4,12 +4,15 @@
 // unknown-tier fallback are all pinned here. The tier resolver is also a
 // security boundary: it is what stops an arbitrary string reaching the
 // OpenAI API as a model id.
-
-import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import assert from 'node:assert/strict';
 import {
-  createVoiceCostTracker,
   DEFAULT_VOICE_TIER,
+  VOICE_COST_LIMIT_OFF,
+  VOICE_COST_LIMITS,
+  VOICE_MODELS,
+  VOICE_TIERS,
+  createVoiceCostTracker,
   estimateUsageCostUsd,
   formatCostUsd,
   isKnownVoiceTier,
@@ -19,10 +22,6 @@ import {
   resolveVoiceModelById,
   serializeCostLimits,
   splitUsageTokens,
-  VOICE_COST_LIMIT_OFF,
-  VOICE_COST_LIMITS,
-  VOICE_MODELS,
-  VOICE_TIERS,
 } from './voiceCost.js';
 
 /** A representative `response.done` usage payload with full modality detail. */
@@ -35,11 +34,7 @@ const FULL_USAGE = Object.freeze({
     text_tokens: 400,
     audio_tokens: 600,
     image_tokens: 0,
-    cached_tokens_details: {
-      text_tokens: 100,
-      audio_tokens: 100,
-      image_tokens: 0,
-    },
+    cached_tokens_details: { text_tokens: 100, audio_tokens: 100, image_tokens: 0 },
   },
   output_token_details: { text_tokens: 100, audio_tokens: 400 },
 });
@@ -78,14 +73,11 @@ test('mini is cheaper than standard on every single rate', () => {
   const std = VOICE_MODELS.standard.rates;
   const mini = VOICE_MODELS.mini.rates;
   const keys = Object.keys(std);
-  assert.ok(
-    keys.length >= 8,
-    'rate table covers text/audio/image in+cached+out',
-  );
+  assert.ok(keys.length >= 8, 'rate table covers text/audio/image in+cached+out');
   for (const key of keys) {
     assert.ok(
       mini[key] < std[key],
-      `mini.${key} (${mini[key]}) should undercut standard.${key} (${std[key]})`,
+      `mini.${key} (${mini[key]}) should undercut standard.${key} (${std[key]})`
     );
   }
 });
@@ -119,11 +111,7 @@ test('unknown, empty, and hostile tiers fall back to standard rather than throwi
     true,
   ]) {
     const resolved = resolveVoiceModel(bad);
-    assert.equal(
-      resolved.tier,
-      'standard',
-      `fallback for ${JSON.stringify(bad)}`,
-    );
+    assert.equal(resolved.tier, 'standard', `fallback for ${JSON.stringify(bad)}`);
     assert.equal(resolved.id, 'gpt-realtime-2');
   }
 });
@@ -175,11 +163,7 @@ test('missing input detail attributes input to audio (over-estimate, never under
 test('an aggregate cached_tokens without per-modality detail still earns the cache rate', () => {
   const t = splitUsageTokens({
     input_tokens: 1000,
-    input_token_details: {
-      cached_tokens: 300,
-      text_tokens: 0,
-      audio_tokens: 1000,
-    },
+    input_token_details: { cached_tokens: 300, text_tokens: 0, audio_tokens: 1000 },
   });
   assert.equal(t.audioCached, 300);
   assert.equal(t.audioIn, 700);
@@ -208,15 +192,7 @@ test('F2: a partial output detail attributes its residual to audio too', () => {
 
 test('F2: a fully-explained payload gains no phantom residual', () => {
   const t = splitUsageTokens(FULL_USAGE);
-  assert.equal(
-    t.textIn +
-      t.audioIn +
-      t.imageIn +
-      t.textCached +
-      t.audioCached +
-      t.imageCached,
-    1000,
-  );
+  assert.equal(t.textIn + t.audioIn + t.imageIn + t.textCached + t.audioCached + t.imageCached, 1000);
   assert.equal(t.audioIn, 500, 'unchanged — nothing was unexplained');
 });
 
@@ -224,34 +200,22 @@ test('F2: every billed token is accounted for across partial fixtures', () => {
   const fixtures = [
     { input_tokens: 1000, input_token_details: { text_tokens: 100 } },
     { input_tokens: 800, input_token_details: { audio_tokens: 200 } },
-    {
-      input_tokens: 640,
-      input_token_details: { text_tokens: 40, image_tokens: 100 },
-    },
-    {
-      input_tokens: 500,
-      input_token_details: { cached_tokens: 100, text_tokens: 50 },
-    },
+    { input_tokens: 640, input_token_details: { text_tokens: 40, image_tokens: 100 } },
+    { input_tokens: 500, input_token_details: { cached_tokens: 100, text_tokens: 50 } },
     { output_tokens: 900, output_token_details: { text_tokens: 100 } },
     { input_tokens: 300, output_tokens: 200 },
   ];
   for (const usage of fixtures) {
     const t = splitUsageTokens(usage);
-    const inputSum =
-      t.textIn +
-      t.audioIn +
-      t.imageIn +
-      t.textCached +
-      t.audioCached +
-      t.imageCached;
+    const inputSum = t.textIn + t.audioIn + t.imageIn + t.textCached + t.audioCached + t.imageCached;
     const outputSum = t.textOut + t.audioOut;
     assert.ok(
       inputSum >= (usage.input_tokens || 0),
-      `input accounted (${inputSum} >= ${usage.input_tokens || 0}) for ${JSON.stringify(usage)}`,
+      `input accounted (${inputSum} >= ${usage.input_tokens || 0}) for ${JSON.stringify(usage)}`
     );
     assert.ok(
       outputSum >= (usage.output_tokens || 0),
-      `output accounted (${outputSum} >= ${usage.output_tokens || 0}) for ${JSON.stringify(usage)}`,
+      `output accounted (${outputSum} >= ${usage.output_tokens || 0}) for ${JSON.stringify(usage)}`
     );
   }
 });
@@ -260,35 +224,22 @@ test('F2: a partial payload never costs LESS than the same tokens fully describe
   // The stated policy is over-estimate-on-uncertainty. Compare a partial
   // payload against the cheapest honest reading of the same totals (all text).
   const rates = VOICE_MODELS.standard.rates;
-  const partial = {
-    input_tokens: 1000,
-    input_token_details: { text_tokens: 100 },
-  };
+  const partial = { input_tokens: 1000, input_token_details: { text_tokens: 100 } };
   const allTextTruth = {
     input_tokens: 1000,
     input_token_details: { text_tokens: 1000 },
   };
   assert.ok(
-    estimateUsageCostUsd(partial, rates) >=
-      estimateUsageCostUsd(allTextTruth, rates),
-    'uncertainty resolves upward, never downward',
+    estimateUsageCostUsd(partial, rates) >= estimateUsageCostUsd(allTextTruth, rates),
+    'uncertainty resolves upward, never downward'
   );
 });
 
 test('splitUsageTokens survives junk without throwing', () => {
-  for (const junk of [
-    null,
-    undefined,
-    {},
-    { input_tokens: 'abc' },
-    { input_tokens: -5 },
-  ]) {
+  for (const junk of [null, undefined, {}, { input_tokens: 'abc' }, { input_tokens: -5 }]) {
     const t = splitUsageTokens(junk);
     for (const value of Object.values(t)) {
-      assert.ok(
-        Number.isFinite(value) && value >= 0,
-        `finite non-negative: ${value}`,
-      );
+      assert.ok(Number.isFinite(value) && value >= 0, `finite non-negative: ${value}`);
     }
   }
 });
@@ -319,17 +270,10 @@ test('image input tokens are billed', () => {
   // Viewport screenshots are the priciest recurring item; they must not be free.
   const withImage = {
     input_tokens: 1000,
-    input_token_details: {
-      text_tokens: 0,
-      audio_tokens: 0,
-      image_tokens: 1000,
-    },
+    input_token_details: { text_tokens: 0, audio_tokens: 0, image_tokens: 1000 },
   };
   const usd = estimateUsageCostUsd(withImage, VOICE_MODELS.standard.rates);
-  assert.ok(
-    Math.abs(usd - 0.005) < 1e-9,
-    `1000 image tokens @ $5/1M = $0.005, got ${usd}`,
-  );
+  assert.ok(Math.abs(usd - 0.005) < 1e-9, `1000 image tokens @ $5/1M = $0.005, got ${usd}`);
 });
 
 test('absent usage or rates cost nothing rather than NaN', () => {
@@ -339,10 +283,7 @@ test('absent usage or rates cost nothing rather than NaN', () => {
 });
 
 test('the $1 test fixture really is $1 on standard rates', () => {
-  const usd = estimateUsageCostUsd(
-    dollarsOfUsage(1),
-    VOICE_MODELS.standard.rates,
-  );
+  const usd = estimateUsageCostUsd(dollarsOfUsage(1), VOICE_MODELS.standard.rates);
   assert.ok(Math.abs(usd - 1) < 1e-9, `expected 1, got ${usd}`);
 });
 
@@ -378,10 +319,7 @@ test('default limits are generous and ordered warn < cap', () => {
 });
 
 test('normalizeCostLimits fills gaps from the defaults', () => {
-  assert.deepEqual(normalizeCostLimits({ warnUsd: 1 }), {
-    warnUsd: 1,
-    capUsd: 5,
-  });
+  assert.deepEqual(normalizeCostLimits({ warnUsd: 1 }), { warnUsd: 1, capUsd: 5 });
   assert.deepEqual(normalizeCostLimits({}), { warnUsd: 2, capUsd: 5 });
   assert.deepEqual(normalizeCostLimits(null), { warnUsd: 2, capUsd: 5 });
 });
@@ -427,10 +365,7 @@ test('per-response usage accumulates across the session', () => {
 });
 
 test('the warning fires exactly once, on the crossing record', () => {
-  const tracker = createVoiceCostTracker({
-    tier: 'standard',
-    limits: { warnUsd: 2, capUsd: 5 },
-  });
+  const tracker = createVoiceCostTracker({ tier: 'standard', limits: { warnUsd: 2, capUsd: 5 } });
   assert.equal(tracker.record(dollarsOfUsage(1)).warnCrossed, false); // $1
   const crossing = tracker.record(dollarsOfUsage(1)); // $2 — crosses
   assert.equal(crossing.warnCrossed, true);
@@ -439,10 +374,7 @@ test('the warning fires exactly once, on the crossing record', () => {
 });
 
 test('the cap fires exactly once and latches capReached', () => {
-  const tracker = createVoiceCostTracker({
-    tier: 'standard',
-    limits: { warnUsd: 2, capUsd: 5 },
-  });
+  const tracker = createVoiceCostTracker({ tier: 'standard', limits: { warnUsd: 2, capUsd: 5 } });
   for (let i = 0; i < 4; i += 1) {
     assert.equal(tracker.record(dollarsOfUsage(1)).capCrossed, false);
   }
@@ -459,10 +391,7 @@ test('the cap fires exactly once and latches capReached', () => {
 });
 
 test('one huge response crosses both thresholds on the same record', () => {
-  const tracker = createVoiceCostTracker({
-    tier: 'standard',
-    limits: { warnUsd: 2, capUsd: 5 },
-  });
+  const tracker = createVoiceCostTracker({ tier: 'standard', limits: { warnUsd: 2, capUsd: 5 } });
   const state = tracker.record(dollarsOfUsage(50));
   assert.equal(state.warnCrossed, true);
   assert.equal(state.capCrossed, true);
@@ -470,10 +399,7 @@ test('one huge response crosses both thresholds on the same record', () => {
 });
 
 test('level is monotonic — it never steps back down', () => {
-  const tracker = createVoiceCostTracker({
-    tier: 'standard',
-    limits: { warnUsd: 2, capUsd: 5 },
-  });
+  const tracker = createVoiceCostTracker({ tier: 'standard', limits: { warnUsd: 2, capUsd: 5 } });
   tracker.record(dollarsOfUsage(6));
   assert.equal(tracker.state().level, 'cap');
   tracker.record({}); // a zero-cost response
@@ -482,10 +408,7 @@ test('level is monotonic — it never steps back down', () => {
 });
 
 test('exact-threshold equality counts as crossed', () => {
-  const tracker = createVoiceCostTracker({
-    tier: 'standard',
-    limits: { warnUsd: 1, capUsd: 2 },
-  });
+  const tracker = createVoiceCostTracker({ tier: 'standard', limits: { warnUsd: 1, capUsd: 2 } });
   assert.equal(tracker.record(dollarsOfUsage(1)).warnCrossed, true);
 });
 
@@ -500,14 +423,8 @@ test('the mini tracker takes far longer to reach the same cap', () => {
   // Concrete statement of the feature's point: same traffic, same cap,
   // mini survives where standard trips.
   const heavy = FULL_USAGE;
-  const std = createVoiceCostTracker({
-    tier: 'standard',
-    limits: { warnUsd: 2, capUsd: 5 },
-  });
-  const mini = createVoiceCostTracker({
-    tier: 'mini',
-    limits: { warnUsd: 2, capUsd: 5 },
-  });
+  const std = createVoiceCostTracker({ tier: 'standard', limits: { warnUsd: 2, capUsd: 5 } });
+  const mini = createVoiceCostTracker({ tier: 'mini', limits: { warnUsd: 2, capUsd: 5 } });
   let stdTurns = 0;
   let miniTurns = 0;
   while (!std.state().capReached && stdTurns < 100000) {
@@ -518,10 +435,7 @@ test('the mini tracker takes far longer to reach the same cap', () => {
     mini.record(heavy);
     miniTurns += 1;
   }
-  assert.ok(
-    miniTurns > stdTurns * 3,
-    `mini ${miniTurns} turns vs standard ${stdTurns}`,
-  );
+  assert.ok(miniTurns > stdTurns * 3, `mini ${miniTurns} turns vs standard ${stdTurns}`);
 });
 
 test('the tracker reports the model it is charging against', () => {
@@ -573,10 +487,7 @@ test('F3: the most expensive model is derived from the registry, not hardcoded',
 
 test('F3: modelId outranks tier when both are supplied', () => {
   // The env override case: tier says mini, the server actually served standard.
-  const tracker = createVoiceCostTracker({
-    tier: 'mini',
-    modelId: 'gpt-realtime-2',
-  });
+  const tracker = createVoiceCostTracker({ tier: 'mini', modelId: 'gpt-realtime-2' });
   assert.equal(tracker.state().modelId, 'gpt-realtime-2');
   assert.equal(tracker.state().tier, 'standard');
 });
@@ -584,16 +495,10 @@ test('F3: modelId outranks tier when both are supplied', () => {
 test('F3: pricing by tier alone would have under-metered an overridden session', () => {
   // Concrete statement of the bug: same usage, tier-priced vs actually-served.
   const byTier = createVoiceCostTracker({ tier: 'mini' });
-  const byModel = createVoiceCostTracker({
-    tier: 'mini',
-    modelId: 'gpt-realtime-2',
-  });
+  const byModel = createVoiceCostTracker({ tier: 'mini', modelId: 'gpt-realtime-2' });
   const tierCost = byTier.record(FULL_USAGE).totalUsd;
   const realCost = byModel.record(FULL_USAGE).totalUsd;
-  assert.ok(
-    realCost > tierCost * 3,
-    `real ${realCost} vs tier-assumed ${tierCost}`,
-  );
+  assert.ok(realCost > tierCost * 3, `real ${realCost} vs tier-assumed ${tierCost}`);
 });
 
 /* -------------------------------------------------------------- *
@@ -605,10 +510,7 @@ test('F6: serializeCostLimits encodes a disabled threshold as a sentinel', () =>
   assert.equal(encoded.warnUsd, VOICE_COST_LIMIT_OFF);
   assert.equal(encoded.capUsd, VOICE_COST_LIMIT_OFF);
   // The whole point: it must survive JSON, unlike Infinity -> null.
-  assert.equal(
-    JSON.parse(JSON.stringify(encoded)).capUsd,
-    VOICE_COST_LIMIT_OFF,
-  );
+  assert.equal(JSON.parse(JSON.stringify(encoded)).capUsd, VOICE_COST_LIMIT_OFF);
 });
 
 test('F6: the sentinel normalizes back to a disabled threshold', () => {
@@ -626,13 +528,9 @@ test('F6: JSON round-trip preserves disabled, live, and mixed limits', () => {
   ]) {
     const expected = normalizeCostLimits(input);
     const restored = normalizeCostLimits(
-      JSON.parse(JSON.stringify(serializeCostLimits(input))),
+      JSON.parse(JSON.stringify(serializeCostLimits(input)))
     );
-    assert.deepEqual(
-      restored,
-      expected,
-      `round-trip of ${JSON.stringify(input)}`,
-    );
+    assert.deepEqual(restored, expected, `round-trip of ${JSON.stringify(input)}`);
   }
 });
 
@@ -674,9 +572,8 @@ test('the over-estimate paths that make a floor claim wrong are real', () => {
   const unknown = createVoiceCostTracker({ modelId: 'not-a-real-model' });
   const cheapest = createVoiceCostTracker({ modelId: VOICE_MODELS.mini.id });
   assert.ok(
-    unknown.record(dollarsOfUsage(1)).totalUsd >
-      cheapest.record(dollarsOfUsage(1)).totalUsd,
-    'an unknown model is billed above the cheapest real one',
+    unknown.record(dollarsOfUsage(1)).totalUsd > cheapest.record(dollarsOfUsage(1)).totalUsd,
+    'an unknown model is billed above the cheapest real one'
   );
   assert.equal(formatCostUsd(0.0001), '~$0.01', 'sub-cent totals round UP');
 });
@@ -689,10 +586,7 @@ test('marking incomplete does not change the accrued total', () => {
 });
 
 test('an incomplete total still trips the cap on the tokens we did see', () => {
-  const tracker = createVoiceCostTracker({
-    tier: 'standard',
-    limits: { warnUsd: 2, capUsd: 5 },
-  });
+  const tracker = createVoiceCostTracker({ tier: 'standard', limits: { warnUsd: 2, capUsd: 5 } });
   tracker.markIncomplete();
   const state = tracker.record(dollarsOfUsage(6));
   assert.equal(state.capReached, true);
@@ -709,10 +603,7 @@ test('reset clears the incomplete marker for the next session', () => {
 });
 
 test('reset clears totals and re-arms both latches for a new session', () => {
-  const tracker = createVoiceCostTracker({
-    tier: 'standard',
-    limits: { warnUsd: 2, capUsd: 5 },
-  });
+  const tracker = createVoiceCostTracker({ tier: 'standard', limits: { warnUsd: 2, capUsd: 5 } });
   tracker.record(dollarsOfUsage(9));
   assert.equal(tracker.state().capReached, true);
   const cleared = tracker.reset();
@@ -720,4 +611,30 @@ test('reset clears totals and re-arms both latches for a new session', () => {
   assert.equal(cleared.level, 'ok');
   assert.equal(cleared.capReached, false);
   assert.equal(tracker.record(dollarsOfUsage(2)).warnCrossed, true);
+});
+
+test('input transcription is priced with its own model and folds into the session cap', async () => {
+  const {
+    estimateTranscriptionCostUsd,
+    transcriptionRates,
+    TRANSCRIPTION_MODEL_RATES,
+    createVoiceCostTracker: createTracker,
+  } = await import('./voiceCost.js');
+  const usage = {
+    type: 'tokens',
+    input_tokens: 1_000_000,
+    input_token_details: { audio_tokens: 1_000_000, text_tokens: 0 },
+    output_tokens: 0,
+  };
+  assert.equal(estimateTranscriptionCostUsd(usage, 'gpt-4o-mini-transcribe'), 3);
+  assert.equal(
+    transcriptionRates('someday-transcribe'),
+    TRANSCRIPTION_MODEL_RATES['gpt-4o-transcribe'],
+    'unknown ids bill at the priciest',
+  );
+  assert.ok(Math.abs(estimateTranscriptionCostUsd({ type: 'duration', seconds: 60 }) - 0.006) < 1e-12);
+  const tracker = createTracker({ tier: 'standard', limits: { warnUsd: 1, capUsd: 2 } });
+  const state = tracker.recordUsd(estimateTranscriptionCostUsd(usage, 'gpt-4o-mini-transcribe'));
+  assert.equal(state.totalUsd, 3);
+  assert.equal(state.capCrossed, true);
 });

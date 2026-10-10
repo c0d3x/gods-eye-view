@@ -10,7 +10,7 @@
  * touching this module — see `local_data/neighborhoods/SOURCE.md`.
  */
 
-import { readLocalJson } from './localAsset.js';
+import { loadBundledJson } from './bundledJson.js';
 import { createRetryableLoader } from './retryableLoad.js';
 
 // bbox = [west, south, east, north]; only load a city file when the point falls in its box.
@@ -108,8 +108,7 @@ function cityLoader(city) {
   let loader = _cityLoaders.get(city.id);
   if (!loader) {
     loader = createRetryableLoader(async () => {
-      // A static asset: fetched in the browser, read from disk under Node.
-      const fc = await readLocalJson(city.url);
+      const fc = await loadBundledJson(city.url);
       return Array.isArray(fc.features) ? fc.features : [];
     });
     _cityLoaders.set(city.id, loader);
@@ -170,7 +169,7 @@ export async function lookupNeighborhoodRing(lat, lon, matchName) {
   // Heights. Point-in-polygon is only a CONFIRMATION / specificity tiebreak.
   let best = null; // { ring, name, contains, fwordCount }
   for (const f of feats) {
-    const fname = normalize(f.properties?.name);
+    const fname = normalize(f.properties && f.properties.name);
     if (!fname) continue;
     const fWords = fname.split(' ').filter(Boolean);
     if (!fWords.length || !fWords.every((w) => qWords.has(w))) continue; // require name match

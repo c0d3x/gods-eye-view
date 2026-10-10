@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Satellite classification — CelesTrak source group → operator-legible class.
  *
@@ -114,10 +113,7 @@ const ISS_CLASS = Object.freeze({ klass: 'station', subtype: 'ISS' });
  */
 export function satelliteClassOf(group, { isIss = false } = {}) {
   if (isIss) return ISS_CLASS;
-  // A missing or unknown group reads as undefined and falls back.
-  return (
-    GROUP_CLASS[/** @type {keyof typeof GROUP_CLASS} */ (group)] || FALLBACK
-  );
+  return GROUP_CLASS[group] || FALLBACK;
 }
 
 /**
@@ -160,7 +156,6 @@ export function satelliteClassLabel(group, { isIss = false } = {}) {
 export function tallySatelliteClasses(entries) {
   const counts = Object.create(null);
   for (const entry of entries || []) {
-    /** @type {{ group?: string | null, isIss?: boolean }} */
     const descriptor =
       entry && typeof entry === 'object' ? entry : { group: entry };
     const { klass } = satelliteClassOf(descriptor.group, {

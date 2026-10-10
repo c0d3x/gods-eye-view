@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 /**
  * qa-traffic-baseline.mjs — Traffic Phase 0 causal-chain capture.
  *
@@ -25,10 +24,10 @@
  * `waypoint-materialization`, so those segments slightly overstate production.
  *
  * Run with deterministic software GL (relative comparisons only):
- *   node scripts/qa-traffic-baseline.mjs --url <app-url>
+ *   node scripts/qa-traffic-baseline.mjs --url http://localhost:4173
  *
  * Run headful on the owner's real-GPU browser surface for reportable numbers:
- *   node scripts/qa-traffic-baseline.mjs --url <app-url> --headful
+ *   node scripts/qa-traffic-baseline.mjs --url http://localhost:4173 --headful
  *
  * SwiftShader `scene.sampleHeight` durations are NOT representative of a real
  * GPU. The script prints the detected renderer and repeats this warning when
@@ -36,9 +35,8 @@
  * the latency plan.
  */
 
-import fs from 'node:fs';
 import puppeteer from 'puppeteer';
-import { qaUrl } from './lib/qaUrl.mjs';
+import fs from 'node:fs';
 
 const argv = process.argv.slice(2);
 const getOpt = (name, dflt) => {
@@ -50,13 +48,10 @@ const getNumberOpt = (name, dflt) => {
   return Number.isFinite(value) ? value : dflt;
 };
 
-const APP_URL = getOpt('--url', qaUrl());
+const APP_URL = getOpt('--url', 'http://localhost:4173');
 const HEADFUL = argv.includes('--headful');
 const TIMEOUT_MS = Math.max(10_000, getNumberOpt('--timeout-ms', 120_000));
-const DEGRADED_DELAY_MS = Math.max(
-  0,
-  getNumberOpt('--degraded-delay-ms', 2500),
-);
+const DEGRADED_DELAY_MS = Math.max(0, getNumberOpt('--degraded-delay-ms', 2500));
 
 const CHROME_EXECUTABLE_CANDIDATES = [
   process.env.PUPPETEER_EXECUTABLE_PATH,
@@ -68,11 +63,7 @@ const CHROME_EXECUTABLE_CANDIDATES = [
 
 function findChromeExecutable() {
   for (const candidate of CHROME_EXECUTABLE_CANDIDATES) {
-    try {
-      if (fs.existsSync(candidate)) return candidate;
-    } catch {
-      /* ignore */
-    }
+    try { if (fs.existsSync(candidate)) return candidate; } catch { /* ignore */ }
   }
   return null;
 }
@@ -81,33 +72,17 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const VIEWS = {
   austin: {
-    lon: -97.7431,
-    lat: 30.2672,
-    height: 1500,
-    heading: 8,
-    pitch: -78,
+    lon: -97.7431, lat: 30.2672, height: 1500, heading: 8, pitch: -78,
   },
   adjacent: {
     // 0.0105° longitude at Austin's latitude is ~1.0 km.
-    lon: -97.7326,
-    lat: 30.2672,
-    height: 1500,
-    heading: 8,
-    pitch: -78,
+    lon: -97.7326, lat: 30.2672, height: 1500, heading: 8, pitch: -78,
   },
   coldCity: {
-    lon: -122.4194,
-    lat: 37.7749,
-    height: 1500,
-    heading: 18,
-    pitch: -78,
+    lon: -122.4194, lat: 37.7749, height: 1500, heading: 18, pitch: -78,
   },
   degraded: {
-    lon: -98.4936,
-    lat: 29.4241,
-    height: 1500,
-    heading: 12,
-    pitch: -78,
+    lon: -98.4936, lat: 29.4241, height: 1500, heading: 12, pitch: -78,
   },
 };
 
@@ -127,11 +102,7 @@ async function moveCamera(page, view) {
     const boundaryTime = performance.now();
     const ellipsoid = gev.viewer.scene.globe.ellipsoid;
     const radians = Math.PI / 180;
-    try {
-      gev.viewer.camera.cancelFlight();
-    } catch {
-      /* no active flight */
-    }
+    try { gev.viewer.camera.cancelFlight(); } catch { /* no active flight */ }
     gev.viewer.camera.setView({
       destination: ellipsoid.cartographicToCartesian({
         longitude: v.lon * radians,
@@ -158,21 +129,14 @@ async function moveCamera(page, view) {
 async function waitForTrafficCapture(page, beforeLastUpdate, boundaryTime) {
   await page.waitForFunction(
     (before, boundary) => {
-      const module =
-        window.__godsEyeView?.dataManager?.layers?.get('traffic')?.module;
+      const module = window.__godsEyeView?.dataManager?.layers?.get('traffic')?.module;
       if (!module) return false;
       const stats = module.getStats();
-      if (stats.lastUpdate === before || stats.count <= 0 || stats.loading)
-        return false;
-      const entries = performance
-        .getEntriesByType('measure')
+      if (stats.lastUpdate === before || stats.count <= 0 || stats.loading) return false;
+      const entries = performance.getEntriesByType('measure')
         .filter((entry) => entry.startTime >= boundary);
-      const renderCount = entries.filter((entry) =>
-        entry.name.startsWith('traffic:dot-construction:'),
-      ).length;
-      const postRenderCount = entries.filter((entry) =>
-        entry.name.startsWith('traffic:render-to-post-render:'),
-      ).length;
+      const renderCount = entries.filter((entry) => entry.name.startsWith('traffic:dot-construction:')).length;
+      const postRenderCount = entries.filter((entry) => entry.name.startsWith('traffic:render-to-post-render:')).length;
       return renderCount > 0 && postRenderCount >= renderCount;
     },
     { timeout: TIMEOUT_MS, polling: 100 },
@@ -185,22 +149,14 @@ async function waitForTrafficCapture(page, beforeLastUpdate, boundaryTime) {
 
 /** Return serializable Traffic User Timing measures created after a boundary. */
 function readTrafficMeasures(page, boundaryTime) {
-  return page.evaluate(
-    (boundary) =>
-      performance
-        .getEntriesByType('measure')
-        .filter(
-          (entry) =>
-            entry.name.startsWith('traffic:') && entry.startTime >= boundary,
-        )
-        .map((entry) => ({
-          name: entry.name,
-          startTime: entry.startTime,
-          duration: entry.duration,
-          detail: entry.detail,
-        })),
-    boundaryTime,
-  );
+  return page.evaluate((boundary) => performance.getEntriesByType('measure')
+    .filter((entry) => entry.name.startsWith('traffic:') && entry.startTime >= boundary)
+    .map((entry) => ({
+      name: entry.name,
+      startTime: entry.startTime,
+      duration: entry.duration,
+      detail: entry.detail,
+    })), boundaryTime);
 }
 
 /** Drive one measured state and return its raw User Timing measures. */
@@ -220,14 +176,13 @@ function ms(value) {
 
 /** Find one segment for the same trace/pass as a render measure. */
 function matchingMeasure(measures, render, segment) {
-  return measures.find(
-    (entry) =>
-      entry.detail?.segment === segment &&
-      entry.detail?.traceId === render.detail?.traceId &&
-      entry.detail?.interactionId === render.detail?.interactionId &&
-      entry.detail?.generation === render.detail?.generation &&
-      entry.detail?.pass === render.detail?.pass,
-  );
+  return measures.find((entry) => (
+    entry.detail?.segment === segment
+    && entry.detail?.traceId === render.detail?.traceId
+    && entry.detail?.interactionId === render.detail?.interactionId
+    && entry.detail?.generation === render.detail?.generation
+    && entry.detail?.pass === render.detail?.pass
+  ));
 }
 
 /** Fail loudly instead of filtering away a structurally mispaired trace. */
@@ -238,9 +193,7 @@ function assertInteractionIntegrity(capture) {
     if (traceId == null) continue;
     const interactionId = entry.detail?.interactionId;
     if (interactionId == null) {
-      throw new Error(
-        `${capture.name}: trace ${traceId} has no scheduling interactionId`,
-      );
+      throw new Error(`${capture.name}: trace ${traceId} has no scheduling interactionId`);
     }
     const prior = interactionByTrace.get(traceId);
     if (prior != null && prior !== interactionId) {
@@ -257,11 +210,10 @@ function rowsForCapture(capture) {
   // Correlation violations are capture failures, never rows silently removed
   // by generation/settle predicates that are tautological after the guard.
   assertInteractionIntegrity(capture);
-  const renders = capture.measures.filter(
-    (entry) =>
-      entry.detail?.segment === 'dot-construction' &&
-      entry.detail?.interactionId != null,
-  );
+  const renders = capture.measures.filter((entry) => (
+    entry.detail?.segment === 'dot-construction'
+    && entry.detail?.interactionId != null
+  ));
   return renders.map((render) => {
     const get = (segment) => matchingMeasure(capture.measures, render, segment);
     const fetchStart = get('last-camera-change-to-fetch-start');
@@ -270,30 +222,27 @@ function rowsForCapture(capture) {
     const sample = get('sample-height-total');
     const materialize = get('waypoint-materialization');
     const flowRace = get('flow-render-race');
-    const postRender = capture.measures.find(
-      (entry) =>
-        entry.detail?.segment === 'render-to-post-render' &&
-        entry.detail?.traceId === render.detail?.traceId &&
-        entry.detail?.interactionId === render.detail?.interactionId &&
-        entry.detail?.generation === render.detail?.generation &&
-        entry.detail?.renderId === render.detail?.renderId,
-    );
-    const visible = capture.measures.find(
-      (entry) =>
-        entry.detail?.segment === 'last-camera-change-to-first-visible' &&
-        entry.detail?.traceId === render.detail?.traceId &&
-        entry.detail?.interactionId === render.detail?.interactionId &&
-        entry.detail?.generation === render.detail?.generation &&
-        entry.detail?.renderId === render.detail?.renderId,
-    );
-    const heatLines = capture.measures.find(
-      (entry) =>
-        entry.detail?.segment === 'rebuild-heat-lines' &&
-        entry.detail?.traceId === render.detail?.traceId &&
-        entry.detail?.interactionId === render.detail?.interactionId &&
-        entry.detail?.generation === render.detail?.generation &&
-        entry.detail?.renderId === render.detail?.renderId,
-    );
+    const postRender = capture.measures.find((entry) => (
+      entry.detail?.segment === 'render-to-post-render'
+      && entry.detail?.traceId === render.detail?.traceId
+      && entry.detail?.interactionId === render.detail?.interactionId
+      && entry.detail?.generation === render.detail?.generation
+      && entry.detail?.renderId === render.detail?.renderId
+    ));
+    const visible = capture.measures.find((entry) => (
+      entry.detail?.segment === 'last-camera-change-to-first-visible'
+      && entry.detail?.traceId === render.detail?.traceId
+      && entry.detail?.interactionId === render.detail?.interactionId
+      && entry.detail?.generation === render.detail?.generation
+      && entry.detail?.renderId === render.detail?.renderId
+    ));
+    const heatLines = capture.measures.find((entry) => (
+      entry.detail?.segment === 'rebuild-heat-lines'
+      && entry.detail?.traceId === render.detail?.traceId
+      && entry.detail?.interactionId === render.detail?.interactionId
+      && entry.detail?.generation === render.detail?.generation
+      && entry.detail?.renderId === render.detail?.renderId
+    ));
     const metadata = response?.detail || sample?.detail || render.detail || {};
     return {
       State: capture.name,
@@ -336,20 +285,14 @@ async function main() {
   const url = debugUrl(APP_URL);
   console.log('\nTraffic Phase 0 — causal-chain baseline capture');
   console.log(`  App URL          : ${url}`);
-  console.log(
-    `  Browser mode     : ${HEADFUL ? 'headful (real GPU expected)' : 'headless SwiftShader (relative-only)'}`,
-  );
-  console.log(
-    `  Degraded delay   : ${DEGRADED_DELAY_MS ? `${DEGRADED_DELAY_MS} ms/request` : 'skipped'}`,
-  );
+  console.log(`  Browser mode     : ${HEADFUL ? 'headful (real GPU expected)' : 'headless SwiftShader (relative-only)'}`);
+  console.log(`  Degraded delay   : ${DEGRADED_DELAY_MS ? `${DEGRADED_DELAY_MS} ms/request` : 'skipped'}`);
 
   try {
     const response = await fetch(APP_URL);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
   } catch (error) {
-    console.error(
-      `\nDev server not reachable at ${APP_URL} (${error.message}).`,
-    );
+    console.error(`\nDev server not reachable at ${APP_URL} (${error.message}).`);
     process.exit(2);
   }
 
@@ -395,11 +338,7 @@ async function main() {
       if (activeProxyDelayMs > 0 && request.url().includes('/api/overpass')) {
         await sleep(activeProxyDelayMs);
       }
-      try {
-        await request.continue();
-      } catch {
-        /* page closed or already handled */
-      }
+      try { await request.continue(); } catch { /* page closed or already handled */ }
     });
 
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
@@ -433,26 +372,16 @@ async function main() {
     const softwareRenderer = /swiftshader|software/i.test(renderer);
     console.log(`  WebGL renderer   : ${renderer}`);
     if (!HEADFUL || softwareRenderer) {
-      console.log(
-        '  WARNING          : sampleHeight timings are relative-only under SwiftShader/software GL.',
-      );
+      console.log('  WARNING          : sampleHeight timings are relative-only under SwiftShader/software GL.');
     }
 
     // Prime Austin once. Its measurements are deliberately not reported.
-    console.log(
-      '\nPriming the exact Austin viewport (not part of the table)...',
-    );
+    console.log('\nPriming the exact Austin viewport (not part of the table)...');
     const prime = await captureState(page, 'prime', VIEWS.austin, (msValue) => {
       activeProxyDelayMs = msValue;
     });
-    if (
-      !prime.measures.some(
-        (entry) => entry.detail?.segment === 'dot-construction',
-      )
-    ) {
-      throw new Error(
-        'trafficDebug instrumentation emitted no dot-construction measure',
-      );
+    if (!prime.measures.some((entry) => entry.detail?.segment === 'dot-construction')) {
+      throw new Error('trafficDebug instrumentation emitted no dot-construction measure');
     }
 
     // Clear the last-bounds gate without clearing the module's road cache, then
@@ -474,147 +403,68 @@ async function main() {
     }, VIEWS.austin);
     await sleep(500);
 
-    captures.push(
-      await captureState(
-        page,
-        'exact-viewport revisit',
-        VIEWS.austin,
-        (msValue) => {
-          activeProxyDelayMs = msValue;
-        },
-      ),
-    );
-    captures.push(
-      await captureState(
-        page,
-        'adjacent ~1.0 km pan',
-        VIEWS.adjacent,
-        (msValue) => {
-          activeProxyDelayMs = msValue;
-        },
-      ),
-    );
-    captures.push(
-      await captureState(
-        page,
-        'cold city (client)',
-        VIEWS.coldCity,
-        (msValue) => {
-          activeProxyDelayMs = msValue;
-        },
-      ),
-    );
+    captures.push(await captureState(page, 'exact-viewport revisit', VIEWS.austin, (msValue) => {
+      activeProxyDelayMs = msValue;
+    }));
+    captures.push(await captureState(page, 'adjacent ~1.0 km pan', VIEWS.adjacent, (msValue) => {
+      activeProxyDelayMs = msValue;
+    }));
+    captures.push(await captureState(page, 'cold city (client)', VIEWS.coldCity, (msValue) => {
+      activeProxyDelayMs = msValue;
+    }));
     if (DEGRADED_DELAY_MS > 0) {
-      captures.push(
-        await captureState(
-          page,
-          'degraded-upstream',
-          VIEWS.degraded,
-          (msValue) => {
-            activeProxyDelayMs = msValue;
-          },
-        ),
-      );
+      captures.push(await captureState(page, 'degraded-upstream', VIEWS.degraded, (msValue) => {
+        activeProxyDelayMs = msValue;
+      }));
     }
 
-    const missingStates = captures.filter(
-      (capture) => rowsForCapture(capture).length === 0,
-    );
+    const missingStates = captures.filter((capture) => rowsForCapture(capture).length === 0);
     if (missingStates.length) {
-      throw new Error(
-        `no visible render captured for: ${missingStates.map((capture) => capture.name).join(', ')}`,
-      );
+      throw new Error(`no visible render captured for: ${missingStates.map((capture) => capture.name).join(', ')}`);
     }
     const exactRows = rowsForCapture(captures[0]);
-    if (
-      !exactRows.some(
-        (row) =>
-          row.Source === 'client-cache' && row['Fetch→response ms'] === '—',
-      )
-    ) {
-      throw new Error(
-        'exact-viewport revisit did not use the traffic module cache',
-      );
+    if (!exactRows.some((row) => row.Source === 'client-cache' && row['Fetch→response ms'] === '—')) {
+      throw new Error('exact-viewport revisit did not use the traffic module cache');
     }
     for (const capture of captures.slice(1)) {
-      if (
-        !capture.measures.some(
-          (entry) => entry.detail?.segment === 'fetch-to-response',
-        )
-      ) {
+      if (!capture.measures.some((entry) => entry.detail?.segment === 'fetch-to-response')) {
         throw new Error(`${capture.name} did not issue an Overpass request`);
       }
     }
     if (DEGRADED_DELAY_MS > 0) {
-      const degraded = captures.find(
-        (capture) => capture.name === 'degraded-upstream',
-      );
-      const delayed = degraded?.measures.some(
-        (entry) =>
-          entry.detail?.segment === 'fetch-to-response' &&
-          entry.duration >= DEGRADED_DELAY_MS * 0.9,
-      );
-      if (!delayed)
-        throw new Error(
-          'degraded-upstream leg did not observe the synthetic delay',
-        );
+      const degraded = captures.find((capture) => capture.name === 'degraded-upstream');
+      const delayed = degraded?.measures.some((entry) => (
+        entry.detail?.segment === 'fetch-to-response'
+        && entry.duration >= DEGRADED_DELAY_MS * 0.9
+      ));
+      if (!delayed) throw new Error('degraded-upstream leg did not observe the synthetic delay');
     }
 
     const rows = captures.flatMap(rowsForCapture);
-    if (!rows.length)
-      throw new Error('no measured traffic renders were captured');
+    if (!rows.length) throw new Error('no measured traffic renders were captured');
     console.log('\nCausal segments (one row per visible major/full pass)');
     console.table(rows);
     console.log('\nNotes:');
-    console.log(
-      '  - Render→postRender is the first visible-frame boundary used by Phase 0.',
-    );
-    console.log(
-      '  - Proxy cache is read from X-Overpass-Cache; “—” means the client cache avoided fetch.',
-    );
-    console.log(
-      '  - response.json includes both body transfer and JSON decoding; the production path does not split them.',
-    );
-    console.log(
-      '  - Last change→fetch is approximately the 320 ms FETCH_DEBOUNCE for the first fetch by construction.',
-    );
-    console.log(
-      '  - Full-pass Last change→fetch also includes the intentionally sequential major pass.',
-    );
-    console.log(
-      '  - Cesium moveEnd is a diagnostic raised ~500 ms after stillness, typically after fetch starts; fetch never waits for it.',
-    );
-    console.log(
-      '  - Synthetic events bypass camera percentageChanged/inertia but use the same camera.changed schedule-time anchor as natural captures.',
-    );
-    console.log(
-      '  - The keyless capture zeroes Flow race and Heat lines work; live-keyed numbers will differ.',
-    );
-    console.log(
-      '  - Measurement caveat: timings include instrumentation overhead (observer effect) and browser clock-floor quantization.',
-    );
-    console.log(
-      '  - Per-road clock observations inside road-parse-total/waypoint-materialization slightly overstate production work.',
-    );
-    const timingDiagnostics = await page.evaluate(
-      () =>
-        window.__godsEyeView.dataManager.layers.get('traffic').module.getStats()
-          .trafficTiming,
-    );
-    console.log(
-      `  - Correlation drops: ${timingDiagnostics?.uncorrelatedTracesDropped ?? 'unavailable'} scheduling-anchor mismatch(es).`,
-    );
+    console.log('  - Render→postRender is the first visible-frame boundary used by Phase 0.');
+    console.log('  - Proxy cache is read from X-Overpass-Cache; “—” means the client cache avoided fetch.');
+    console.log('  - response.json includes both body transfer and JSON decoding; the production path does not split them.');
+    console.log('  - Last change→fetch is approximately the 320 ms FETCH_DEBOUNCE for the first fetch by construction.');
+    console.log('  - Full-pass Last change→fetch also includes the intentionally sequential major pass.');
+    console.log('  - Cesium moveEnd is a diagnostic raised ~500 ms after stillness, typically after fetch starts; fetch never waits for it.');
+    console.log('  - Synthetic events bypass camera percentageChanged/inertia but use the same camera.changed schedule-time anchor as natural captures.');
+    console.log('  - The keyless capture zeroes Flow race and Heat lines work; live-keyed numbers will differ.');
+    console.log('  - Measurement caveat: timings include instrumentation overhead (observer effect) and browser clock-floor quantization.');
+    console.log('  - Per-road clock observations inside road-parse-total/waypoint-materialization slightly overstate production work.');
+    const timingDiagnostics = await page.evaluate(() => (
+      window.__godsEyeView.dataManager.layers.get('traffic').module.getStats().trafficTiming
+    ));
+    console.log(`  - Correlation drops: ${timingDiagnostics?.uncorrelatedTracesDropped ?? 'unavailable'} scheduling-anchor mismatch(es).`);
     if (!HEADFUL || softwareRenderer) {
-      console.log(
-        '  - Do not copy these GPU-side numbers into the plan; rerun headful on a real-GPU surface.',
-      );
+      console.log('  - Do not copy these GPU-side numbers into the plan; rerun headful on a real-GPU surface.');
     }
     if (consoleErrors.length) {
-      console.log(
-        `  - Browser console errors observed: ${consoleErrors.length}`,
-      );
-      for (const error of consoleErrors.slice(0, 5))
-        console.log(`      ${error}`);
+      console.log(`  - Browser console errors observed: ${consoleErrors.length}`);
+      for (const error of consoleErrors.slice(0, 5)) console.log(`      ${error}`);
     }
   } finally {
     await browser.close();

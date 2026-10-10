@@ -72,7 +72,7 @@ export const FLAP_STAGGER_MS = 26;
  */
 export const FLAP_MAX_TOTAL_MS = 620;
 /** Slack after the last character lands before the cells are stripped. */
-const FLAP_SETTLE_SLACK_MS = 60;
+export const FLAP_SETTLE_SLACK_MS = 60;
 /**
  * Fraction of a character's flip at which the outgoing glyph has rotated
  * away and the incoming one takes over as what the eye reads. MUST track the
@@ -533,4 +533,14 @@ export function setSplitFlapText(element, text, options = {}) {
     ),
   });
   return true;
+}
+
+/** Stop decoration without replacing the label's permanent accessible text. */
+export function disposeSplitFlap(element) {
+  if (!element) return;
+  clearFlapTimer(element);
+  cancelWidthEase(element);
+  clearSizing(element);
+  const cells = element.querySelector?.('.gev-flap-cells');
+  if (cells) rest(element, { cells });
 }

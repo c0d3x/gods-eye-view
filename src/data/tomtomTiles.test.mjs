@@ -1,15 +1,14 @@
 // src/data/tomtomTiles.test.mjs
-
-import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import assert from 'node:assert/strict';
 import {
-  isOverBudget,
   isValidTileCoord,
   lonLatToTile,
-  normalizeBudget,
-  tilesForBounds,
   tileToBBox,
+  tilesForBounds,
   utcDayKey,
+  normalizeBudget,
+  isOverBudget,
 } from './tomtomTiles.js';
 
 // Downtown Austin — the verified TomTom fixture tile (z12 x935 y1686).

@@ -1,36 +1,4 @@
-# Commits that only reformat code, so `git blame` can look past them. GitHub
-# applies this file on its own; to use it locally, run
-#   git config blame.ignoreRevsFile .git-blame-ignore-revs
 
-# Format src/styles and src/scenes with Biome
-09346de203e83ddccdf96a89aa65568a1ec8a73e
-
-# Format src/annotations with Biome
-13fa7c448fc3faee76875034d3de8d0d78ff0490
-
-# Format pinokio/ and tools/ with Biome
-a5da6e4b8d949ea77db98473a39176af258e4076
-
-# Format src/overlays with Biome
-520ded27710596b04a6585e90a791dec0de6274c
-
-# Format src/voice with Biome
-4c16ab4edf93334c8353b211004664e70040def7
-
-# Format src/ui with Biome
-32862e79b8f97c6a80799f3da2025a33322c711f
-
-# Format the top level of src with Biome
-a966209dac9c819033fb5c2c1414ef9eb89ca358
-
-# Format src/data (adsbLolFallback to flights) with Biome
-3dcc3a3f2ecffab4892b1af6b91b91added51b36
-
-# Format src/data (flowMatch to motionModel) with Biome
-1029d3af657063c6b1b2cd7b21e17bbfe648518b
-
-# Format src/data (naturalEarthRegions to vesselLabels) with Biome
-b6270623b1b04a6ea54cf1c1640beda861c7c2e1
-
-# Format scripts with Biome
-32fcd769183e22f7735fed0aad61a2b9050188e8
+# Mechanical runtime formatting; executable syntax is unchanged.
+2aca7aecbb38c8554d40ddbc415fec37b3a65ec4
+b7c2c47b4154c3904337fd86d71caca5d1c602bb

@@ -11,13 +11,12 @@
  *
  * PURE data module — no Cesium imports, node-testable. The packs are lazy-
  * loaded on first lookup and cached in module scope (bbox/area computed once
- * at load). In the browser the packs are fetched as static assets; under
- * node the same files are read from disk (see localAsset.js). A failed load
- * is retried on the next lookup rather than cached (see
- * `createRetryableLoader`).
+ * at load) through `loadBundledJson`, which works in the browser and under
+ * node:test. A failed load is retried on the next lookup rather than cached
+ * (see `createRetryableLoader`).
  */
 
-import { readLocalJson } from './localAsset.js';
+import { loadBundledJson } from './bundledJson.js';
 import { createRetryableLoader } from './retryableLoad.js';
 
 const EARTH_RADIUS_KM = 6371;
@@ -110,7 +109,7 @@ function suffixVariants(norm) {
     v.push(norm.replace(/ mts$/, ' mountains'), norm.replace(/ mts$/, ''));
   // "x desert" ↔ "x"
   if (norm.endsWith(' desert')) v.push(norm.replace(/ desert$/, ''));
-  else v.push(`${norm} desert`);
+  else v.push(norm + ' desert');
   // "x peninsula" ↔ "x pen" (pack uses "Pen.")
   if (norm.endsWith(' peninsula')) v.push(norm.replace(/ peninsula$/, ' pen'));
   if (norm.endsWith(' pen')) v.push(norm.replace(/ pen$/, ' peninsula'));
@@ -122,20 +121,14 @@ function suffixVariants(norm) {
 /** @type {Array|null} flat entry list for listRegions() */
 let _entries = null;
 
-// Static assets: Vite emits each pack as a file the browser fetches on first
-// lookup, so neither is ever parsed as JavaScript.
-const REGIONS_URL = new URL(
-  './local_data/natural_earth/regions.json',
-  import.meta.url,
-);
-const MARINE_URL = new URL(
-  './local_data/natural_earth/marine.json',
-  import.meta.url,
-);
-
-async function loadPackFile(base) {
-  return readLocalJson(base === 'regions' ? REGIONS_URL : MARINE_URL);
-}
+const PACKS = {
+  regions: {
+    url: new URL('./local_data/natural_earth/regions.json', import.meta.url),
+  },
+  marine: {
+    url: new URL('./local_data/natural_earth/marine.json', import.meta.url),
+  },
+};
 
 function buildEntries(pack, kind) {
   const out = [];
@@ -177,8 +170,8 @@ function buildEntries(pack, kind) {
  */
 const loadIndex = createRetryableLoader(async () => {
   const [regions, marine] = await Promise.all([
-    loadPackFile('regions'),
-    loadPackFile('marine'),
+    loadBundledJson(PACKS.regions.url),
+    loadBundledJson(PACKS.marine.url),
   ]);
   _entries = [
     ...buildEntries(regions, 'natural'),
@@ -236,7 +229,7 @@ export async function findNaturalRegion(query) {
   for (const key of candidates) {
     if (!key) continue;
     const list = index.get(key);
-    if (list?.length) return toResult(list[0]);
+    if (list && list.length) return toResult(list[0]);
   }
   return null;
 }
@@ -255,6 +248,9 @@ export async function listRegions() {
     bboxDiagonalKm: e.bboxDiagonalKm,
   }));
 }
+
+// exported for tests
+export { normalizeName as _normalizeName };
 
 /**
  * Ray-cast (even-odd) point-in-ring test. Ring = [[lon,lat], …], open or
@@ -320,4 +316,40 @@ export async function lookupNaturalRegionOutline(query, lat, lon) {
     }
   }
   return null;
+}
+
+/** Resolve the smallest containing bundled physical region without a network geocoder. */
+export async function naturalRegionAtPoint(latitude, longitude) {
+  if (
+    ![latitude, longitude].every(Number.isFinite) ||
+    Math.abs(latitude) > 90 ||
+    Math.abs(longitude) > 180
+  )
+    return null;
+  await loadIndex();
+  let best = null;
+  for (const entry of _entries) {
+    const [west, south, east, north] = entry.bbox;
+    if (
+      longitude < west ||
+      longitude > east ||
+      latitude < south ||
+      latitude > north
+    )
+      continue;
+    if (best && entry.areaKm2 >= best.areaKm2) continue;
+    if (entry.polygons.some((ring) => pointInRing(ring, latitude, longitude)))
+      best = entry;
+  }
+  return best
+    ? {
+        label: best.name,
+        locality: null,
+        region: best.name,
+        country: null,
+        countryCode: null,
+        source: 'Natural Earth',
+        kind: best.kind,
+      }
+    : null;
 }

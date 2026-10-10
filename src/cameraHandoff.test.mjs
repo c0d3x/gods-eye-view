@@ -1,34 +1,29 @@
+import { LayerBindings } from './ui/layerBindings.js';
+import { readShellSource, shellMethod } from './testSupport/readShellSource.mjs';
+import { readLayerSource } from './testSupport/readLayerSource.mjs';
+import { StyleManager } from './ui/applicationShell.js';
+import { enter as cockpitEnter, navigateContext } from './ui/cockpitTrackingController.js';
+import { CockpitViewController } from './ui/cockpitController.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { looseIndexOf, readUiSource } from './testing/uiSources.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ui = readUiSource();
-const firms = fs.readFileSync(
-  path.join(ROOT, 'src', 'data', 'firmsHeatmap.js'),
-  'utf8',
-);
-const vessels = fs.readFileSync(
-  path.join(ROOT, 'src', 'data', 'aisLiveVessels.js'),
-  'utf8',
-);
-const voice = fs.readFileSync(
-  path.join(ROOT, 'src', 'voice', 'gevActions.js'),
-  'utf8',
-);
-const cameraVerbs = fs.readFileSync(
-  path.join(ROOT, 'src', 'cameraVerbs.js'),
-  'utf8',
-);
-const cockpitTracking = fs.readFileSync(
-  path.join(ROOT, 'src', 'cockpitTracking.js'),
-  'utf8',
-);
+const ui = readShellSource();
+const firms = readLayerSource(path.join(ROOT, 'src', 'data', 'firmsHeatmap.js'));
+const vessels = readLayerSource(path.join(ROOT, 'src', 'data', 'aisLiveVessels.js'));
+const voice = fs.readFileSync(path.join(ROOT, 'src', 'voice', 'gevActions.js'), 'utf8');
+const cameraVerbs = fs.readFileSync(path.join(ROOT, 'src', 'cameraVerbs.js'), 'utf8');
+const cockpitTracking = fs.readFileSync(path.join(ROOT, 'src', 'cockpitTracking.js'), 'utf8');
 
 function body(source, pattern, label) {
+  const name = pattern.source.match(/^(\w+)/)?.[1];
+  if (source === ui && typeof shellMethod(name) === 'function') {
+    const method = shellMethod(name).toString();
+    return method.slice(method.indexOf(') {') + 3, -1);
+  }
   const match = source.match(pattern);
   assert.ok(match, `${label} is missing`);
   return match[1];
@@ -37,7 +32,8 @@ function body(source, pattern, label) {
 function ordered(source, needles, label) {
   let previous = -1;
   for (const needle of needles) {
-    const index = looseIndexOf(source, needle);
+    const match = needle instanceof RegExp ? needle.exec(source.slice(previous + 1)) : null;
+    const index = needle instanceof RegExp ? (match ? previous + 1 + match.index : -1) : source.indexOf(needle, previous + 1);
     assert.ok(index >= 0, `${label}: missing ${needle}`);
     assert.ok(index > previous, `${label}: ${needle} is out of order`);
     previous = index;
@@ -45,24 +41,16 @@ function ordered(source, needles, label) {
 }
 
 test('Cockpit takeover invalidates deferred work before camera cancellation', () => {
-  const enter = body(
-    ui,
-    /enter\(\) \{([\s\S]*?)\n {2}\}\n\n {2}exit\(/,
-    'Cockpit enter',
-  );
-  ordered(
-    enter,
-    [
-      'if (!info || !entity?.position) return false;',
-      'this.onCameraTakeover?.();',
-      'this.viewer.camera.cancelFlight();',
-      'this.viewer.trackedEntity = undefined;',
-    ],
-    'Cockpit takeover',
-  );
+  const enter = cockpitEnter.toString();
+  ordered(enter, [
+    'if (!info || !entity?.position) return false;',
+    'this.onCameraTakeover?.();',
+    'this.viewer.camera.cancelFlight();',
+    'this.viewer.trackedEntity = undefined;',
+  ], 'Cockpit takeover');
   assert.match(
     ui,
-    /onCameraTakeover:\s*\(,?\s*\)\s*=>\s*this\s*\._stampNavigation\(\s*\{\s*cancelPendingSelection:\s*false,?\s*\},?\s*\),\s*/,
+    /onCameraTakeover: \(\) =>\s*this\._stampNavigation\(\{\s*cancelPendingSelection: false,?\s*\}\),/,
     'Cockpit retires stale camera work without clearing the aircraft selection it adopts',
   );
 });
@@ -70,17 +58,17 @@ test('Cockpit takeover invalidates deferred work before camera cancellation', ()
 test('one explicit tracking selection clears sibling IDs before publishing its durable replacement', () => {
   const persist = body(
     ui,
-    /_persistAwarenessSelection\(event, cleared = false\) \{([\s\S]*?)\n {2}\}/,
+    /_persistAwarenessSelection\(event, cleared = false\) \{([\s\S]*?)\n  \}/,
     'tracking persistence',
   );
-  assert.match(persist, /adoptLayerParams\s*\?\.\(\s*layerId,\s*/);
+  assert.match(persist, /adoptLayerParams\?\.\(\s*layerId,/);
   assert.match(persist, /\['flights', 'selectedFlightsTrackingId'\]/);
   assert.match(persist, /\['military', 'selectedMilitaryTrackingId'\]/);
   assert.match(persist, /\['satellites', 'selectedSatTrackingId'\]/);
   assert.match(persist, /if \(otherLayerId === layerId\) continue;/);
   assert.match(
     persist,
-    /for\s*\(\s*const\s*\[\s*otherLayerId,\s*otherKey,?\s*\][\s\S]*?setLayerParams\(\s*otherLayerId,\s*[\s\S]*?adoptLayerParams\s*\?\.\(\s*layerId,\s*/,
+    /for \(const \[otherLayerId, otherKey\][\s\S]*?setLayerParams\(\s*otherLayerId,[\s\S]*?adoptLayerParams\?\.\(\s*layerId,/,
     'the previous family clears before Flight/Military/Satellite publishes the new durable ID',
   );
 });
@@ -88,28 +76,16 @@ test('one explicit tracking selection clears sibling IDs before publishing its d
 test('navigation clears dormant tracker IDs without aborting unrelated layer restoration', () => {
   const stamp = body(
     ui,
-    /_stampNavigation\(\s*\{\s*cancelPendingSelection\s*=\s*true[^)]*,?\s*\}\s*=\s*\{,?\s*\},?\s*\)\s*\{\s*([\s\S]*?)\n {2}\}/,
+    /_stampNavigation\(\{ cancelPendingSelection = true[^)]*\} = \{\}\) \{([\s\S]*?)\n  \}/,
     'navigation authority stamp',
   );
   assert.doesNotMatch(stamp, /cancelPendingRestores\(\)/);
   assert.match(stamp, /flightsLayer\.cancelPendingTrackingRestore\?\.\(\)/);
-  assert.match(
-    stamp,
-    /militaryFlightsLayer\.cancelPendingTrackingRestore\?\.\(\)/,
-  );
+  assert.match(stamp, /militaryFlightsLayer\.cancelPendingTrackingRestore\?\.\(\)/);
   assert.match(stamp, /satellitesLayer\.cancelPendingTrackingRestore\?\.\(\)/);
-  assert.match(
-    stamp,
-    /if \(!passivelyClearedShareSelection && !flightsLayer\.getTrackedInfo\?\.\(\)\)[\s\S]*?selectedFlightsTrackingId: null/,
-  );
-  assert.match(
-    stamp,
-    /if\s*\(\s*!passivelyClearedShareSelection\s*&&\s*!militaryFlightsLayer\s*\.getTrackedInfo\s*\?\.\(,?\s*\),?\s*\)[\s\S]*?selectedMilitaryTrackingId:\s*null/,
-  );
-  assert.match(
-    stamp,
-    /if\s*\(\s*!passivelyClearedShareSelection\s*&&\s*!satellitesLayer\s*\.getTrackedInfo\s*\?\.\(,?\s*\),?\s*\)[\s\S]*?selectedSatTrackingId:\s*null/,
-  );
+  assert.match(stamp, /if \(\s*!passivelyClearedShareSelection\s*&&\s*!flightsLayer\.getTrackedInfo\?\.\(\)\s*\)[\s\S]*?selectedFlightsTrackingId: null/);
+  assert.match(stamp, /if \(\s*!passivelyClearedShareSelection\s*&&\s*!militaryFlightsLayer\.getTrackedInfo\?\.\(\)\s*\)[\s\S]*?selectedMilitaryTrackingId: null/);
+  assert.match(stamp, /if \(\s*!passivelyClearedShareSelection\s*&&\s*!satellitesLayer\.getTrackedInfo\?\.\(\)\s*\)[\s\S]*?selectedSatTrackingId: null/);
 });
 
 test('voice Cockpit entry reaches the camera only through stamping seams', () => {
@@ -129,14 +105,10 @@ test('voice Cockpit entry reaches the camera only through stamping seams', () =>
     /export function enterCockpitWithTracking\(\{[\s\S]*?\n\}\) \{([\s\S]*?)\n\}\n/,
     'Cockpit entry transaction',
   );
-  ordered(
-    transaction,
-    [
-      'if (!selectedLayer.trackById?.(selectedTarget.id, { origin: selectionOrigin })) {',
-      'if (!entryError) entered = Boolean(cockpitView.enter());',
-    ],
-    'Cockpit entry transaction',
-  );
+  ordered(transaction, [
+    /if \(\s*!selectedLayer\.trackById\?\.\(selectedTarget\.id, \{\s*origin: selectionOrigin,?\s*\}\)\s*\) \{/,
+    'if (!entryError) entered = Boolean(cockpitView.enter());',
+  ], 'Cockpit entry transaction');
   // No direct camera control: every mutation goes through a layer tracker or
   // the cockpit controller, both of which stamp.
   assert.doesNotMatch(transaction, /\b(?:viewer\.)?camera\s*(?:\.|\[|=)/);
@@ -146,13 +118,13 @@ test('voice Cockpit entry reaches the camera only through stamping seams', () =>
   // Seam 1: any tracker handoff stamps, so the adoption step is covered.
   assert.match(
     ui,
-    /viewer\s*\.trackedEntityChanged\s*\.addEventListener\(\s*\(\s*entity,?\s*\)\s*=>\s*\{\s*if\s*\(\s*entity\s*&&\s*!this\s*\._disposed,?\s*\)\s*this\s*\._stampNavigation\(\s*\{\s*cancelPendingSelection:\s*false,?\s*\},?\s*\);/,
+    /viewer\.trackedEntityChanged\.addEventListener\(\s*\(entity\) => \{\s*if \(entity && !this\._disposed\)\s*this\._stampNavigation\(\{\s*cancelPendingSelection: false,?\s*\}\);/,
     'tracker handoff must stamp',
   );
   // Seam 2 is pinned by "Cockpit takeover invalidates deferred work" above.
   const control = body(
     ui,
-    /if \(normalized === 'enter'\) \{([\s\S]*?)\n {4}\}/,
+    /if \(normalized === 'enter'\) \{([\s\S]*?)\n    \}/,
     'controlCockpit enter branch',
   );
   assert.match(control, /enterCockpitWithTracking\(\{/);
@@ -167,120 +139,74 @@ test('voice Cockpit next/previous shares the manual Context navigation path', ()
   // is what stamps. Divergence here is how a voice-only camera path escapes
   // the arbiter.
   assert.match(
-    ui,
-    /this\s*\._listen\(\s*this\s*\.contextPrevious,\s*'click',\s*\(,?\s*\)\s*=>\s*this\s*\.navigateContext\(\s*-1,\s*\{\s*origin:\s*'user',?\s*\},?\s*\),?\s*\);/,
+    CockpitViewController.toString(),
+    /this\._listen\(this\.contextPrevious, 'click', \(\) =>\s*this\.navigateContext\(-1, \{ origin: 'user' \}\),?\s*\);/,
   );
   assert.match(
-    ui,
-    /this\s*\._listen\(\s*this\s*\.contextNext,\s*'click',\s*\(,?\s*\)\s*=>\s*this\s*\.navigateContext\(\s*1,\s*\{\s*origin:\s*'user',?\s*\},?\s*\),?\s*\);/,
+    CockpitViewController.toString(),
+    /this\._listen\(this\.contextNext, 'click', \(\) =>\s*this\.navigateContext\(1, \{ origin: 'user' \}\),?\s*\);/,
   );
-  const funnel = body(
-    ui,
-    /navigateContext\(direction, options = \{\}\) \{([\s\S]*?)\n {2}\}\n\n {2}\/\*\* Adopt/,
-    'Cockpit Context navigation funnel',
-  );
-  ordered(
-    funnel,
-    [
-      "const method = direction < 0 ? 'navigatePrevious' : 'navigateNext';",
-      'const navigationOptions = wasActive ? { ...options, aircraftOnly: true } : options;',
-      'militaryAwarenessLayer?.[method]?.(navigationOptions)',
-      'this._adoptTrackedEntity(performance.now());',
-    ],
-    'Cockpit Context navigation funnel',
-  );
+  const funnel = navigateContext.toString();
+  assert.match(funnel, /const navigationOptions = wasActive\s*\? \{ \.\.\.options, aircraftOnly: true \}\s*: options;/);
+  ordered(funnel, [
+    "const method = direction < 0 ? 'navigatePrevious' : 'navigateNext';",
+    'const navigationOptions = wasActive',
+    'militaryAwarenessLayer?.[method]?.(navigationOptions)',
+    'this._adoptTrackedEntity(performance.now());',
+  ], 'Cockpit Context navigation funnel');
   const navigate = body(
     ui,
-    /if \(normalized === 'next' \|\| normalized === 'previous'\) \{([\s\S]*?)\n {4}\}/,
+    /if \(normalized === 'next' \|\| normalized === 'previous'\) \{([\s\S]*?)\n    \}/,
     'controlCockpit navigation branch',
   );
-  ordered(
-    navigate,
-    ['this.cockpitView.navigateContext(', "normalized === 'next' ? 1 : -1,"],
-    'controlCockpit navigation branch',
-  );
+  ordered(navigate, [
+    'this.cockpitView.navigateContext(',
+    "normalized === 'next' ? 1 : -1,",
+  ], 'controlCockpit navigation branch');
   // No private camera route around the awareness layer.
-  assert.doesNotMatch(
-    navigate,
-    /flyTo|camera|trackById|_runExplicitNavigation/,
-  );
+  assert.doesNotMatch(navigate, /flyTo|camera|trackById|_runExplicitNavigation/);
   // An exhausted cohort is an honest failure, not a silent success.
   assert.match(navigate, /ok: changed,/);
-  assert.match(
-    navigate,
-    /error: changed \? null : 'No further context target was available',/,
-  );
+  assert.match(navigate, /error: changed \? null : 'No further context target was available',/);
 });
 
 test('accepted navigation releases through PR15-aware ownership before flight', () => {
   const run = body(
     ui,
-    /_runExplicitNavigation\(noun, navigate, releaseOptions = undefined\) \{([\s\S]*?)\n {2}\}/,
+    /_runExplicitNavigation\(noun, navigate, releaseOptions = undefined\) \{([\s\S]*?)\n  \}/,
     'explicit navigation',
   );
-  ordered(
-    run,
-    [
-      'cockpitActive: !!this.cockpitView?.active',
-      'stamp: () => this._stampNavigation()',
-      'release: () => this._releaseFollowCamera(releaseOptions)',
-      'navigate,',
-    ],
-    'explicit navigation',
-  );
+  ordered(run, [
+    'cockpitActive: this.isCockpitActive()',
+    'stamp: () => this._stampNavigation()',
+    'release: () => this._releaseFollowCamera(releaseOptions)',
+    'navigate,',
+  ], 'explicit navigation');
   const release = body(
     ui,
-    /\n {2}_releaseFollowCamera\(\{[\s\S]*?\} = \{\}\) \{([\s\S]*?)\n {2}\}/,
+    /_releaseFollowCamera\(\{[\s\S]*?\} = \{\}\) \{([\s\S]*?)\n  \}/,
     'follow release',
   );
-  ordered(
-    release,
-    [
-      'origin: trackingOrigin',
-      'satellitesLayer.stopTracking?.({ origin: trackingOrigin })',
-      'rocketLaunchesLayer.releaseCameraOwnership?.()',
-      'this.viewer.trackedEntity = undefined;',
-      "interruptCameraMotion('explicit-navigation')",
-      'this.viewer.camera.cancelFlight();',
-      'this.viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);',
-    ],
-    'follow release',
-  );
-  assert.match(
-    release,
-    /flightsLayer\.stopTracking\?\.\(\{ origin: trackingOrigin \}\)/,
-  );
-  assert.match(
-    release,
-    /militaryFlightsLayer\.stopTracking\?\.\(\{ origin: trackingOrigin \}\)/,
-  );
+  ordered(release, [
+    'origin: trackingOrigin',
+    'satellitesLayer.stopTracking?.({ origin: trackingOrigin })',
+    'rocketLaunchesLayer.releaseCameraOwnership?.()',
+    'this.viewer.trackedEntity = undefined;',
+    "interruptCameraMotion('explicit-navigation')",
+    'this.viewer.camera.cancelFlight();',
+    'this.viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);',
+  ], 'follow release');
+  assert.match(release, /flightsLayer\.stopTracking\?\.\(\{ origin: trackingOrigin \}\)/);
+  assert.match(release, /militaryFlightsLayer\.stopTracking\?\.\(\{ origin: trackingOrigin \}\)/);
 });
 
 test('validated voice camera destinations share the UI navigation authority facade', () => {
-  assert.match(
-    ui,
-    /runImmediateNavigation\(noun, navigate, releaseOptions = undefined\) \{\s*return this\._runExplicitNavigation\(noun, navigate, releaseOptions\);/,
-  );
-  assert.match(
-    voice,
-    /runManagedVoiceNavigation\(\s*styleManager,\s*'camera',\s*'move_camera',\s*navigate,\s*releaseOptions/,
-  );
-  assert.match(
-    voice,
-    /runManagedVoiceNavigation\(\s*styleManager,\s*'route',\s*'fly_route',\s*navigate/,
-  );
-  assert.match(
-    voice,
-    /runManagedVoiceNavigation\(\s*styleManager,\s*'fire',\s*'track_entity'/,
-  );
-  assert.match(
-    voice,
-    /runManagedVoiceNavigation\(\s*styleManager,\s*family\.kind,\s*'track_entity'/,
-  );
-  assert.match(
-    voice,
-    /runManagedVoiceNavigation\(\s*styleManager,\s*'frame',\s*'frame_overhead'/,
-  );
+  assert.match(ui, /runImmediateNavigation\(noun, navigate, releaseOptions = undefined\) \{\s*return this\._runExplicitNavigation\(noun, navigate, releaseOptions\);/);
+  assert.match(voice, /runManagedVoiceNavigation\(\s*styleManager,\s*'camera',\s*'move_camera',\s*navigate,\s*releaseOptions/);
+  assert.match(voice, /runManagedVoiceNavigation\(\s*styleManager,\s*'route',\s*'fly_route',\s*navigate/);
+  assert.match(voice, /runManagedVoiceNavigation\(\s*styleManager,\s*'fire',\s*'track_entity'/);
+  assert.match(voice, /runManagedVoiceNavigation\(\s*styleManager,\s*family\.kind,\s*'track_entity'/);
+  assert.match(voice, /runManagedVoiceNavigation\(\s*styleManager,\s*'frame',\s*'frame_overhead'/);
   const trackedVoice = voice.slice(
     voice.indexOf('async function trackEntity'),
     voice.indexOf('async function frameOverhead'),
@@ -297,206 +223,155 @@ test('validated voice camera destinations share the UI navigation authority faca
     /export function moveCamera\(args = \{\}, runNavigation = null\) \{([\s\S]*?)\n\}/,
     'move camera',
   );
-  ordered(
-    move,
-    [
-      "if (!['orbit', 'pan', 'tilt', 'rotate'].includes(motion))",
-      'const start = () => {',
-      "const preserveCameraFlight = motion === 'orbit'",
-      'runNavigation(start, { preserveCameraFlight })',
-    ],
-    'move validation before handoff',
-  );
+  ordered(move, [
+    "if (!['orbit', 'pan', 'tilt', 'rotate'].includes(motion))",
+    'const start = () => {',
+    /const preserveCameraFlight =\s*motion === 'orbit'/,
+    'runNavigation(start, { preserveCameraFlight })',
+  ], 'move validation before handoff');
 
   const route = body(
     cameraVerbs,
-    /export\s*function\s*flyRoute\(\s*annoList,\s*args\s*=\s*\{,?\s*\},\s*floorFn\s*=\s*null,\s*runNavigation\s*=\s*null,\s*warmFn\s*=\s*null,?\s*\)\s*\{\s*([\s\S]*?)\n\}/,
+    /export function flyRoute\(\s*annoList,\s*args = \{\},\s*floorFn = null,\s*runNavigation = null,\s*warmFn = null,?\s*\) \{([\s\S]*?)\n\}/,
     'fly route',
   );
-  ordered(
-    route,
-    [
-      'if (!routes.length)',
-      'const pts = route.path.map',
-      'const start = () => {',
-      "return typeof runNavigation === 'function' ? runNavigation(start) : start();",
-    ],
-    'route validation before handoff',
-  );
+  ordered(route, [
+    'if (!routes.length)',
+    'const pts = route.path.map',
+    'const start = () => {',
+    /return typeof runNavigation === 'function'\s*\? runNavigation\(start\)\s*: start\(\);/,
+  ], 'route validation before handoff');
   // The corridor warm is injected the same way the floor READ is — the dolly
   // never reaches into the data layer itself, and the voice dispatch is the one
   // place that binds both.
-  assert.match(
-    voice,
-    /\(lat, lon\) => cachedGroundFloor\(lat, lon\),[\s\S]{0,200}?\(cells\) => warmGroundFloor\(cells\),/,
-  );
+  assert.match(voice, /\(lat, lon\) => floorServices\.cachedGroundFloor\(lat, lon\),[\s\S]{0,200}?\(cells\) => floorServices\.warmGroundFloor\(cells\),/);
 });
 
 test('deferred search releases only after its final authority check', () => {
-  const handler = body(
-    ui,
-    /this\._locationSearch\.addEventListener\('keydown', async \(e\) => \{([\s\S]*?)\n {4}\}\);/,
-    'search handler',
-  );
-  ordered(
-    handler,
-    [
-      "this._beginDeferredNavigation('location')",
-      'this._activeLocationSearchGeneration = generation;',
-      'searchAndFlyTo(this.viewer, query',
-      'beforeFly: () => this._reassertNavigationHandoff(generation)',
-      'generation !== this._navigationGeneration',
-      'destination?.cancelled',
-      'finally',
-      'this._settleLocationSearchUi(generation)',
-    ],
-    'deferred search',
-  );
-  assert.doesNotMatch(
-    handler.slice(0, handler.indexOf('searchAndFlyTo')),
-    /_releaseFollowCamera/,
-  );
+  const search = fs.readFileSync(path.join(ROOT, 'src', 'ui', 'locationSearch.js'), 'utf8');
+  ordered(search, [
+    'const authority = this.begin();',
+    'this.onStart?.(authority);',
+    'await this.search(query',
+    'beforeFly: () => current() && this.beforeFly(authority)',
+    'if (!current() || controller.signal.aborted) return;',
+    'destination?.cancelled',
+    'finally',
+    'this.onSettled?.(authority)',
+  ], 'deferred search component');
+  assert.match(ui, /begin: \(\) => this\._beginDeferredNavigation\('location'\)/);
+  assert.match(ui, /beforeFly: \(generation\) => this\._reassertNavigationHandoff\(generation\)/);
+  assert.match(ui, /isCurrent: \(generation\) =>\s*!this\._disposed && generation === this\._navigationGeneration/);
+  assert.match(ui, /change\.type === 'settled'\)\s*this\._settleLocationSearchUi\(change\.generation\)/);
+  assert.doesNotMatch(search.slice(0, search.indexOf('await this.search')), /_releaseFollowCamera/);
 });
 
 test('a direct globe gesture retires delayed camera and selection restore only', () => {
   assert.match(
     ui,
-    /this\._initialShareGestureHandler = \(\) => \{[\s\S]*?!this\._resolveInitialShareRestore[\s\S]*?stampInitialShareGesture\(\(options\) => this\._stampNavigation\(options\)\);/,
+    /this\._initialShareGestureHandler = \(\) => \{[\s\S]*?!this\._resolveInitialShareRestore[\s\S]*?stampInitialShareGesture\(\(options\) =>\s*this\.navigation\._stampNavigation\(options\),?\s*\);/,
   );
   assert.match(
     ui,
-    /viewer\s*\?\s*\.canvas\s*\?\s*\.addEventListener\(\s*'pointerdown',\s*this\s*\._initialShareGestureHandler/,
+    /viewer\?\.canvas\?\.addEventListener\(\s*'pointerdown',\s*this\._initialShareGestureHandler/,
   );
   assert.match(
     ui,
-    /viewer\s*\?\s*\.canvas\s*\?\s*\.addEventListener\(\s*'wheel',\s*this\s*\._initialShareGestureHandler/,
+    /viewer\?\.canvas\?\.addEventListener\(\s*'wheel',\s*this\._initialShareGestureHandler/,
   );
   assert.match(
     ui,
-    /removeEventListener\(\s*'pointerdown',\s*this\s*\._initialShareGestureHandler,?\s*\)[\s\S]*?removeEventListener\(\s*'wheel',\s*this\s*\._initialShareGestureHandler,?\s*\)/,
+    /removeEventListener\(\s*'pointerdown',\s*this\._initialShareGestureHandler,?\s*\)[\s\S]*?removeEventListener\(\s*'wheel',\s*this\._initialShareGestureHandler,?\s*\)/,
   );
   const stamp = body(
     ui,
-    /_stampNavigation\(\s*\{\s*cancelPendingSelection\s*=\s*true[^)]*,?\s*\}\s*=\s*\{,?\s*\},?\s*\)\s*\{\s*([\s\S]*?)\n {2}\}/,
+    /_stampNavigation\(\{ cancelPendingSelection = true[^)]*\} = \{\}\) \{([\s\S]*?)\n  \}/,
     'navigation stamp',
   );
-  assert.match(
-    stamp,
-    /if \(cancelPendingSelection\) \{[\s\S]*?cancelPendingTrackingRestore/,
-  );
+  assert.match(stamp, /if \(cancelPendingSelection\) \{[\s\S]*?cancelPendingTrackingRestore/);
   assert.doesNotMatch(stamp, /cancelPendingRestores\(\)/);
 });
 
 test('newer navigation, reset, Cockpit, and teardown share one generation', () => {
   assert.equal((ui.match(/_navigationGeneration \+= 1/g) || []).length, 1);
-  const reset = body(ui, /resetToGlobeView\(\) \{([\s\S]*?)\n {2}\}/, 'reset');
-  ordered(
-    reset,
-    [
-      'if (this._globeResetPromise) return this._globeResetPromise;',
-      'this._stampNavigation();',
-      "interruptCameraMotion('reset-globe')",
-    ],
-    'reset supersession',
-  );
-  const dispose = body(ui, /async dispose\(\) \{([\s\S]*?)\n {2}\}/, 'dispose');
-  ordered(
-    dispose,
-    [
-      'this._disposed = true;',
-      'this._stampNavigation();',
-      'this._removeWorldRequestFocusListener?.();',
-      'await this._restoreContextSession();',
-    ],
-    'dispose invalidation',
-  );
+  const reset = body(ui, /resetToGlobeView\(\) \{([\s\S]*?)\n  \}/, 'reset');
+  ordered(reset, [
+    'if (this._globeResetPromise) return this._globeResetPromise;',
+    'this._stampNavigation();',
+    "interruptCameraMotion('reset-globe')",
+  ], 'reset supersession');
+  const dispose = body(ui, /async dispose\(\) \{([\s\S]*?)\n  \}/, 'dispose');
+  ordered(dispose, [
+    'this._disposed = true;',
+    'this._layerBindings.stop();',
+    'this._navigation.destroy();',
+    'await this._contextControls.restoreForDisposal();',
+  ], 'dispose invalidation');
+  assert.match(shellMethod('destroy').toString(), /this\._stampNavigation\(\)/);
 });
 
 test('teardown synchronously closes immediate camera entry points', () => {
-  const dispose = body(ui, /async dispose\(\) \{([\s\S]*?)\n {2}\}/, 'dispose');
-  ordered(
-    dispose,
-    [
-      'this._disposed = true;',
-      'this._removeCctvRequestFocusListener?.();',
-      'this._removeWorldRequestFocusListener?.();',
-      'this._navigationOwnerChangedRemover?.();',
-      'await this._restoreContextSession();',
-    ],
-    'synchronous teardown barrier',
-  );
+  const dispose = body(ui, /async dispose\(\) \{([\s\S]*?)\n  \}/, 'dispose');
+  ordered(dispose, [
+    'this._disposed = true;',
+    'this._layerBindings.stop();',
+    'await this._contextControls.restoreForDisposal();',
+  ], 'synchronous teardown barrier');
+  ordered(LayerBindings.prototype.stop.toString(), [
+    'this._disposed = true;',
+    'this._removeCctvRequestFocusListener?.();',
+    'this._removeWorldRequestFocusListener?.();',
+    'this._navigationOwnerChangedRemover?.();',
+  ], 'camera bindings close synchronously');
 
   const navigation = body(
     ui,
-    /_runExplicitNavigation\(noun, navigate, releaseOptions = undefined\) \{([\s\S]*?)\n {2}\}/,
+    /_runExplicitNavigation\(noun, navigate, releaseOptions = undefined\) \{([\s\S]*?)\n  \}/,
     'explicit navigation',
   );
-  ordered(
-    navigation,
-    [
-      'disposed: this._disposed',
-      'release: () => this._releaseFollowCamera(releaseOptions)',
-      'navigate,',
-    ],
-    'disposed navigation guard',
-  );
+  ordered(navigation, [
+    'disposed: this._disposed',
+    'release: () => this._releaseFollowCamera(releaseOptions)',
+    'navigate,',
+  ], 'disposed navigation guard');
 
   const cctvFocus = body(
     ui,
-    /_runExplicitCctvFocus\(activate, focus\) \{([\s\S]*?)\n {2}\}/,
+    /_runExplicitCctvFocus\(activate, focus\) \{([\s\S]*?)\n  \}/,
     'explicit CCTV focus',
   );
-  ordered(
-    cctvFocus,
-    ['if (this._disposed) return false;', 'const cameraId = activate();'],
-    'disposed CCTV activation guard',
-  );
+  ordered(cctvFocus, [
+    'if (this._disposed) return false;',
+    'const cameraId = activate();',
+  ], 'disposed CCTV activation guard');
 });
 
 test('teardown refuses deferred location work before geocoding begins', () => {
-  const deferred = body(
-    ui,
-    /_beginDeferredNavigation\(\s*noun\s*=\s*'location',\s*\{\s*cancelPendingSelection\s*=\s*true,?\s*\}\s*=\s*\{,?\s*\},?\s*\)\s*\{\s*([\s\S]*?)\n {2}\}/,
-    'deferred navigation',
-  );
+  const deferred = body(ui, /_beginDeferredNavigation\(noun = 'location', \{ cancelPendingSelection = true \} = \{\}\) \{([\s\S]*?)\n  \}/, 'deferred navigation');
   assert.match(deferred, /disposed: this\._disposed/);
-
-  const handler = body(
-    ui,
-    /this\._locationSearch\.addEventListener\('keydown', async \(e\) => \{([\s\S]*?)\n {4}\}\);/,
-    'search handler',
-  );
-  ordered(
-    handler,
-    [
-      "const generation = this._beginDeferredNavigation('location');",
-      'if (generation === false)',
-      'this._locationSearch.blur();',
-      'searchAndFlyTo(this.viewer, query',
-    ],
-    'disposed search refusal',
-  );
-  assert.match(
-    handler,
-    /if \(generation === false\) \{[\s\S]*?return;[\s\S]*?\}\s*this\._activeLocationSearchGeneration/,
-  );
+  const search = fs.readFileSync(path.join(ROOT, 'src', 'ui', 'locationSearch.js'), 'utf8');
+  ordered(search, [
+    'if (!query || this.destroyed) return;',
+    'const authority = this.begin();',
+    'if (authority === false)',
+    'this.input.blur();',
+    'this.onStart?.(authority);',
+    'await this.search(query',
+  ], 'disposed search refusal');
+  assert.match(search, /if \(authority === false\) \{[\s\S]*?return;[\s\S]*?\}\s*this\.controller/);
 });
 
 test('refused canned destinations commit no location or POI state', () => {
   for (const [name, pattern] of [
-    ['city', /_onCityPillClick\(cityId\) \{([\s\S]*?)\n {2}\}/],
-    ['poi', /_onPoiClick\(cityId, poiIndex\) \{([\s\S]*?)\n {2}\}/],
+    ['city', /_onCityPillClick\(cityId\) \{([\s\S]*?)\n  \}/],
+    ['poi', /_onPoiClick\(cityId, poiIndex\) \{([\s\S]*?)\n  \}/],
   ]) {
     const handler = body(ui, pattern, name);
-    ordered(
-      handler,
-      [
-        'this._flyWithTransition(',
-        'if (result === false) return;',
-        'this._setActiveLocation(cityId);',
-      ],
-      name,
-    );
+    ordered(handler, [
+      'this._flyWithTransition(',
+      'if (result === false) return;',
+      'this._setActiveLocation(cityId);',
+    ], name);
   }
 });
 
@@ -509,53 +384,34 @@ test('world-focus listener lifecycle is symmetric and idempotent', () => {
 });
 
 test('vessel and fire layers announce valid clicks and never fly cameras', () => {
-  for (const [label, source] of [
-    ['vessels', vessels],
-    ['fires', firms],
-  ]) {
-    assert.match(
-      source,
-      /requestWorldFocus\(\{/,
-      `${label}: a valid click announces itself`,
-    );
-    assert.doesNotMatch(
-      source,
-      /camera\.flyTo/,
-      `${label}: a click never flies the camera`,
-    );
+  for (const [label, source] of [['vessels', vessels], ['fires', firms]]) {
+    assert.match(source, /requestWorldFocus\(\{/);
+    assert.doesNotMatch(source, /camera\.flyTo/);
   }
   const vesselClick = body(
     vessels,
-    /handler\.setInputAction\(\(click\) => \{([\s\S]*?)\n {2}\}, Cesium\.ScreenSpaceEventType\.LEFT_CLICK\);/,
+    /handler\.setInputAction\(\s*\(click\) => \{([\s\S]*?)\n\s*\},\s*Cesium\.ScreenSpaceEventType\.LEFT_CLICK,?\s*\);/,
     'vessel click',
   );
-  ordered(
-    vesselClick,
-    [
-      "isOwnedByOtherLayer('ais-live-vessels', pickedId)",
-      '_vesselOverlayHost.hitTest?.(',
-      'selectAndFocusVessel(record)',
-    ],
-    'vessel sibling ownership',
-  );
+  ordered(vesselClick, [
+    "isOwnedByOtherLayer('ais-live-vessels', pickedId)",
+    '_vesselOverlayHost.hitTest?.(',
+    'selectAndFocusVessel(record)',
+  ], 'vessel sibling ownership');
   const vesselFocus = body(
     vessels,
-    /function selectAndFocusVessel\(record\) \{([\s\S]*?)\n\}/,
+    /function selectAndFocusVessel\(record\) \{([\s\S]*?)\n  \}/,
     'vessel focus helper',
   );
   assert.match(vesselFocus, /requestWorldFocus\(\{/);
   const fireClick = body(
     firms,
-    /_clickHandler\.setInputAction\(\(click\) => \{([\s\S]*?)\n {4}\}, Cesium\.ScreenSpaceEventType\.LEFT_CLICK\);/,
+    /_clickHandler\.setInputAction\(\(click\) => \{([\s\S]*?)\n    \}, Cesium\.ScreenSpaceEventType\.LEFT_CLICK\);/,
     'fire click',
   );
-  ordered(
-    fireClick,
-    [
-      'isOwnedByOtherLayer(id, pickedId)',
-      'overlayHost.hitTest?.(',
-      'selectAndFocusFire(carded)',
-    ],
-    'fire sibling ownership',
-  );
+  ordered(fireClick, [
+    'isOwnedByOtherLayer(id, pickedId)',
+    'overlayHost.hitTest?.(',
+    'selectAndFocusFire(carded)',
+  ], 'fire sibling ownership');
 });

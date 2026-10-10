@@ -1,9 +1,9 @@
-import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import assert from 'node:assert/strict';
 import { applyVesselFocusDeemphasis } from './aisLiveVessels.js';
 import { applyCctvFocusDeemphasis } from './cctv.js';
-import { DEFAULT_FOCUS_DEEMPHASIS_PARAMS } from './focusDeemphasis.js';
 import { applySatellitePointFocusDeemphasis } from './satellites.js';
+import { DEFAULT_FOCUS_DEEMPHASIS_PARAMS } from './focusDeemphasis.js';
 
 const params = { ...DEFAULT_FOCUS_DEEMPHASIS_PARAMS, paddingPx: 0 };
 const target = {
@@ -27,11 +27,7 @@ function assertResumeGate(name, makePass) {
     const { pass, readAlpha } = makePass();
     let activeCount = 0;
     const tick = (nowMs, focusTarget) => {
-      const result = pass({
-        nowMs,
-        target: focusTarget,
-        previousActiveCount: activeCount,
-      });
+      const result = pass({ nowMs, target: focusTarget, previousActiveCount: activeCount });
       activeCount = result.activeCount;
       return result;
     };
@@ -42,11 +38,7 @@ function assertResumeGate(name, makePass) {
     assert.equal(readAlpha(), params.dimFloor);
 
     const releaseStart = tick(params.attackMs + 1, null);
-    assert.equal(
-      releaseStart.ran,
-      true,
-      'active count keeps the no-target release pass alive',
-    );
+    assert.equal(releaseStart.ran, true, 'active count keeps the no-target release pass alive');
     assert.equal(releaseStart.activeCount, 1);
 
     const restored = tick(params.attackMs + params.releaseMs + 2, null);
@@ -54,10 +46,7 @@ function assertResumeGate(name, makePass) {
     assert.equal(restored.activeCount, 0);
     assert.equal(readAlpha(), 1);
 
-    assert.equal(
-      tick(params.attackMs + params.releaseMs + 82, null).ran,
-      false,
-    );
+    assert.equal(tick(params.attackMs + params.releaseMs + 82, null).ran, false);
   });
 }
 
@@ -71,7 +60,7 @@ assertResumeGate('vessel', () => {
     color: color(),
   };
   return {
-    pass: ({ nowMs, target: focusTarget, previousActiveCount }) =>
+    pass: ({ nowMs, target: focusTarget, previousActiveCount }) => (
       applyVesselFocusDeemphasis({
         records: [{ billboard }],
         target: focusTarget,
@@ -80,7 +69,8 @@ assertResumeGate('vessel', () => {
         screenPositionFor: () => ({ x: 50, y: 50 }),
         cameraDistanceFor: () => 1200,
         params,
-      }),
+      })
+    ),
     readAlpha: () => billboard.color.alpha,
   };
 });
@@ -96,7 +86,7 @@ assertResumeGate('CCTV', () => {
   };
   const record = { camera: { id: 'cam-1' }, billboard };
   return {
-    pass: ({ nowMs, target: focusTarget, previousActiveCount }) =>
+    pass: ({ nowMs, target: focusTarget, previousActiveCount }) => (
       applyCctvFocusDeemphasis({
         records: [record],
         target: focusTarget,
@@ -106,7 +96,8 @@ assertResumeGate('CCTV', () => {
         cameraDistanceFor: () => 1200,
         baseColorFor: () => color(),
         params,
-      }),
+      })
+    ),
     readAlpha: () => billboard.color.alpha,
   };
 });
@@ -119,7 +110,7 @@ assertResumeGate('satellite', () => {
     color: color(),
   };
   return {
-    pass: ({ nowMs, target: focusTarget, previousActiveCount }) =>
+    pass: ({ nowMs, target: focusTarget, previousActiveCount }) => (
       applySatellitePointFocusDeemphasis({
         points: new Map([[42, point]]),
         trackedId: null,
@@ -130,7 +121,8 @@ assertResumeGate('satellite', () => {
         cameraDistanceFor: () => 1200,
         baseColorFor: () => color(),
         params,
-      }),
+      })
+    ),
     readAlpha: () => point.color.alpha,
   };
 });

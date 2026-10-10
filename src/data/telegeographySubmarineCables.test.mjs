@@ -1,10 +1,9 @@
+import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import test from 'node:test';
 import * as Cesium from 'cesium';
 import { MAP_STACKS } from '../mapStackController.js';
 import {
-  applyTranslucentMarkerBlend,
   CABLE_LABEL_DEPTH_DECISION,
   CABLE_OVERLAY_COLLISION_CAPACITY,
   CABLE_OVERLAY_SOURCE_ID,
@@ -12,6 +11,7 @@ import {
   CABLE_STEM_TIP_EPSILON_M,
   CABLE_SWEEP_MOTION_EPSILON_M,
   CABLE_SWEEP_MOTION_PROBE_INTERVAL_MS,
+  applyTranslucentMarkerBlend,
   cableClassificationTypeForScene,
   cableClassificationTypeForStack,
   cableReferencePriority,
@@ -629,10 +629,25 @@ test('the depth decision is the dated Option-2 host migration, superseding Optio
 });
 
 test('cables create no native labels and no per-frame geometry callbacks', () => {
-  const source = readFileSync(
-    new URL('./telegeographySubmarineCables.js', import.meta.url),
-    'utf8',
-  );
+  const source = [
+    '../../data/telegeographySubmarineCables.js',
+    '../../app/layers/submarineCables.js',
+    '../../app/layers/overlayHost.js',
+    'rendering.js',
+    'overlay.js',
+    'surface.js',
+    'ingestion.js',
+    'interaction.js',
+    'geometry.js',
+    'lifecycle.js',
+  ]
+    .map((file) =>
+      readFileSync(
+        new URL('../layers/submarineCables/' + file, import.meta.url),
+        'utf8',
+      ),
+    )
+    .join('\n');
   assert.doesNotMatch(
     source,
     /new Cesium\.LabelGraphics/,
@@ -651,7 +666,7 @@ test('cables create no native labels and no per-frame geometry callbacks', () =>
   assert.match(source, /record\.entity\.position\.setValue\(record\.tip\)/);
   assert.match(
     source,
-    /const\s*stemPositionBuffers\s*=\s*\[\s*\[\s*base,\s*tip,?\s*\],\s*\[\s*base,\s*tip,?\s*\],?\s*\]/,
+    /const stemPositionBuffers = \[\s*\[base, tip\],\s*\[base, tip\],?\s*\]/,
   );
   assert.match(
     source,
@@ -980,10 +995,25 @@ test('an abort landing at the post-cable-GeoJson boundary stops the stale load b
     env.layer.disable();
     env.layer.enable(env.viewer);
     await env.settle();
+    // A already cached the fetched JSON, so load B skips the network and goes
+    // straight to its own CABLE build; the only new GeoJson call must be that
+    // one — a landing build here would mean stale A ran on past its check.
+    assert.equal(
+      env.pendingFetches.length,
+      0,
+      'load B rebuilds from the cached JSON without refetching',
+    );
     assert.equal(
       geojson.calls.length,
-      1,
+      2,
       'stale load A must not start the landing GeoJson build',
+    );
+    assert.ok(
+      Cesium.Color.equals(
+        geojson.calls[1][1].stroke,
+        geojson.calls[0][1].stroke,
+      ),
+      "the second GeoJson call is load B's cable build, not A's landing build",
     );
 
     env.releaseAll();
@@ -1261,6 +1291,7 @@ test('destroy mid-load stays clean and a re-enabled layer reloads exactly once',
 });
 
 async function createRealCableLayerHarness({
+  source,
   mapStackEventTarget = null,
 } = {}) {
   const hostCalls = [];
@@ -1278,6 +1309,7 @@ async function createRealCableLayerHarness({
       setInputAction() {},
       destroy() {},
     }),
+    ...(source ? { source } : {}),
     mapStackEventTarget,
     sweepClock: () => clockMs,
   });
@@ -1641,4 +1673,84 @@ test('an unchanged cohort never republishes, so a parked camera stays governor-i
   );
 
   env.layer.destroy(env.viewer);
+});
+
+test('a toggle-off releases every data source and a toggle-on rebuilds them without refetching', async () => {
+  const env = await createRealCableLayerHarness();
+  assert.equal(
+    env.dataSources.length,
+    3,
+    'cable + landing + reference sources while on',
+  );
+  const before = env.layer.getStats().count;
+  assert.equal(before, 2);
+
+  // Any fetch after this point is a bug: the rebuild must come from the cache.
+  const originalFetch = globalThis.fetch;
+  let fetches = 0;
+  globalThis.fetch = async () => {
+    fetches += 1;
+    throw new Error('unexpected refetch');
+  };
+  try {
+    env.layer.disable();
+    assert.equal(
+      env.dataSources.length,
+      0,
+      'hidden entities are not free; disable must remove the sources',
+    );
+
+    env.layer.enable(env.viewer);
+    const deadline = Date.now() + 2_000;
+    while (Date.now() < deadline && env.dataSources.length < 3) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    assert.equal(fetches, 0, 'the rebuild must not touch the network');
+    assert.equal(env.layer.getStats().error, null);
+    assert.equal(env.dataSources.length, 3, 're-enable rebuilds the trio');
+    assert.equal(env.layer.getStats().count, before);
+    const referenceSource = env.dataSources.find((ds) =>
+      /References/.test(ds.name || ''),
+    );
+    assert.ok(
+      referenceSource?.entities.values.length > 0,
+      'reference stems are rebuilt',
+    );
+
+    env.layer.destroy(env.viewer);
+    assert.equal(env.dataSources.length, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('another GeoJSON source renders with its own label and rebuilds from accepted cache', async () => {
+  let reads = 0;
+  const source = {
+    label: 'Test cable directory',
+    async fetch(signal) {
+      signal.throwIfAborted();
+      reads += 1;
+      return { cables: CABLE_FIXTURE, landingPoints: LANDING_FIXTURE };
+    },
+  };
+  const env = await createRealCableLayerHarness({ source });
+  try {
+    assert.equal(env.layer.source, source.label);
+    assert.equal(reads, 1);
+    assert.equal(env.dataSources.length, 3);
+    assert.ok(
+      env.dataSources.every((item) => item.name.startsWith(source.label)),
+    );
+    env.layer.disable();
+    assert.equal(env.dataSources.length, 0);
+    env.layer.enable(env.viewer);
+    for (let i = 0; i < 8; i++)
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    assert.equal(env.layer.getStats().count, 2);
+    assert.equal(env.dataSources.length, 3);
+    assert.equal(reads, 1);
+  } finally {
+    env.layer.destroy(env.viewer);
+  }
 });

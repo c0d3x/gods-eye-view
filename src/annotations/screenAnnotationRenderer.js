@@ -1,9 +1,9 @@
 import * as Cesium from 'cesium';
+import { getOverlayPaintRect } from '../overlays/worldOverlay.js';
 import {
   getActiveTrackedReadoutId,
   TRACKED_OVERLAY_SOURCE_ID,
 } from '../data/trackedReadout.js';
-import { getOverlayPaintRect } from '../overlays/worldOverlay.js';
 
 /**
  * Screen-space annotation renderer (Direction B — the "whiteboard" aesthetic).
@@ -109,7 +109,7 @@ export function createScreenAnnotationRenderer(
   function groundHeight(lon, lat) {
     const key = `${lon.toFixed(5)},${lat.toFixed(5)}`;
     const cached = heightCache.get(key);
-    if (cached?.settled) {
+    if (cached && cached.settled) {
       // Mark hot for this frame + bump to most-recently-used so heights for live
       // marks survive eviction while places we've navigated away from age out.
       cached.gen = projGen;
@@ -161,7 +161,12 @@ export function createScreenAnnotationRenderer(
         filter: 'url(#gev-sketch)',
       });
       group.appendChild(parts.poly);
-      parts.label = makeCallout(anno.label, c);
+      parts.label = makeCallout(
+        anno.outlineUnavailable
+          ? `${anno.label || ''} · Detailed outline unavailable`
+          : anno.label,
+        c,
+      );
       if (parts.label) group.appendChild(parts.label.node);
     } else if (anno.type === 'arrow' && anno.to) {
       parts.path = svgEl('path', {
@@ -174,7 +179,12 @@ export function createScreenAnnotationRenderer(
       });
       ensureArrowMarker(defs, anno.color || 'primary', c);
       group.appendChild(parts.path);
-      parts.label = makeCallout(anno.label, c);
+      parts.label = makeCallout(
+        anno.outlineUnavailable
+          ? `${anno.label || ''} · Detailed outline unavailable`
+          : anno.label,
+        c,
+      );
       if (parts.label) group.appendChild(parts.label.node);
     } else if (
       anno.type === 'route' &&
@@ -203,7 +213,12 @@ export function createScreenAnnotationRenderer(
         group.appendChild(dot);
         return dot;
       });
-      parts.label = makeCallout(anno.label, c);
+      parts.label = makeCallout(
+        anno.outlineUnavailable
+          ? `${anno.label || ''} · Detailed outline unavailable`
+          : anno.label,
+        c,
+      );
       if (parts.label) group.appendChild(parts.label.node);
     } else {
       // pin / highlight / label — pulsing target rings + a marker dot + callout
@@ -242,7 +257,12 @@ export function createScreenAnnotationRenderer(
         'stroke-opacity': '0.7',
       });
       group.appendChild(parts.leader);
-      parts.label = makeCallout(anno.label, c);
+      parts.label = makeCallout(
+        anno.outlineUnavailable
+          ? `${anno.label || ''} · Detailed outline unavailable`
+          : anno.label,
+        c,
+      );
       if (parts.label) group.appendChild(parts.label.node);
     }
 
@@ -301,6 +321,10 @@ export function createScreenAnnotationRenderer(
       return;
     }
     rec.anno = anno;
+    if (anno.outlineUnavailable && rec.parts.label) {
+      rec.parts.label.text.textContent = `${anno.label || ''} · Detailed outline unavailable`;
+      sizeCallout(rec.parts.label);
+    }
 
     if (empty) {
       for (const child of Array.from(rec.group.children)) child.remove();
@@ -589,7 +613,8 @@ export function createScreenAnnotationRenderer(
     for (const rec of records.values()) {
       const cal = rec.parts.label;
       if (
-        cal?.sized &&
+        cal &&
+        cal.sized &&
         rec.group.style.display !== 'none' &&
         Number.isFinite(cal._x)
       ) {

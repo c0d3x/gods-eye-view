@@ -1,13 +1,18 @@
+import { readShellSource } from './testSupport/readShellSource.mjs';
+import { expandApplicationHtml } from '../build/application-html.js';
+import { readStylesheet } from './testSupport/readStylesheet.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+const leftRail = readFileSync(new URL('./ui/leftPanelRail.js', import.meta.url), 'utf8');
+const rightRail = readFileSync(new URL('./ui/rightPanelRail.js', import.meta.url), 'utf8');
+const rails = leftRail + rightRail;
 import {
   allocatePanelStackHeights,
   panelStackAutoCollapseIndices,
   resolveLeftStackBottomBoundary,
   resolvePanelStackCorridor,
 } from './panelStackLayout.js';
-import { readUiSource } from './testing/uiSources.mjs';
 
 // Measured in Cockpit at 1512x790: CONTACT card at y541, HUD corner at y659,
 // Cesium credits at y758, viewport inset boundary at y758.4. Every surface is
@@ -23,11 +28,17 @@ const cockpitLane = {
 };
 
 test('every left-lane obstacle shortens the corridor', () => {
-  assert.equal(resolveLeftStackBottomBoundary(cockpitLane), 531.7);
+  assert.equal(
+    resolveLeftStackBottomBoundary(cockpitLane),
+    531.7,
+  );
 });
 
 test('an expanded Cockpit panel remains above the Contact and HUD surfaces', () => {
-  assert.equal(resolveLeftStackBottomBoundary(cockpitLane), 531.7);
+  assert.equal(
+    resolveLeftStackBottomBoundary(cockpitLane),
+    531.7,
+  );
 });
 
 test('the Cesium credit line limits the corridor even in Cockpit', () => {
@@ -52,13 +63,10 @@ test('an empty or malformed obstacle set leaves the viewport inset intact', () =
 });
 
 test('multiple expanded panels retain natural heights when the corridor fits', () => {
-  assert.deepEqual(
-    allocatePanelStackHeights({
-      naturalHeights: [280, 160],
-      availableHeight: 500,
-    }),
-    [280, 160],
-  );
+  assert.deepEqual(allocatePanelStackHeights({
+    naturalHeights: [280, 160],
+    availableHeight: 500,
+  }), [280, 160]);
 });
 
 test('multiple expanded panels share a constrained corridor without overflow', () => {
@@ -66,10 +74,7 @@ test('multiple expanded panels share a constrained corridor without overflow', (
     naturalHeights: [520, 300],
     availableHeight: 600,
   });
-  assert.equal(
-    Math.round(allocated.reduce((sum, height) => sum + height, 0)),
-    600,
-  );
+  assert.equal(Math.round(allocated.reduce((sum, height) => sum + height, 0)), 600);
   assert.ok(allocated.every((height) => height >= 96));
   assert.ok(allocated[0] > allocated[1]);
 });
@@ -79,59 +84,44 @@ test('very short corridors remain bounded with every panel represented', () => {
     naturalHeights: [420, 260, 180],
     availableHeight: 150,
   });
-  assert.equal(
-    Math.round(allocated.reduce((sum, height) => sum + height, 0)),
-    150,
-  );
+  assert.equal(Math.round(allocated.reduce((sum, height) => sum + height, 0)), 150);
   assert.ok(allocated.every((height) => height > 0));
 });
 
 test('later panels below half their natural height auto-collapse while the first is preserved', () => {
-  assert.deepEqual(
-    panelStackAutoCollapseIndices({
-      naturalHeights: [520, 300, 180],
-      allocatedHeights: [180, 149, 120],
-    }),
-    [1],
-  );
+  assert.deepEqual(panelStackAutoCollapseIndices({
+    naturalHeights: [520, 300, 180],
+    allocatedHeights: [180, 149, 120],
+  }), [1]);
 });
 
 test('the half-height boundary remains expanded', () => {
-  assert.deepEqual(
-    panelStackAutoCollapseIndices({
-      naturalHeights: [520, 300],
-      allocatedHeights: [100, 150],
-    }),
-    [],
-  );
+  assert.deepEqual(panelStackAutoCollapseIndices({
+    naturalHeights: [520, 300],
+    allocatedHeights: [100, 150],
+  }), []);
 });
 
 test('Tactical focus preserves the primary panel and collapses later competitors', () => {
-  assert.deepEqual(
-    panelStackAutoCollapseIndices({
-      naturalHeights: [320, 240, 180],
-      allocatedHeights: [220, 180, 140],
-      collapseLaterPanels: true,
-    }),
-    [1, 2],
-  );
+  assert.deepEqual(panelStackAutoCollapseIndices({
+    naturalHeights: [320, 240, 180],
+    allocatedHeights: [220, 180, 140],
+    collapseLaterPanels: true,
+  }), [1, 2]);
 });
 
 test('viewport growth retains the aligned corridor when midpoint centering would cross Cockpit panels', () => {
-  assert.deepEqual(
-    resolvePanelStackCorridor({
-      viewportHeight: 1026,
-      safeTop: 266.76,
-      safeBottom: 515.24,
-      obstacleSafeTop: 41.04,
-      obstacleSafeBottom: 515.24,
-      minimumHeight: 164.16,
-    }),
-    {
-      safeTop: 266.76,
-      safeBottom: 515.24,
-    },
-  );
+  assert.deepEqual(resolvePanelStackCorridor({
+    viewportHeight: 1026,
+    safeTop: 266.76,
+    safeBottom: 515.24,
+    obstacleSafeTop: 41.04,
+    obstacleSafeBottom: 515.24,
+    minimumHeight: 164.16,
+  }), {
+    safeTop: 266.76,
+    safeBottom: 515.24,
+  });
 });
 
 test('minimum panel corridor expands upward without crossing the lower obstacle boundary', () => {
@@ -148,11 +138,11 @@ test('minimum panel corridor expands upward without crossing the lower obstacle 
 });
 
 test('desktop panel lanes use per-panel allocations and presentation-only auto-collapse', () => {
-  const ui = readUiSource();
-  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  const ui = readShellSource();
+  const css = readStylesheet(new URL('../style.css', import.meta.url));
   assert.doesNotMatch(ui, /_enforce(?:Left|Right)PanelAccordion/);
-  assert.match(ui, /classList\.add\('collapsed', 'layout-auto-collapsed'\)/);
-  assert.match(ui, /classList\.remove\('collapsed', 'layout-auto-collapsed'\)/);
+  assert.match(rails, /classList\.add\('collapsed', 'layout-auto-collapsed'\)/);
+  assert.match(readFileSync(new URL('./ui/panelLayoutController.js', import.meta.url), 'utf8'), /classList\.remove\('collapsed', 'layout-auto-collapsed'\)/);
   assert.match(ui, /reconsiderAutoCollapse/);
   assert.match(
     ui,
@@ -162,70 +152,52 @@ test('desktop panel lanes use per-panel allocations and presentation-only auto-c
     ui,
     /_scheduleLeftPanelLayout\(\{[\s\S]*?reconsiderAutoCollapse: this\._leftPanelStack\?\.contains\(panelEl\) === true/,
   );
+  assert.match(rails, /collapseLaterPanels: shouldFocus && hud\.variant === 'tactical'/);
+  assert.match(ui, /this\._panelLayout\._leftStackPreferredPanelId = leftOwnerPanel\.id;/);
   assert.match(
-    ui,
-    /collapseLaterPanels:\s*shouldFocus\s*&&\s*this\s*\.hud\s*\.getVariant\(,?\s*\)\s*===\s*'tactical'/,
-  );
-  assert.match(ui, /this\._leftStackPreferredPanelId = leftOwnerPanel\.id;/);
-  assert.match(
-    ui,
-    /preferredExpandedPanel[\s\S]*?\[\s*preferredExpandedPanel,\s*\.\.\s*\.expandedPanelsInDomOrder/,
+    leftRail,
+    /preferredExpandedPanel[\s\S]*?\[\s*preferredExpandedPanel,\s*\.\.\.expandedPanelsInDomOrder/,
     'the latest explicitly opened left panel must receive primary allocation',
   );
-  assert.match(ui, /this\._rightStackPreferredPanelId = rightOwnerPanel\.id;/);
+  assert.match(ui, /this\._panelLayout\._rightStackPreferredPanelId = rightOwnerPanel\.id;/);
   assert.match(
-    ui,
-    /panel\s*\.id\s*===\s*this\s*\._rightStackPreferredPanelId[\s\S]*?\[\s*preferredExpandedPanel,\s*\.\.\s*\.expandedPanelsInDomOrder/,
+    rightRail,
+    /panel\.id === preferredPanelId[\s\S]*?\[\s*preferredExpandedPanel,\s*\.\.\.expandedPanelsInDomOrder/,
     'the latest explicitly opened right panel must receive primary allocation',
   );
-  assert.match(
-    ui,
-    /panelId === 'radio-panel'[\s\S]*?document\.getElementById\('global-context-panel'\)/,
-  );
-  assert.match(
-    ui,
-    /focusedExpandedPanel\s*=\s*expandedPanelsInDomOrder\s*\.find\(\s*\(\s*panel,?\s*\)\s*=>\s*panel\s*\.contains\(\s*document\s*\.activeElement,?\s*\),?\s*\)/,
-  );
+  assert.match(ui, /panelId === 'radio-panel'[\s\S]*?document\.getElementById\('global-context-panel'\)/);
+  assert.match(rightRail, /focusedExpandedPanel = expandedPanelsInDomOrder\.find\(\s*\(panel\) =>\s*panel\.contains\(documentRef\.activeElement\),?\s*\)/);
   assert.match(ui, /setAttribute\('aria-expanded', String\(!collapsed\)\)/);
-  assert.match(ui, /--left-panel-allocated-height/);
-  assert.match(ui, /--right-panel-allocated-height/);
+  assert.match(leftRail, /--left-panel-allocated-height/);
+  assert.match(rightRail, /--right-panel-allocated-height/);
   assert.match(
-    ui,
-    /expandedPanels[\s\S]*?removeProperty\('--left-panel-allocated-height'\)[\s\S]*?_measureLeftPanelNaturalHeight/,
+    leftRail,
+    /expandedPanels[\s\S]*?removeProperty\('--left-panel-allocated-height'\)[\s\S]*?measurePanelNaturalHeight/,
     'left intrinsic measurement must clear the prior allocation first',
   );
   assert.match(
-    ui,
-    /panel !== this\._ppToggles[\s\S]*?removeProperty\('--right-panel-allocated-height'\)[\s\S]*?const naturalHeight/,
-    'right intrinsic measurement must retain Display allocation while clearing other panel allocations',
+    rightRail,
+    /setAttribute\('data-rail-measuring', ''\)[\s\S]*?getBoundingClientRect\(\)\.height[\s\S]*?finally[\s\S]*?removeAttribute\('data-rail-measuring'\)/,
+    'right intrinsic measurement must neutralize allocations and always restore presentation',
   );
-  assert.match(css, /var\(--left-panel-allocated-height/);
-  assert.match(css, /var\(--right-panel-allocated-height/);
+  assert.match(css, /var\(\s*--left-panel-allocated-height/);
+  assert.match(css, /var\(\s*--right-panel-allocated-height/);
   assert.match(
     css,
     /#left-panel-stack\.layout-focus > \[data-panel-id\]\.collapsed\s*\{\s*display:\s*none;/,
     'focus mode must hide every collapsed sibling, including presentation-only auto-collapses',
   );
-  assert.doesNotMatch(
-    css,
-    /layout-focus > \[data-panel-id\]\.collapsed:not\(\.layout-auto-collapsed\)/,
-  );
-  assert.match(
-    ui,
-    /const\s*hiddenSibling\s*=\s*shouldFocus\s*&&\s*panel\s*\.classList\s*\.contains\(\s*'collapsed',?\s*\);/,
-  );
+  assert.doesNotMatch(css, /layout-focus > \[data-panel-id\]\.collapsed:not\(\.layout-auto-collapsed\)/);
+  assert.match(leftRail, /const hiddenSibling =\s*shouldFocus && panel\.classList\.contains\('collapsed'\);/);
 });
 
 test('share-panel state excludes responsive collapse and preserves recipient preferences', () => {
-  const ui = readUiSource();
-  const sharelink = readFileSync(
-    new URL('./sharelink.js', import.meta.url),
-    'utf8',
-  );
+  const ui = readShellSource();
+  const sharelink = readFileSync(new URL('./sharelink.js', import.meta.url), 'utf8');
 
   assert.match(
     ui,
-    /const collapsed = panelEl\.classList\.contains\('layout-auto-collapsed'\)\s*\? false\s*: panelEl\.classList\.contains\('collapsed'\);/,
+    /const collapsed =[\s\S]*?panelEl\.classList\.contains\('layout-auto-collapsed'\)[\s\S]*?panelEl\.classList\.contains\('cyber-accordion-collapsed'\)[\s\S]*?\? false\s*: panelEl\.classList\.contains\('collapsed'\);/,
     'responsive auto-collapse must serialize the explicit expanded preference',
   );
   assert.match(
@@ -239,28 +211,16 @@ test('share-panel state excludes responsive collapse and preserves recipient pre
     'pin and unpin must update the share hash even when collapse state is unchanged',
   );
   assert.match(ui, /\{ id: 'param-slider-panel' \}/);
-  assert.match(
-    sharelink,
-    /\{ id: 'param-slider-panel', token: 'm', pinnable: false \}/,
-  );
+  assert.match(sharelink, /\{ id: 'param-slider-panel', token: 'm', pinnable: false \}/);
 });
 
 test('parameterized Display presets keep one stable scroll owner', () => {
-  const ui = readUiSource();
-  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  const ui = readShellSource();
+  const css = readStylesheet(new URL('../style.css', import.meta.url));
 
-  assert.match(
-    css,
-    /#pp-toggles:not\(\.collapsed\) > #param-slider-panel\.active\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?max-height:\s*none;[\s\S]*?overflow-y:\s*visible;/,
-  );
-  assert.match(
-    ui,
-    /const\s*displayScrollTop\s*=\s*this\s*\._displayPortalScrollRestoreOwner\s*===\s*'standard'[\s\S]*?this\s*\._standardDisplayScrollTop[\s\S]*?this\s*\._ppToggles\s*\?\s*\.scrollTop\s*\|\|\s*0/,
-  );
-  assert.match(
-    ui,
-    /this\._ppToggles\.scrollTop = Math\.min\(displayScrollTop, maxScrollTop\);/,
-  );
+  assert.match(css, /#pp-toggles:not\(\.collapsed\) > \.pp-panel-body > #param-slider-panel\.active\s*\{[\s\S]*?flex:\s*0 0 auto;[\s\S]*?max-height:\s*none;[\s\S]*?overflow-y:\s*visible;/);
+  assert.match(ui, /readDisplayScrollTop: \(\) =>\s*this\._displayPortalScrollRestoreOwner === 'standard'[\s\S]*?this\._standardDisplayScrollTop[\s\S]*?displayPanelScroller\(this\._ppToggles\)\?\.scrollTop \|\| 0/);
+  assert.match(rightRail, /scroller\.scrollTop = Math\.min\(displayScrollTop, maxScrollTop\);/);
   assert.match(
     ui,
     /this\._sliderPanel\.classList\.remove\('active'\);\s*this\._scheduleRightPanelLayout\(\);/,
@@ -277,7 +237,7 @@ test('parameterized Display presets keep one stable scroll owner', () => {
 });
 
 test('expanded Display uses its container shell instead of a nested header card', () => {
-  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  const css = readStylesheet(new URL('../style.css', import.meta.url));
 
   assert.match(
     css,
@@ -285,13 +245,13 @@ test('expanded Display uses its container shell instead of a nested header card'
   );
   assert.match(
     css,
-    /#pp-toggles\.collapsed \.pp-header-row\s*\{[\s\S]*?width:\s*var\(--right-collapsed-width, 132px\);/,
+    /#pp-toggles\.collapsed \.pp-header-row\s*\{[\s\S]*?width:\s*var\(\s*--right-collapsed-width, 132px\);/,
     'collapsed Display must retain its standalone launcher sizing',
   );
 });
 
 test('expanded left panels integrate their headers with the container shell', () => {
-  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  const css = readStylesheet(new URL('../style.css', import.meta.url));
 
   assert.match(
     css,
@@ -299,19 +259,16 @@ test('expanded left panels integrate their headers with the container shell', ()
   );
   assert.match(
     css,
-    /#left-panel-stack > \[data-panel-id\]:not\(\.collapsed\) \.panel-divider\s*\{[\s\S]*?linear-gradient\(90deg, rgb\(0 212 255 \/ 28%\), rgba\(0, 212, 255, 0\.18\) 58%, transparent\)[\s\S]*?box-shadow:\s*0 0 7px rgba\(0, 212, 255, 0\.22\);/,
+    /#left-panel-stack > \[data-panel-id\]:not\(\.collapsed\) \.panel-divider\s*\{[\s\S]*?linear-gradient\(\s*90deg,\s*rgb\(0 212 255 \/ 28%\),\s*rgba\(0, 212, 255, 0\.18\) 58%,\s*transparent\s*\)[\s\S]*?box-shadow:\s*0 0 7px rgba\(0, 212, 255, 0\.22\);/,
   );
 });
 
 test('Map Source uses five compact tiles in the bottom Visual Presets tray', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  const html = expandApplicationHtml(readFileSync(new URL('../index.html', import.meta.url), 'utf8'));
+  const css = readStylesheet(new URL('../style.css', import.meta.url));
 
   assert.doesNotMatch(html, /id="stack-panel"/);
-  assert.match(
-    html,
-    /id="control-panel"[\s\S]*?class="map-source-section"[\s\S]*?id="map-stack-chips"/,
-  );
+  assert.match(html, /id="control-panel"[\s\S]*?class="map-source-section"[\s\S]*?id="map-stack-chips"/);
   assert.match(
     css,
     /\.map-stack-chip-row\s*\{[\s\S]*?grid-template-columns:\s*repeat\(5, minmax\(0, 1fr\)\);/,
@@ -320,8 +277,8 @@ test('Map Source uses five compact tiles in the bottom Visual Presets tray', () 
 });
 
 test('expanded right panels highlight the title divider without changing collapsed launchers', () => {
-  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-  const css = readFileSync(new URL('../style.css', import.meta.url), 'utf8');
+  const html = expandApplicationHtml(readFileSync(new URL('../index.html', import.meta.url), 'utf8'));
+  const css = readStylesheet(new URL('../style.css', import.meta.url));
 
   assert.match(
     html,
@@ -329,10 +286,10 @@ test('expanded right panels highlight the title divider without changing collaps
   );
   assert.match(
     css,
-    /#right-context-rail \[data-panel-id\]:not\(\.collapsed\) \.panel-divider\s*\{[\s\S]*?linear-gradient\(90deg, rgb\(0 212 255 \/ 28%\), rgba\(0, 212, 255, 0\.18\) 58%, transparent\)[\s\S]*?box-shadow:\s*0 0 7px rgba\(0, 212, 255, 0\.22\);/,
+    /#right-context-rail \[data-panel-id\]:not\(\.collapsed\) \.panel-divider\s*\{[\s\S]*?linear-gradient\(\s*90deg,\s*rgb\(0 212 255 \/ 28%\),\s*rgba\(0, 212, 255, 0\.18\) 58%,\s*transparent\s*\)[\s\S]*?box-shadow:\s*0 0 7px rgba\(0, 212, 255, 0\.22\);/,
   );
   assert.match(
     css,
-    /#param-slider-panel:not\(\.collapsed\) \.param-panel-divider\s*\{[\s\S]*?linear-gradient\(90deg, rgb\(0 212 255 \/ 28%\), rgba\(0, 212, 255, 0\.18\) 58%, transparent\);/,
+    /#param-slider-panel:not\(\.collapsed\) \.param-panel-divider\s*\{[\s\S]*?linear-gradient\(\s*90deg,\s*rgb\(0 212 255 \/ 28%\),\s*rgba\(0, 212, 255, 0\.18\) 58%,\s*transparent\s*\);/,
   );
 });

@@ -1,4 +1,3 @@
-// @ts-check
 import { createAnnotationEngine } from './annotationEngine.js';
 import { createHybridAnnotationRenderer } from './hybridAnnotationRenderer.js';
 
@@ -10,12 +9,13 @@ import { createHybridAnnotationRenderer } from './hybridAnnotationRenderer.js';
  * This branch (Direction C) uses the HYBRID renderer: world-space draping for
  * footprints + screen-space SVG for callouts/rings/arrows. The engine, resolver,
  * and voice tool wiring are identical to the other two branches.
- * @param {object} options
- * @param {import('cesium').Viewer} options.viewer
- * @param {import('cesium').Cesium3DTileset | null} [options.tileset] The
- *   photoreal tiles, which clamped marks can drape onto.
  */
-export function initAnnotations({ viewer, tileset = null }) {
+export function initAnnotations({
+  viewer,
+  tileset = null,
+  placeSearch,
+  resolver,
+}) {
   // World-space footprint draping; clamped marks can use the photoreal tiles.
   if (tileset) {
     try {
@@ -25,8 +25,12 @@ export function initAnnotations({ viewer, tileset = null }) {
     }
   }
   const renderer = createHybridAnnotationRenderer(viewer);
-  const engine = createAnnotationEngine({ viewer, renderer });
-  const host = /** @type {Window & { __gevAnnotations?: unknown }} */ (window);
-  host.__gevAnnotations = engine;
+  const engine = createAnnotationEngine({
+    viewer,
+    renderer,
+    placeSearch,
+    resolveTarget: resolver?.resolveAnnotationTarget,
+  });
+  window.__gevAnnotations = engine;
   return engine;
 }

@@ -1,5 +1,5 @@
-import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import assert from 'node:assert/strict';
 import * as Cesium from 'cesium';
 import { createScreenAnnotationRenderer } from './screenAnnotationRenderer.js';
 
@@ -10,11 +10,7 @@ class FakeClassList {
   }
 
   reset(value) {
-    this.names = new Set(
-      String(value || '')
-        .split(/\s+/)
-        .filter(Boolean),
-    );
+    this.names = new Set(String(value || '').split(/\s+/).filter(Boolean));
   }
 
   add(...names) {
@@ -94,8 +90,7 @@ class FakeElement {
     const matches = [];
     const visit = (node) => {
       for (const child of node.children) {
-        if (className && child.classList.contains(className))
-          matches.push(child);
+        if (className && child.classList.contains(className)) matches.push(child);
         visit(child);
       }
     };
@@ -136,12 +131,8 @@ function fakeDocument() {
 }
 
 function findAnnotationGroup(document) {
-  const layer = document.body.children.find((child) =>
-    child.classList.contains('gev-screen-whiteboard'),
-  );
-  const svg = layer.children.find((child) =>
-    child.classList.contains('gev-screen-whiteboard-svg'),
-  );
+  const layer = document.body.children.find((child) => child.classList.contains('gev-screen-whiteboard'));
+  const svg = layer.children.find((child) => child.classList.contains('gev-screen-whiteboard-svg'));
   return {
     svg,
     group: svg.children.find((child) => child.classList.contains('gev-anno')),
@@ -152,15 +143,11 @@ test('outline upgrade preserves the existing SVG group identity', (t) => {
   const originalDocument = globalThis.document;
   const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
   globalThis.document = fakeDocument();
-  globalThis.requestAnimationFrame = (callback) => {
-    callback();
-    return 1;
-  };
+  globalThis.requestAnimationFrame = (callback) => { callback(); return 1; };
   t.after(() => {
     if (originalDocument === undefined) delete globalThis.document;
     else globalThis.document = originalDocument;
-    if (originalRequestAnimationFrame === undefined)
-      delete globalThis.requestAnimationFrame;
+    if (originalRequestAnimationFrame === undefined) delete globalThis.requestAnimationFrame;
     else globalThis.requestAnimationFrame = originalRequestAnimationFrame;
   });
 
@@ -184,11 +171,7 @@ test('outline upgrade preserves the existing SVG group identity', (t) => {
     },
     postRender: { addEventListener() {}, removeEventListener() {} },
   };
-  const renderer = createScreenAnnotationRenderer({
-    scene,
-    camera,
-    trackedEntity: null,
-  });
+  const renderer = createScreenAnnotationRenderer({ scene, camera, trackedEntity: null });
   const anno = {
     id: 'anno-fb3',
     type: 'area',
@@ -200,10 +183,7 @@ test('outline upgrade preserves the existing SVG group identity', (t) => {
   };
   renderer.add(anno);
   const before = findAnnotationGroup(globalThis.document);
-  assert.ok(
-    before.group.querySelector('.gev-anno-ring'),
-    'pending area starts as a reticle',
-  );
+  assert.ok(before.group.querySelector('.gev-anno-ring'), 'pending area starts as a reticle');
 
   const labelProxy = Object.assign(Object.create(anno), {
     type: 'label',
@@ -213,30 +193,11 @@ test('outline upgrade preserves the existing SVG group identity', (t) => {
   renderer.update(labelProxy);
   const after = findAnnotationGroup(globalThis.document);
 
-  assert.equal(
-    after.group,
-    before.group,
-    'the rendered group is mutated, not replaced',
-  );
-  assert.deepEqual(
-    sampledAnchors.at(-1),
-    [-97.5, 31.2],
-    'the existing group projects from the re-seated anchor',
-  );
-  assert.equal(
-    after.svg.children.filter((child) => child.classList.contains('gev-anno'))
-      .length,
-    1,
-  );
-  assert.equal(
-    after.group.querySelector('.gev-anno-ring'),
-    null,
-    'reticle rings are removed in place',
-  );
-  assert.ok(
-    after.group.querySelector('.gev-anno-callout'),
-    'the original callout remains in the group',
-  );
+  assert.equal(after.group, before.group, 'the rendered group is mutated, not replaced');
+  assert.deepEqual(sampledAnchors.at(-1), [-97.5, 31.2], 'the existing group projects from the re-seated anchor');
+  assert.equal(after.svg.children.filter((child) => child.classList.contains('gev-anno')).length, 1);
+  assert.equal(after.group.querySelector('.gev-anno-ring'), null, 'reticle rings are removed in place');
+  assert.ok(after.group.querySelector('.gev-anno-callout'), 'the original callout remains in the group');
   renderer.destroy();
 });
 
@@ -245,17 +206,13 @@ test('annotation fade consumes the actual tracked host paint rectangle after lay
   const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
   const originalProjection = Cesium.SceneTransforms.worldToWindowCoordinates;
   globalThis.document = fakeDocument();
-  globalThis.requestAnimationFrame = (callback) => {
-    callback();
-    return 1;
-  };
+  globalThis.requestAnimationFrame = (callback) => { callback(); return 1; };
   Cesium.SceneTransforms.worldToWindowCoordinates = () => ({ x: 0, y: 0 });
   t.after(() => {
     Cesium.SceneTransforms.worldToWindowCoordinates = originalProjection;
     if (originalDocument === undefined) delete globalThis.document;
     else globalThis.document = originalDocument;
-    if (originalRequestAnimationFrame === undefined)
-      delete globalThis.requestAnimationFrame;
+    if (originalRequestAnimationFrame === undefined) delete globalThis.requestAnimationFrame;
     else globalThis.requestAnimationFrame = originalRequestAnimationFrame;
   });
 
@@ -264,11 +221,7 @@ test('annotation fade consumes the actual tracked host paint rectangle after lay
     Cesium.Cartesian3.negate(positionWC, new Cesium.Cartesian3()),
     new Cesium.Cartesian3(),
   );
-  const camera = {
-    positionWC,
-    directionWC,
-    positionCartographic: { height: 1000 },
-  };
+  const camera = { positionWC, directionWC, positionCartographic: { height: 1000 } };
   const scene = {
     camera,
     canvas: { clientWidth: 800, clientHeight: 600, width: 800, height: 600 },
@@ -319,16 +272,12 @@ test('an add that throws after inserting its group unwinds instead of orphaning 
   const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
   const originalProjection = Cesium.SceneTransforms.worldToWindowCoordinates;
   globalThis.document = fakeDocument();
-  globalThis.requestAnimationFrame = (callback) => {
-    callback();
-    return 1;
-  };
+  globalThis.requestAnimationFrame = (callback) => { callback(); return 1; };
   t.after(() => {
     Cesium.SceneTransforms.worldToWindowCoordinates = originalProjection;
     if (originalDocument === undefined) delete globalThis.document;
     else globalThis.document = originalDocument;
-    if (originalRequestAnimationFrame === undefined)
-      delete globalThis.requestAnimationFrame;
+    if (originalRequestAnimationFrame === undefined) delete globalThis.requestAnimationFrame;
     else globalThis.requestAnimationFrame = originalRequestAnimationFrame;
   });
 
@@ -337,22 +286,14 @@ test('an add that throws after inserting its group unwinds instead of orphaning 
     Cesium.Cartesian3.negate(positionWC, new Cesium.Cartesian3()),
     new Cesium.Cartesian3(),
   );
-  const camera = {
-    positionWC,
-    directionWC,
-    positionCartographic: { height: 1000 },
-  };
+  const camera = { positionWC, directionWC, positionCartographic: { height: 1000 } };
   const scene = {
     camera,
     canvas: { clientWidth: 1280, clientHeight: 720, width: 1280, height: 720 },
     clampToHeightSupported: false,
     postRender: { addEventListener() {}, removeEventListener() {} },
   };
-  const renderer = createScreenAnnotationRenderer({
-    scene,
-    camera,
-    trackedEntity: null,
-  });
+  const renderer = createScreenAnnotationRenderer({ scene, camera, trackedEntity: null });
   const anno = {
     id: 'anno-partial-screen',
     type: 'pin',
@@ -365,9 +306,7 @@ test('an add that throws after inserting its group unwinds instead of orphaning 
   // The group is in the document and recorded by the time add() reaches its
   // first projection pass — so a throw there is real partial state, not a
   // clean bail-out.
-  Cesium.SceneTransforms.worldToWindowCoordinates = () => {
-    throw new Error('projection failed');
-  };
+  Cesium.SceneTransforms.worldToWindowCoordinates = () => { throw new Error('projection failed'); };
   assert.throws(() => renderer.add(anno), /projection failed/);
   Cesium.SceneTransforms.worldToWindowCoordinates = () => ({ x: 0, y: 0 });
   const { svg } = findAnnotationGroup(globalThis.document);

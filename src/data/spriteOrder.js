@@ -1,26 +1,23 @@
-// @ts-check
 /** Bottom-to-top order for near-plane-clamped contact sprite collections. */
-const SPRITE_LAYER_ORDER = Object.freeze([
+export const SPRITE_LAYER_ORDER = Object.freeze([
   'cctv',
   'firms',
   'bikeshare',
+  'transit',
+  'transit-motion',
+  'directions',
   'ais',
   'military',
   'flights',
 ]);
 
-/**
- * A sprite layer's Cesium collection.
- * @typedef {import('cesium').BillboardCollection | import('cesium').PointPrimitiveCollection} SpriteCollection
- */
-
-/** @type {Map<string, SpriteCollection>} */
+/** @type {Map<string, Object>} */
 const _collections = new Map();
 
 /**
  * Register the current primitive collection for a sprite layer.
  * @param {string} layerId - Stable sprite-order layer key.
- * @param {SpriteCollection} collection - Cesium billboard/point primitive collection.
+ * @param {Object} collection - Cesium billboard/point primitive collection.
  * @returns {void}
  */
 export function registerSpriteCollection(layerId, collection) {
@@ -31,7 +28,7 @@ export function registerSpriteCollection(layerId, collection) {
 /**
  * Remove a registered collection (primarily useful to lifecycle tests).
  * @param {string} layerId - Stable sprite-order layer key.
- * @param {SpriteCollection} [collection] - Optional identity guard against stale teardown.
+ * @param {Object} [collection] - Optional identity guard against stale teardown.
  * @returns {void}
  */
 export function unregisterSpriteCollection(layerId, collection) {
@@ -43,7 +40,7 @@ export function unregisterSpriteCollection(layerId, collection) {
  * Reassert deterministic sprite stacking after any layer enable/init.
  * Cesium's stable translucent sort otherwise preserves first-enable primitive
  * order. Raising bottom-to-top makes flights the final/top collection.
- * @param {import('cesium').Viewer | null | undefined} viewer - Active viewer.
+ * @param {Cesium.Viewer|Object} viewer - Active viewer.
  * @returns {void}
  */
 export function restoreSpriteOrder(viewer) {
@@ -66,8 +63,8 @@ export function restoreSpriteOrder(viewer) {
  * restorer by default; tests inject a spy to pin each enable path without
  * constructing a WebGL viewer.
  * @param {string} layerId - Sprite layer whose enable path is restoring order.
- * @param {import('cesium').Viewer | null | undefined} viewer - Active viewer.
- * @param {typeof restoreSpriteOrder} [restore=restoreSpriteOrder] - Test seam.
+ * @param {Cesium.Viewer|Object} viewer - Active viewer.
+ * @param {(viewer: Object) => void} [restore=restoreSpriteOrder] - Test seam.
  * @returns {void}
  */
 export function restoreSpriteOrderOnEnable(

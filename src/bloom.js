@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * bloom.js — Bloom intensity normalization and version migration.
  *
@@ -12,7 +11,7 @@
 export const BLOOM_SCALE_VERSION = 2;
 
 /** Maximum bloom intensity on the v2 scale. */
-const BLOOM_INTENSITY_MAX = 200;
+export const BLOOM_INTENSITY_MAX = 200;
 
 /** Default bloom intensity (off). */
 export const BLOOM_INTENSITY_DEFAULT = 0;
@@ -43,7 +42,7 @@ export function clampBloomIntensity(value) {
  * @param {number} value — legacy v1 intensity
  * @returns {number} equivalent v2 intensity
  */
-function legacyBloomToV2(value) {
+export function legacyBloomToV2(value) {
   const legacy = clamp(
     Math.round(Number(value) || 0),
     0,
@@ -55,8 +54,8 @@ function legacyBloomToV2(value) {
 /**
  * Decode a bloom intensity from a share link or saved project.
  * Handles both v1 (0–100, inverted) and v2 (0–200) scales.
- * @param {number} value - persisted intensity
- * @param {number} [version=1] - bloom scale version from the saved state
+ * @param {number} value — persisted intensity
+ * @param {number} [version=1] — bloom scale version from the saved state
  * @returns {number} v2-scale intensity in [0, 200]
  */
 export function decodeBloomIntensity(value, version = 1) {

@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Shared pick-ownership registry for layers that install their own
  * ScreenSpaceEventHandler click handlers.
@@ -16,11 +15,6 @@
 const _owners = new Map();
 
 /**
- * A pick id: a string or number, or an object that carries one.
- * @typedef {string | number | { mmsi?: unknown, id?: unknown } | null | undefined} PickId
- */
-
-/**
  * Resolves a scene.pick() result to a String pick id for the ownership scan.
  *
  * Layers use heterogeneous pick ids: flights/military/bikeshare/CCTV use
@@ -29,13 +23,11 @@ const _owners = new Map();
  * the Cesium Entity (identity = its string `id`). Everything is coerced to a
  * String so predicates match against one canonical form.
  *
- * @param {{ id?: PickId, primitive?: { id?: PickId } } | null | undefined} picked
- *   - Result of `scene.pick()`.
+ * @param {object|null|undefined} picked - Result of `scene.pick()`.
  * @returns {string|null} Canonical pick id, or null when the pick carries none.
  */
 export function resolvePickId(picked) {
   if (!picked) return null;
-  /** @param {PickId} id */
   const unwrap = (id) => {
     if (id === null || id === undefined) return undefined;
     if (typeof id === 'object') {
@@ -71,6 +63,23 @@ export function registerPickOwner(layerId, predicate) {
  */
 export function unregisterPickOwner(layerId) {
   _owners.delete(layerId);
+}
+
+/**
+ * The registered layer that owns a picked id, or null.
+ * @param {string} pickedId - Canonical pick id from {@link resolvePickId}.
+ * @returns {string|null} Owning layer id.
+ */
+export function findPickOwner(pickedId) {
+  if (!pickedId) return null;
+  for (const [ownerId, predicate] of _owners) {
+    try {
+      if (predicate(pickedId)) return ownerId;
+    } catch {
+      // a broken predicate must never break picking
+    }
+  }
+  return null;
 }
 
 /**

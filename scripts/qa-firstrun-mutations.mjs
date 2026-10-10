@@ -13,33 +13,30 @@
  *
  * Every touched file is restored on exit, including on failure.
  *
- * NOTE: two mutations edit the Realtime modules in server/realtime, which
- * vite.config.js imports, and a running dev server restarts on every write to
- * them. Writes are therefore content-guarded below so each file is touched
- * exactly twice per mutation instead of on every iteration — enough that a dev
- * server survives, but expect it to restart. If you are mid-QA on a live
- * server, run this before or after, not during.
+ * NOTE: two mutations edit the server voice tools/instructions, and a running dev server watches those
+ * files and restarts on every write. Writes are therefore content-guarded below
+ * so the file is touched exactly twice per mutation instead of on every
+ * iteration — enough that a dev server survives, but expect it to restart. If
+ * you are mid-QA on a live server, run this before or after, not during.
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { looseSourcePattern } from '../src/testing/uiSources.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TESTS = 'src/firstRunExperience.test.mjs';
+const TESTS = ['src/firstRunExperience.test.mjs', 'src/standalone/startupChrome.test.mjs'];
 
 const FILES = {
+  keyboard: path.join(ROOT, 'src', 'ui', 'surfaceKeyboard.js'),
   module: path.join(ROOT, 'src', 'firstRunExperience.js'),
   html: path.join(ROOT, 'index.html'),
   css: path.join(ROOT, 'style.css'),
-  realtimeTools: path.join(ROOT, 'server', 'realtime', 'tools.mjs'),
-  realtimeInstructions: path.join(ROOT, 'server', 'realtime', 'openai.mjs'),
-  startup: path.join(ROOT, 'src', 'editions', 'local', 'startupChrome.js'),
+  voiceInstructions: path.join(ROOT, 'server/providers/openai/instructions.js'),
+  voiceTools: path.join(ROOT, 'server/providers/openai/tools.js'),
+  main: path.join(ROOT, 'src', 'standalone', 'startupChrome.js'),
   ui: path.join(ROOT, 'src', 'ui.js'),
-  radioPanel: path.join(ROOT, 'src', 'ui', 'radioPanel.js'),
-  panelChrome: path.join(ROOT, 'src', 'ui', 'panelChrome.js'),
-  docs: path.join(ROOT, 'docs', 'current-state', 'first-run-and-sharing.md'),
+  docs: path.join(ROOT, 'docs', 'CURRENT-STATE.md'),
 };
 
 /** @type {Array<{defect: string, file: keyof FILES, from: string, to: string}>} */
@@ -52,8 +49,7 @@ const MUTATIONS = [
     to: "writeStored('local', sessionStorageRef, FIRST_RUN_STORAGE_KEY, 'suppressed');",
   },
   {
-    defect:
-      'the checkbox is ignored, so nothing can ever suppress the launcher',
+    defect: 'the checkbox is ignored, so nothing can ever suppress the launcher',
     file: 'module',
     from: "    ? writeStored('local', storage, FIRST_RUN_STORAGE_KEY, 'suppressed')",
     to: '    ? false',
@@ -77,8 +73,7 @@ const MUTATIONS = [
     to: '// durable check removed',
   },
   {
-    defect:
-      '?welcome=1 no longer outranks suppression, so demos cannot replay it',
+    defect: '?welcome=1 no longer outranks suppression, so demos cannot replay it',
     file: 'module',
     from: "if (params.get('welcome') === '1') return true;",
     to: '// replay hatch removed',
@@ -124,8 +119,8 @@ const MUTATIONS = [
   {
     defect: 'the key handler trusts the CLASS, so an invisible card eats ESC',
     file: 'module',
-    from: 'if (closing || !isTopmost()) return;',
-    to: 'if (closing) return;',
+    from: 'isActive: () => !closing && isTopmost(),',
+    to: 'isActive: () => !closing,',
   },
   {
     defect: 'the launcher stops yielding and fights Cockpit/Scenes for ESC',
@@ -140,8 +135,7 @@ const MUTATIONS = [
     to: '/* observer never attached */',
   },
   {
-    defect:
-      'cockpit drops off the exclusive list and can stack with the launcher',
+    defect: 'cockpit drops off the exclusive list and can stack with the launcher',
     file: 'module',
     from: "export const EXCLUSIVE_SURFACE_CLASSES = Object.freeze([\n  'cockpit-mode',",
     to: 'export const EXCLUSIVE_SURFACE_CLASSES = Object.freeze([',
@@ -159,53 +153,45 @@ const MUTATIONS = [
     to: 'dismiss();',
   },
   {
-    defect:
-      'isTopmost stops hit-testing, so an unclassed overlay buries the card again',
+    defect: 'isTopmost stops hit-testing, so an unclassed overlay buries the card again',
     file: 'module',
     from: '    && root.getClientRects().length > 0\n    && !coveredByOverlay();',
     to: '    && root.getClientRects().length > 0;',
   },
   {
-    defect:
-      'an inconclusive hit test reads as COVERED, so ESC quietly stops working',
+    defect: 'an inconclusive hit test reads as COVERED, so ESC quietly stops working',
     file: 'module',
     from: '      return Boolean(hit) && !root.contains(hit);',
     to: '      return !root.contains(hit);',
   },
   {
-    defect:
-      'the launcher stops honouring a key another surface already claimed',
-    file: 'module',
-    from: '    if (event.defaultPrevented) return;',
+    defect: 'the launcher stops honouring a key another surface already claimed',
+    file: 'keyboard',
+    from: ' || event.defaultPrevented',
     to: '    /* belt removed */',
   },
   {
-    // Anchored on the line after the call, which only the radio disclosure has,
-    // so it cannot land on the cockpit disclosure's own stopImmediatePropagation()
-    // a few lines below and prove nothing about this.
-    defect:
-      'the radio disclosure returns to stopPropagation, so one ESC does two things',
-    file: 'radioPanel',
+    // Anchored past the call so it cannot land on the cockpit disclosure's own
+    // stopImmediatePropagation() a few lines below and prove nothing about this.
+    defect: 'the radio disclosure returns to stopPropagation, so one ESC does two things',
+    file: 'ui',
     from: '      event.stopImmediatePropagation();\n      const escapedFromDisclosure = event.target === this._contextRadioToggleBtn',
     to: '      event.stopPropagation();\n      const escapedFromDisclosure = event.target === this._contextRadioToggleBtn',
   },
   {
-    defect:
-      'the "no timer" decision is deleted, so the next editor re-litigates it blind',
+    defect: 'the "no timer" decision is deleted, so the next editor re-litigates it blind',
     file: 'module',
     from: '   * ACCEPTED, DELIBERATELY NOT TIMED OUT: a surface class that never clears',
     to: '   * (note removed)',
   },
   {
-    defect:
-      'a bounded reveal timer punches the card through a recording in progress',
+    defect: 'a bounded reveal timer punches the card through a recording in progress',
     file: 'module',
     from: '  const syncToExclusiveSurfaces = () => {\n    if (closing) return;',
     to: '  const syncToExclusiveSurfaces = () => {\n    if (closing) return;\n    globalThis.setTimeout?.(reveal, 45000);',
   },
   {
-    defect:
-      'the accepted no-show vanishes from CURRENT-STATE and reads as a bug',
+    defect: 'the accepted no-show vanishes from CURRENT-STATE and reads as a bug',
     file: 'docs',
     from: 'a surface class that never clears means no launcher for that page',
     to: 'the launcher always turns up eventually for that page',
@@ -213,8 +199,7 @@ const MUTATIONS = [
 
   // ── The checkbox may not promise what storage refused ─────────────────────
   {
-    defect:
-      'a refused write leaves the box ticked, promising a suppression nobody stored',
+    defect: 'a refused write leaves the box ticked, promising a suppression nobody stored',
     file: 'module',
     from: '    if (setFirstRunSuppressed(wanted, storage)) return;',
     to: '    setFirstRunSuppressed(wanted, storage);\n    return;',
@@ -226,38 +211,34 @@ const MUTATIONS = [
     to: '    store?.setItem?.(key, value);\n    return true;',
   },
   {
-    defect:
-      'the scroll fade promises more list on a card where everything fits',
+    defect: 'the scroll fade promises more list on a card where everything fits',
     file: 'module',
     from: 'choiceList.dataset.scrollable = String(overflows);',
     to: "choiceList.dataset.scrollable = 'true'; void overflows;",
   },
 
   {
-    defect:
-      'the DISPLAY rail opens on first run again, stealing the impression',
-    file: 'panelChrome',
+    defect: 'the DISPLAY rail opens on first run again, stealing the impression',
+    file: 'ui',
     from: "if (panelId === 'pp-toggles' && stored === null) collapsed = true;",
     to: "if (panelId === 'pp-toggles' && stored === null) collapsed = false;",
   },
   {
     defect: 'the first-run rail default overrides a stored user choice',
-    file: 'panelChrome',
+    file: 'ui',
     from: "if (panelId === 'pp-toggles' && stored === null) collapsed = true;",
     to: "if (panelId === 'pp-toggles') collapsed = true;",
   },
 
   // ── Mission definitions ────────────────────────────────────────────────────
   {
-    defect:
-      'the removed INFRASTRUCTURE tile comes back as a one-click globe dump',
+    defect: 'the removed INFRASTRUCTURE tile comes back as a one-click globe dump',
     file: 'module',
-    from: '  environmental: Object.freeze({',
+    from: "  environmental: Object.freeze({",
     to: "  infrastructure: Object.freeze({\n    kind: 'globe',\n    layerIds: Object.freeze(['local-datacenters', 'local-dams', 'telegeography-submarine-cables']),\n    busyText: 'Mapping global infrastructure…',\n  }),\n  environmental: Object.freeze({",
   },
   {
-    defect:
-      'ENVIRONMENTAL drops the keyless earthquakes that carry it without a key',
+    defect: 'ENVIRONMENTAL drops the keyless earthquakes that carry it without a key',
     file: 'module',
     from: "layerIds: Object.freeze(['earthquakes', 'local-firms']),",
     to: "layerIds: Object.freeze(['local-firms']),",
@@ -275,7 +256,7 @@ const MUTATIONS = [
     to: '<small>Live earthquakes worldwide, straight from USGS</small>',
   },
   {
-    defect: 'the owner-authored first-run line is quietly rewritten',
+    defect: "the owner-authored first-run line is quietly rewritten",
     file: 'html',
     from: 'It feels like a forbidden cockpit—then you realize the sources are public and the data is real.',
     to: "It feels like a forbidden cockpit. It isn't — every feed is public, and every contact is live.",
@@ -283,8 +264,8 @@ const MUTATIONS = [
   {
     defect: 'the ledgered global-chip defect loses its pointer to the real fix',
     file: 'module',
-    from: '    // rather than LOAD FAILED (the needs-key state in src/loadingFeedback.js).',
-    to: '    // rather than LOAD FAILED.',
+    from: '    // means a KEY REQUIRED terminal state in src/loadingFeedback.js, a state',
+    to: '    // (note removed)',
   },
   {
     defect: 'the globe missions never pull the camera out',
@@ -317,8 +298,7 @@ const MUTATIONS = [
     to: 'if (!mission) return { ok: true, choice };',
   },
   {
-    defect:
-      'the fires/quakes tile name stops being switchable from one constant',
+    defect: 'the fires/quakes tile name stops being switchable from one constant',
     file: 'module',
     from: 'return ENVIRONMENTAL_LABELS[choice] || ENVIRONMENTAL_LABELS.ENVIRONMENTAL;',
     to: 'return ENVIRONMENTAL_LABELS.ENVIRONMENTAL;',
@@ -326,15 +306,13 @@ const MUTATIONS = [
 
   // ── Defaults interplay (the ruling this whole integration turns on) ────────
   {
-    defect:
-      'mission layer enables stop persisting, unlike the clicks they stand for',
+    defect: "mission layer enables stop persisting, unlike the clicks they stand for",
     file: 'module',
     from: "dataManager.setEnabled(layerId, true, { origin: 'user' })",
     to: 'dataManager.setEnabled(layerId, true)',
   },
   {
-    defect:
-      'a mission hand-edits detection and kills the style auto-preset contract',
+    defect: 'a mission hand-edits detection and kills the style auto-preset contract',
     file: 'module',
     from: '        flyToGlobe: () => styleManager.resetToGlobeView(),',
     to: '        flyToGlobe: () => { styleManager._detectionUserOverridden = true; return styleManager.resetToGlobeView(); },',
@@ -346,15 +324,13 @@ const MUTATIONS = [
     to: '      styleManager._setModels3dEnabled?.(true);\n          const result = await styleManager.setContextMode(mode);',
   },
   {
-    defect:
-      'the Context panel is left collapsed, hiding the mode that just started',
+    defect: 'the Context panel is left collapsed, hiding the mode that just started',
     file: 'module',
     from: "styleManager.setPanelCollapsed?.('global-context-panel', false, { explicit: true });",
     to: '// panel reveal removed',
   },
   {
-    defect:
-      'the decision table is deleted, so the next editor re-litigates it blind',
+    defect: 'the decision table is deleted, so the next editor re-litigates it blind',
     file: 'module',
     from: ' * MISSION → APP STATE, AND WHAT IT IS ALLOWED TO PERSIST',
     to: ' * (notes removed)',
@@ -362,33 +338,32 @@ const MUTATIONS = [
 
   // ── Accessibility and the transplant defects ──────────────────────────────
   {
-    defect:
-      'disabling the focused tile drops the keyboard to <body> mid-flight',
+    defect: 'disabling the focused tile drops the keyboard to <body> mid-flight',
     file: 'module',
     from: "for (const button of buttons) button.setAttribute('aria-disabled', String(next));",
     to: 'for (const button of buttons) button.disabled = next;',
   },
   {
     defect: 'Tab escapes into an app the visitor has not seen yet',
-    file: 'module',
+    file: 'keyboard',
     from: "if (event.key !== 'Tab') return;",
     to: 'return;',
   },
   {
     defect: 'ESC no longer dismisses the launcher',
-    file: 'module',
+    file: 'keyboard',
     from: "if (event.key === 'Escape') {",
     to: 'if (false) {',
   },
   {
     defect: 'focus is never returned to where the visitor left it',
-    file: 'module',
-    from: "if (typeof previouslyFocused?.focus === 'function' && previouslyFocused.isConnected) {",
+    file: 'keyboard',
+    from: "if (typeof target?.focus === 'function' && target.isConnected) {",
     to: 'if (false) {',
   },
   {
     defect: 'app hotkeys eat the launcher keys (bubble instead of capture)',
-    file: 'module',
+    file: 'keyboard',
     from: "documentRef.addEventListener('keydown', onKeyDown, true);",
     to: "documentRef.addEventListener('keydown', onKeyDown);",
   },
@@ -405,22 +380,19 @@ const MUTATIONS = [
     to: 'body.never-matches-anything #first-run-launcher,',
   },
   {
-    defect:
-      'the flex card defeats [hidden] and sits in the a11y tree pre-reveal',
+    defect: 'the flex card defeats [hidden] and sits in the a11y tree pre-reveal',
     file: 'css',
     from: '#first-run-launcher[hidden] {\n  display: none;\n}',
     to: '/* [hidden] rule removed */',
   },
   {
-    defect:
-      'the card loses its viewport cap and clips on a short landscape phone',
+    defect: 'the card loses its viewport cap and clips on a short landscape phone',
     file: 'css',
     from: '  max-height: calc(100dvh - 1.5rem);',
     to: '  /* cap removed */',
   },
   {
-    defect:
-      'the mission list stops scrolling, so tiles overflow the capped card',
+    defect: 'the mission list stops scrolling, so tiles overflow the capped card',
     file: 'css',
     from: '  min-height: 0;\n  overflow-y: auto;',
     to: '  /* scroll removed */',
@@ -443,7 +415,7 @@ const MUTATIONS = [
     to: '      <button type="button" data-first-run-choice-disabled="space-missions">',
   },
   {
-    defect: "the menu order stops matching the owner's",
+    defect: 'the menu order stops matching the owner\'s',
     file: 'html',
     from: '<button type="button" data-first-run-choice="environmental">',
     to: '<button type="button" data-first-run-choice="zzz-environmental">',
@@ -467,15 +439,14 @@ const MUTATIONS = [
     to: '<aside id="first-run-launcher"',
   },
   {
-    defect: 'the launcher reveal is armed before the loading cover yields',
-    file: 'startup',
-    from: "loadingScreen.classList.add('hidden');",
-    to: "loadingScreen.addEventListener('transitionend', revealFirstRun, { once: true });\nloadingScreen.classList.add('hidden');",
+    defect: 'the launcher is revealed before the loading cover yields',
+    file: 'main',
+    from: "      loadingScreen.classList.add('hidden');",
+    to: '      initFirstRunExperience({ styleManager, dataManager });\n      loadingScreen.classList.add(\'hidden\');',
   },
   {
-    defect:
-      'the globe missions lose their DataManager and cannot enable layers',
-    file: 'startup',
+    defect: 'the globe missions lose their DataManager and cannot enable layers',
+    file: 'main',
     from: 'initFirstRunExperience({ styleManager, dataManager });',
     to: 'initFirstRunExperience({ styleManager });',
   },
@@ -483,68 +454,49 @@ const MUTATIONS = [
   // ── Voice: schema must not drift ──────────────────────────────────────────
   {
     defect: 'the voice TOOL SCHEMA is edited (a Realtime prompt-cache bust)',
-    file: 'realtimeTools',
+    file: 'voiceTools',
     from: "            'earthquakes',\n            'satellites',",
     to: "            'earthquakes',\n            'infrastructure-mode',\n            'satellites',",
   },
   {
-    defect:
-      'the instruction mapping is dropped, so voice cannot reach the modes',
-    file: 'realtimeInstructions',
-    from: "            'NAMED VIEWS are shorthand",
-    to: "            // 'NAMED VIEWS are shorthand",
+    defect: 'the instruction mapping is dropped, so voice cannot reach the modes',
+    file: 'voiceInstructions',
+    from: "    'NAMED VIEWS are shorthand",
+    to: "    // 'NAMED VIEWS are shorthand",
   },
 ];
 
 const originals = new Map();
-for (const [key, file] of Object.entries(FILES))
-  originals.set(key, fs.readFileSync(file, 'utf8'));
+for (const [key, file] of Object.entries(FILES)) originals.set(key, fs.readFileSync(file, 'utf8'));
 
 /** Write only on a real change: a no-op write still wakes every file watcher. */
 const write = (file, next) => {
   if (fs.readFileSync(file, 'utf8') !== next) fs.writeFileSync(file, next);
 };
 const restoreAll = () => {
-  for (const [key, file] of Object.entries(FILES))
-    write(file, originals.get(key));
+  for (const [key, file] of Object.entries(FILES)) write(file, originals.get(key));
 };
 process.on('exit', restoreAll);
 
 let caught = 0;
 const missed = [];
 
-console.log(
-  `\nFirst-run launcher pin strength — ${MUTATIONS.length} individual reverts\n`,
-);
+console.log(`\nFirst-run launcher pin strength — ${MUTATIONS.length} individual reverts\n`);
 for (const { defect, file, from, to } of MUTATIONS) {
   const original = originals.get(file);
-  // The anchor is found however the formatter wraps or indents it: whitespace
-  // between tokens is free, as is a trailing comma before a closing bracket.
-  const anchor = new RegExp(looseSourcePattern(from.trim()));
-  if (!anchor.test(original)) {
+  if (!original.includes(from)) {
     missed.push(`${defect} (ANCHOR MISSING — the mutation no longer applies)`);
     console.log(`  \x1b[31mSTALE\x1b[0m ${defect}`);
     continue;
   }
-  // The match starts after the file's own indentation, so drop the anchor's.
-  const indent = /^\s*/.exec(from)[0];
-  const replacement = to.startsWith(indent) ? to.slice(indent.length) : to;
-  write(
-    FILES[file],
-    original.replace(anchor, () => replacement),
-  );
+  write(FILES[file], original.replace(from, to));
   let red = false;
   let by = '';
   try {
-    execFileSync('node', ['--test', TESTS], {
-      cwd: ROOT,
-      encoding: 'utf8',
-      stdio: 'pipe',
-    });
+    execFileSync('node', ['--test', ...TESTS], { cwd: ROOT, encoding: 'utf8', stdio: 'pipe' });
   } catch (error) {
     red = true;
-    const failed = String(error.stdout || '')
-      .split('\n')
+    const failed = String(error.stdout || '').split('\n')
       .filter((line) => line.trim().startsWith('✖') && line.includes('('))
       .map((line) => line.trim().slice(2).split(' (')[0]);
     by = [...new Set(failed)].slice(0, 2).join('; ');

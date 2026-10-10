@@ -1,4 +1,3 @@
-// @ts-check
 import * as Cesium from 'cesium';
 import {
   holdContinuousRender,
@@ -6,21 +5,11 @@ import {
 } from './renderGovernor.js';
 
 /**
- * Orbit settings for start(). A missing radius or pitch keeps the current
- * one; a missing speed is 6 degrees per second.
- * @typedef {object} OrbitOptions
- * @property {number} [radius] - Distance from target in meters
- * @property {number} [pitch] - Tilt angle in degrees (negative = looking down)
- * @property {number} [speed] - Degrees per second (default 6)
- */
-
-/**
  * OrbitController — smooth orbit around a target point.
  * Uses scene.preRender for frame-rate-independent 60fps updates.
  * Toggle with O key; auto-stops on POI/city change.
  */
 export class OrbitController {
-  /** @param {Cesium.Viewer} viewer */
   constructor(viewer) {
     this.viewer = viewer;
     this.active = false;
@@ -35,7 +24,10 @@ export class OrbitController {
   /**
    * Start orbiting around a target position.
    * @param {Cesium.Cartesian3} targetCartesian - The point to orbit around
-   * @param {OrbitOptions} [options]
+   * @param {object} options
+   * @param {number} options.radius - Distance from target in meters
+   * @param {number} options.pitch - Tilt angle in degrees (negative = looking down)
+   * @param {number} options.speed - Degrees per second (default 6)
    */
   start(targetCartesian, options = {}) {
     if (!targetCartesian) return;
@@ -67,11 +59,7 @@ export class OrbitController {
         Cesium.Math.toRadians(this.pitch),
         this.radius,
       );
-      // start() set the target before it added this listener.
-      this.viewer.camera.lookAt(
-        /** @type {Cesium.Cartesian3} */ (this.target),
-        hpr,
-      );
+      this.viewer.camera.lookAt(this.target, hpr);
     });
   }
 
@@ -92,7 +80,7 @@ export class OrbitController {
   /**
    * Toggle orbit on/off.
    * @param {Cesium.Cartesian3} targetCartesian - Required when starting
-   * @param {OrbitOptions} [options] - Passed to start()
+   * @param {object} options - Passed to start()
    * @returns {boolean} Whether orbit is now active
    */
   toggle(targetCartesian, options) {

@@ -1,7 +1,7 @@
-import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
-import path from 'node:path';
 import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SRC_ROOT = fileURLToPath(new URL('.', import.meta.url));
@@ -22,23 +22,15 @@ test('no browser-built module imports a Node core module', () => {
   // import survives the build and turns into a runtime failure the moment the
   // guard around it is wrong. src/data/naturalEarthRegions.js and
   // src/data/neighborhoodPolygons.js both carried one to read their bundled
-  // JSON packs under node:test; an import attribute serves both runtimes.
+  // JSON packs under node:test; src/data/bundledJson.js now serves both runtimes.
   const offenders = [];
   for (const file of browserModules()) {
     const source = readFileSync(file, 'utf8');
     // Static `from 'node:fs'` and dynamic `import('node:fs')`, quoted either way.
-    if (
-      /\bfrom\s*['"]node:|\bimport\s*\(\s*(?:\/\*[^*]*\*\/\s*)?['"]node:/.test(
-        source,
-      )
-    ) {
+    if (/\bfrom\s*['"]node:|\bimport\s*\(\s*(?:\/\*[^*]*\*\/\s*)?['"]node:/.test(source)) {
       offenders.push(path.relative(SRC_ROOT, file).split(path.sep).join('/'));
     }
   }
 
-  assert.deepEqual(
-    offenders,
-    [],
-    `Node core imports reached the browser build: ${offenders.join(', ')}`,
-  );
+  assert.deepEqual(offenders, [], `Node core imports reached the browser build: ${offenders.join(', ')}`);
 });

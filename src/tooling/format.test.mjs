@@ -1,114 +1,185 @@
+import test from 'node:test';
+import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
-import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
-import { createRequire } from 'node:module';
+import {
+  mkdtemp,
+  mkdir,
+  writeFile,
+  readFile,
+  rm,
+  symlink,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import test from 'node:test';
-import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
+import { formatAdoptedFiles } from '../../scripts/format.mjs';
 
-const run = promisify(execFile);
-const root = await realpath(fileURLToPath(new URL('../../', import.meta.url)));
-const biome = createRequire(import.meta.url).resolve(
-  '@biomejs/biome/bin/biome',
-);
-const config = JSON.parse(
-  await readFile(path.join(root, 'biome.json'), 'utf8'),
-);
-
-/** Run the pinned Biome formatter in a directory and return its exit code. */
-async function format(cwd, ...args) {
-  try {
-    await run(process.execPath, [biome, 'format', ...args], { cwd });
-    return 0;
-  } catch (error) {
-    if (typeof error.code !== 'number') throw error;
-    return error.code;
-  }
-}
-
-async function fixture(t) {
-  const dir = await mkdtemp(path.join(tmpdir(), 'gev-format-'));
-  t.after(() => rm(dir, { recursive: true, force: true }));
+async function fixture(t, scope = ['adopted.js']) {
+  const root = await mkdtemp(path.join(tmpdir(), 'gev-format-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  await mkdir(path.join(root, 'scripts'));
   await writeFile(
-    path.join(dir, 'biome.json'),
+    path.join(root, 'scripts/format-scope.json'),
+    JSON.stringify(scope),
+  );
+  await writeFile(
+    path.join(root, '.prettierrc.json'),
     JSON.stringify({
-      ...config,
-      $schema: undefined,
-      files: { includes: ['adopted.js'] },
+      singleQuote: true,
+      semi: true,
+      tabWidth: 2,
+      endOfLine: 'lf',
     }),
   );
-  await writeFile(path.join(dir, 'adopted.js'), 'const value="yes"\r\n');
-  await writeFile(path.join(dir, 'legacy.js'), 'const untouched="yes"');
-  return { dir, read: (name) => readFile(path.join(dir, name), 'utf8') };
+  await writeFile(path.join(root, '.prettierignore'), 'ignored.js\n');
+  await writeFile(path.join(root, 'adopted.js'), 'const value="yes"\r\n');
+  return root;
 }
 
-/** Whether a repository path matches one of Biome's `files.includes` globs. */
-function matchesGlob(file, glob) {
-  const pattern = glob
-    .split('**/')
-    .map((part) =>
-      part
-        .split('*')
-        .map((text) => text.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
-        .join('[^/]*'),
-    )
-    .join('(?:.*/)?');
-  return new RegExp(`^${pattern}$`).test(file);
-}
-
-test('the Biome scope covers every tracked JavaScript file and no bundled data', async () => {
-  const scope = config.files.includes;
-  const inScope = (file) =>
-    scope.some((glob) => !glob.startsWith('!') && matchesGlob(file, glob)) &&
-    !scope.some(
-      (glob) => glob.startsWith('!') && matchesGlob(file, glob.slice(1)),
-    );
-  const { stdout } = await run('git', ['ls-files'], { cwd: root });
-  const tracked = stdout.split('\n').filter(Boolean);
-  const code = tracked.filter((file) => /\.(?:js|mjs|cjs)$/.test(file));
-  assert.ok(code.length > 500, `only ${code.length} tracked JavaScript files`);
-  assert.deepEqual(
-    code.filter((file) => !inScope(file)),
-    [],
-    'every tracked JavaScript file is formatted and linted',
-  );
-  for (const file of [
-    'biome.json',
-    'package.json',
-    'scripts/package-boundaries.json',
-  ]) {
-    assert.ok(inScope(file), `${file} is formatted`);
-  }
-  assert.deepEqual(
-    tracked.filter(
-      (file) => file.startsWith('src/data/local_data/') && inScope(file),
-    ),
-    [],
-    'the bundled data keeps its own layout',
-  );
-});
-
-test('format check is read-only; write only changes files in scope and is repeatable', async (t) => {
-  const { dir, read } = await fixture(t);
-  assert.notEqual(await format(dir), 0);
-  assert.equal(await read('adopted.js'), 'const value="yes"\r\n');
-  assert.equal(await format(dir, '--write'), 0);
-  assert.equal(await read('adopted.js'), "const value = 'yes';\n");
-  assert.equal(await read('legacy.js'), 'const untouched="yes"');
-  assert.equal(await format(dir), 0);
-  assert.equal(await format(dir, '--write'), 0);
-  assert.equal(await read('adopted.js'), "const value = 'yes';\n");
-});
-
-test('a named file outside the scope is left untouched', async (t) => {
-  // The pre-commit hook passes every staged file; only files in scope change.
-  const { dir, read } = await fixture(t);
+test('format check is read-only; write only changes adopted files and is repeatable', async (t) => {
+  const root = await fixture(t);
+  const outside = 'const untouched="yes"';
+  await writeFile(path.join(root, 'legacy.js'), outside);
+  assert.deepEqual((await formatAdoptedFiles(root, '--check')).changed, [
+    'adopted.js',
+  ]);
   assert.equal(
-    await format(dir, '--write', '--no-errors-on-unmatched', 'legacy.js'),
-    0,
+    await readFile(path.join(root, 'adopted.js'), 'utf8'),
+    'const value="yes"\r\n',
   );
-  assert.equal(await read('legacy.js'), 'const untouched="yes"');
-  assert.equal(await read('adopted.js'), 'const value="yes"\r\n');
+  await formatAdoptedFiles(root, '--write');
+  assert.equal(
+    await readFile(path.join(root, 'adopted.js'), 'utf8'),
+    "const value = 'yes';\n",
+  );
+  assert.equal(await readFile(path.join(root, 'legacy.js'), 'utf8'), outside);
+  assert.deepEqual((await formatAdoptedFiles(root, '--check')).changed, []);
+  assert.deepEqual((await formatAdoptedFiles(root, '--write')).changed, []);
 });
+
+test('invalid, ignored and missing scope entries fail before any file is written', async (t) => {
+  for (const scope of [
+    [],
+    ['adopted.js', 'adopted.js'],
+    ['adopted.js', '../escape.js'],
+    ['adopted.js', 'ignored.js'],
+    ['adopted.js', 'missing.js'],
+  ]) {
+    const root = await fixture(t, scope);
+    await writeFile(path.join(root, 'ignored.js'), 'const ignored=1');
+    await assert.rejects(formatAdoptedFiles(root, '--write'));
+    assert.equal(
+      await readFile(path.join(root, 'adopted.js'), 'utf8'),
+      'const value="yes"\r\n',
+    );
+  }
+});
+
+test(
+  'formatting rejects a symlink outside the repository',
+  { skip: process.platform === 'win32' },
+  async (t) => {
+    const root = await fixture(t, ['adopted.js', 'outside.js']);
+    const other = await fixture(t);
+    await symlink(
+      path.join(other, 'adopted.js'),
+      path.join(root, 'outside.js'),
+    );
+    await assert.rejects(
+      formatAdoptedFiles(root, '--write'),
+      /repository files/,
+    );
+    assert.equal(
+      await readFile(path.join(root, 'adopted.js'), 'utf8'),
+      'const value="yes"\r\n',
+    );
+  },
+);
+
+test('runtime discovery includes new nested modules and respects Git and formatter exclusions', async (t) => {
+  const root = await fixture(t);
+  execFileSync('git', ['init', '-q'], { cwd: root });
+  await mkdir(path.join(root, 'src/nested'), { recursive: true });
+  await mkdir(path.join(root, 'vendor'), { recursive: true });
+  await writeFile(
+    path.join(root, 'scripts/format-runtime.json'),
+    JSON.stringify({ roots: ['src'] }),
+  );
+  await writeFile(path.join(root, '.gitignore'), 'src/ignored.js\n');
+  await writeFile(path.join(root, '.prettierignore'), 'src/generated.js\n');
+  const source = 'export const value="yes"';
+  for (const name of [
+    'src/nested/new.js',
+    'src/module.mjs',
+    'src/check.test.mjs',
+    'src/ignored.js',
+    'src/generated.js',
+    'vendor/other.js',
+  ])
+    await writeFile(path.join(root, name), source);
+  const expected = ['adopted.js', 'src/module.mjs', 'src/nested/new.js'];
+  assert.deepEqual(
+    (await formatAdoptedFiles(root, '--check')).changed,
+    expected,
+  );
+  await formatAdoptedFiles(root, '--write');
+  assert.deepEqual((await formatAdoptedFiles(root, '--check')).changed, []);
+  for (const name of [
+    'src/check.test.mjs',
+    'src/ignored.js',
+    'src/generated.js',
+    'vendor/other.js',
+  ])
+    assert.equal(await readFile(path.join(root, name), 'utf8'), source);
+});
+
+test('runtime scope rejects unsafe roots before formatting existing entries', async (t) => {
+  for (const roots of [
+    [],
+    ['src', 'src'],
+    ['../outside'],
+    ['/absolute'],
+    ['.'],
+    ['src/*'],
+  ]) {
+    const root = await fixture(t);
+    await writeFile(
+      path.join(root, 'scripts/format-runtime.json'),
+      JSON.stringify({ roots }),
+    );
+    await assert.rejects(
+      formatAdoptedFiles(root, '--write'),
+      /Runtime formatting roots/,
+    );
+    assert.equal(
+      await readFile(path.join(root, 'adopted.js'), 'utf8'),
+      'const value="yes"\r\n',
+    );
+  }
+});
+
+test(
+  'discovered runtime symlinks cannot escape the repository',
+  { skip: process.platform === 'win32' },
+  async (t) => {
+    const root = await fixture(t);
+    const other = await fixture(t);
+    execFileSync('git', ['init', '-q'], { cwd: root });
+    await mkdir(path.join(root, 'src'));
+    await writeFile(
+      path.join(root, 'scripts/format-runtime.json'),
+      JSON.stringify({ roots: ['src'] }),
+    );
+    await symlink(
+      path.join(other, 'adopted.js'),
+      path.join(root, 'src/outside.js'),
+    );
+    await assert.rejects(
+      formatAdoptedFiles(root, '--write'),
+      /repository files/,
+    );
+    assert.equal(
+      await readFile(path.join(root, 'adopted.js'), 'utf8'),
+      'const value="yes"\r\n',
+    );
+  },
+);

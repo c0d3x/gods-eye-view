@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  buildVesselCardManifest,
   DEFAULT_DATA_MODE,
+  buildVesselCardManifest,
   isHardwareRenderer,
   isHeadfulMode,
   parseDataMode,
@@ -27,10 +27,7 @@ test('vessel-card QA keeps live AISStream as the default and synthetic opt-in', 
 test('vessel-card QA filenames cannot collide across live and synthetic evidence', () => {
   const shared = { tag: 'new', portKey: 'rotterdam' };
   const live = vesselCardScreenshotFilename({ ...shared, dataMode: 'live' });
-  const synthetic = vesselCardScreenshotFilename({
-    ...shared,
-    dataMode: 'synthetic',
-  });
+  const synthetic = vesselCardScreenshotFilename({ ...shared, dataMode: 'synthetic' });
 
   assert.equal(live, 'vessel-cards-live-aisstream-new-rotterdam.png');
   assert.equal(synthetic, 'vessel-cards-synthetic-fixture-new-rotterdam.png');
@@ -49,14 +46,8 @@ test('vessel-card QA output makes synthetic provenance and upstream context expl
   assert.match(live, /no synthetic vessel rows/i);
   assert.match(synthetic, /SYNTHETIC FIXTURE/);
   assert.match(synthetic, /not evidence of live AISStream availability/i);
-  assert.match(
-    synthetic,
-    /AISStream Issue #23: https:\/\/github\.com\/aisstream\/aisstream\/issues\/23/,
-  );
-  assert.match(
-    synthetic,
-    /AISStream Issue #15: https:\/\/github\.com\/aisstream\/aisstream\/issues\/15/,
-  );
+  assert.match(synthetic, /AISStream Issue #23: https:\/\/github\.com\/aisstream\/aisstream\/issues\/23/);
+  assert.match(synthetic, /AISStream Issue #15: https:\/\/github\.com\/aisstream\/aisstream\/issues\/15/);
 });
 
 test('vessel-card QA manifest binds screenshot provenance, launch mode, and renderer', () => {
@@ -94,22 +85,7 @@ test('vessel-card QA manifest binds screenshot provenance, launch mode, and rend
 });
 
 test('vessel-card QA distinguishes hardware evidence from software rendering', () => {
-  assert.equal(
-    isHardwareRenderer({
-      vendor: 'Apple',
-      renderer: 'ANGLE Metal Renderer: Apple M3',
-    }),
-    true,
-  );
-  assert.equal(
-    isHardwareRenderer({
-      vendor: 'Google Inc.',
-      renderer: 'ANGLE (SwiftShader)',
-    }),
-    false,
-  );
-  assert.equal(
-    isHardwareRenderer({ vendor: 'unavailable', renderer: 'unavailable' }),
-    false,
-  );
+  assert.equal(isHardwareRenderer({ vendor: 'Apple', renderer: 'ANGLE Metal Renderer: Apple M3' }), true);
+  assert.equal(isHardwareRenderer({ vendor: 'Google Inc.', renderer: 'ANGLE (SwiftShader)' }), false);
+  assert.equal(isHardwareRenderer({ vendor: 'unavailable', renderer: 'unavailable' }), false);
 });

@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Zoom-driven 2D↔3D policy for the TRACKED contact (both flight layers).
  *

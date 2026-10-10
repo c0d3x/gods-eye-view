@@ -1,3 +1,4 @@
+import { applicationServices } from './services/application.js';
 /**
  * @module hud
  * @description Intelligence HUD Overlay — NRO/NGA Satellite Aesthetic.
@@ -15,15 +16,25 @@
 
 import * as Cesium from 'cesium';
 import { forward as toMGRS } from 'mgrs';
+import { CITY_POIS } from './locations.js';
+import { composeLocalityTag } from './hudLocality.js';
 import {
   ellipsoidalToMslDisplayM,
-  ensureGeoidReadyWhenIdle,
+  ensureGeoidReady,
   geoidHeight,
-  isGeoidReady,
 } from './data/geoid.js';
-import { composeLocalityTag } from './hudLocality.js';
-import { isHudSummaryUnconfigured } from './hudSummaryResponse.js';
-import { CITY_POIS } from './locations.js';
+import { getBasemapLabelContext } from './voice/gevActions.js';
+import {
+  hudSummaryMatchesProvenance,
+  hudSummaryLayerContext,
+  hudTelemetryProvenanceTag,
+  isHudSummaryUnconfigured,
+} from './hudSummaryResponse.js';
+import {
+  applyHudUiTheme,
+  DEFAULT_HUD_LAYOUT,
+  normalizeHudLayout,
+} from './hudLayouts.js';
 
 /** Color palettes keyed by shader mode; applied as CSS custom properties. */
 const HUD_COLORS = {
@@ -52,10 +63,7 @@ const HUD_COLORS = {
 /** Shader modes that automatically show the HUD overlay. */
 const MILITARY_STYLES = new Set(['retro', 'surveillance', 'thermal']);
 
-/** Allowed HUD layout variants. */
-const HUD_VARIANTS = new Set(['tactical', 'operator', 'minimal']);
 const HUD_SUMMARY_INTERVAL_MS = 15000;
-const HUD_SUMMARY_URL = '/api/openai/hud-summary';
 
 /**
  * Cell size (degrees) for the ALT readout's geoid-undulation cache. N changes
@@ -87,13 +95,25 @@ export class IntelHUD {
    * @param {Cesium.Viewer} viewer - The Cesium Viewer instance used for
    *   camera telemetry and coordinate derivation.
    */
-  constructor(viewer) {
+  constructor(
+    viewer,
+    {
+      placeSearch,
+      summaryPolicy = {},
+      basemapContext = {},
+      summaryService = applicationServices.summary,
+    } = {},
+  ) {
+    this.summaryService = summaryService;
+    this.summaryPolicy = summaryPolicy;
+    this.basemapContext = basemapContext;
+    this.placeSearch = placeSearch;
     this.viewer = viewer;
     this._visible = false;
     this._autoMode = true; // auto show/hide based on style
     this._currentStyle = 'normal';
     this._el = null;
-    this._variant = 'tactical';
+    this._variant = DEFAULT_HUD_LAYOUT;
     this._recBlinkState = true;
     this._updateInterval = null;
     this._recBlinkInterval = null;
@@ -114,8 +134,8 @@ export class IntelHUD {
     this._firstMetricsShown = false;
     this._firstSummaryKicked = false;
     // ALT readout datum: the camera height Cesium reports is ELLIPSOIDAL, the
-    // number a viewer reads is MSL. N comes from the same lazily fetched EGM96
-    // grid the flight layers use — requested on the first telemetry tick of a
+    // number a viewer reads is MSL. N comes from the same lazy ~2.7 MB EGM96
+    // chunk the flight layers use — requested on the first telemetry tick of a
     // VISIBLE HUD, never at construction, so a hidden HUD costs nothing — and
     // cached per coarse cell. Until it resolves, or if it never does,
     // `ellipsoidalToMslDisplayM` passes the raw height straight through.
@@ -166,6 +186,8 @@ export class IntelHUD {
     if (!this._el) return;
 
     this._el.innerHTML = `
+      <div class="hud-sonar" aria-hidden="true"></div>
+
       <div class="hud-top-bar">
         <span class="hud-top-bar-left">TOP SECRET // SI-TK // NOFORN</span>
         <span class="hud-top-bar-center">${this._missionId}</span>
@@ -283,16 +305,10 @@ export class IntelHUD {
    * @returns {number|null} N in metres, or null while the grid is unavailable.
    */
   _geoidUndulationM(latDeg, lonDeg) {
-    // A grid another module already loaded is used at once.
-    if (!this._geoidReady && isGeoidReady()) this._geoidReady = true;
     if (!this._geoidReady) {
       if (!this._geoidRequested) {
         this._geoidRequested = true;
-        // The grid is a 2.8 MB chunk, so it is fetched once the page is idle,
-        // not on the first frame while Cesium is still loading the globe.
-        // Until then the readout shows the uncorrected height, as it does
-        // while the grid loads.
-        ensureGeoidReadyWhenIdle()
+        ensureGeoidReady()
           .then(() => {
             this._geoidReady = true;
           })
@@ -557,8 +573,8 @@ export class IntelHUD {
     if (!rect) return null;
     const north = Cesium.Math.toDegrees(rect.north);
     const south = Cesium.Math.toDegrees(rect.south);
-    const east = Cesium.Math.toDegrees(rect.east);
-    const west = Cesium.Math.toDegrees(rect.west);
+    let east = Cesium.Math.toDegrees(rect.east);
+    let west = Cesium.Math.toDegrees(rect.west);
     let lonSpan = Math.abs(east - west);
     // Handle antimeridian wrap: if span exceeds 180 deg, take the shorter arc
     if (lonSpan > 180) lonSpan = 360 - lonSpan;
@@ -643,7 +659,11 @@ export class IntelHUD {
     // NEAR the nearest catalogued POI at metro range; otherwise the lat/lon sector.
     const localityTag = composeLocalityTag(nearest, m.latDeg, m.lonDeg);
 
-    return `${modeLabel} ${band} ${localityTag} | ${region} | ALT ${altTag} | WINDOW ${winTag} | SUN ${m.sunEl.toFixed(0)}° | ONA ${m.ona.toFixed(0)}° | ${localTag}`;
+    const provenance = hudTelemetryProvenanceTag(
+      this._dataManager?.getAll?.() || [],
+    );
+    const line = `${modeLabel} ${band} ${localityTag} | ${region} | ALT ${altTag} | WINDOW ${winTag} | SUN ${m.sunEl.toFixed(0)}° | ONA ${m.ona.toFixed(0)}° | ${localTag}`;
+    return provenance ? `${line} | ${provenance}` : line;
   }
 
   /**
@@ -681,6 +701,7 @@ export class IntelHUD {
       return;
     }
     if (!force && !this._summaryDirty) return;
+    if (this.summaryPolicy.canRequest?.() === false) return;
 
     const revision = this._summaryRevision;
     // Every caller invokes this as `void this._updateSummary(...)`, so nothing
@@ -714,13 +735,11 @@ export class IntelHUD {
     const timeout = window.setTimeout(() => controller.abort(), 5000);
     this._summaryRequest = controller;
     try {
-      const response = await fetch(HUD_SUMMARY_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(context),
+      this.summaryPolicy.onRequest?.();
+      const response = await this.summaryService.summarize(context, {
         signal: controller.signal,
       });
-      const data = await response.json().catch(() => null);
+      const data = response.data;
       if (revision !== this._summaryRevision) return;
       if (isHudSummaryUnconfigured(response.status, data)) {
         this._setSummaryText(fallbackText, animate);
@@ -729,7 +748,12 @@ export class IntelHUD {
       if (!response.ok || !data?.summary) {
         throw new Error(data?.error || `HTTP ${response.status}`);
       }
-      this._setSummaryText(data.summary, animate);
+      this._setSummaryText(
+        hudSummaryMatchesProvenance(data.summary, context.feedProvenance)
+          ? data.summary
+          : fallbackText,
+        animate,
+      );
     } catch (error) {
       if (error?.name !== 'AbortError') {
         console.warn('[HUD] AI summary unavailable:', error);
@@ -755,9 +779,11 @@ export class IntelHUD {
   }
 
   async _summaryContext() {
-    // The voice actions load with the voice stack's chunk; this reuses it.
-    const { getBasemapLabelContext } = await import('./voice/gevActions.js');
-    const labels = await getBasemapLabelContext(this.viewer);
+    const labels = await getBasemapLabelContext(
+      this.viewer,
+      this.placeSearch,
+      this.basemapContext,
+    );
     const enabledLayers =
       this._dataManager
         ?.getAll?.()
@@ -768,6 +794,7 @@ export class IntelHUD {
       streetLabels: labels.streetLabels,
       nearbyPlaceLabels: labels.nearbyPlaceLabels,
       enabledLayerLabels: enabledLayers,
+      ...hudSummaryLayerContext(this._dataManager?.getAll?.() || []),
     };
   }
 
@@ -857,15 +884,16 @@ export class IntelHUD {
 
   /**
    * Switch the HUD layout variant. Falls back to `'tactical'` if the
-   * name is unrecognized.
-   * @param {string} variantName - One of `'tactical'`, `'operator'`, `'minimal'`.
+   * name is unrecognized. Cyber also applies a coordinated skin to the full
+   * application shell; leaving Cyber restores the standard shell tokens.
+   * @param {string} variantName - One of `'tactical'`, `'operator'`, `'minimal'`, `'cyber'`.
    */
   setVariant(variantName) {
-    const normalized = String(variantName || '').toLowerCase();
-    this._variant = HUD_VARIANTS.has(normalized) ? normalized : 'tactical';
+    this._variant = normalizeHudLayout(variantName);
     if (this._el) {
       this._el.dataset.variant = this._variant;
     }
+    applyHudUiTheme(document.documentElement, this._variant);
   }
 
   /**
@@ -897,7 +925,12 @@ export class IntelHUD {
     this._dataManager = dataManager || null;
     if (typeof this._dataManager?.subscribe === 'function') {
       this._dataManagerUnsubscribe = this._dataManager.subscribe((change) => {
-        if (change?.type === 'visibility') this._markSummaryDirty();
+        if (
+          ['visibility', 'refresh-transition', 'refresh-cancelled'].includes(
+            change?.type,
+          )
+        )
+          this._markSummaryDirty();
       });
     }
     this._markSummaryDirty();

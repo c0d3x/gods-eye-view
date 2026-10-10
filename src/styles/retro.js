@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * CRT Terminal — Dynamic CRT Monitor Aesthetic
  * Pixelation + Bayer dithering + barrel distortion + scanlines +

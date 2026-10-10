@@ -1,4 +1,3 @@
-// @ts-check
 const RADIO_COUNTRY_MAX_LENGTH = 80;
 
 const ISO_ALPHA_2_CODES = Object.freeze(
@@ -21,7 +20,6 @@ const ENGLISH_REGION_NAMES =
     ? new Intl.DisplayNames(['en'], { type: 'region' })
     : null;
 
-/** @param {unknown} value */
 function countryKey(value) {
   return String(value || '')
     .normalize('NFKC')
@@ -82,7 +80,6 @@ for (const [name, code] of Object.entries({
 }))
   COUNTRY_NAME_TO_CODE.set(countryKey(name), code);
 
-/** @param {string} code */
 function canonicalCountryName(code) {
   return ENGLISH_REGION_NAMES?.of(code) || code;
 }
@@ -90,7 +87,6 @@ function canonicalCountryName(code) {
 /**
  * Normalize a bounded country code or English/common country name.
  * Invalid or ambiguous values fail closed instead of broadening selection.
- * @param {unknown} value
  */
 export function normalizeRadioCountryInput(value) {
   if (value === undefined || value === null || value === '') {
@@ -103,7 +99,6 @@ export function normalizeRadioCountryInput(value) {
   if (
     !trimmed ||
     trimmed.length > RADIO_COUNTRY_MAX_LENGTH ||
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters is the point of this check
     /[\u0000-\u001f\u007f]/.test(trimmed) ||
     !/^[\p{L}\p{M}.&'’()\-\s]+$/u.test(trimmed)
   )
@@ -121,4 +116,9 @@ export function normalizeRadioCountryInput(value) {
     code,
     name: canonicalCountryName(code),
   });
+}
+
+/** Return whether a value is a recognized ISO 3166-1 alpha-2 code. */
+export function isRadioCountryCode(value) {
+  return typeof value === 'string' && ISO_ALPHA_2_SET.has(value.toUpperCase());
 }

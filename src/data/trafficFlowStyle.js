@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * @file Pure styling helpers for live traffic flow — level → bucket/color/
  * speed/density. Cesium-free so thresholds are unit-testable; the traffic

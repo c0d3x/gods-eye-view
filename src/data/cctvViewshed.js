@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * @module cctvViewshed
  *
@@ -57,19 +56,13 @@ export function viewshedColors(hueDeg) {
 }
 
 /**
- * The five points frustumCartesians returns: the camera mount and the far
- * cap's corners.
- * @typedef {{mount: Cesium.Cartesian3, tl: Cesium.Cartesian3, tr: Cesium.Cartesian3,
- *   br: Cesium.Cartesian3, bl: Cesium.Cartesian3}} FrustumCartesians
- */
-
-/**
  * Flattens frustumCartesians positions into the raw vertex/index buffers of
  * the frustum volume: vertex order [mount, tl, tr, br, bl]; 4 side faces from
  * the apex + the far cap split into 2 triangles. Pure — this is the ONLY
  * geometry definition (weld-by-construction with the wireframe, which draws
  * its rays/cap from the same 5 Cartesians).
- * @param {FrustumCartesians} positions - frustumCartesians shape.
+ * @param {{mount: Cesium.Cartesian3, tl: Cesium.Cartesian3, tr: Cesium.Cartesian3,
+ *   br: Cesium.Cartesian3, bl: Cesium.Cartesian3}} positions - frustumCartesians shape.
  * @returns {{positions: Float64Array, indices: Uint16Array}}
  */
 export function frustumVolumeGeometryData(positions) {
@@ -99,21 +92,20 @@ export function frustumVolumeGeometryData(positions) {
  * bookkeeping), unlit flat color, both faces visible (the viewer is routinely
  * inside or behind a cone), never pickable (clicks fall through to the
  * billboard/wireframe/plane, whose pick semantics are established).
- * @param {FrustumCartesians} positions - frustumCartesians shape (see frustumVolumeGeometryData).
+ * @param {Object} positions - frustumCartesians shape (see frustumVolumeGeometryData).
  * @param {Cesium.Color} color - Per-camera fill color (already alpha'd).
  * @returns {Cesium.Primitive}
  */
 export function createFrustumVolumePrimitive(positions, color) {
   const { positions: flat, indices } = frustumVolumeGeometryData(positions);
   const geometry = new Cesium.Geometry({
-    // Cesium's typings list all six attributes; a geometry sets only its own.
-    attributes: /** @type {Cesium.GeometryAttributes} */ ({
+    attributes: {
       position: new Cesium.GeometryAttribute({
         componentDatatype: Cesium.ComponentDatatype.DOUBLE,
         componentsPerAttribute: 3,
         values: flat,
       }),
-    }),
+    },
     indices,
     primitiveType: Cesium.PrimitiveType.TRIANGLES,
     boundingSphere: Cesium.BoundingSphere.fromVertices(Array.from(flat)),

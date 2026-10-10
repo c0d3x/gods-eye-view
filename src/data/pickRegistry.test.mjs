@@ -9,13 +9,13 @@
  *    and never throws on a broken predicate.
  */
 
-import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import assert from 'node:assert/strict';
 import {
-  isOwnedByOtherLayer,
   registerPickOwner,
-  resolvePickId,
   unregisterPickOwner,
+  isOwnedByOtherLayer,
+  resolvePickId,
 } from './pickRegistry.js';
 
 // ---------------------------------------------------------------------------
@@ -24,18 +24,12 @@ import {
 
 test('resolvePickId: string pick id (flights/military/bikeshare/cctv billboards)', () => {
   assert.equal(resolvePickId({ id: 'aaa001' }), 'aaa001');
-  assert.equal(
-    resolvePickId({ id: undefined, primitive: { id: 'station:austin:1' } }),
-    'station:austin:1',
-  );
+  assert.equal(resolvePickId({ id: undefined, primitive: { id: 'station:austin:1' } }), 'station:austin:1');
 });
 
 test('resolvePickId: numeric pick id (satellite NORAD numbers) → String', () => {
   assert.equal(resolvePickId({ id: 25544 }), '25544');
-  assert.equal(
-    resolvePickId({ id: undefined, primitive: { id: 43013 } }),
-    '43013',
-  );
+  assert.equal(resolvePickId({ id: undefined, primitive: { id: 43013 } }), '43013');
 });
 
 test('resolvePickId: AIS vessel record object → its mmsi', () => {
@@ -62,11 +56,8 @@ test('resolvePickId: unresolvable picks → null', () => {
 // ---------------------------------------------------------------------------
 
 test('ownership: sibling layers recognize each other via String-coerced ids', () => {
-  const points = new Map([
-    [25544, {}],
-    [43013, {}],
-  ]); // satellites: numeric keys
-  const vessels = new Map([['367123450', {}]]); // AIS: string mmsi keys
+  const points = new Map([[25544, {}], [43013, {}]]); // satellites: numeric keys
+  const vessels = new Map([['367123450', {}]]);        // AIS: string mmsi keys
   registerPickOwner('satellites', (pickedId) => {
     const norad = Number(pickedId);
     return Number.isFinite(norad) && points.has(norad);
@@ -74,18 +65,9 @@ test('ownership: sibling layers recognize each other via String-coerced ids', ()
   registerPickOwner('ais-live-vessels', (pickedId) => vessels.has(pickedId));
   try {
     // Flights asking about a satellite pick (raw numeric id → String upstream)
-    assert.equal(
-      isOwnedByOtherLayer('flights', resolvePickId({ id: 25544 })),
-      true,
-    );
+    assert.equal(isOwnedByOtherLayer('flights', resolvePickId({ id: 25544 })), true);
     // Flights asking about a vessel pick (record object → mmsi)
-    assert.equal(
-      isOwnedByOtherLayer(
-        'flights',
-        resolvePickId({ id: { mmsi: '367123450' } }),
-      ),
-      true,
-    );
+    assert.equal(isOwnedByOtherLayer('flights', resolvePickId({ id: { mmsi: '367123450' } })), true);
     // A layer never owns its own pick via the sibling scan
     assert.equal(isOwnedByOtherLayer('satellites', '25544'), false);
     // Unknown ids belong to nobody
@@ -98,9 +80,7 @@ test('ownership: sibling layers recognize each other via String-coerced ids', ()
 });
 
 test('ownership: a throwing predicate never breaks click handling', () => {
-  registerPickOwner('broken', () => {
-    throw new Error('boom');
-  });
+  registerPickOwner('broken', () => { throw new Error('boom'); });
   registerPickOwner('cctv', (pickedId) => pickedId === 'atx-cam-3');
   try {
     assert.equal(isOwnedByOtherLayer('flights', 'atx-cam-3'), true);

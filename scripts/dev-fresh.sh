@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SOURCE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "${GEV_PROJECT_ROOT:-$SOURCE_ROOT}" && pwd)"
 cd "$ROOT_DIR"
 
 PORT="${PORT:-4173}"
@@ -11,9 +12,12 @@ PORT="${PORT:-4173}"
 HOST="${HOST:-localhost}"
 # CCTV source packs (all keyless): Austin (~815 live upstream), Caltrans
 # districts 4,7,11,3 = SF/LA/San Diego/Sacramento (~1,860 live upstream),
-# TfL London JamCams (~870 live upstream). Caps keep the densest cores per
-# pack; override per-run for lighter/heavier loads. Kill switches:
-# CCTV_CALTRANS_DISTRICTS='' and CCTV_TFL_ENABLED=0.
+# TfL London JamCams (~870 live upstream), Ontario 511 (~944 live upstream,
+# including Kitchener-area highways), and Fintraffic Finland weathercams
+# (~2,260 live presets). Caps keep the densest cores per pack; override
+# per-run for lighter/heavier loads. Kill switches: CCTV_CALTRANS_DISTRICTS='',
+# CCTV_TFL_ENABLED=0, CCTV_ONTARIO_ENABLED=0, CCTV_FINTRAFFIC_ENABLED=0 and
+# CCTV_CALGARY_ENABLED=0 (Open Calgary, ~215 live upstream).
 CCTV_AUSTIN_MAX_SOURCES="${CCTV_AUSTIN_MAX_SOURCES:-250}"
 # Use `-` not `:-` so an explicit empty string (the documented kill switch)
 # is preserved rather than replaced by the default. Still set-u-safe when unset.
@@ -21,7 +25,26 @@ CCTV_CALTRANS_DISTRICTS="${CCTV_CALTRANS_DISTRICTS-4,7,11,3}"
 CCTV_CALTRANS_MAX_SOURCES="${CCTV_CALTRANS_MAX_SOURCES:-300}"
 CCTV_TFL_ENABLED="${CCTV_TFL_ENABLED:-1}"
 CCTV_TFL_MAX_SOURCES="${CCTV_TFL_MAX_SOURCES:-250}"
-CCTV_MAX_SOURCES="${CCTV_MAX_SOURCES:-900}"
+CCTV_ONTARIO_ENABLED="${CCTV_ONTARIO_ENABLED:-1}"
+CCTV_ONTARIO_MAX_SOURCES="${CCTV_ONTARIO_MAX_SOURCES:-1000}"
+CCTV_FINTRAFFIC_ENABLED="${CCTV_FINTRAFFIC_ENABLED:-1}"
+CCTV_FINTRAFFIC_MAX_SOURCES="${CCTV_FINTRAFFIC_MAX_SOURCES:-300}"
+CCTV_DRIVEBC_ENABLED="${CCTV_DRIVEBC_ENABLED:-1}"
+CCTV_DRIVEBC_MAX_SOURCES="${CCTV_DRIVEBC_MAX_SOURCES:-250}"
+CCTV_TXDOT_ENABLED="${CCTV_TXDOT_ENABLED:-1}"
+# Use `-` so an explicit empty string (the documented kill switch) is preserved.
+CCTV_TXDOT_DISTRICTS="${CCTV_TXDOT_DISTRICTS-AUS,SAT}"
+CCTV_TXDOT_MAX_SOURCES="${CCTV_TXDOT_MAX_SOURCES:-500}"
+CCTV_TALLINN_ENABLED="${CCTV_TALLINN_ENABLED:-1}"
+CCTV_TALLINN_MAX_SOURCES="${CCTV_TALLINN_MAX_SOURCES:-255}"
+CCTV_TARKTEE_ENABLED="${CCTV_TARKTEE_ENABLED:-1}"
+CCTV_TARKTEE_MAX_SOURCES="${CCTV_TARKTEE_MAX_SOURCES:-179}"
+CCTV_WARENDORF_ENABLED="${CCTV_WARENDORF_ENABLED:-1}"
+CCTV_NSW_ENABLED="${CCTV_NSW_ENABLED:-1}"
+CCTV_NSW_MAX_SOURCES="${CCTV_NSW_MAX_SOURCES:-250}"
+CCTV_CALGARY_ENABLED="${CCTV_CALGARY_ENABLED:-1}"
+CCTV_CALGARY_MAX_SOURCES="${CCTV_CALGARY_MAX_SOURCES:-220}"
+CCTV_MAX_SOURCES="${CCTV_MAX_SOURCES:-4000}"
 
 # Capture which provider credentials genuinely came from the parent shell
 # before this launcher resolves dotenv and Keychain fallbacks. Only names are
@@ -41,12 +64,12 @@ KEY_SETUP_EXTERNAL_KEYS=()
 [[ -n "${LL2_API_TOKEN:-}" ]] && KEY_SETUP_EXTERNAL_KEYS+=(LL2_API_TOKEN)
 KEY_SETUP_EXTERNAL_KEYS_CSV="$(IFS=,; printf '%s' "${KEY_SETUP_EXTERNAL_KEYS[*]:-}")"
 
-if command -v pnpm >/dev/null 2>&1; then
-  DEV_COMMAND=(pnpm run dev)
-elif command -v npm >/dev/null 2>&1; then
+if command -v npm >/dev/null 2>&1; then
   DEV_COMMAND=(npm run dev --)
+elif command -v pnpm >/dev/null 2>&1; then
+  DEV_COMMAND=(pnpm run dev)
 else
-  echo "error: neither pnpm nor npm found"
+  echo "error: neither npm nor pnpm found"
   exit 1
 fi
 
@@ -56,15 +79,7 @@ read_dotenv_value() {
     echo "warning: node not found; cannot parse dotenv files" >&2
     return
   fi
-  node scripts/read-dotenv-value.mjs "${variable_name}"
-}
-
-# The Keychain items each key may live in are listed once, in
-# scripts/lib/credentials.mjs, for this launcher and the setup doctor alike.
-read_keychain_value() {
-  command -v security >/dev/null 2>&1 || return 0
-  command -v node >/dev/null 2>&1 || return 0
-  node scripts/read-keychain-value.mjs "$1" 2>/dev/null || true
+  node "$SOURCE_ROOT/scripts/read-dotenv-value.mjs" "${variable_name}"
 }
 
 # Vite loads .env for browser build-time configuration, but this launcher needs
@@ -78,8 +93,14 @@ if [[ -z "${GOOGLE_MAPS_API_KEY_ENV}" ]]; then
 fi
 GOOGLE_MAPS_API_KEY_KEYCHAIN=""
 GOOGLE_MAPS_API_KEY_SOURCE=""
-if [[ -z "${GOOGLE_MAPS_API_KEY_ENV}" ]]; then
-  GOOGLE_MAPS_API_KEY_KEYCHAIN="$(read_keychain_value GOOGLE_MAPS_API_KEY)"
+if command -v security >/dev/null 2>&1; then
+  for acct in "api-key" "default" "key"; do
+    GOOGLE_MAPS_API_KEY_KEYCHAIN="$(security find-generic-password -s "google-maps-api" -a "${acct}" -w 2>/dev/null || true)"
+    if [[ -n "${GOOGLE_MAPS_API_KEY_KEYCHAIN}" ]]; then
+      GOOGLE_MAPS_API_KEY_SOURCE="keychain:${acct}"
+      break
+    fi
+  done
 fi
 
 if [[ -n "${GOOGLE_MAPS_API_KEY_ENV}" ]]; then
@@ -87,13 +108,18 @@ if [[ -n "${GOOGLE_MAPS_API_KEY_ENV}" ]]; then
   GOOGLE_MAPS_API_KEY_SOURCE="${GOOGLE_MAPS_API_KEY_ENV_SOURCE}"
 elif [[ -n "${GOOGLE_MAPS_API_KEY_KEYCHAIN}" ]]; then
   GOOGLE_MAPS_API_KEY="${GOOGLE_MAPS_API_KEY_KEYCHAIN}"
-  GOOGLE_MAPS_API_KEY_SOURCE="keychain"
 else
   GOOGLE_MAPS_API_KEY=""
 fi
 if [[ -z "${GOOGLE_MAPS_API_KEY}" ]]; then
   GOOGLE_MAPS_API_KEY_SOURCE="not configured"
 fi
+
+read_keychain_secret() {
+  local service="$1"
+  local account="$2"
+  security find-generic-password -s "$service" -a "$account" -w 2>/dev/null || true
+}
 
 load_opensky_oauth_from_file() {
   local file_path="$1"
@@ -126,11 +152,7 @@ resolve_opensky_credentials() {
   OPENSKY_AUTH_MODE="$(printf '%s' "${OPENSKY_AUTH_MODE:-oauth}" | tr '[:upper:]' '[:lower:]')"
   OPENSKY_CREDENTIALS_FILE="${OPENSKY_CREDENTIALS_FILE:-$(read_dotenv_value "OPENSKY_CREDENTIALS_FILE")}"
   case "${OPENSKY_AUTH_MODE}" in
-    oauth|anon) ;;
-    basic|auto)
-      echo "warning: OpenSky no longer accepts Basic auth; OPENSKY_AUTH_MODE='${OPENSKY_AUTH_MODE}' now means 'oauth'"
-      OPENSKY_AUTH_MODE="oauth"
-      ;;
+    basic|oauth|auto|anon) ;;
     *)
       echo "warning: invalid OPENSKY_AUTH_MODE='${OPENSKY_AUTH_MODE}', defaulting to 'oauth'"
       OPENSKY_AUTH_MODE="oauth"
@@ -140,21 +162,69 @@ resolve_opensky_credentials() {
   # Explicit env wins, then .env, then the credentials file / Keychain below.
   OPENSKY_CLIENT_ID="${OPENSKY_CLIENT_ID:-$(read_dotenv_value "OPENSKY_CLIENT_ID")}"
   OPENSKY_CLIENT_SECRET="${OPENSKY_CLIENT_SECRET:-$(read_dotenv_value "OPENSKY_CLIENT_SECRET")}"
+  OPENSKY_USERNAME="${OPENSKY_USERNAME:-$(read_dotenv_value "OPENSKY_USERNAME")}"
+  OPENSKY_PASSWORD="${OPENSKY_PASSWORD:-$(read_dotenv_value "OPENSKY_PASSWORD")}"
 
-  if [[ "${OPENSKY_AUTH_MODE}" == "oauth" ]] && [[ -n "${OPENSKY_CREDENTIALS_FILE}" ]]; then
+  if [[ "${OPENSKY_AUTH_MODE}" == "basic" || "${OPENSKY_AUTH_MODE}" == "auto" ]] && [[ -z "${OPENSKY_USERNAME}" ]]; then
+    for svc in "opensky-network" "opensky"; do
+      for acct in "username" "user" "login" "email" "default"; do
+        OPENSKY_USERNAME="$(read_keychain_secret "${svc}" "${acct}")"
+        if [[ -n "${OPENSKY_USERNAME}" ]]; then
+          break 2
+        fi
+      done
+    done
+  fi
+  if [[ "${OPENSKY_AUTH_MODE}" == "basic" || "${OPENSKY_AUTH_MODE}" == "auto" ]] && [[ -z "${OPENSKY_PASSWORD}" ]]; then
+    for svc in "opensky-network" "opensky"; do
+      for acct in "password" "pass" "token" "secret" "default"; do
+        OPENSKY_PASSWORD="$(read_keychain_secret "${svc}" "${acct}")"
+        if [[ -n "${OPENSKY_PASSWORD}" ]]; then
+          break 2
+        fi
+      done
+    done
+  fi
+  if [[ "${OPENSKY_AUTH_MODE}" == "oauth" || "${OPENSKY_AUTH_MODE}" == "auto" ]] && [[ -n "${OPENSKY_CREDENTIALS_FILE}" ]]; then
     load_opensky_oauth_from_file "${OPENSKY_CREDENTIALS_FILE}"
   fi
-  if [[ "${OPENSKY_AUTH_MODE}" == "oauth" ]] && [[ -z "${OPENSKY_CLIENT_ID}" ]]; then
-    OPENSKY_CLIENT_ID="$(read_keychain_value OPENSKY_CLIENT_ID)"
+  if [[ "${OPENSKY_AUTH_MODE}" == "oauth" || "${OPENSKY_AUTH_MODE}" == "auto" ]] && [[ -z "${OPENSKY_CLIENT_ID}" ]]; then
+    for svc in "opensky-network" "opensky"; do
+      for acct in "client_id" "client-id" "client" "api-key"; do
+        OPENSKY_CLIENT_ID="$(read_keychain_secret "${svc}" "${acct}")"
+        if [[ -n "${OPENSKY_CLIENT_ID}" ]]; then
+          break 2
+        fi
+      done
+    done
   fi
-  if [[ "${OPENSKY_AUTH_MODE}" == "oauth" ]] && [[ -z "${OPENSKY_CLIENT_SECRET}" ]]; then
-    OPENSKY_CLIENT_SECRET="$(read_keychain_value OPENSKY_CLIENT_SECRET)"
+  if [[ "${OPENSKY_AUTH_MODE}" == "oauth" || "${OPENSKY_AUTH_MODE}" == "auto" ]] && [[ -z "${OPENSKY_CLIENT_SECRET}" ]]; then
+    for svc in "opensky-network" "opensky"; do
+      for acct in "client_secret" "client-secret" "secret"; do
+        OPENSKY_CLIENT_SECRET="$(read_keychain_secret "${svc}" "${acct}")"
+        if [[ -n "${OPENSKY_CLIENT_SECRET}" ]]; then
+          break 2
+        fi
+      done
+    done
   fi
 
-  if [[ "${OPENSKY_AUTH_MODE}" == "anon" ]]; then
-    OPENSKY_CLIENT_ID=""
-    OPENSKY_CLIENT_SECRET=""
-  fi
+  case "${OPENSKY_AUTH_MODE}" in
+    basic)
+      OPENSKY_CLIENT_ID=""
+      OPENSKY_CLIENT_SECRET=""
+      ;;
+    oauth)
+      OPENSKY_USERNAME=""
+      OPENSKY_PASSWORD=""
+      ;;
+    anon)
+      OPENSKY_CLIENT_ID=""
+      OPENSKY_CLIENT_SECRET=""
+      OPENSKY_USERNAME=""
+      OPENSKY_PASSWORD=""
+      ;;
+  esac
 }
 
 resolve_opensky_credentials
@@ -168,26 +238,26 @@ CESIUM_ION_TOKEN="${CESIUM_ION_TOKEN:-$(read_dotenv_value "CESIUM_ION_TOKEN")}"
 LL2_API_TOKEN="${LL2_API_TOKEN:-$(read_dotenv_value "LL2_API_TOKEN")}"
 TOMTOM_API_KEY="${TOMTOM_API_KEY:-$(read_dotenv_value "TOMTOM_API_KEY")}"
 FIRMS_MAP_KEY="${FIRMS_MAP_KEY:-$(read_dotenv_value "FIRMS_MAP_KEY")}"
-OPENAI_API_KEY="${OPENAI_API_KEY:-$(read_keychain_value OPENAI_API_KEY)}"
-AISSTREAM_API_KEY="${AISSTREAM_API_KEY:-$(read_keychain_value AISSTREAM_API_KEY)}"
-CESIUM_ION_TOKEN="${CESIUM_ION_TOKEN:-$(read_keychain_value CESIUM_ION_TOKEN)}"
-TOMTOM_API_KEY="${TOMTOM_API_KEY:-$(read_keychain_value TOMTOM_API_KEY)}"
-FIRMS_MAP_KEY="${FIRMS_MAP_KEY:-$(read_keychain_value FIRMS_MAP_KEY)}"
+OPENAI_API_KEY="${OPENAI_API_KEY:-$(read_keychain_secret "openai-api" "api-key")}"
+AISSTREAM_API_KEY="${AISSTREAM_API_KEY:-$(read_keychain_secret "aisstream-api" "api-key")}"
+CESIUM_ION_TOKEN="${CESIUM_ION_TOKEN:-$(read_keychain_secret "cesium-ion" "token")}"
+TOMTOM_API_KEY="${TOMTOM_API_KEY:-$(read_keychain_secret "tomtom-api" "api-key")}"
+FIRMS_MAP_KEY="${FIRMS_MAP_KEY:-$(read_keychain_secret "firms-map" "map-key")}"
 
-if [[ ! -f "src/data/cctv.js" ]]; then
+if [[ ! -f "$SOURCE_ROOT/src/data/cctv.js" ]]; then
   echo "error: expected CCTV layer file missing: src/data/cctv.js"
   exit 1
 fi
 
-if ! grep -q "dataManager.register(cctvLayer)" src/editions/local/data.js; then
-  echo "error: CCTV layer not wired in src/editions/local/data.js"
+if ! grep -q "return createApplicationCatalog(" "$SOURCE_ROOT/src/standalone/catalog.js" || \
+   ! grep -q "^[[:space:]]*createApplicationCctv({" "$SOURCE_ROOT/src/app/constructCatalog.js"; then
+  echo "error: CCTV layer not wired in src/standalone/catalog.js"
   exit 1
 fi
 
 echo "Stopping all existing God's Eye View dev servers..."
 pkill -f "${ROOT_DIR}/node_modules/.bin/vite" >/dev/null 2>&1 || true
-# pnpm's shim runs node_modules/.bin/../vite/bin/vite.js; npm links it directly.
-pkill -f "${ROOT_DIR}/node_modules/.*vite/bin/vite.js" >/dev/null 2>&1 || true
+pkill -f "${ROOT_DIR}/node_modules/vite/bin/vite.js" >/dev/null 2>&1 || true
 
 # Also clear the requested port in case it is held by a stale wrapper or a
 # server started through a different package-manager command.
@@ -239,8 +309,8 @@ case "${HOST}" in
 esac
 echo "Google Maps key source: ${GOOGLE_MAPS_API_KEY_SOURCE}"
 echo "Tip: after server starts, hard refresh browser (Cmd+Shift+R)."
-echo "If panels are still missing, run this once in browser console:"
-echo "localStorage.removeItem('godsEyeView.v6.panelPos.cctv-panel'); location.reload();"
+echo "The CCTV panel starts collapsed; open it from its header, or in browser console:"
+echo "localStorage.setItem('godsEyeView.v6.panelCollapsed.cctv-panel', '0'); location.reload();"
 echo "OpenSky auth mode: ${OPENSKY_AUTH_MODE}"
 if [[ -n "${OPENSKY_CREDENTIALS_FILE}" ]]; then
   if [[ -f "${OPENSKY_CREDENTIALS_FILE}" ]]; then
@@ -250,6 +320,13 @@ if [[ -n "${OPENSKY_CREDENTIALS_FILE}" ]]; then
   fi
 fi
 case "${OPENSKY_AUTH_MODE}" in
+  basic)
+    if [[ -n "${OPENSKY_USERNAME}" && -n "${OPENSKY_PASSWORD}" ]]; then
+      echo "OpenSky basic auth: configured"
+    else
+      echo "OpenSky basic auth: missing credentials"
+    fi
+    ;;
   oauth)
     if [[ -n "${OPENSKY_CLIENT_ID}" && -n "${OPENSKY_CLIENT_SECRET}" ]]; then
       echo "OpenSky OAuth: configured"
@@ -257,11 +334,20 @@ case "${OPENSKY_AUTH_MODE}" in
       echo "OpenSky OAuth: missing client credentials"
     fi
     ;;
+  auto)
+    if [[ -n "${OPENSKY_CLIENT_ID}" && -n "${OPENSKY_CLIENT_SECRET}" ]]; then
+      echo "OpenSky auto auth: OAuth configured"
+    elif [[ -n "${OPENSKY_USERNAME}" && -n "${OPENSKY_PASSWORD}" ]]; then
+      echo "OpenSky auto auth: basic configured"
+    else
+      echo "OpenSky auto auth: no credentials found"
+    fi
+    ;;
   anon)
     echo "OpenSky auth: disabled (anonymous mode)"
     ;;
 esac
-[[ -n "${OPENAI_API_KEY}" ]] && echo "OpenAI key (voice + HUD summary): configured" || echo "OpenAI key (voice + HUD summary): not set — GEV MIC disabled"
+[[ -n "${OPENAI_API_KEY}" ]] && echo "OpenAI key (voice + HUD summary): configured" || echo "OpenAI key (voice + HUD summary): not set — GEV MIC off unless a Codex ChatGPT sign-in is selected in Provider Settings (experimental)"
 [[ -n "${AISSTREAM_API_KEY}" ]] && echo "AISStream key (live vessels): configured" || echo "AISStream key (live vessels): not set — ships layer empty"
 if [[ -n "${GOOGLE_MAPS_API_KEY}" ]]; then
   echo "Startup map: Google Photorealistic 3D Tiles (direct)"
@@ -279,21 +365,19 @@ fi
 # nothing is left UNSET instead of being exported empty: Vite backfills its
 # own .env values only for variables it finds undefined, so an empty export
 # would shadow a key the user did configure in .env.
-#
-# `export` and `unset` are shell builtins, so no value appears in a process's
-# argument list, where `ps` would show it. (Passing KEY=value pairs to `env`
-# put every key there until the server started.)
+DEV_ENV=()
+DEV_UNSET=()
 put_env() {
-  export "$1=$2"
+  DEV_ENV+=("$1=$2")
 }
 put_env_if_set() {
   if [[ -n "$2" ]]; then
-    export "$1=$2"
+    DEV_ENV+=("$1=$2")
   else
     # Leaving it out is not enough: the child inherits this shell's
     # environment, so an empty export made in the PARENT would pass straight
     # through and shadow .env just the same. Remove it from the child outright.
-    unset "$1"
+    DEV_UNSET+=(-u "$1")
   fi
 }
 
@@ -304,12 +388,32 @@ put_env CCTV_CALTRANS_DISTRICTS "${CCTV_CALTRANS_DISTRICTS}"
 put_env CCTV_CALTRANS_MAX_SOURCES "${CCTV_CALTRANS_MAX_SOURCES}"
 put_env CCTV_TFL_ENABLED "${CCTV_TFL_ENABLED}"
 put_env CCTV_TFL_MAX_SOURCES "${CCTV_TFL_MAX_SOURCES}"
+put_env CCTV_ONTARIO_ENABLED "${CCTV_ONTARIO_ENABLED}"
+put_env CCTV_ONTARIO_MAX_SOURCES "${CCTV_ONTARIO_MAX_SOURCES}"
 put_env_if_set TFL_APP_KEY "${TFL_APP_KEY:-}"
+put_env CCTV_FINTRAFFIC_ENABLED "${CCTV_FINTRAFFIC_ENABLED}"
+put_env CCTV_FINTRAFFIC_MAX_SOURCES "${CCTV_FINTRAFFIC_MAX_SOURCES}"
+put_env CCTV_DRIVEBC_ENABLED "${CCTV_DRIVEBC_ENABLED}"
+put_env CCTV_DRIVEBC_MAX_SOURCES "${CCTV_DRIVEBC_MAX_SOURCES}"
+put_env CCTV_TXDOT_ENABLED "${CCTV_TXDOT_ENABLED}"
+put_env CCTV_TXDOT_DISTRICTS "${CCTV_TXDOT_DISTRICTS}"
+put_env CCTV_TXDOT_MAX_SOURCES "${CCTV_TXDOT_MAX_SOURCES}"
+put_env CCTV_TALLINN_ENABLED "${CCTV_TALLINN_ENABLED}"
+put_env CCTV_TALLINN_MAX_SOURCES "${CCTV_TALLINN_MAX_SOURCES}"
+put_env CCTV_TARKTEE_ENABLED "${CCTV_TARKTEE_ENABLED}"
+put_env CCTV_TARKTEE_MAX_SOURCES "${CCTV_TARKTEE_MAX_SOURCES}"
+put_env CCTV_WARENDORF_ENABLED "${CCTV_WARENDORF_ENABLED}"
+put_env CCTV_NSW_ENABLED "${CCTV_NSW_ENABLED}"
+put_env CCTV_NSW_MAX_SOURCES "${CCTV_NSW_MAX_SOURCES}"
+put_env CCTV_CALGARY_ENABLED "${CCTV_CALGARY_ENABLED}"
+put_env CCTV_CALGARY_MAX_SOURCES "${CCTV_CALGARY_MAX_SOURCES}"
 put_env CCTV_MAX_SOURCES "${CCTV_MAX_SOURCES}"
 put_env OPENSKY_AUTH_MODE "${OPENSKY_AUTH_MODE}"
 put_env_if_set OPENSKY_CREDENTIALS_FILE "${OPENSKY_CREDENTIALS_FILE}"
 put_env_if_set OPENSKY_CLIENT_ID "${OPENSKY_CLIENT_ID}"
 put_env_if_set OPENSKY_CLIENT_SECRET "${OPENSKY_CLIENT_SECRET}"
+put_env_if_set OPENSKY_USERNAME "${OPENSKY_USERNAME}"
+put_env_if_set OPENSKY_PASSWORD "${OPENSKY_PASSWORD}"
 put_env_if_set OPENAI_API_KEY "${OPENAI_API_KEY}"
 put_env_if_set AISSTREAM_API_KEY "${AISSTREAM_API_KEY}"
 put_env_if_set CESIUM_ION_TOKEN "${CESIUM_ION_TOKEN}"
@@ -319,4 +423,4 @@ put_env_if_set LL2_API_TOKEN "${LL2_API_TOKEN}"
 put_env GEV_LAUNCHER "dev-fresh"
 put_env GEV_KEY_SETUP_EXTERNAL_KEYS "${KEY_SETUP_EXTERNAL_KEYS_CSV}"
 
-exec "${DEV_COMMAND[@]}" --host "${HOST}" --port "${PORT}" --force
+env ${DEV_UNSET[@]+"${DEV_UNSET[@]}"} "${DEV_ENV[@]}" "${DEV_COMMAND[@]}" --host "${HOST}" --port "${PORT}" --force

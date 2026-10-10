@@ -1,11 +1,12 @@
 import { installationFeedback } from './data/installationFeedback.js';
-import { keySetupEnvVars } from './keySetupCatalog.js';
 
-const LOADING_REVEAL_DELAY_MS = 160;
-const LOADING_TERMINAL_DWELL_MS = 2200;
+export const LOADING_REVEAL_DELAY_MS = 160;
+export const LOADING_TERMINAL_DWELL_MS = 2200;
 export const LOADING_FAILURE_DWELL_MS = 5000;
-const LOADING_LONG_THRESHOLD_MS = 30000;
+export const LOADING_LONG_THRESHOLD_MS = 30000;
 export const TRAFFIC_SYNC_CONFIRM_MS = 1500;
+/** Layer statuses that are user guidance, not feed faults (see manager.js layerFeedState). */
+export const GUIDANCE_STATUSES = Object.freeze(['zoom-in', 'empty', 'idle']);
 
 function finiteCount(value) {
   const number = Number(value);
@@ -27,10 +28,17 @@ export function normalizeLayerLoading(layer = {}) {
     stats.refreshing === true;
   const count = finiteCount(stats.count);
   const stoppingInstallations =
-    layer.id === 'military-installations' && disabling;
+    ['military-installations', 'alpr-cameras'].includes(layer.id) && disabling;
+  // Guidance statuses ask the user to act (zoom in, run a search). They are
+  // normal operation, never a batch failure — mirrors layerFeedState's carve-out
+  // so a prompt stored alongside the status cannot turn the chip red.
+  const guidance = GUIDANCE_STATUSES.includes(status);
   const error = stoppingInstallations
     ? null
-    : stats.error || stats.lastError || stats.managerRefreshError || null;
+    : (!guidance && stats.error) ||
+      stats.lastError ||
+      stats.managerRefreshError ||
+      null;
   const unavailable =
     !stoppingInstallations &&
     (stats.unavailable === true ||
@@ -52,8 +60,15 @@ export function normalizeLayerLoading(layer = {}) {
     error,
     unavailable,
     keyRequired,
-    keySetupId: typeof stats.keySetupId === 'string' ? stats.keySetupId : null,
     degraded,
+    cameraRetry:
+      layer.id === 'alpr-cameras' && layer.enabled && !disabling
+        ? {
+            retryAt: Number(stats.retryAt) || 0,
+            retrying: stats.retrying === true,
+            error,
+          }
+        : null,
     installationRetry:
       layer.id === 'military-installations' && layer.enabled && !disabling
         ? {
@@ -67,27 +82,16 @@ export function normalizeLayerLoading(layer = {}) {
   };
 }
 
-/**
- * What one participant's stats say about the load. A layer that only lacks
- * its API key needs a key, which is not a failure, even though its own row
- * reports KEY REQUIRED as an error; an error or an unavailable feed is.
- */
-function participantOutcome(record) {
-  if (record.keyRequired) return 'needs-key';
-  if (record.error || record.unavailable) return 'error';
-  return null;
-}
-
 function terminalFromParticipantStats(summary, participantIds) {
   if (!participantIds?.length) return null;
   const participants = new Set(participantIds);
-  let outcome = null;
-  for (const record of summary.records) {
-    if (participants.has(record.id)) {
-      outcome = mergeTerminalOutcome(outcome, participantOutcome(record));
-    }
-  }
-  return outcome;
+  return summary.records.some(
+    (record) =>
+      participants.has(record.id) &&
+      (record.error || record.unavailable || record.keyRequired),
+  )
+    ? 'error'
+    : null;
 }
 
 /** Aggregate all manager layers without changing their lifecycle authority. */
@@ -125,7 +129,7 @@ export function createLoadingFeedbackState() {
 /** Create a top-center status notice, optionally persistent until explicitly cleared. */
 export function createGlobalStatusNotice(
   message,
-  _nowMs = 0,
+  nowMs = 0,
   { state = 'error', detail = '', persistent = false } = {},
 ) {
   const label = String(message || '').trim();
@@ -191,7 +195,7 @@ export function presentGlobalLoadingStatus(
     summary,
     nowMs,
   );
-  if (['error', 'needs-key', 'retry'].includes(loadingPresentation?.state))
+  if (['error', 'retry'].includes(loadingPresentation?.state))
     return loadingPresentation;
   return presentGlobalStatusNotice(notice, nowMs) || loadingPresentation;
 }
@@ -277,9 +281,7 @@ function terminalFromEvent(event) {
 }
 
 function mergeTerminalOutcome(current, next) {
-  // A missing key outranks completion and cancellation, but a real failure
-  // anywhere in the same load still reads LOAD FAILED.
-  const severity = { complete: 1, cancelled: 2, 'needs-key': 3, error: 4 };
+  const severity = { complete: 1, cancelled: 2, error: 3 };
   if (!next) return current || null;
   if (!current || severity[next] > severity[current]) return next;
   return current;
@@ -345,9 +347,8 @@ export function reduceLoadingFeedback(previous, summary, nowMs, event = null) {
     const wasVisible = state.visible || now >= state.showAt;
     if (!wasVisible && terminal === 'complete')
       return createLoadingFeedbackState();
-    // KEY REQUIRED carries a button, so it stays as long as a failure does.
     const dwell =
-      terminal === 'error' || terminal === 'needs-key'
+      terminal === 'error'
         ? LOADING_FAILURE_DWELL_MS
         : LOADING_TERMINAL_DWELL_MS;
     return {
@@ -374,6 +375,30 @@ export function reduceLoadingFeedback(previous, summary, nowMs, event = null) {
 
 /** Build the user-facing status copy for the current loading state. */
 export function presentLoadingFeedback(state, summary, nowMs) {
+  const camera = summary.records.find(
+    (record) => record.cameraRetry?.retryAt > 0,
+  );
+  const otherCameraFailure =
+    summary.records.some(
+      (record) =>
+        record.id !== 'alpr-cameras' &&
+        (state?.activeIds || []).includes(record.id) &&
+        (record.error || record.unavailable || record.keyRequired),
+    ) || (state?.failedEventIds || []).some((id) => id !== 'alpr-cameras');
+  if (camera && !summary.active.length && !otherCameraFailure) {
+    const seconds = Math.max(
+      0,
+      Math.ceil((camera.cameraRetry.retryAt - Date.now()) / 1000),
+    );
+    return {
+      state: 'retry',
+      label: (
+        camera.cameraRetry.error || 'Overpass temporarily unavailable'
+      ).toUpperCase(),
+      detail: `ALPR cameras · ${seconds ? `retrying in ${seconds}s` : 'retry pending'}`,
+    };
+  }
+
   const site = summary.records.find(
     (record) => record.installationRetry?.retryAt > 0,
   );
@@ -394,20 +419,6 @@ export function presentLoadingFeedback(state, summary, nowMs) {
   }
   if (!state?.visible) return null;
   if (state.phase === 'terminal') {
-    if (state.terminal === 'needs-key') {
-      // Name the missing key; the UI offers the way into Provider Settings.
-      const needsKey = summary.records.find(
-        (record) =>
-          record.keyRequired && (state.activeIds || []).includes(record.id),
-      );
-      const envVars = keySetupEnvVars(needsKey?.keySetupId);
-      return {
-        state: 'needs-key',
-        label: 'KEY REQUIRED',
-        detail: envVars.length ? `Needs ${envVars.join(' + ')}` : '',
-        keySetupId: needsKey?.keySetupId || null,
-      };
-    }
     const labels = {
       complete: 'LOAD COMPLETE',
       cancelled: 'LOAD CANCELLED',
@@ -424,6 +435,16 @@ export function presentLoadingFeedback(state, summary, nowMs) {
     return { state: state.terminal, label, detail: '' };
   }
   const active = summary.active;
+  if (active.length === 1 && active[0].cameraRetry && !summary.disabling) {
+    return {
+      state: 'loading',
+      label: active[0].cameraRetry.retrying
+        ? 'RETRYING ALPR CAMERAS'
+        : 'FETCHING ALPR CAMERAS',
+      detail: 'OpenStreetMap · Overpass',
+    };
+  }
+
   if (
     active.length === 1 &&
     active[0].installationRetry &&

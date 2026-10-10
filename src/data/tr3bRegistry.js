@@ -1,4 +1,3 @@
-// @ts-check
 // src/data/tr3bRegistry.js
 /**
  * @module tr3bRegistry

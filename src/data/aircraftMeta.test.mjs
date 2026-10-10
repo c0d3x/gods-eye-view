@@ -1,8 +1,7 @@
 // src/data/aircraftMeta.test.mjs
-
-import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { stickyNumber, stickyText } from './aircraftMeta.js';
+import assert from 'node:assert/strict';
+import { stickyText, stickyNumber } from './aircraftMeta.js';
 
 test('stickyText holds last non-empty value', () => {
   assert.equal(stickyText('UAL123 ', undefined), 'UAL123');
@@ -15,7 +14,7 @@ test('stickyText holds last non-empty value', () => {
 test('stickyNumber holds last finite value, keeps 0, honors fallback', () => {
   assert.equal(stickyNumber(250, 100, 0), 250);
   assert.equal(stickyNumber(null, 100, 0), 100);
-  assert.equal(stickyNumber(0, 100, 7), 0); // 0 is a REAL value
+  assert.equal(stickyNumber(0, 100, 7), 0);        // 0 is a REAL value
   assert.equal(stickyNumber(NaN, undefined, 7), 7);
   assert.equal(stickyNumber(undefined, undefined, null), null);
 });

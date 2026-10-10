@@ -1,5 +1,5 @@
-import assert from 'node:assert/strict';
 import test from 'node:test';
+import assert from 'node:assert/strict';
 
 import { calculateLogoGaze } from './logoGaze.js';
 
@@ -35,9 +35,6 @@ test('logo gaze preserves diagonal direction while staying bounded', () => {
 });
 
 test('logo gaze fails closed for invalid geometry', () => {
-  assert.deepEqual(calculateLogoGaze(10, 10, { ...rect, width: 0 }), {
-    x: 0,
-    y: 0,
-  });
+  assert.deepEqual(calculateLogoGaze(10, 10, { ...rect, width: 0 }), { x: 0, y: 0 });
   assert.deepEqual(calculateLogoGaze(Number.NaN, 10, rect), { x: 0, y: 0 });
 });

@@ -56,36 +56,32 @@
  * side-effect-free export with no Cesium/scene dependency) to use as a
  * Node-side ground-truth oracle — see the "safe pose" search below.
  *
- * Ground-clamp caveat (discovered writing this harness, see task report):
- * Austin's fabricated pose priors (pitch -18/-24°, FOV 44/56°, range 145/210m,
- * mount 8/10m — vite.config.js's two "personalities") routinely put the far
- * cap's bottom edge below ground truth. `computeFrustumGeometry` clamps each
- * WIREFRAME corner independently to `groundAlt + FRUSTUM_GROUND_CLEARANCE_M`,
- * but the PLANE entity (`createProjectionRuntime`/`updatePlanePlacement`) is
- * always an undistorted rectangle (fixed halfW/halfH, unclamped tilt) sitting
- * at the (possibly-clamped) capCenter. When the pose clamps asymmetrically,
- * the plane and the wireframe corners genuinely do NOT coincide — this is a
- * real property of the shipped geometry, not a harness bug. To test the
- * intended "coincide" contract deterministically (independent of which
- * camera activates), this harness first applies a temporary calibration
- * patch (large upward pitch offset + shrunk FOV + minimum range) computed
- * via a Node-side search against the SAME `computeFrustumGeometry` oracle,
- * chosen to clear the ground clamp with margin, then resets it afterward.
+ * Ground-clearance note (2026-09-13): `computeFrustumGeometry` lifts the
+ * whole far cap RIGIDLY by the largest clearance deficit over a 3×3 grid of
+ * support points against the ground under each (the mount's ground where no
+ * footprint measurement exists), so the plane and the wireframe corners
+ * always coincide and the bottom edge clears the ground it was measured
+ * against (except where the footprint lift cap, PLANE_FOOTPRINT_LIFT_CAP_M,
+ * lets a plane accept a tall building under its far edge). Austin's fabricated pose priors (pitch -18/-24°, FOV
+ * 44/56°, range 145/210 m, mount 8/10 m) therefore render as planes lifted
+ * tens of metres above their mount. The "safe pose" search below predates
+ * that change: it still guarantees a pose that clears the ground with margin
+ * so the coincide check is deterministic whichever camera activates, but it
+ * is no longer needed to avoid a plane/wireframe disagreement.
  *
- * Run:  node scripts/qa-cctv-v2.mjs --url <app-url>
+ * Run:  node scripts/qa-cctv-v2.mjs --url http://localhost:4173
  *
  * Exit 0 = all asserts passed. Non-zero = a hard failure.
  */
 
+import puppeteer from 'puppeteer';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import puppeteer from 'puppeteer';
 import {
   computeFrustumGeometry,
   FRUSTUM_GROUND_CLEARANCE_M,
 } from '../src/data/cctv.js';
-import { qaUrl } from './lib/qaUrl.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -97,8 +93,10 @@ const getOpt = (name, dflt) => {
 };
 const getFlag = (name) => argv.includes(name);
 
-const BASE_URL = qaUrl();
-const APP_URL = getOpt('--url', BASE_URL);
+const BASE_URL = process.env.QA_BASE_URL || 'http://localhost:4173';
+const CCTV_URL = new URL(getOpt('--url', BASE_URL));
+CCTV_URL.searchParams.set('welcome', '0');
+const APP_URL = CCTV_URL.href;
 const HEADFUL = getFlag('--headful');
 const SHOTS_DIR = path.join(REPO_ROOT, 'qa-shots', 'cctv-v2');
 
@@ -216,13 +214,6 @@ const SERIALIZE_GEOM_SRC = `
   }
 `;
 
-/**
- * A page function with serializeGeom() defined, taking the camera id as an
- * argument instead of splicing it into the code.
- */
-const inPageWithGeom = (body) =>
-  new Function('camId', `${SERIALIZE_GEOM_SRC}\n${body}`);
-
 // In-page helper: bearing (degrees, mount -> cap-center) shift between two
 // serializeGeom() snapshots of the SAME camera. Plain-JS spherical bearing
 // math over ECEF points (no Cesium namespace) — a local east/north basis is
@@ -296,7 +287,7 @@ function waitForTilesLoaded(page, timeoutMs = 15000) {
         const prims = scene.primitives;
         for (let i = 0; i < prims.length; i++) {
           const p = prims.get(i);
-          if (p?.constructor && p.constructor.name === 'Cesium3DTileset') {
+          if (p && p.constructor && p.constructor.name === 'Cesium3DTileset') {
             return p.tilesLoaded === true;
           }
         }
@@ -407,7 +398,10 @@ async function main() {
     console.log('Loading app...');
     await page.goto(APP_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForFunction(
-      () => window.__godsEyeView?.viewer && window.__godsEyeView.dataManager,
+      () =>
+        window.__godsEyeView &&
+        window.__godsEyeView.viewer &&
+        window.__godsEyeView.dataManager,
       { timeout: 60000 },
     );
     // Let the initial fly-to Austin and first tiles settle.
@@ -550,10 +544,10 @@ async function main() {
     // 2026-07-04: every click on the monitor plane picks its own camera, and
     // re-running activation rewrote the plane entity → visible flash). No new
     // probe, no geometry rewrite.
-    const geomBeforeReselect = await page.evaluate(
-      inPageWithGeom('return JSON.stringify(serializeGeom(camId));'),
-      activeId,
-    );
+    const geomBeforeReselect = await page.evaluate(`(() => {
+      ${SERIALIZE_GEOM_SRC}
+      return JSON.stringify(serializeGeom(${JSON.stringify(activeId)}));
+    })()`);
     await page.evaluate((id) => {
       window.__godsEyeView.dataManager.layers
         .get('cctv')
@@ -561,10 +555,10 @@ async function main() {
     }, activeId);
     await sleep(400);
     const cAfterReselect = await readCounters();
-    const geomAfterReselect = await page.evaluate(
-      inPageWithGeom('return JSON.stringify(serializeGeom(camId));'),
-      activeId,
-    );
+    const geomAfterReselect = await page.evaluate(`(() => {
+      ${SERIALIZE_GEOM_SRC}
+      return JSON.stringify(serializeGeom(${JSON.stringify(activeId)}));
+    })()`);
     record(
       're-selecting the active camera is a no-op (no probe, no geometry rewrite)',
       cAfterReselect.pickFromRay - cAfterActivate.pickFromRay === 0 &&
@@ -701,8 +695,8 @@ async function main() {
     // Group 2: geometry contract
     // =========================================================================
     console.log('Checking geometry contract (frustum + plane)...');
-    const geomInfo = await page.evaluate(
-      inPageWithGeom(`
+    const geomInfo = await page.evaluate(`(function(camId){
+      ${SERIALIZE_GEOM_SRC}
       const g = serializeGeom(camId);
       const viewer = window.__godsEyeView.viewer;
       // Overlay unification: the plane label is no longer a native entity —
@@ -713,9 +707,7 @@ async function main() {
       const planeEnt = viewer.entities.getById('cctv-' + camId + '-plane');
       g.planeShow = planeEnt ? planeEnt.show : null;
       return g;
-    `),
-      activeId,
-    );
+    })(${JSON.stringify(activeId)})`);
 
     const allPolylinesPresent = [
       'ray-tl',
@@ -790,8 +782,7 @@ async function main() {
         );
         await sleep(400);
         geomForCorners = await page.evaluate(
-          inPageWithGeom('return serializeGeom(camId);'),
-          activeId,
+          `(function(camId){ ${SERIALIZE_GEOM_SRC} return serializeGeom(camId); })(${JSON.stringify(activeId)})`,
         );
         const dimsAfter = geomForCorners.plane
           ? JSON.stringify(geomForCorners.plane.dimensions)
@@ -893,7 +884,10 @@ async function main() {
     // resamples on a timer in v2, so this is a pure drift regression.
     console.log('Checking geometry byte-stability over 30s idle...');
     const serializeGeom = (camId) =>
-      page.evaluate(inPageWithGeom('return serializeGeom(camId);'), camId);
+      page.evaluate(`(function(camId){
+      ${SERIALIZE_GEOM_SRC}
+      return serializeGeom(camId);
+    })(${JSON.stringify(camId)})`);
     const geomBefore30s = await serializeGeom(activeId);
     await sleep(30000);
     const geomAfter30s = await serializeGeom(activeId);
@@ -1081,7 +1075,7 @@ async function main() {
     const materialInfo = await page.evaluate((camId) => {
       const viewer = window.__godsEyeView.viewer;
       const time = viewer.clock.currentTime;
-      const planeEnt = viewer.entities.getById(`cctv-${camId}-plane`);
+      const planeEnt = viewer.entities.getById('cctv-' + camId + '-plane');
       const mat = planeEnt?.plane?.material;
       const image = mat?.image;
       const resolved =
@@ -1149,9 +1143,8 @@ async function main() {
       const scene = viewer.scene;
       const canvas = scene.canvas;
       const rect = canvas.getBoundingClientRect();
-      const { hitTestWorldOverlay } = await import(
-        '/src/overlays/worldOverlay.js'
-      );
+      const { hitTestWorldOverlay } =
+        await import('/src/overlays/worldOverlay.js');
       const candidates = [
         [0.55, 0.72],
         [0.45, 0.72],
@@ -1536,7 +1529,7 @@ async function main() {
         const prims = window.__godsEyeView.viewer.scene.primitives;
         let n = 0;
         for (let i = 0; i < prims.length; i++) {
-          if (prims.get(i)?._gevViewshed) n += 1;
+          if (prims.get(i) && prims.get(i)._gevViewshed) n += 1;
         }
         return n;
       });
@@ -1596,7 +1589,7 @@ async function main() {
       const prims = window.__godsEyeView.viewer.scene.primitives;
       window.__qaViewshedRefs = [];
       for (let i = 0; i < prims.length; i++) {
-        if (prims.get(i)?._gevViewshed)
+        if (prims.get(i) && prims.get(i)._gevViewshed)
           window.__qaViewshedRefs.push(prims.get(i));
       }
     });
@@ -1605,7 +1598,7 @@ async function main() {
       const prims = window.__godsEyeView.viewer.scene.primitives;
       const now = [];
       for (let i = 0; i < prims.length; i++) {
-        if (prims.get(i)?._gevViewshed) now.push(prims.get(i));
+        if (prims.get(i) && prims.get(i)._gevViewshed) now.push(prims.get(i));
       }
       const before = window.__qaViewshedRefs || [];
       const sameCount = now.length === before.length;
@@ -1657,7 +1650,7 @@ async function main() {
       mod.setParams({ calibrationMode: true });
       const viewer = window.__godsEyeView.viewer;
       return parts.map((p) => {
-        const e = viewer.entities.getById(`cctv-gizmo-${p}`);
+        const e = viewer.entities.getById('cctv-gizmo-' + p);
         return e ? (e.show ? 'shown' : 'hidden') : 'missing';
       });
     }, GIZMO_PARTS);
@@ -1954,7 +1947,7 @@ async function main() {
       mod.setParams({ calibration: { reset: true } });
       const viewer = window.__godsEyeView.viewer;
       return parts.map((p) => {
-        const e = viewer.entities.getById(`cctv-gizmo-${p}`);
+        const e = viewer.entities.getById('cctv-gizmo-' + p);
         return e ? (e.show ? 'shown' : 'hidden') : 'missing';
       });
     }, GIZMO_PARTS);
@@ -1989,14 +1982,14 @@ async function main() {
     await browser.close();
   }
 
-  console.log(`\n${'─'.repeat(60)}`);
+  console.log('\n' + '─'.repeat(60));
   const pass = results.filter((r) => r.ok === true).length;
   const fail = results.filter((r) => r.ok === false).length;
   const inconclusive = results.filter((r) => r.ok === null).length;
   console.log(
     `  RESULT: ${pass} passed, ${fail} failed, ${inconclusive} inconclusive`,
   );
-  console.log(`${'─'.repeat(60)}\n`);
+  console.log('─'.repeat(60) + '\n');
   process.exit(exitCode);
 }
 

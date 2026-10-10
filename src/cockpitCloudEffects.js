@@ -1,3 +1,4 @@
+import { applicationServices } from './services/application.js';
 import * as Cesium from 'cesium';
 import {
   deriveWeatherEffectProfile,
@@ -186,8 +187,9 @@ export function cockpitWeatherEnabledFromStoredValue(value) {
  * Weather-backed volumetric cloud pass that exists only while cockpit mode is
  * active. It owns no Cesium fog/post-process stages and cannot affect map mode.
  */
-class CockpitCloudEffectsController {
-  constructor(viewer) {
+export class CockpitCloudEffectsController {
+  constructor(viewer, { weatherService = applicationServices.weather } = {}) {
+    this.weatherService = weatherService;
     this.viewer = viewer;
     this.canvas = document.createElement('canvas');
     this.canvas.id = 'cockpit-cloud-effects';
@@ -419,17 +421,15 @@ class CockpitCloudEffectsController {
 
     this.abort?.abort();
     this.abort = new AbortController();
-    const params = new URLSearchParams({
-      latitude: point.latitude.toFixed(5),
-      longitude: point.longitude.toFixed(5),
-    });
-    this.pending = fetch(`/api/weather-effects?${params}`, {
-      signal: this.abort.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok)
-          throw new Error(`Cloud weather unavailable (${response.status})`);
-        const payload = await response.json();
+    const pending = this.weatherService.getConditions(
+      point.latitude,
+      point.longitude,
+      { signal: this.abort.signal },
+    );
+    const request = this.abort;
+    this.pending = pending
+      .then(async (payload) => {
+        if (this.abort !== request || request.signal.aborted) return null;
         if (!payload?.weather)
           throw new Error('Cloud weather observation unavailable');
         this.weather = payload.weather;
@@ -440,6 +440,7 @@ class CockpitCloudEffectsController {
         return payload.weather;
       })
       .catch((error) => {
+        if (request.signal.aborted || this.abort !== request) return;
         if (error?.name !== 'AbortError') {
           this.targetStrength = 0;
           this.canvas.dataset.sourceStatus = 'unavailable';
@@ -447,8 +448,10 @@ class CockpitCloudEffectsController {
         return null;
       })
       .finally(() => {
-        this.pending = null;
-        this.abort = null;
+        if (this.abort === request) {
+          this.pending = null;
+          this.abort = null;
+        }
       });
     return this.pending;
   }
@@ -606,6 +609,6 @@ class CockpitCloudEffectsController {
   }
 }
 
-export function initCockpitCloudEffects(viewer) {
-  return new CockpitCloudEffectsController(viewer);
+export function initCockpitCloudEffects(viewer, options) {
+  return new CockpitCloudEffectsController(viewer, options);
 }

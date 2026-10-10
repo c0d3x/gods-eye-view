@@ -2,10 +2,9 @@
 
 > [!NOTE]
 > This is a **manual field-test scenario script** for the June-2026 whiteboard +
-> tracking work. The AUTOMATED gates live elsewhere: `pnpm test` (unit),
-> `pnpm run test:track` (tracking invariants), and the headless harnesses under
+> tracking work. The AUTOMATED gates live elsewhere: `npm test` (unit),
+> `npm run test:track` (tracking invariants), and the headless harnesses under
 > `scripts/qa-*.mjs` — together these are the full automated test surface.
-> The last two drive Chrome, which `pnpm run qa:setup` downloads once.
 
 This guide covers the work hardened over **4 adversarial-review batches** on
 `feat/annotate-hybrid`. Record a voice note + screenshots as you go; each scenario
@@ -211,6 +210,18 @@ While recording, call out anything in these areas — this is the feedback I mos
   happened? Any command it misunderstood?
 - **Anything that looks wrong, janky, or surprising** — screenshot it; that's the gold.
 
+---
+
+## 6. Live video CCTV (HTTPS HLS) — soak, no mic
+
+> Requires the DelDOT pack (loads by default; `CCTV_DELDOT_ENABLED=0` disables it).
+
+1. Turn on **CCTV**, fly to Dover, DE, and activate **DE 1 @ Main Toll Plaza**. ✅ Within ~30 s the monitor plane and the panel preview both show moving video,.
+2. Leave it for **five minutes**. ✅ Continuous playback; at most a short hitch about once a minute (the agency restarts its stream on a timer). ❌ A freeze that does not recover, or the panel picture stopping while the plane keeps moving.
+3. Toggle **PROJECTION** off. ✅ The panel keeps playing; the plane and the active camera's cone hide.
+4. Switch to **DE 8 @ Saulsbury Rd**, then back. ✅ Each switch resumes within ~10 s with no stale frame from the previous camera.
+5. Optional: DevTools → Network, filter `media/`. ✅ Playlist responses carry `X-CCTV-Source: hls-pull`; segments return `video/mp2t`.
+
 ## If something looks off
 
 - **Grey globe / slow tiles:** wait a few seconds after a camera flight; photoreal streams in.
@@ -233,35 +244,13 @@ correctness. Floor-hold retains both mesh and DEM checks: an unavailable mesh
 oracle fails the run even when the DEM check passes. Record the backend with
 any screenshots and run GPU visual checks separately when needed.
 
-## Test and QA environment variables
+FIRMS refactoring can be checked without a configured server key using
+`node scripts/qa-firms.mjs --url http://localhost:4173 --fixtures`. This explicit
+fixture mode exercises populated display, aggregation, cards, keyless and stale
+responses, and selection/camera handoff. It does not establish live-source
+acceptance; omit `--fixtures` with a configured FIRMS key for that check.
 
-The app never reads these; they tune the test runner and the browser
-harnesses. `src/tooling/envDocs.test.mjs` checks that every environment
-variable the code reads is documented here or in `.env.example`.
-
-- `GEV_QA_URL`: the app URL that `pnpm run test:track` and the QA harnesses
-  drive. Default `http://localhost:4173`; a harness's `--url` overrides it.
-- `PUPPETEER_EXECUTABLE_PATH`: the Chrome the harnesses launch. By default
-  they use Puppeteer's pinned Chrome for Testing, which `pnpm run qa:setup`
-  downloads, then a system Chrome. With it set, `pnpm run qa:setup` checks
-  that the file exists and downloads nothing.
-- `PUPPETEER_SKIP_DOWNLOAD`: stops Puppeteer's install script from
-  downloading Chrome for Testing. pnpm 11 does not run that script at all
-  (`pnpm-workspace.yaml`); the Pinokio installer sets it for older pnpm
-  releases, which run every install script.
-- `QA_SHOTS_DIR`: where `qa-infra-lod` and `qa-map-source-tray` write their
-  screenshots, instead of `qa-shots/`.
-- `QA_LABEL`: the label `qa-view-target-prewarm` puts on its evidence files,
-  so a before and after pair can sit side by side. Default `after`.
-- `QA_MAP_SOURCE_TRAY_KEYLESS`: set to `1` to make `qa-map-source-tray` expect
-  the keyless map sources on a server that has keys, like its `--keyless`
-  flag.
-- `GEV_TEST_VERBOSE`: set to print the page's console messages during
-  `pnpm run test:track`.
-- `GEV_REQUIRE_ALLOCATION_GATE`: set to `1` to fail, rather than skip, the
-  allocation microbenchmarks on a Node version other than the calibrated
-  Node 24. CI's allocation job sets it.
-- `GEV_ALLOC_*` (`GEV_ALLOC_ENTRIES`, `GEV_ALLOC_PROFILE`, `GEV_ALLOC_WARMUP`,
-  `GEV_ALLOC_CHUNK`, `GEV_ALLOC_CHUNKS`, `GEV_ALLOC_STABILIZATION_CHUNKS`,
-  `GEV_ALLOC_SOLVE_MS`): set by the world-overlay allocation probe for its
-  measurement worker. Don't set them by hand.
+Director authoring and sharing acceptance: `node scripts/qa-director-sharing.mjs`
+checks installed import previews, draft validation, file-bundle round trips,
+cancellation, resource ownership and narrow-screen controls. Run alongside the
+scene-controls, camera, pack, interaction and timing harnesses.

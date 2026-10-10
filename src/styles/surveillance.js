@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Night Vision / NVG — PVS-14 Image Intensifier Emulation
  * P43 phosphor green, intensifier tube bloom, circular vignette,

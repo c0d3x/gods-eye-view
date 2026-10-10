@@ -1,8 +1,8 @@
 // MAP STACK source chips — the always-visible replacement for the `<select>`
 // that used to sit in the Map Stack panel. One button per stack, rendered from
-// `MapStackController.getStacks()`. The four owner-approved sources below are
+// `MapStackController.getStacks()`. The approved sources below are
 // the whole shipped set; keeping the allowlist explicit means a stack added to
-// `MAP_STACKS` for internal use cannot reach the tray until someone names it
+// `MAP_STACKS` for another purpose cannot reach the tray until someone names it
 // here.
 //
 // The chips are a control SURFACE only: selecting one calls back into the same
@@ -10,7 +10,7 @@
 // state is re-synced from controller state (never optimistically), so a failed
 // or superseded switch still leaves the truly-active stack lit.
 
-import { keySetupRequirement } from './keySetupCatalog.js';
+import { keySetupRequirement } from './keySetupCore.mjs';
 
 export const MAP_STACK_CHIP_CLASS = 'map-stack-chip';
 export const PRESENTED_MAP_STACK_IDS = Object.freeze([
@@ -62,7 +62,7 @@ export function mapStackChipModel(stack, activeId) {
  * @param {Array<object>} stacks - `MapStackController.getStacks()` output.
  * @param {string|null} activeId - Currently active stack id.
  * @returns {Array<object>} One chip model per approved presentation id, in
- *   `PRESENTED_MAP_STACK_IDS` order; internal and future stacks stay hidden.
+ *   `PRESENTED_MAP_STACK_IDS` order; unlisted stacks stay outside this presentation.
  */
 export function mapStackChipModels(stacks, activeId) {
   const stacksById = new Map(
@@ -81,12 +81,19 @@ export function mapStackChipModels(stacks, activeId) {
  * @param {string|null} [options.activeId] - Currently active stack id.
  * @param {(stackId: string) => void} [options.onSelect] - Selection callback.
  * @param {Document} [options.doc] - Document override (tests).
+ * @param {(element: HTMLElement, type: string, listener: Function) => void} [options.bind] - Listener owner override.
  * @returns {Array<object>} The rendered chip models.
  */
 export function renderMapStackChips(
   container,
   stacks,
-  { activeId = null, onSelect = null, doc } = {},
+  {
+    activeId = null,
+    onSelect = null,
+    doc,
+    bind = (element, type, listener) =>
+      element.addEventListener(type, listener),
+  } = {},
 ) {
   if (!container) return [];
   const ownerDoc = doc || container.ownerDocument || globalThis.document;
@@ -128,7 +135,7 @@ export function renderMapStackChips(
       chip.appendChild(requirement);
     }
 
-    chip.addEventListener('click', () => {
+    bind(chip, 'click', () => {
       if (!model.available) return;
       onSelect?.(model.id);
     });

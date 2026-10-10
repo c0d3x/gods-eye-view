@@ -10,7 +10,7 @@ const CONTEXT_DEPENDENCIES = Object.freeze({
 });
 const CONTEXT_COMPANIONS = new Set(['radio']);
 /** Return whether an origin represents a direct user choice on this route. */
-export function isExplicitUserIntentOrigin(origin, _layerId = null) {
+export function isExplicitUserIntentOrigin(origin, layerId = null) {
   return origin === 'user' || origin === 'voice';
 }
 
@@ -113,7 +113,7 @@ export async function settleUserFacingContextAction({
  * one into `userAdded` makes exit restoration re-enable the mode layer the
  * user just turned off.
  */
-const CONTEXT_ENTRY_LAYER_IDS = Object.freeze([
+export const CONTEXT_ENTRY_LAYER_IDS = Object.freeze([
   'military-awareness',
   'rocket-launches',
 ]);
@@ -221,9 +221,9 @@ export function contextAllowedLayerIds(contextMode) {
 export function shouldCaptureContextSession(change) {
   return Boolean(
     ['visibility-requested', 'visibility-will-change'].includes(change?.type) &&
-      isExplicitUserIntentOrigin(change.origin, change.layerId) &&
-      change.enabled &&
-      CONTEXT_ENTRY_LAYER_IDS.includes(change.layerId),
+    isExplicitUserIntentOrigin(change.origin, change.layerId) &&
+    change.enabled &&
+    CONTEXT_ENTRY_LAYER_IDS.includes(change.layerId),
   );
 }
 
@@ -234,11 +234,11 @@ export function shouldCaptureContextSession(change) {
 export function shouldDeferContextEntryDuringClear({ change, clearInFlight }) {
   return Boolean(
     clearInFlight &&
-      change?.type === 'visibility-requested' &&
-      change.layerId === 'rocket-launches' &&
-      change.enabled === true &&
-      isExplicitUserIntentOrigin(change.origin, change.layerId) &&
-      Number.isInteger(change.intentEpoch),
+    change?.type === 'visibility-requested' &&
+    change.layerId === 'rocket-launches' &&
+    change.enabled === true &&
+    isExplicitUserIntentOrigin(change.origin, change.layerId) &&
+    Number.isInteger(change.intentEpoch),
   );
 }
 
@@ -416,7 +416,7 @@ export function cockpitEntryAllowed({
  * apart — one saying "flights" while the other says "contacts" is the bug
  * this whole seam exists to prevent.
  */
-const CONTEXT_MODE_VOICE_NAMES = Object.freeze({
+export const CONTEXT_MODE_VOICE_NAMES = Object.freeze({
   flights: 'contacts',
   'space-missions': 'space-missions',
 });

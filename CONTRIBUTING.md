@@ -4,25 +4,17 @@ Thanks for being here. God's Eye View is an open foundation for live spatial int
 
 ## Getting set up
 
-Use Node.js 24.14.x or 26.x (also enforced by `package.json`) and pnpm 11.
-Once pnpm is installed (for example with `npm install --global pnpm@11`), it
-switches to the exact version pinned in `package.json`. Version managers that
-read `.node-version` (fnm, mise, nodenv, asdf) take Node 24.14.0 from it; nvm
-reads only `.nvmrc`, so use the commands below.
+Use Node.js 24.14.x or 26.x (also enforced by `package.json`).
 
 ```bash
-git clone https://github.com/c0d3x/gods-eye-view.git
+git clone https://github.com/bilawalsidhu/gods-eye-view.git
 cd gods-eye-view
 nvm install 24.14.0
 nvm use 24.14.0
-pnpm install
-pnpm run doctor
-./scripts/dev-fresh.sh        # or: pnpm run dev (keys are optional)
+npm install
+npm run doctor
+./scripts/dev-fresh.sh        # or: npm run dev (keys are optional)
 ```
-
-`pnpm run doctor` checks the toolchain, the installed packages, the dev
-server's port, the Git hook and Chrome for the QA scripts, and says how to fix
-each problem it finds.
 
 No key is required to start: the app boots on keyless Esri World Imagery with
 keyless terrain, and OSM takes over automatically if Esri is unreachable.
@@ -33,41 +25,101 @@ the Keychain; on any platform you can pass them as env vars or use a `.env`.
 People who only want to run the app can instead install the repository directly
 through Pinokio; the terminal path above remains the contributor path.
 
-Open `http://localhost:4173`.
+Open `http://localhost:4173`. Before sending a PR run `npm run build`, `npm test`, and `npm run test:track` (dev server must be up) — **all three must stay green.**
 
-## Running tests
+## Checking a built app locally
 
-Before sending a PR run `pnpm run build`, `pnpm test`, and `pnpm run test:track` (dev server must be up) — **all three must stay green.** CI also runs `pnpm run lint`, `pnpm run format:check` and `pnpm run check:boundaries`.
+Run `npm run build` followed by `npm run preview`. Preview serves the built
+frontend and local data-provider APIs. Keep optional server credentials in the
+ignored `.env`; browser keys are embedded during the build, so rebuild after
+changing them. Provider Settings and `/api/setup/*` are development-only: edit
+configuration through the development app or environment file. Unknown API
+paths return JSON 404 responses. Vite preview is for checking a local build;
+it is not a production server.
 
-- `pnpm test` runs the unit suite, every `*.test.mjs` file, and then the allocation budgets. `pnpm run test:coverage` runs the suite without the budgets and writes a coverage report to `coverage/`.
-- To run one file, call Node's test runner on it: `node --test src/setupDoctor.test.mjs`. Add `--test-name-pattern="lockfile"` to run only the tests whose names match.
+## Feature regression gates
 
-### QA harnesses
+Those three are the baseline, not the whole story. Most features also have a
+dedicated headless gate under `scripts/qa-*.mjs` that drives the real app and
+asserts that feature's contract. **Run the gate covering whatever you touched**,
+and say which one you ran in the PR.
 
-`pnpm run test:track` and the QA harnesses in `scripts/qa-*.mjs` drive the dev server in headless Chrome.
+Feature gates and a few supporting modules live under the same filename pattern:
 
-1. Run `pnpm run qa:setup` once. It downloads Puppeteer's Chrome for Testing, or, when `PUPPETEER_EXECUTABLE_PATH` names a Chrome you have, checks that file and downloads nothing.
-2. Start the dev server with `pnpm run dev`.
-3. Run `pnpm run test:track`, or a single harness such as `node scripts/qa-application.mjs`.
+```bash
+ls scripts/qa-*.mjs            # gates and their supporting modules
+head -40 scripts/qa-radio.mjs  # what this runnable gate proves and how to run it
+```
 
-The harnesses look for the server at `GEV_QA_URL` (default `http://localhost:4173`), and a harness's `--url` overrides that for one run. [TESTING.md](TESTING.md) lists the variables that tune them. The QA workflow runs the track regression and a set of harnesses against a keyless server every night; start it by hand from the Actions tab to name other harnesses.
+Runnable gate entrypoints document what they assert and how to invoke them.
+Most need a dev server; some also need a specific provider key or port. Follow
+the entrypoint's header rather than assuming every matching file accepts the
+same arguments. Only a couple (`qa:map-source-tray`, `qa:transit`) have an
+`npm run` alias.
+
+If you aren't sure which gate covers your change, search `docs/CURRENT-STATE.md`
+for the feature: it names the gate for many of them, and it's the authoritative
+runtime reference either way. `scripts/qa-l9-matrix.mjs` aggregates the broader
+release-candidate checks and selected harnesses; it does not replace the focused
+gate for the feature you changed.
+
+> **CI does not cover this for you.** The workflow runs the setup policy
+> checks, the formatting and package-boundary checks, the unit suite and the
+> production build, plus a Windows onboarding job. It runs neither
+> `npm run test:track` nor any `qa-*.mjs` gate — both need a live dev server
+> and a browser. Include the applicable local run in your PR's validation
+> evidence.
+
+## Share-link layer tokens
+
+Every shareable layer owns an immutable token in `LAYER_STATE_REGISTRY` and
+`src/data/layerStateTokenReservations.json`. Never change or reuse an existing
+token: published v2 links are authored state, and the reservation remains even
+if its layer is later removed.
+
+New layers first use the remaining unreserved single-character digits (`0`
+through `9`), then the two-character base-36 namespace (`00` through `zz`). On the
+current published ledger, `0`, `1` and `2` are already owned, so the next
+choices are `3` through `9`, then `00`. After rebasing onto the latest `main`, run
+`npm run layer-token:next -- <layer-id>`, add that result to both the permanent
+JSON reservation ledger and registry entry, and keep the exact registered-layer
+count assertion up to date. The token is assigned against the merge-time base, not
+claimed when a PR opens, so another merged layer may require rerunning the
+command after a rebase. Never repurpose a published or retired token.
+Run `npm run layer-token:check -- --base-ref origin/main` after the rebase;
+this checks that every published assignment remains reserved and that new
+assignments consume free digits before the two-character tokens, in order.
+Pull-request CI runs the same check against `main`.
+
+The helper reads the local ledger; it does not run during a rebase or edit files.
+If another PR publishes your provisional token first, keep every published
+registry entry and ledger reservation from the refreshed `main`. Temporarily
+remove only your still-unpublished layer's registry entry and ledger row so the
+local registry is valid again, then rerun `npm run layer-token:next -- <layer-id>`.
+For example, if PR A publishes `0` while PR B still provisionally uses `0`,
+PR B removes only its own provisional entry, reruns the helper, and receives
+`3`. Put `3` on PR B's registry entry and ledger row, update its pinned count
+and token tests, then rerun `npm run layer-token:check -- --base-ref origin/main`.
+An invalid duplicate ledger can fail during module import before the helper
+prints anything; never fix that by renaming or deleting PR A's published token.
 
 ## Good first contributions
 
 The highest-leverage places to jump in:
 
 - **🌆 Add a CCTV source pack.** Austin is the reference camera source. Adding another city means a clean public camera catalog with coordinates, attribution, and server-registered frame URLs (the proxy only fetches registered URLs — never client-supplied ones, see [SECURITY.md](SECURITY.md)). City packs are the best first lane.
-- **🛰️ Add or improve a data layer.** Each layer is one self-contained module in `src/data/<layer>.js` implementing the layer interface (`init/enable/disable/update/destroy/getStats`, optional `getDetectableObjects`/`getStats`). Use an existing layer as a template.
-- **🎙️ Extend voice control.** Voice tools are declared server-side (`GEV_REALTIME_TOOLS` in `server/realtime/tools.mjs`) and executed client-side (`src/voice/gevActions.js`). Keep the tool surface tight and the responses honest (confirm only what actually happened).
+- **🛰️ Add or improve a data layer.** Layer factories live in `src/layers/<family>/`, with source, record, controller and renderer owners implementing the layer interface (`init/enable/disable/update/destroy/getStats`, optional `getDetectableObjects`/`getStats`). Use an existing layer as a template.
+- **🎙️ Extend voice control.** Voice arguments are defined in `src/voice/actionSchemas.js`, with server-side descriptions in `server/providers/openai/tools.js` and client-side execution in `src/voice/gevActions.js`. Keep the tool surface tight and the responses honest (confirm only what actually happened).
 - **🎨 Add a visual style.** Styles are GLSL post-process shaders in `src/styles/`.
 - **🐛 Fix bugs / improve the first-run experience.** See [docs/KNOWN-ISSUES.md](docs/KNOWN-ISSUES.md).
 
 ## Architecture in one minute
 
 - **No framework.** Vanilla JS + [CesiumJS](https://cesium.com/platform/cesiumjs/) + [Vite](https://vitejs.dev/).
-- **UI lives in `src/ui/`**, one module per panel, view or control, and **`src/ui.js`** builds it and wires the panels together. **Layer logic lives in `src/data/<layer>.js`.** Keep them separate.
-- **Secrets stay server-side.** Anything needing a private key goes through a server-side proxy under `server/`. The browser only ever sees the Google Maps key (which you restrict) and ephemeral tokens.
-- `docs/CURRENT-STATE.md` indexes the authoritative runtime reference, one page per subsystem under `docs/current-state/` — read it first.
+- **Assembly lives in `src/app/`; standalone defaults live in `src/standalone/`.** UI controllers live in `src/ui/`, layer factories in `src/layers/`, portable sources in `src/sources/`, and application operations in `src/services/`. Existing `src/ui.js` and `src/data/<layer>.js` entries retain compatibility; new code belongs with its focused owner.
+- Sources acquire records; renderers own Cesium resources. Import `gods-eye-view/layers/<family>/source` when only a source factory is needed. Common voice controls consume the session interface; protocol adapters own connection details.
+- **Secrets stay server-side.** Anything needing a private key goes through a local proxy under `server/providers/`. The browser only ever sees the Google Maps key (which you restrict) and ephemeral tokens.
+- `docs/CURRENT-STATE.md` is the authoritative runtime reference — read it first.
 
 ## Coding style
 
@@ -78,25 +130,13 @@ The highest-leverage places to jump in:
 
 ## Formatting and reusable components
 
-Run `pnpm run format` before submitting changes, then `pnpm run format:check`,
-`pnpm run lint` and `pnpm run check:boundaries`. Formatting and linting use
-Biome, with its recommended lint rules and sorted imports, on every JavaScript
-file in the repository and the config JSON. `files.includes` in `biome.json`
-names them by glob, so new modules and tests are covered without a list to
-update; the bundled data in `src/data/local_data` is left as it is.
-`pnpm install` also installs a Lefthook pre-commit hook that formats, lints and
-sorts the imports of staged files; set `LEFTHOOK=0` to skip it for one commit.
-CI checks formatting, lint and package boundaries on Linux and Windows.
-`pnpm run typecheck` runs TypeScript over the JSDoc types in two projects,
-both in strict mode: every parameter needs a JSDoc type, a value that may be
-null or undefined has to be handled before it is used, and a caught error has
-to be checked before it is read. In the browser code (`jsconfig.json`) it
-checks the files that opt in with `// @ts-check`; add the comment to a module
-once its types hold, and CI keeps them holding. `server/jsconfig.json` checks
-every server module, `vite.config.js` and the shared modules they import,
-against Node's types.
-`pnpm run knip` fails on files, exports and dependencies that nothing uses;
-delete dead code, or tag an export kept on purpose with `/** @public */`.
+Run `npm run format` before submitting changes, then `npm run format:check`
+and `npm run check:boundaries`. Runtime JavaScript under the owned roots in
+`scripts/format-runtime.json` is discovered automatically, including new files.
+Tests and other adopted files remain listed in `scripts/format-scope.json`.
+Git-ignored files and `.prettierignore` exclusions are not automatically adopted.
+Keep mechanical formatting separate from behavioral edits. CI checks formatting
+and package boundaries on Linux and Windows.
 
 Reusable package exports own their state and receive application operations
 through explicit callbacks. They must not import the standalone bootstrap or
@@ -108,30 +148,10 @@ ownership and adoption process.
 ## Pull requests
 
 1. Branch off `main`.
-2. Keep `pnpm run build`, `pnpm test`, and `pnpm run test:track` green and avoid new console errors.
-3. If you change runtime behavior, update the page under `docs/current-state/` that describes it (`docs/CURRENT-STATE.md` lists them) in the same PR, and add an entry to `CHANGELOG.md` under `## [Unreleased]`, in its Added, Changed, Fixed or Security section.
+2. Keep `npm run build`, `npm test`, and `npm run test:track` green and avoid new console errors, plus the [feature gate](#feature-regression-gates) for the area you touched.
+3. If you change runtime behavior, update `docs/CURRENT-STATE.md` and `CHANGELOG.md` in the same PR.
 4. If you add or change a data source, update [DATA_SOURCES.md](DATA_SOURCES.md) with its license and attribution. **Don't add data you don't have the right to redistribute** — fetch it at runtime instead.
 5. Describe what you changed and how you verified it (screenshots welcome for anything visual).
-
-## Releasing
-
-Releases follow [Semantic Versioning](https://semver.org/): a minor version for
-new features, a patch version for fixes only. The fork continues upstream's
-line: upstream's last release was v0.1.1, and the fork's first is v0.2.0.
-
-1. Set `version` in `package.json`.
-2. In `CHANGELOG.md`, move the entries under `## [Unreleased]` to a new
-   `## [x.y.z] - YYYY-MM-DD` heading, with a one-line summary under it, and
-   leave `## [Unreleased]` empty above it.
-3. Commit to `main` and push.
-4. Tag the commit and push the tag: `git tag vX.Y.Z`, then
-   `git push origin vX.Y.Z`.
-
-The Release workflow runs the CI checks, checks the tag against
-`package.json`, and publishes a GitHub Release titled with the tag and the
-summary line, with that version's changelog section as its notes. Run it by
-hand from the Actions tab with a version to preview the notes without
-publishing anything.
 
 ## Maintainers
 

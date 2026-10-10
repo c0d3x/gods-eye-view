@@ -1,12 +1,13 @@
-import assert from 'node:assert/strict';
+import { readShellSource } from './testSupport/readShellSource.mjs';
 import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
-  CCTV_FOCUS_REQUEST_EVENT,
   CCTV_WORLD_CLICK_FOCUS_DURATION_SEC,
+  CCTV_FOCUS_REQUEST_EVENT,
   registerCctvFocusRequestListener,
   routeCctvFocusRequest,
 } from './cctvFocusRequest.js';
-import { readUiSource } from './testing/uiSources.mjs';
 
 test('UI CCTV request route uses the explicit focus policy with the clicked id', () => {
   const calls = [];
@@ -32,26 +33,8 @@ test('UI CCTV request route uses the explicit focus policy with the clicked id',
 
 test('UI CCTV request route rejects malformed events without entering focus policy', () => {
   let calls = 0;
-  assert.equal(
-    routeCctvFocusRequest(
-      {},
-      () => {
-        calls += 1;
-      },
-      () => {},
-    ),
-    false,
-  );
-  assert.equal(
-    routeCctvFocusRequest(
-      { detail: { cameraId: '' } },
-      () => {
-        calls += 1;
-      },
-      () => {},
-    ),
-    false,
-  );
+  assert.equal(routeCctvFocusRequest({}, () => { calls += 1; }, () => {}), false);
+  assert.equal(routeCctvFocusRequest({ detail: { cameraId: '' } }, () => { calls += 1; }, () => {}), false);
   assert.equal(calls, 0);
 });
 
@@ -59,12 +42,8 @@ test('UI CCTV focus listener registration disposes the exact added callback once
   const added = [];
   const removed = [];
   const target = {
-    addEventListener(type, callback) {
-      added.push({ type, callback });
-    },
-    removeEventListener(type, callback) {
-      removed.push({ type, callback });
-    },
+    addEventListener(type, callback) { added.push({ type, callback }); },
+    removeEventListener(type, callback) { removed.push({ type, callback }); },
   };
   const listener = () => {};
 
@@ -79,7 +58,7 @@ test('UI CCTV focus listener registration disposes the exact added callback once
   assert.strictEqual(added[0].callback, listener);
   assert.strictEqual(removed[0].callback, added[0].callback);
 
-  const uiSource = readUiSource();
+  const uiSource = readShellSource();
   assert.match(
     uiSource,
     /_removeCctvRequestFocusListener = registerCctvFocusRequestListener\([\s\S]+this\._cctvRequestFocusHandler/,

@@ -1,4 +1,5 @@
 import * as Cesium from 'cesium';
+import { showOsmCredit, hideOsmCredit } from '../data/dataCredits.js';
 
 /**
  * World-space annotation renderer (Direction A).
@@ -10,7 +11,7 @@ import * as Cesium from 'cesium';
  * IMPORTANT — drawing on Google Photorealistic 3D Tiles:
  *   The Cesium globe is hidden, so there is no terrain to clamp to. Ground
  *   geometry (areas, rings, connectors) is draped onto the photoreal tiles with
- *   `classificationType: CESIUM_3D_TILE`; points and labels clamp to the tile
+ *   `classificationType: CESIUM_3D_TILE`; points clamp to the tile
  *   surface with `heightReference: CLAMP_TO_GROUND` (which requires the tileset
  *   to have `enableCollision = true`, set in initAnnotations). This keeps marks
  *   sitting ON the world instead of buried at sea level.
@@ -30,12 +31,26 @@ const PALETTE = {
   red: '#ff6b6b',
 };
 
-const CLASSIFY = Cesium.ClassificationType.CESIUM_3D_TILE;
+/**
+ * What a draped mark is allowed to paint onto.
+ *
+ * This was CESIUM_3D_TILE, which is right with Google's photoreal tiles under
+ * the camera and wrong everywhere else: on a keyless boot (Esri or OSM imagery
+ * on Cesium's own globe) there are no 3D tiles to classify against, so every
+ * area fill, area outline, route and arrow rendered to nothing. The labels
+ * showed and the geometry did not, which reads as a broken feature rather than
+ * an unsupported surface — and it hit spoken annotations exactly as hard as
+ * hand-drawn ones.
+ *
+ * BOTH paints onto terrain AND onto 3D tiles, so one value covers both worlds.
+ */
+const CLASSIFY = Cesium.ClassificationType.BOTH;
 const CLAMP = Cesium.HeightReference.CLAMP_TO_GROUND;
 
 export function createWorldAnnotationRenderer(viewer) {
   const dataSource = new Cesium.CustomDataSource('gev-annotations');
   viewer.dataSources.add(dataSource);
+  const osmAnnotations = new Set();
 
   // Register the GevRouteFlow fabric once so Cesium's Material.fromType() can build the
   // material the route pipeline renders. The animated `time` uniform is read straight
@@ -146,51 +161,74 @@ export function createWorldAnnotationRenderer(viewer) {
           },
         }),
       );
-      if (anno.label) entities.push(labelMarker(anno, base, { point: false }));
     } else if (anno.ring && anno.ring.length >= 3) {
-      // Larger area (district / compound / park) → flat fill draped on the tiles
-      // + a glowing outline. Draping is right here: you can't extrude a whole
-      // neighbourhood, and the GIS overlay shows the boundary clearly.
-      const fillPositions = Cesium.Cartesian3.fromDegreesArray(
-        anno.ring.flat(),
-      );
-      entities.push(
-        dataSource.entities.add({
-          polygon: {
-            hierarchy: new Cesium.PolygonHierarchy(fillPositions),
-            // Synthesized (approximate) areas get a fainter fill so they don't read as solid.
-            material: new Cesium.ColorMaterialProperty(
-              liveColor(anno, base, {
-                alpha: anno.synthesized ? 0.1 : 0.2,
-                pulse: true,
-              }),
-            ),
-            classificationType: CLASSIFY,
-          },
+      // Larger area (district / compound / park / state) → flat fill draped on
+      // the tiles + a glowing outline. Draping is right here: you can't extrude
+      // a whole neighbourhood, and the GIS overlay shows the boundary clearly.
+      // A multi-part outline (`anno.polygons`: Hawaii's islands, Berlin as a
+      // hole in Brandenburg) draws every part with its holes. All parts share
+      // ONE fill and ONE line material, so Cesium batches the whole mark into a
+      // ground primitive per kind instead of one per island.
+      const parts =
+        Array.isArray(anno.polygons) && anno.polygons.length
+          ? anno.polygons
+          : [[anno.ring]];
+      const fillMaterial = new Cesium.ColorMaterialProperty(
+        // Synthesized (approximate) areas get a fainter fill so they don't read as solid.
+        liveColor(anno, base, {
+          alpha: anno.synthesized ? 0.1 : 0.2,
+          pulse: true,
         }),
       );
-      entities.push(
-        dataSource.entities.add({
-          polyline: {
-            positions: fillPositions,
-            width: 6,
-            // Synthesized → DASHED outline (signals "approximate, not an authoritative
-            // boundary", research §8.4/§8.6); real footprints → solid glow.
-            material: anno.synthesized
-              ? new Cesium.PolylineDashMaterialProperty({
-                  color: liveColor(anno, base, { alpha: 0.95 }),
-                  dashLength: 24,
-                })
-              : new Cesium.PolylineGlowMaterialProperty({
-                  glowPower: 0.35,
-                  color: liveColor(anno, base, { alpha: 1 }),
-                }),
-            clampToGround: true,
-            classificationType: CLASSIFY,
-          },
-        }),
-      );
-      if (anno.label) entities.push(labelMarker(anno, base, { point: false }));
+      // Synthesized → DASHED outline (signals "approximate, not an authoritative
+      // boundary", research §8.4/§8.6); real footprints → solid glow.
+      const lineMaterial = anno.synthesized
+        ? new Cesium.PolylineDashMaterialProperty({
+            color: liveColor(anno, base, { alpha: 0.95 }),
+            dashLength: 24,
+          })
+        : new Cesium.PolylineGlowMaterialProperty({
+            glowPower: 0.35,
+            color: liveColor(anno, base, { alpha: 1 }),
+          });
+      for (const [outer, ...holes] of parts) {
+        if (!Array.isArray(outer) || outer.length < 3) continue;
+        const rings = [outer, ...holes.filter((h) => h?.length >= 3)];
+        entities.push(
+          dataSource.entities.add({
+            polygon: {
+              hierarchy: new Cesium.PolygonHierarchy(
+                Cesium.Cartesian3.fromDegreesArray(outer.flat()),
+                rings
+                  .slice(1)
+                  .map(
+                    (hole) =>
+                      new Cesium.PolygonHierarchy(
+                        Cesium.Cartesian3.fromDegreesArray(hole.flat()),
+                      ),
+                  ),
+              ),
+              material: fillMaterial,
+              classificationType: CLASSIFY,
+            },
+          }),
+        );
+        for (const ring of rings) {
+          entities.push(
+            dataSource.entities.add({
+              polyline: {
+                positions: Cesium.Cartesian3.fromDegreesArray(
+                  closedRing(ring).flat(),
+                ),
+                width: 6,
+                material: lineMaterial,
+                clampToGround: true,
+                classificationType: CLASSIFY,
+              },
+            }),
+          );
+        }
+      }
     } else if (
       anno.type === 'route' &&
       Array.isArray(anno.path) &&
@@ -215,7 +253,8 @@ export function createWorldAnnotationRenderer(viewer) {
           },
         }),
       );
-      if (anno.label) entities.push(labelMarker(anno, base, { point: false }));
+      osmAnnotations.add(anno);
+      showOsmCredit(viewer, anno);
     } else if (anno.type === 'arrow' && anno.to) {
       // Connector draped across the ground from origin to destination.
       const positions = [
@@ -235,18 +274,6 @@ export function createWorldAnnotationRenderer(viewer) {
           },
         }),
       );
-      if (anno.label) {
-        const mid = {
-          lon: (anno.anchor.lon + anno.to.lon) / 2,
-          lat: (anno.anchor.lat + anno.to.lat) / 2,
-        };
-        entities.push(
-          dataSource.entities.add({
-            position: Cesium.Cartesian3.fromDegrees(mid.lon, mid.lat),
-            label: labelGraphic(anno, base),
-          }),
-        );
-      }
     } else {
       // pin / highlight / label — a camera-proportional target ring + a marker.
       if (anno.type !== 'label') {
@@ -271,54 +298,28 @@ export function createWorldAnnotationRenderer(viewer) {
           }),
         );
       }
-      entities.push(labelMarker(anno, base, { point: true }));
+      entities.push(pointMarker(anno, base));
     }
   }
 
-  // A clamped point + (optional) label that sits on the tile surface.
-  function labelMarker(anno, base, { point }) {
+  // Captions belong to the hybrid renderer's screen-space callouts.
+  function pointMarker(anno, base) {
     return dataSource.entities.add({
       position: Cesium.Cartesian3.fromDegrees(anno.anchor.lon, anno.anchor.lat),
-      point: point
-        ? {
-            pixelSize: anno.type === 'label' ? 8 : 14,
-            color: liveColor(anno, base, { alpha: 1 }),
-            outlineColor: liveColor(anno, Cesium.Color.WHITE, { alpha: 0.95 }),
-            outlineWidth: 3,
-            heightReference: CLAMP,
-            disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          }
-        : undefined,
-      label: anno.label ? labelGraphic(anno, base) : undefined,
+      point: {
+        pixelSize: anno.type === 'label' ? 8 : 14,
+        color: liveColor(anno, base, { alpha: 1 }),
+        outlineColor: liveColor(anno, Cesium.Color.WHITE, { alpha: 0.95 }),
+        outlineWidth: 3,
+        heightReference: CLAMP,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
     });
   }
 
-  function labelGraphic(anno, _base) {
-    return {
-      text: anno.label,
-      font: '600 14px "Inter", system-ui, sans-serif',
-      fillColor: liveColor(anno, Cesium.Color.WHITE, { alpha: 1 }),
-      outlineColor: liveColor(anno, Cesium.Color.BLACK, { alpha: 0.85 }),
-      outlineWidth: 3,
-      style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-      verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-      pixelOffset: new Cesium.Cartesian2(0, -16),
-      showBackground: true,
-      backgroundColor: new Cesium.CallbackProperty(
-        () =>
-          Cesium.Color.fromCssColorString('#0b1622').withAlpha(
-            0.72 * (anno.alpha ?? 1),
-          ),
-        false,
-      ),
-      backgroundPadding: new Cesium.Cartesian2(8, 5),
-      heightReference: CLAMP,
-      disableDepthTestDistance: Number.POSITIVE_INFINITY,
-      scaleByDistance: new Cesium.NearFarScalar(500, 1.05, 14000, 0.55),
-    };
-  }
-
   function remove(anno) {
+    hideOsmCredit(viewer, anno);
+    osmAnnotations.delete(anno);
     if (!anno?._entities) return;
     for (const entity of anno._entities) {
       try {
@@ -335,6 +336,8 @@ export function createWorldAnnotationRenderer(viewer) {
   }
 
   function destroy() {
+    for (const anno of osmAnnotations) hideOsmCredit(viewer, anno);
+    osmAnnotations.clear();
     try {
       viewer.dataSources.remove(dataSource, true);
     } catch {
@@ -388,7 +391,7 @@ let _flowFabricRegistered = false;
 /** Register the GevRouteFlow fabric ONCE so Cesium's `Material.fromType('GevRouteFlow')`
  *  can build the material the render pipeline uses. Constructing one Material with the
  *  fabric caches it under its type name. */
-function ensureFlowFabricRegistered() {
+export function ensureFlowFabricRegistered() {
   if (_flowFabricRegistered) return;
   makeRouteFlowMaterial('#ffffff'); // side effect: registers the 'GevRouteFlow' type
   _flowFabricRegistered = true;
@@ -404,7 +407,7 @@ function ensureFlowFabricRegistered() {
  * returned a standalone Material Cesium never rendered, or treated `result` as a
  * Material — both left the real uniforms untouched, so nothing animated.)
  */
-function FlowMaterialProperty(colorCss) {
+export function FlowMaterialProperty(colorCss) {
   this._color = Cesium.Color.fromCssColorString(colorCss).withAlpha(0.95);
   this._definitionChanged = new Cesium.Event();
 }
@@ -423,7 +426,7 @@ Object.defineProperties(FlowMaterialProperty.prototype, {
 FlowMaterialProperty.prototype.getType = function getType() {
   return 'GevRouteFlow';
 };
-FlowMaterialProperty.prototype.getValue = function getValue(_time, result) {
+FlowMaterialProperty.prototype.getValue = function getValue(time, result) {
   // `result` IS the live uniforms object Cesium renders — write into it directly.
   // `time` is read straight from the wall clock so the dashes flow every rendered
   // frame (the scene renders continuously; no requestRenderMode here).
@@ -438,6 +441,13 @@ FlowMaterialProperty.prototype.getValue = function getValue(_time, result) {
 FlowMaterialProperty.prototype.equals = function equals(other) {
   return this === other;
 };
+
+/** The ring with its first vertex repeated at the end, so an outline closes. */
+function closedRing(ring) {
+  const first = ring[0];
+  const last = ring[ring.length - 1];
+  return first[0] === last[0] && first[1] === last[1] ? ring : [...ring, first];
+}
 
 /** Evenly down-sample a [[lon,lat],...] ring to at most n points (keeps shape). */
 function decimateRing(ring, n) {

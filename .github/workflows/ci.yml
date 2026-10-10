@@ -4,9 +4,6 @@ on:
   pull_request:
   push:
     branches: [main]
-  workflow_dispatch:
-  # The Release workflow runs these same checks before it publishes.
-  workflow_call:
 
 permissions:
   contents: read
@@ -24,135 +21,136 @@ jobs:
       fail-fast: false
       matrix:
         node: [24.14.0, 26.x]
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: '1'
+      GEV_REQUIRE_ALLOCATION_GATE: ${{ matrix.node == '24.14.0' && '1' || '0' }}
     steps:
       - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
-
-      # Installs the pnpm version pinned by packageManager in package.json.
-      - name: Use pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+          fetch-depth: 0
 
       - name: Use Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ matrix.node }}
-          cache: pnpm
+          cache: npm
 
       - name: Install locked dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Run setup policy checks
-        run: pnpm run doctor --json
+        run: npm run doctor -- --json
 
-      - name: Check formatting
-        run: pnpm run format:check
-
-      - name: Lint
-        run: pnpm run lint
+      - name: Check adopted formatting
+        run: npm run format:check
 
       - name: Check package boundaries
-        run: pnpm run check:boundaries
+        run: npm run check:boundaries
 
-      - name: Type-check
-        run: pnpm run typecheck
+      - name: Check published layer-token allocations
+        if: github.event_name == 'pull_request'
+        run: npm run layer-token:check -- --base-ref origin/main
 
-      - name: Find unused code
-        run: pnpm run knip
-
-      # The allocation microbenchmarks run in their own job, in parallel.
       - name: Run unit tests
-        if: matrix.node != '24.14.0'
-        run: node scripts/run-unit-tests.mjs --skip-allocations
-
-      # On Node 24 the same run also measures coverage.
-      - name: Run unit tests with coverage
-        if: matrix.node == '24.14.0'
-        run: node scripts/run-unit-tests.mjs --skip-allocations --coverage
-
-      - name: Summarize coverage
-        if: matrix.node == '24.14.0'
-        run: node scripts/coverage-summary.mjs coverage/lcov.info >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload coverage report
-        if: matrix.node == '24.14.0'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: coverage-lcov
-          path: coverage/lcov.info
-          if-no-files-found: error
-          retention-days: 30
+        run: npm test
 
       - name: Build production bundle
-        run: pnpm run build
+        run: npm run build
 
-  allocation-budgets:
-    name: Allocation budgets
+  street-level-browser:
+    # Hermetic: every Mapillary request is answered from fixtures, so the
+    # dummy token below never leaves the page.
+    name: Street Level browser gate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
-      # The budgets are calibrated on Node 24; any other runtime fails here.
-      GEV_REQUIRE_ALLOCATION_GATE: '1'
+      GEV_REQUIRE_ALLOCATION_GATE: '0'
+      # Fail on a missed header press unless the panel itself moved.
+      QA_FAIL_ON_RETRY: '1'
     steps:
       - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
 
-      - name: Use pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-
       - name: Use Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24.14.0
-          cache: pnpm
+          cache: npm
 
-      - name: Install locked dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install locked dependencies and headless Chrome
+        run: npm ci
 
-      - name: Run allocation microbenchmarks
-        run: pnpm run test:allocations
+      - name: Build production bundle with a dummy Mapillary token
+        env:
+          MAPILLARY_CLIENT_TOKEN: 'MLY|0|qa-fixture'
+        run: npm run build
+
+      - name: Start the preview server
+        env:
+          MAPILLARY_CLIENT_TOKEN: 'MLY|0|qa-fixture'
+        run: |
+          npx vite preview --port 4173 --strictPort > preview.log 2>&1 &
+          for attempt in $(seq 1 90); do
+            curl -sf http://localhost:4173/ > /dev/null && exit 0
+            sleep 2
+          done
+          cat preview.log
+          exit 1
+
+      - name: Street Level gate with Mapillary fixtures
+        run: npm run qa:street-level:fixtures -- --strict --url http://localhost:4173
+
+      - name: Portable panel gate
+        if: success() || failure()
+        run: npm run qa:panel-resize -- --url http://localhost:4173
+
+      - name: Preview server log
+        if: failure()
+        run: cat preview.log
+
+      - name: Upload gate evidence
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: browser-gate-evidence
+          path: qa-artifacts/
+          if-no-files-found: ignore
+          retention-days: 14
 
   windows-onboarding:
     name: Windows onboarding
     runs-on: windows-latest
     timeout-minutes: 20
     env:
+      PUPPETEER_SKIP_DOWNLOAD: '1'
       GEV_REQUIRE_ALLOCATION_GATE: '0'
     steps:
       - name: Check out source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           persist-credentials: false
 
-      - name: Use pnpm
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
-
       - name: Use Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24.14.0
-          cache: pnpm
+          cache: npm
 
       - name: Run the Pinokio install path
         run: node scripts/pinokio-install.mjs
 
-      - name: Check formatting
-        run: pnpm run format:check
-
-      - name: Lint
-        run: pnpm run lint
+      - name: Check adopted formatting
+        run: npm run format:check
 
       - name: Check package boundaries
-        run: pnpm run check:boundaries
+        run: npm run check:boundaries
 
-      # keySetupHardening includes the check that applies a real DACL with
-      # Windows' own tools; every other job skips it. The deadline matches
-      # scripts/run-unit-tests.mjs.
       - name: Run focused onboarding tests
-        run: node --test --test-timeout=60000 src/setupDoctor.test.mjs src/pinokioEnvironment.test.mjs src/pinokioPreflight.test.mjs src/pinokioLauncherContract.test.mjs src/mapStartup.test.mjs src/hudSummaryResponse.test.mjs server/keySetupHardening.test.mjs
+        run: node --test src/setupDoctor.test.mjs src/pinokioEnvironment.test.mjs src/pinokioPreflight.test.mjs src/pinokioLauncherContract.test.mjs src/keySetupHardening.test.mjs src/mapStartup.test.mjs src/hudSummaryResponse.test.mjs
 
       - name: Build production bundle
-        run: pnpm run build
+        run: npm run build

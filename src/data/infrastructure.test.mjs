@@ -1,16 +1,19 @@
+import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import test from 'node:test';
 import * as Cesium from 'cesium';
 import { createInfrastructureLayers } from 'gods-eye-view/infrastructure';
 import { createLocalGeoJsonLayer } from 'gods-eye-view/infrastructure/geojson';
 
 function services() {
   const records = new Map();
+  const credited = [];
   let selection;
   return {
     records,
+    credited,
+    showOsmCredit: (viewer) => credited.push(viewer),
     overlayHost: { setEntries() {}, setVisible() {}, clearSource() {} },
     registerEntityContext(entity, metadata) {
       records.set(metadata.id, { entity, ...metadata });
@@ -121,6 +124,7 @@ test('two viewers use their supplied contexts and dispose independently', async 
       {
         id: 'local-dams',
         name: 'Dams',
+        osmDerived: true,
         color: '#0088ff',
         url: '/dams.geojsonl',
         screenSpaceEventHandlerFactory: () => ({
@@ -145,11 +149,15 @@ test('two viewers use their supplied contexts and dispose independently', async 
     };
     return { layer, viewer, click: () => click({ position: {} }) };
   });
-  t.after(() => {
-    for (const { layer, viewer } of instances) layer.destroy(viewer);
-  });
+  t.after(() =>
+    instances.forEach(({ layer, viewer }) => layer.destroy(viewer)),
+  );
   await Promise.all(instances.map(({ layer, viewer }) => layer.enable(viewer)));
   assert.equal(hosts[0].records.size, 1);
+  assert.deepEqual(
+    hosts.map((host) => host.credited),
+    instances.map(({ viewer }) => [viewer]),
+  );
   assert.equal(hosts[1].records.size, 1);
   instances[0].click();
   assert.ok(hosts[0].selection());
@@ -184,6 +192,8 @@ test('consumer build includes only infrastructure code and resolves assets under
   const sources = Object.keys(entry.modules).filter((id) => id.endsWith('.js'));
   assert.deepEqual(sources.map((id) => id.split('/').at(-1)).sort(), [
     'infrastructure.js',
+    'infrastructureData.js',
+    'infrastructureOverlayEntry.js',
     'localGeojsonCore.js',
     'localGeojsonLod.js',
   ]);

@@ -1,18 +1,23 @@
-// src/ui/recordingControls.js — recording mode, which hides the UI chrome
-// behind a 16:9 or 9:16 safe-frame overlay, and the recording-friendly
-// post-processing applyCinematicPreset() applies.
-//
-// These are StyleManager methods, kept here and adopted by StyleManager (see
-// src/ui/adoptMethods.js); they run on its state.
-import { BLOOM_SCALE_VERSION, decodeBloomIntensity } from '../bloom.js';
-import { canonicalizeDensity } from '../data/detectionPolicy.js';
-
+/** Own recording chrome, safe frames and the pre-recording HUD snapshot. */
 export class RecordingControls {
-  /**
-   * Resets the safe-frame overlay to its inactive state on init.
-   * @returns {void}
-   */
+  constructor({ syncShareState }) {
+    this._syncShareState = syncShareState;
+    this.destroyed = false;
+    this._recordingMode = false;
+    this._recordingConfig = {
+      hidePanels: true,
+      hudMode: 'minimal',
+      safeFrame: '16:9',
+    };
+    this._preRecordingHudState = null;
+    this._safeFrameOverlay = document.getElementById('safe-frame-overlay');
+    this._safeFrameBox = document.getElementById('safe-frame-box');
+    this._hudLayoutSelect = document.getElementById('hud-layout-select');
+    this._hudBtn = document.getElementById('hud-toggle');
+    this.hud = null;
+  }
   _initRecordingOverlay() {
+    if (this.destroyed) return;
     if (!this._safeFrameOverlay || !this._safeFrameBox) return;
     this._safeFrameOverlay.classList.remove(
       'active',
@@ -21,102 +26,8 @@ export class RecordingControls {
     );
   }
 
-  /**
-   * Applies recording-friendly post-processing and shader uniform overrides.
-   * @param {object} preset
-   */
-  applyCinematicPreset(preset = {}) {
-    const bloomInput =
-      typeof preset.bloom === 'object'
-        ? preset.bloom
-        : { intensity: preset.bloom };
-    let decodedBloomIntensity = null;
-    if (typeof bloomInput.intensity === 'number') {
-      decodedBloomIntensity = decodeBloomIntensity(
-        bloomInput.intensity,
-        bloomInput.version ?? preset.bloomVersion ?? BLOOM_SCALE_VERSION,
-      );
-      this._setBloomIntensity(decodedBloomIntensity, { syncShare: false });
-    }
-    if (typeof bloomInput.enabled === 'boolean') {
-      this._setBloomEnabled(bloomInput.enabled);
-    } else if (typeof bloomInput.intensity === 'number') {
-      this._setBloomEnabled(
-        (decodedBloomIntensity ?? this._getBloomIntensity()) > 0,
-      );
-    }
-
-    const sharpenInput =
-      typeof preset.sharpen === 'object'
-        ? preset.sharpen
-        : { enabled: preset.sharpen };
-    if (typeof sharpenInput.intensity === 'number' && this._sharpenSlider) {
-      const sharpenPct = Math.max(
-        0,
-        Math.min(100, Math.round(sharpenInput.intensity)),
-      );
-      this._sharpenSlider.value = String(sharpenPct);
-      this._sharpenSliderValue.textContent = `${sharpenPct}%`;
-      this._applySharpenIntensity(sharpenPct / 100);
-    }
-    if (typeof sharpenInput.enabled === 'boolean') {
-      this._setSharpenEnabled(sharpenInput.enabled);
-    } else if (typeof sharpenInput.intensity === 'number') {
-      this._setSharpenEnabled(sharpenInput.intensity > 0);
-    }
-
-    if (preset.hudVariant) {
-      this._setHudVariant(preset.hudVariant);
-    }
-
-    if (preset.detectionMode) {
-      this._setDetectionMode(preset.detectionMode);
-    }
-    if (
-      typeof preset.detectionDensity === 'number' &&
-      this._detectionDensitySlider
-    ) {
-      const density = canonicalizeDensity(preset.detectionDensity);
-      this._detectionDensitySlider.value = String(density);
-      this._detectionDensityValue.textContent = `${density}%`;
-      this._applyDetectionDensityFromUi();
-    }
-    if (preset.detectionAllocation) {
-      this._setDetectionAllocation(preset.detectionAllocation, {
-        syncShare: false,
-      });
-    }
-
-    if (preset.styleParams && typeof preset.styleParams === 'object') {
-      for (const [styleName, params] of Object.entries(preset.styleParams)) {
-        const stage = this.stages[styleName];
-        if (!stage || !params || typeof params !== 'object') continue;
-        for (const [uniformName, uniformValue] of Object.entries(params)) {
-          if (stage.uniforms[uniformName] === undefined) continue;
-          stage.uniforms[uniformName] = uniformValue;
-        }
-      }
-
-      // Keep slider panel values in sync when updating the active style.
-      this._updateSliderPanel(this.activeStyle);
-    }
-
-    this._syncShareState();
-  }
-
-  /**
-   * Enters or exits recording mode. When active, hides UI chrome via a body class,
-   * displays a safe-frame composition overlay (16:9 or 9:16), and switches
-   * the HUD to the specified mode. Exiting restores the HUD mode and layout
-   * variant that were active before recording started.
-   * @param {boolean} enabled - Whether to enable recording mode.
-   * @param {object} [options]
-   * @param {boolean} [options.hidePanels=true] - Hide all panel chrome.
-   * @param {string} [options.hudMode='minimal'] - HUD mode while recording ('off'|'minimal'|'full'|'auto').
-   * @param {string} [options.safeFrame='16:9'] - Aspect ratio for the safe-frame overlay.
-   * @returns {void}
-   */
   setRecordingMode(enabled, options = {}) {
+    if (this.destroyed) return;
     const {
       hidePanels = true,
       hudMode = 'minimal',
@@ -176,5 +87,11 @@ export class RecordingControls {
     }
     this._hudBtn.classList.toggle('active', this.hud.visible);
     this._syncShareState();
+  }
+  destroy() {
+    if (this.destroyed) return;
+    // Restore an active session while its supplied HUD is still alive.
+    if (this._recordingMode) this.setRecordingMode(false);
+    this.destroyed = true;
   }
 }

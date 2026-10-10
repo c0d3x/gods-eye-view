@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Noir Style — Desaturation + High Contrast + Vignette
  * Classic film noir / detective movie look

@@ -1,14 +1,15 @@
-import assert from 'node:assert/strict';
+import { createRendering as createFirmsRendering } from '../layers/firms/rendering.js';
 import test from 'node:test';
-import aisLiveVesselsLayer from './aisLiveVessels.js';
-import { createFirmsHeatmapLayer } from './firmsHeatmap.js';
-import flightsLayer from './flights.js';
+import assert from 'node:assert/strict';
 import {
   registerSpriteCollection,
   restoreSpriteOrder,
   restoreSpriteOrderOnEnable,
   unregisterSpriteCollection,
 } from './spriteOrder.js';
+import flightsLayer from './flights.js';
+import aisLiveVesselsLayer from './aisLiveVessels.js';
+import { createFirmsHeatmapLayer } from './firmsHeatmap.js';
 
 const ORDER = ['cctv', 'firms', 'bikeshare', 'ais', 'military', 'flights'];
 
@@ -16,9 +17,7 @@ function makePrimitives(initial = []) {
   return {
     items: [...initial],
     calls: [],
-    contains(collection) {
-      return this.items.includes(collection);
-    },
+    contains(collection) { return this.items.includes(collection); },
     raiseToTop(collection) {
       this.calls.push(collection.id);
       const index = this.items.indexOf(collection);
@@ -33,15 +32,10 @@ function makeCollection(id, destroyed = false) {
 }
 
 test('restoreSpriteOrder raises live collections bottom-to-top and skips destroyed entries', () => {
-  const collections = Object.fromEntries(
-    ORDER.map((id) => [id, makeCollection(id)]),
-  );
+  const collections = Object.fromEntries(ORDER.map((id) => [id, makeCollection(id)]));
   const destroyedFirms = makeCollection('firms', true);
   for (const id of ORDER) {
-    registerSpriteCollection(
-      id,
-      id === 'firms' ? destroyedFirms : collections[id],
-    );
+    registerSpriteCollection(id, id === 'firms' ? destroyedFirms : collections[id]);
   }
   const primitives = makePrimitives([
     collections.flights,
@@ -53,17 +47,10 @@ test('restoreSpriteOrder raises live collections bottom-to-top and skips destroy
 
   restoreSpriteOrder({ scene: { primitives } });
 
-  assert.deepEqual(primitives.calls, [
-    'cctv',
-    'bikeshare',
-    'ais',
-    'military',
-    'flights',
+  assert.deepEqual(primitives.calls, ['cctv', 'bikeshare', 'ais', 'military', 'flights']);
+  assert.deepEqual(primitives.items.map((item) => item.id), [
+    'cctv', 'bikeshare', 'ais', 'military', 'flights',
   ]);
-  assert.deepEqual(
-    primitives.items.map((item) => item.id),
-    ['cctv', 'bikeshare', 'ais', 'military', 'flights'],
-  );
 
   for (const id of ORDER) unregisterSpriteCollection(id);
 });
@@ -83,10 +70,7 @@ test('late CCTV registration still restores flights above the ambient collection
   restoreSpriteOrder(viewer);
 
   assert.deepEqual(primitives.calls, ['cctv', 'flights']);
-  assert.deepEqual(
-    primitives.items.map((item) => item.id),
-    ['cctv', 'flights'],
-  );
+  assert.deepEqual(primitives.items.map((item) => item.id), ['cctv', 'flights']);
 
   unregisterSpriteCollection('cctv', cctv);
   unregisterSpriteCollection('flights', flights);
@@ -98,9 +82,7 @@ test('restoreSpriteOrder is inert for destroyed viewers and primitive collection
   registerSpriteCollection('flights', flights);
 
   restoreSpriteOrder({ isDestroyed: () => true, scene: { primitives } });
-  restoreSpriteOrder({
-    scene: { primitives: { ...primitives, isDestroyed: () => true } },
-  });
+  restoreSpriteOrder({ scene: { primitives: { ...primitives, isDestroyed: () => true } } });
 
   assert.deepEqual(primitives.calls, []);
   unregisterSpriteCollection('flights', flights);
@@ -128,23 +110,12 @@ test('flights, AIS, and FIRMS enable paths are wired through the shared sprite r
   assert.deepEqual(calls, [viewer, viewer, viewer]);
 
   const firmsLayer = createFirmsHeatmapLayer({ id: 'firms', name: 'FIRMS' });
-  // The aircraft layer core restores under the layer's configured id.
-  assert.equal(flightsLayer.id, 'flights');
+  assert.match(flightsLayer.enable.toString(), /restoreSpriteOrderOnEnable\('flights', viewer\)/);
+  assert.match(aisLiveVesselsLayer.enable.toString(), /restoreSpriteOrderOnEnable\('ais', activeViewer\)/);
+  assert.match(firmsLayer.enable.toString(), /restoreSpriteOrderOnEnable\('firms', viewer\)/);
   assert.match(
-    flightsLayer.enable.toString(),
-    /restoreSpriteOrderOnEnable\(config\.id, viewer\)/,
-  );
-  assert.match(
-    aisLiveVesselsLayer.enable.toString(),
-    /restoreSpriteOrderOnEnable\('ais', activeViewer\)/,
-  );
-  assert.match(
-    firmsLayer.enable.toString(),
-    /restoreSpriteOrderOnEnable\('firms', viewer\)/,
-  );
-  assert.match(
-    createFirmsHeatmapLayer.toString(),
-    /registerSpriteCollection\('firms', _billboards\);\s*restoreSpriteOrder\(_viewer\);/,
+    createFirmsRendering.toString(),
+    /registerSpriteCollection\('firms', layerState\._billboards\);\s*restoreSpriteOrder\(layerState\._viewer\);/,
     'lazy FIRMS registration must restore order immediately',
   );
 });

@@ -1,5 +1,5 @@
-import assert from 'node:assert/strict';
 import test from 'node:test';
+import assert from 'node:assert/strict';
 import * as Cesium from 'cesium';
 import {
   clampTrackedCameraPosition,
@@ -15,9 +15,7 @@ test('tracked camera origin crossing returns to the prior side at the minimum ra
   const previous = new Cesium.Cartesian3(0, -1000, 600);
   assert.equal(clampTrackedCameraPosition(camera, previous, 150), true);
   assert.ok(Cesium.Cartesian3.dot(camera.position, previous) > 0);
-  assert.ok(
-    Math.abs(Cesium.Cartesian3.magnitude(camera.position) - 150) < 1e-9,
-  );
+  assert.ok(Math.abs(Cesium.Cartesian3.magnitude(camera.position) - 150) < 1e-9);
 });
 
 test('tracked camera clamps a too-close approach along the current sight line', () => {

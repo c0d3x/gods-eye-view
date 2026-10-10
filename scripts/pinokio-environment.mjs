@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { parseEnv } from 'node:util';
+import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_ENVIRONMENT_FILE = path.join(ROOT, 'pinokio', 'ENVIRONMENT');
@@ -24,7 +24,6 @@ export const PINOKIO_CONFIG_FIELDS = Object.freeze([
   'PINOKIO_SHARE_VAR',
 ]);
 
-/** @type {Readonly<Record<string, string>>} */
 const PINOKIO_DEFAULTS = Object.freeze({
   GEV_RATELIMIT_OPENAI_PER_MIN: '30',
   GEV_RATELIMIT_GOOGLE_PER_MIN: '120',
@@ -40,21 +39,14 @@ const PINOKIO_SHARING_FIELDS = Object.freeze([
   'PINOKIO_SHARE_VAR',
 ]);
 
-/**
- * @param {string} source
- * @param {string} line
- */
 function appendEnvironmentLine(source, line) {
   const prefix = source.length > 0 && !source.endsWith('\n') ? '\n' : '';
   return `${source}${prefix}${line}\n`;
 }
 
-/** @param {Buffer} buffer */
 function detectEnvironmentEncoding(buffer) {
-  if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe)
-    return 'utf-16le';
-  if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff)
-    return 'utf-16be';
+  if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) return 'utf-16le';
+  if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) return 'utf-16be';
 
   let evenNulls = 0;
   let oddNulls = 0;
@@ -70,25 +62,18 @@ function detectEnvironmentEncoding(buffer) {
   return 'utf-8';
 }
 
-/** @param {string} filepath */
 export function readEnvironmentSource(filepath) {
   if (!existsSync(filepath)) return '';
   const buffer = readFileSync(filepath);
   try {
-    return new TextDecoder(detectEnvironmentEncoding(buffer), {
-      fatal: true,
-    }).decode(buffer);
+    return new TextDecoder(detectEnvironmentEncoding(buffer), { fatal: true }).decode(buffer);
   } catch {
-    throw new Error(
-      'Pinokio ENVIRONMENT could not be decoded as UTF-8 or UTF-16.',
-    );
+    throw new Error('Pinokio ENVIRONMENT could not be decoded as UTF-8 or UTF-16.');
   }
 }
 
 /** Persist only the non-secret controls Pinokio itself re-reads at local.set. */
-export function ensurePinokioSharingBoundary(
-  filepath = DEFAULT_ENVIRONMENT_FILE,
-) {
+export function ensurePinokioSharingBoundary(filepath = DEFAULT_ENVIRONMENT_FILE) {
   const original = existsSync(filepath) ? readFileSync(filepath) : null;
   let source = readEnvironmentSource(filepath);
   try {
@@ -105,14 +90,11 @@ export function ensurePinokioSharingBoundary(
     'gm',
   );
   source = source.replace(sharingLine, '');
-  source = appendEnvironmentLine(
-    source,
-    [
-      'PINOKIO_SHARE_CLOUDFLARE=false',
-      'PINOKIO_SHARE_LOCAL=false',
-      `PINOKIO_SHARE_VAR=${PINOKIO_SHARE_SENTINEL}`,
-    ].join('\n'),
-  );
+  source = appendEnvironmentLine(source, [
+    'PINOKIO_SHARE_CLOUDFLARE=false',
+    'PINOKIO_SHARE_LOCAL=false',
+    `PINOKIO_SHARE_VAR=${PINOKIO_SHARE_SENTINEL}`,
+  ].join('\n'));
 
   let configured;
   try {
@@ -122,7 +104,7 @@ export function ensurePinokioSharingBoundary(
   }
 
   const encoded = Buffer.from(source, 'utf8');
-  if (!original?.equals(encoded)) {
+  if (!original || !original.equals(encoded)) {
     writeFileSync(filepath, source, { mode: 0o600 });
   }
   return configured;
@@ -149,9 +131,7 @@ export function applyPinokioEnvironment({
 } = {}) {
   const configured = ensurePinokioSharingBoundary(filepath);
   for (const field of PINOKIO_CONFIG_FIELDS) {
-    environment[field] = String(
-      configured[field] ?? PINOKIO_DEFAULTS[field] ?? '',
-    );
+    environment[field] = String(configured[field] ?? PINOKIO_DEFAULTS[field] ?? '');
   }
 
   // Sharing is unsupported on Pinokio 8.0.40. Never let a global passcode

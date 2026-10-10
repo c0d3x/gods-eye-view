@@ -1,14 +1,13 @@
 # OpenSky Auth Setup
 
-God's Eye View uses one of two auth modes for `/api/opensky`:
+God's Eye View uses explicit auth modes for `/api/flights`:
 
-- `OPENSKY_AUTH_MODE=oauth` (default): OAuth2 client credentials, or anonymous
-  access while no client is configured
-- `OPENSKY_AUTH_MODE=anon`: anonymous access, rate-limited
+- `OPENSKY_AUTH_MODE=oauth` (default, recommended)
+- `OPENSKY_AUTH_MODE=auto` (OAuth first, then Basic fallback)
+- `OPENSKY_AUTH_MODE=basic`
+- `OPENSKY_AUTH_MODE=anon`
 
-OpenSky's REST API accepts only the OAuth2 client credentials flow; Basic
-authentication with a username and password is no longer accepted. The old
-`basic` and `auto` modes therefore mean `oauth`, with a warning at startup.
+Reference: OpenSky REST API docs recommend OAuth2 Client Credentials flow.
 
 ## Quick Start (OAuth Client JSON)
 
@@ -16,7 +15,7 @@ Import credentials from JSON (`clientId`/`clientSecret` or `client_id`/`client_s
 
 ```bash
 ./scripts/opensky-import-client.sh ~/Downloads/credentials.json
-# or: pnpm run opensky:import ~/Downloads/credentials.json
+# or: npm run opensky:import -- ~/Downloads/credentials.json
 ```
 
 Then launch:
@@ -42,19 +41,26 @@ Launchers resolve OAuth creds in this order:
 2. `OPENSKY_CREDENTIALS_FILE`
 3. Keychain (`opensky-network` / `client_id`, `client_secret`)
 
-## Troubleshooting
+## Basic Auth (Legacy)
 
-`pnpm run doctor` checks the auth mode, that both halves of the client are
-set, and the credentials file, without starting the server.
+Basic auth is still supported for now, but OpenSky is moving away from it.
+
+```bash
+OPENSKY_AUTH_MODE=basic ./scripts/dev-fresh.sh
+```
+
+## Troubleshooting
 
 Inspect proxy headers:
 
 ```bash
-curl -si http://localhost:4173/api/opensky | grep -iE 'HTTP/|X-OpenSky-Auth'
+curl -si http://localhost:4173/api/flights | grep -iE 'HTTP/|X-OpenSky-Auth'
 ```
 
 Useful reasons:
 
 - `oauth_invalid_or_missing`: OAuth client not found/usable
 - `oauth_invalid_credentials`: OAuth client rejected by OpenSky
+- `basic_invalid_credentials`: username/password rejected
+- `missing_basic_creds`: basic mode missing user/pass
 - `rate_limited`: OpenSky throttling

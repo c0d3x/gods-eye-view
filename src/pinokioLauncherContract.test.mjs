@@ -1,14 +1,6 @@
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
-import {
-  access,
-  copyFile,
-  mkdir,
-  mkdtemp,
-  rm,
-  symlink,
-  writeFile,
-} from 'node:fs/promises';
+import { access, copyFile, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
@@ -71,14 +63,8 @@ test('Pinokio start has one fail-closed launcher process', () => {
 test('Pinokio install records success explicitly instead of trusting node_modules', async () => {
   const install = require('../pinokio/install.js');
   const fs = await import('node:fs/promises');
-  const installSource = await fs.readFile(
-    new URL('../scripts/pinokio-install.mjs', import.meta.url),
-    'utf8',
-  );
-  assert.equal(
-    install.run.at(-1).params.message,
-    'node scripts/pinokio-install.mjs',
-  );
+  const installSource = await fs.readFile(new URL('../scripts/pinokio-install.mjs', import.meta.url), 'utf8');
+  assert.equal(install.run.at(-1).params.message, 'node scripts/pinokio-install.mjs');
   assert.equal(install.run[0].when, "{{!kernel.exists(cwd, 'ENVIRONMENT')}}");
   assert.match(installSource, /includeKeychain: false/);
   assert.match(installSource, /authoritativeEnvironment: true/);
@@ -99,10 +85,7 @@ test('Pinokio menu resolves the nested install marker and exposes each lifecycle
   const launcherPath = path.join(launcherDir, 'pinokio.js');
   const markerPath = path.join(launcherDir, '.installed');
   await mkdir(launcherDir, { recursive: true });
-  await copyFile(
-    new URL('../pinokio/pinokio.js', import.meta.url),
-    launcherPath,
-  );
+  await copyFile(new URL('../pinokio/pinokio.js', import.meta.url), launcherPath);
 
   const existsCalls = [];
   const kernel = {
@@ -118,10 +101,9 @@ test('Pinokio menu resolves the nested install marker and exposes each lifecycle
   };
   const runtime = { running: null, url: null };
   const info = {
-    exists: () =>
-      assert.fail('menu must resolve the marker through kernel.exists'),
+    exists: () => assert.fail('menu must resolve the marker through kernel.exists'),
     running: (href) => runtime.running === href,
-    local: () => (runtime.url ? { url: runtime.url } : {}),
+    local: () => runtime.url ? { url: runtime.url } : {},
   };
   const { menu } = require(launcherPath);
   const render = async ({ installed, running = null, url = null }) => {
@@ -131,11 +113,7 @@ test('Pinokio menu resolves the nested install marker and exposes each lifecycle
     runtime.url = url;
     const items = await menu(kernel, info);
     assert.equal(items.filter((item) => item.default).length, 1);
-    return items.map(({ text, href, default: isDefault = false }) => ({
-      text,
-      href,
-      default: isDefault,
-    }));
+    return items.map(({ text, href, default: isDefault = false }) => ({ text, href, default: isDefault }));
   };
 
   assert.deepEqual(await render({ installed: false }), [
@@ -158,21 +136,14 @@ test('Pinokio menu resolves the nested install marker and exposes each lifecycle
   assert.deepEqual(await render({ installed: true, running: 'start.js' }), [
     { text: 'Starting', href: 'start.js', default: true },
   ]);
-  assert.deepEqual(
-    await render({
-      installed: true,
-      running: 'start.js',
-      url: 'http://127.0.0.1:4173/',
-    }),
-    [
-      {
-        text: "Open God's Eye View",
-        href: 'http://127.0.0.1:4173/',
-        default: true,
-      },
-      { text: 'Server', href: 'start.js', default: false },
-    ],
-  );
+  assert.deepEqual(await render({
+    installed: true,
+    running: 'start.js',
+    url: 'http://127.0.0.1:4173/',
+  }), [
+    { text: "Open God's Eye View", href: 'http://127.0.0.1:4173/', default: true },
+    { text: 'Server', href: 'start.js', default: false },
+  ]);
   assert.ok(existsCalls.length >= 7);
   const resolvedLauncherDir = realpathSync(launcherDir);
   for (const chunks of existsCalls) {
@@ -190,28 +161,18 @@ test('Pinokio install recognizes direct execution through a linked app directory
   await mkdir(path.dirname(modulePath), { recursive: true });
   await writeFile(modulePath, '');
   await writeFile(other, '');
-  await symlink(
-    target,
-    linked,
-    process.platform === 'win32' ? 'junction' : 'dir',
-  );
+  await symlink(target, linked, process.platform === 'win32' ? 'junction' : 'dir');
 
-  assert.equal(
-    isDirectInvocation(
-      path.join(linked, 'scripts', 'pinokio-install.mjs'),
-      modulePath,
-    ),
-    true,
-  );
+  assert.equal(isDirectInvocation(
+    path.join(linked, 'scripts', 'pinokio-install.mjs'),
+    modulePath,
+  ), true);
   assert.equal(isDirectInvocation(other, modulePath), false);
 });
 
 test('Pinokio direct execution fallback remains exact and Update-safe', () => {
   const missing = path.join(os.tmpdir(), 'gev-missing-pinokio-install.mjs');
-  const differentMissing = path.join(
-    os.tmpdir(),
-    'gev-other-missing-pinokio-install.mjs',
-  );
+  const differentMissing = path.join(os.tmpdir(), 'gev-other-missing-pinokio-install.mjs');
   const updatePath = path.resolve('scripts/pinokio-update.mjs');
   const installPath = path.resolve('scripts/pinokio-install.mjs');
 
@@ -233,21 +194,13 @@ test('Pinokio Update forwards the app fields used by its install doctor', () => 
 });
 
 test('Pinokio start runner emits an ANSI-independent ready URL', async () => {
-  const source = await import('node:fs/promises').then((fs) =>
-    fs.readFile(
-      new URL('../scripts/pinokio-start.mjs', import.meta.url),
-      'utf8',
-    ),
-  );
-  assert.match(
-    source,
-    /\[Pinokio\] Ready at http:\/\/127\.0\.0\.1:\$\{port\}\//,
-  );
+  const source = await import('node:fs/promises')
+    .then((fs) => fs.readFile(new URL('../scripts/pinokio-start.mjs', import.meta.url), 'utf8'));
+  assert.match(source, /\[Pinokio\] Ready at http:\/\/127\.0\.0\.1:\$\{port\}\//);
   assert.match(source, /applyPinokioEnvironment\(\)/);
   assert.match(source, /loadViteFromCanonicalRoot\(\)/);
   assert.ok(
-    source.indexOf('loadViteFromCanonicalRoot()') <
-      source.indexOf('createServer({'),
+    source.indexOf('loadViteFromCanonicalRoot()') < source.indexOf('createServer({'),
   );
 });
 
@@ -261,11 +214,7 @@ test('Pinokio start enters the canonical app root before loading Vite', async (t
   const target = path.join(fixture, 'candidate');
   const linked = path.join(fixture, 'installed-app');
   await mkdir(target, { recursive: true });
-  await symlink(
-    target,
-    linked,
-    process.platform === 'win32' ? 'junction' : 'dir',
-  );
+  await symlink(target, linked, process.platform === 'win32' ? 'junction' : 'dir');
   const sentinel = { createServer: Symbol('createServer') };
 
   const loaded = await loadViteFromCanonicalRoot(linked, async () => {
@@ -278,9 +227,8 @@ test('Pinokio start enters the canonical app root before loading Vite', async (t
 
 test('Pinokio keeps the supported local.url readiness key while disabling its share trigger', async () => {
   const script = require('../pinokio/start.js');
-  const menuSource = await import('node:fs/promises').then((fs) =>
-    fs.readFile(new URL('../pinokio/pinokio.js', import.meta.url), 'utf8'),
-  );
+  const menuSource = await import('node:fs/promises')
+    .then((fs) => fs.readFile(new URL('../pinokio/pinokio.js', import.meta.url), 'utf8'));
   assert.equal(script.run[1].method, 'local.set');
   assert.equal(script.run[1].params.url, '{{input.event[1]}}');
   assert.match(menuSource, /local\?\.url/);

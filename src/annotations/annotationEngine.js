@@ -1,3 +1,5 @@
+import { isUnavailableCapability } from '../sources/capability.js';
+import { defaultGeospatial } from '../search/defaults.js';
 import * as Cesium from 'cesium';
 import {
   holdContinuousRender,
@@ -6,7 +8,9 @@ import {
 import {
   isRateLimitedOutcome,
   resolveAnnotationTarget,
+  sampleGroundHeight,
 } from './annotationResolver.js';
+import { ringCentroid } from './drawMode.js';
 
 // Dev convenience: expose the app's Cesium instance for console/preview probing
 // (single shared module instance — avoids dual-Cesium state bugs when testing).
@@ -78,6 +82,7 @@ export async function resolveOutlineWithRetry(
     } catch {
       fp = null; // hard failure — definitive, keep the honest point
     }
+    if (isUnavailableCapability(fp)) return fp;
     if (isRateLimitedOutcome(fp)) {
       // A throttle gets one deliberately spaced retry. If that retry is throttled
       // too, stop this mark's outline task instead of replaying the batch storm.
@@ -114,6 +119,7 @@ export function normalizeTargetKey(target) {
 }
 
 export function createAnnotationEngine({
+  placeSearch = defaultGeospatial,
   viewer,
   renderer,
   outlineRetryDelaysMs = OUTLINE_RETRY_DELAYS_MS,
@@ -285,7 +291,9 @@ export function createAnnotationEngine({
     // mutation pass below then runs in ORDER, so de-dup, the synchronous live-cap check, and output
     // order are all preserved exactly as the old serial loop had them.
     const settled = await Promise.allSettled(
-      list.map((spec) => resolveSpec(spec, controller.signal)),
+      list.map((spec) =>
+        resolveSpec(spec, controller.signal, opts.flyTo === true),
+      ),
     );
 
     try {
@@ -327,6 +335,7 @@ export function createAnnotationEngine({
               // refreshes it — usually instantly from the footprint cache.
               if (anno.pendingOutline && !anno.ring && dup.ring) {
                 anno.ring = dup.ring;
+                anno.polygons = dup.polygons || null;
                 anno.footprintKind = dup.footprintKind || null;
                 anno.buildingHeight = dup.buildingHeight || null;
                 anno.synthesized = Boolean(dup.synthesized);
@@ -471,8 +480,11 @@ export function createAnnotationEngine({
     };
   }
 
-  async function resolveSpec(spec, signal) {
+  async function resolveSpec(spec, signal, allowDistant = false) {
     const type = normalizeType(spec?.type);
+    // MANUAL geometry (drawTool.js): the person clicked the vertices, so there is
+    // nothing to resolve. Same record shapes as a resolved spec, source 'manual'.
+    if (isManualSpec(spec, type)) return resolveManualSpec(spec, type, viewer);
     if (type === 'route') {
       const points = Array.isArray(spec.points) ? spec.points : [];
       if (points.length < 2)
@@ -482,6 +494,7 @@ export function createAnnotationEngine({
       for (const pt of points) {
         const name = pt.target ?? pt.name ?? null;
         const r = await resolveTarget({
+          placeSearch,
           viewer,
           target: name,
           latitude: pt.latitude,
@@ -489,6 +502,7 @@ export function createAnnotationEngine({
           screenX: pt.screenX,
           screenY: pt.screenY,
           footprint: false,
+          allowDistant,
           signal,
         });
         if (r) resolvedPts.push(r);
@@ -510,6 +524,7 @@ export function createAnnotationEngine({
         resolvedPts.map((p) => [p.lon, p.lat]),
         mode,
         signal,
+        placeSearch,
       );
       if (routed) {
         return {
@@ -537,6 +552,7 @@ export function createAnnotationEngine({
     }
     if (type === 'arrow') {
       const from = await resolveTarget({
+        placeSearch,
         viewer,
         target: spec.target,
         latitude: spec.latitude,
@@ -544,9 +560,11 @@ export function createAnnotationEngine({
         screenX: spec.screenX,
         screenY: spec.screenY,
         footprint: false,
+        allowDistant,
         signal,
       });
       const to = await resolveTarget({
+        placeSearch,
         viewer,
         target: spec.toTarget,
         latitude: spec.toLatitude,
@@ -554,6 +572,7 @@ export function createAnnotationEngine({
         screenX: spec.toScreenX,
         screenY: spec.toScreenY,
         footprint: false,
+        allowDistant,
         signal,
       });
       if (!from || !to) {
@@ -578,6 +597,7 @@ export function createAnnotationEngine({
     const wantFootprint =
       type === 'area' ? spec.footprint !== false : Boolean(spec.footprint);
     return resolveTarget({
+      placeSearch,
       viewer,
       target: spec.target,
       latitude: spec.latitude,
@@ -596,6 +616,7 @@ export function createAnnotationEngine({
       // timeout — field test 7 logs); deferring them lets the mark appear and the tool
       // result return while the outline resolves, then upgrades the mark in place.
       deferFootprint: wantFootprint,
+      allowDistant,
       signal,
     });
   }
@@ -655,8 +676,11 @@ export function createAnnotationEngine({
       if (myGen !== generation || controller.signal.aborted) return; // board superseded
       if (!annotations.has(anno.id)) return; // mark replaced/removed while resolving
       anno.pendingOutline = false;
-      if (fp) {
+      anno.outlineUnavailable = isUnavailableCapability(fp);
+      if (anno.outlineUnavailable) renderer.update(anno);
+      if (fp && !anno.outlineUnavailable) {
         anno.ring = fp.ring;
+        anno.polygons = fp.polygons || null;
         anno.footprintKind = fp.footprintKind || null;
         anno.buildingHeight = fp.buildingHeight || null;
         anno.synthesized = Boolean(fp.synthesized);
@@ -707,7 +731,14 @@ export function createAnnotationEngine({
         id: anno.id,
         label: anno.label || null,
         target: anno.targetKey || null,
-        status: fp ? 'resolved' : 'failed',
+        status: anno.outlineUnavailable
+          ? 'unavailable'
+          : fp
+            ? 'resolved'
+            : 'failed',
+        ...(anno.outlineUnavailable
+          ? { message: 'Detailed outline unavailable' }
+          : {}),
         ...(fp && anno.synthesized ? { approximate: true } : {}),
       });
     } finally {
@@ -735,6 +766,9 @@ export function createAnnotationEngine({
       // layer narrate without waiting out a slow Overpass — and without calling the
       // missing outline a failure.
       ...(anno.pendingOutline ? { outlinePending: true } : {}),
+      ...(anno.outlineUnavailable
+        ? { outlineUnavailable: true, message: 'Detailed outline unavailable' }
+        : {}),
       // approximate=true means the area was SYNTHESIZED (a buffered blob around a label
       // point), not a real OSM boundary — so the voice layer can be honest.
       ...(anno.synthesized ? { approximate: true } : {}),
@@ -901,13 +935,17 @@ export function createAnnotationEngine({
       anchor: { lon: resolved.lon, lat: resolved.lat, height: resolved.height },
       to: null,
       ring: resolved.ring || null,
+      // Every part with its holes ([outer, ...holes][]), when the outline has
+      // more than the main ring (Hawaii's islands, Berlin inside Brandenburg).
+      polygons: resolved.polygons || null,
       footprintKind: resolved.footprintKind || null, // 'building' | 'area'
       buildingHeight: resolved.buildingHeight || null, // meters, for extruded volume
       synthesized: Boolean(resolved.synthesized), // approximate buffered area → dashed render
       // Progressive outline: the anchor is placed, the footprint is still resolving —
       // the upgrade task fills ring/kind in place when it lands. Transient render state
-      // (not serialized to GeoJSON).
+      // (not persisted).
       pendingOutline: typeof resolved.resolveOutline === 'function',
+      outlineUnavailable: Boolean(resolved.outlineUnavailable),
       // Which THING + SHAPE was asked for — the dedup identity while geometry is still
       // pending (see findDuplicate). targetKey is the normalized place name with trailing
       // locality qualifiers stripped ("California, United States" ≡ "California"; null for
@@ -1029,7 +1067,11 @@ export function createAnnotationEngine({
       // Places viewport box when we have one, so a big compound isn't framed at
       // building scale while its outline is traced. Never re-fly when the ring lands.
       const range = anno.ring
-        ? ringRange(anno.ring)
+        ? ringRange(
+            anno.polygons?.length
+              ? anno.polygons.flatMap((poly) => poly[0])
+              : anno.ring,
+          )
         : viewportRange(anno.viewport) || 600;
       viewer.camera.flyToBoundingSphere(
         new Cesium.BoundingSphere(
@@ -1289,7 +1331,8 @@ function specTargets(spec) {
  * arrow endpoint) when known; otherwise it derives them from the spec.
  */
 function failResult(spec, error, failedTargets) {
-  const targets = failedTargets?.length ? failedTargets : specTargets(spec);
+  const targets =
+    failedTargets && failedTargets.length ? failedTargets : specTargets(spec);
   return {
     ok: false,
     label: spec?.label || spec?.target || targets[0] || null,
@@ -1369,7 +1412,11 @@ function ringRange(ring) {
   let maxLat = -Infinity;
   let minLon = Infinity;
   let maxLon = -Infinity;
-  for (const [lon, lat] of ring) {
+  // Unwrap around the first vertex so parts cut at the antimeridian (the
+  // Aleutians) measure as neighbours, not as a globe-wide span.
+  const ref = ring[0]?.[0] ?? 0;
+  for (const [rawLon, lat] of ring) {
+    const lon = rawLon - 360 * Math.round((rawLon - ref) / 360);
     if (lat < minLat) minLat = lat;
     if (lat > maxLat) maxLat = lat;
     if (lon < minLon) minLon = lon;
@@ -1391,6 +1438,108 @@ function round5(n) {
   return Number.isFinite(n) ? Math.round(n * 1e5) / 1e5 : null;
 }
 
+/** A spec whose geometry was supplied by hand (drawTool.js) rather than by a name. */
+function isManualSpec(spec, type) {
+  if (!spec || spec.manual !== true) return false;
+  if (type === 'route')
+    return Array.isArray(spec.path) && spec.path.length >= 2;
+  if (type === 'area') return Array.isArray(spec.ring) && spec.ring.length >= 3;
+  return (
+    Number.isFinite(Number(spec.latitude)) &&
+    Number.isFinite(Number(spec.longitude))
+  );
+}
+
+/** [lon, lat] pairs or {lon, lat} objects → [lon, lat] pairs, invalid entries dropped. */
+function manualPairs(list) {
+  return (Array.isArray(list) ? list : [])
+    .map((p) =>
+      Array.isArray(p)
+        ? [Number(p[0]), Number(p[1])]
+        : [Number(p?.lon ?? p?.longitude), Number(p?.lat ?? p?.latitude)],
+    )
+    .filter(
+      ([lon, lat]) =>
+        Number.isFinite(lon) &&
+        Number.isFinite(lat) &&
+        Math.abs(lat) <= 90 &&
+        Math.abs(lon) <= 180,
+    );
+}
+
+/**
+ * Resolve a hand-drawn spec without any fetch. An area keeps its ring as a real
+ * (not synthesized) outline so it drapes solid; a line is a `route` with mode
+ * 'manual', its length as distance and no travel time; a pin is a point.
+ */
+function resolveManualSpec(spec, type, viewer) {
+  if (type === 'route') {
+    // height 0 is a placeholder, not a placement: the world renderer draws a
+    // route with clampToGround + CESIUM_3D_TILE classification, so the line is
+    // draped onto the photoreal surface whatever this number says.
+    const pts = manualPairs(spec.path).map(([lon, lat]) => ({
+      lon,
+      lat,
+      height: 0,
+    }));
+    if (pts.length < 2) throw new Error('a drawn line needs at least 2 points');
+    let distanceM = 0;
+    for (let i = 1; i < pts.length; i += 1)
+      distanceM += greatCircleM(pts[i - 1], pts[i]);
+    return {
+      path: pts,
+      distanceM,
+      durationS: null,
+      mode: 'manual',
+      source: 'manual',
+      fallback: false,
+    };
+  }
+  if (type === 'area') {
+    const ring = manualPairs(spec.ring);
+    if (ring.length < 3)
+      throw new Error('a drawn area needs at least 3 points');
+    // Averaged through ringCentroid, which unwraps longitudes first: a ring
+    // straddling the antimeridian has coordinates like [179.999, -179.999], and
+    // a raw mean of those puts the anchor on the Greenwich meridian, half a
+    // world from the shape it belongs to. A repeated closing vertex is dropped
+    // so it does not weight its own corner twice.
+    const distinct = closedRingWithoutRepeat(ring);
+    const centre = ringCentroid(distinct.map(([lon, lat]) => ({ lon, lat })));
+    const lon = centre.lon;
+    const lat = centre.lat;
+    return {
+      lon,
+      lat,
+      height: sampleGroundHeight(viewer, lon, lat),
+      ring,
+      footprintKind: 'area',
+      buildingHeight: null,
+      synthesized: false,
+      source: 'manual',
+    };
+  }
+  const lon = Number(spec.longitude);
+  const lat = Number(spec.latitude);
+  return {
+    lon,
+    lat,
+    height: sampleGroundHeight(viewer, lon, lat),
+    ring: null,
+    source: 'manual',
+  };
+}
+
+/** The ring's distinct positions: a closing vertex that repeats the first is dropped. */
+function closedRingWithoutRepeat(ring) {
+  if (ring.length < 2) return ring;
+  const [firstLon, firstLat] = ring[0];
+  const [lastLon, lastLat] = ring[ring.length - 1];
+  return firstLon === lastLon && firstLat === lastLat
+    ? ring.slice(0, -1)
+    : ring;
+}
+
 function normalizeMode(m) {
   const t = String(m || '').toLowerCase();
   if (t === 'car' || t === 'drive' || t === 'driving') return 'car';
@@ -1399,33 +1548,13 @@ function normalizeMode(m) {
   return 'foot';
 }
 
-/** Fetch a real street-following route from the /api/route proxy (OSM/OSRM). */
-async function fetchRoute(coordPairs, mode, externalSignal) {
-  const controller = new AbortController();
-  const onAbort = () => controller.abort();
-  if (externalSignal) {
-    if (externalSignal.aborted) controller.abort();
-    else externalSignal.addEventListener('abort', onAbort, { once: true });
-  }
-  const timer = setTimeout(() => controller.abort(), 13000);
+/** Route failure remains an explicitly labelled direct line in the caller. */
+async function fetchRoute(coordPairs, mode, signal, service) {
   try {
-    const coords = coordPairs
-      .map(([lon, lat]) => `${lon.toFixed(6)},${lat.toFixed(6)}`)
-      .join(';');
-    const res = await fetch(
-      `/api/route?profile=${mode}&coords=${encodeURIComponent(coords)}`,
-      { signal: controller.signal },
-    );
-    const data = await res.json();
-    if (data?.ok && Array.isArray(data.geometry) && data.geometry.length >= 2)
-      return data;
+    return (await service.route?.(coordPairs, mode, { signal })) || null;
   } catch {
-    /* routing unavailable / aborted → caller falls back to straight segments */
-  } finally {
-    clearTimeout(timer);
-    if (externalSignal) externalSignal.removeEventListener('abort', onAbort);
+    return null;
   }
-  return null;
 }
 
 function greatCircleM(a, b) {
@@ -1452,6 +1581,7 @@ function composeRouteLabel(baseLabel, distM, durS, mode, fallback) {
   if (!dist) return baseLabel;
   const min = Number.isFinite(durS) ? Math.max(1, Math.round(durS / 60)) : null;
   const word = mode === 'car' ? 'drive' : mode === 'bike' ? 'ride' : 'walk';
+  if (mode === 'manual') return baseLabel ? `${baseLabel} — ${dist}` : dist;
   // Fallback = routing was unavailable, so we drew a straight line: label it as a
   // direct line with no travel time (never claim an "X min walk" we didn't compute).
   let metrics;

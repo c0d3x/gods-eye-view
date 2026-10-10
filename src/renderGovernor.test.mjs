@@ -1,12 +1,12 @@
+import { test, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { beforeEach, test } from 'node:test';
 import {
-  _resetRenderGovernorForTest,
-  getRenderGovernorDiagnostics,
-  governorRequestRender,
-  holdContinuousRender,
   installRenderGovernor,
+  holdContinuousRender,
   releaseContinuousRender,
+  governorRequestRender,
+  getRenderGovernorDiagnostics,
+  _resetRenderGovernorForTest,
 } from './renderGovernor.js';
 
 function makeViewer() {
@@ -14,9 +14,7 @@ function makeViewer() {
   const scene = {
     requestRenderMode: false,
     maximumRenderTimeChange: 0,
-    requestRender() {
-      calls.requestRender += 1;
-    },
+    requestRender() { calls.requestRender += 1; },
   };
   return { viewer: { scene }, scene, calls };
 }
@@ -50,11 +48,7 @@ test('holds are identity-keyed: double-hold cannot leak, double-release cannot c
   holdContinuousRender('traffic');
   holdContinuousRender('traffic');
   releaseContinuousRender('traffic');
-  assert.equal(
-    scene.requestRenderMode,
-    true,
-    'single release clears an idempotent double-hold',
-  );
+  assert.equal(scene.requestRenderMode, true, 'single release clears an idempotent double-hold');
   releaseContinuousRender('traffic');
   releaseContinuousRender('never-held');
   assert.equal(scene.requestRenderMode, true);
@@ -78,10 +72,7 @@ test('governorRequestRender forwards to the scene and records reasons only in id
   const baseline = calls.requestRender;
   governorRequestRender('layer-tick:earthquakes');
   assert.equal(calls.requestRender, baseline + 1);
-  assert.equal(
-    getRenderGovernorDiagnostics().recentRequests.at(-1).reason,
-    'layer-tick:earthquakes',
-  );
+  assert.equal(getRenderGovernorDiagnostics().recentRequests.at(-1).reason, 'layer-tick:earthquakes');
   holdContinuousRender('flights');
   const idleRequests = getRenderGovernorDiagnostics().recentRequests.length;
   governorRequestRender('slider');
@@ -103,11 +94,7 @@ test('holds registered before install apply at install time', () => {
   holdContinuousRender('flights');
   const { viewer, scene } = makeViewer();
   installRenderGovernor(viewer);
-  assert.equal(
-    scene.requestRenderMode,
-    false,
-    'pre-install hold keeps continuous mode',
-  );
+  assert.equal(scene.requestRenderMode, false, 'pre-install hold keeps continuous mode');
   releaseContinuousRender('flights');
   assert.equal(scene.requestRenderMode, true);
 });

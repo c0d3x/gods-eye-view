@@ -1,3 +1,5 @@
+import { createSurfaceKeyboard } from './ui/surfaceKeyboard.js';
+
 // First-run mission launcher.
 //
 // The map deliberately does not auto-enable live feeds on every visit: doing so
@@ -105,9 +107,13 @@ export const FIRST_RUN_MISSIONS = Object.freeze({
     //
     // Keyless, FIRMS is honest where it counts — its own layer row reads
     // "UNAVAILABLE · NASA FIRMS · LIVE · KEY REQUIRED", and the quakes half of
-    // the tile still delivers in full. The global status chip agrees: a layer
-    // that only lacks its key ends the load as KEY REQUIRED, naming the key,
-    // rather than LOAD FAILED (the needs-key state in src/loadingFeedback.js).
+    // the tile still delivers in full. What is NOT honest is the GLOBAL status
+    // chip, which has no key-required terminal state and folds that row into
+    // "LOAD FAILED". That aggregation is the defect, not this preset: fixing it
+    // means a KEY REQUIRED terminal state in src/loadingFeedback.js, a state
+    // machine shared by every layer and not a thing to refactor the night
+    // before a launch. LEDGERED post-launch. Until it lands, keyless visitors
+    // are judged on the layer row, which tells them the truth.
     layerIds: Object.freeze(['earthquakes', 'local-firms']),
     busyText: 'Scanning active events…',
   }),
@@ -205,6 +211,9 @@ export function shouldShowFirstRun({
   if (hasShareState) return false;
   const params = new URLSearchParams(location?.search || '');
   if (params.get('welcome') === '0') return false;
+  // An embedded globe never shows the welcome launcher.
+  if (params.get('embed') === '1' || globalThis.GEV_EMBED_INLINE === true)
+    return false;
   // The demo/support escape hatch outranks both suppressions on purpose.
   if (params.get('welcome') === '1') return true;
   if (readStored('local', storage, FIRST_RUN_STORAGE_KEY) === 'suppressed')
@@ -357,19 +366,8 @@ export function initFirstRunExperience({
   const suppressBox = root.querySelector('[data-first-run-suppress]');
   const buttons = [...root.querySelectorAll('[data-first-run-choice]')];
   const defaultStatus = status?.textContent || '';
-  const previouslyFocused = documentRef.activeElement;
   let busy = false;
   let closing = false;
-
-  const focusables = () =>
-    [
-      ...root.querySelectorAll(
-        'button, input, [href], [tabindex]:not([tabindex="-1"])',
-      ),
-    ].filter(
-      (node) =>
-        !node.hasAttribute('disabled') && node.getClientRects().length > 0,
-    );
 
   /**
    * Is something painted OVER the card? A measurable box is not a visible card.
@@ -421,38 +419,18 @@ export function initFirstRunExperience({
     if (closing) return;
     closing = true;
     rememberFirstRunSessionDismissed(sessionStorageRef);
-    documentRef.removeEventListener('keydown', onKeyDown, true);
+    root.classList.remove('visible');
+    root.setAttribute('aria-hidden', 'true');
     globalThis.removeEventListener?.('resize', onViewportResize);
     surfaceObserver?.disconnect();
-    // Focus leaves BEFORE the card hides: Chrome refuses aria-hidden on a
-    // subtree that still holds focus, and a screen reader can be left on
-    // content that is gone. Return the keyboard where it was, not to a node
-    // that is being removed — but never when yielding, because the surface
-    // taking over owns focus. If it has not taken it yet, focus only drops out
-    // of the card, so that surface can still claim it.
-    if (restoreFocus) {
-      if (
-        typeof previouslyFocused?.focus === 'function' &&
-        previouslyFocused.isConnected
-      ) {
-        previouslyFocused.focus({ preventScroll: true });
-      } else {
-        documentRef.body?.focus?.({ preventScroll: true });
-      }
-    }
-    const active = documentRef.activeElement;
-    if (active && active !== documentRef.body && root.contains(active))
-      active.blur?.();
-    root.classList.remove('visible');
-    // inert keeps the leaving card out of the tab order and the accessibility
-    // tree; aria-hidden covers engines without inert.
-    root.inert = true;
-    root.setAttribute('aria-hidden', 'true');
     const remove = () => root.remove();
     root.addEventListener('transitionend', remove, { once: true });
     // `transitionend` never fires under prefers-reduced-motion (no transition),
     // so a bounded fallback is what actually removes the node there.
     globalThis.setTimeout?.(remove, 400);
+    // Return the keyboard where it was, not to a node that is being removed —
+    // but never when yielding, because the surface taking over owns focus now.
+    keyboard.deactivate({ restoreFocus });
   };
 
   const setBusy = (next, choice = '') => {
@@ -535,60 +513,21 @@ export function initFirstRunExperience({
       'This browser is blocking storage, so that could not be saved.';
   };
 
-  function onKeyDown(event) {
-    // THE ARBITRATION RULE: never consume input for a card nobody can see.
-    // The observer below normally removes the launcher before another surface
-    // finishes engaging, but MutationObserver callbacks are microtasks, so a
-    // keydown can still arrive in the window between the class landing and the
-    // yield running. This check closes that window deterministically.
-    if (closing || !isTopmost()) return;
-    // AND THE BELT FOR THE COOPERATIVE HALF. A surface that owns this key marks
-    // it handled (preventDefault) and silences the rest of us on the way past
-    // (stopImmediatePropagation). If one of them ever ships only the first half,
-    // the mark alone still keeps ONE key to ONE action — which is precisely what
-    // the compact Radio disclosure did with a plain stopPropagation(), a call
-    // that never blocks later listeners on the same document.
-    if (event.defaultPrevented) return;
-    if (event.key === 'Escape') {
-      // ESC is an exit, not a mission: it must work even mid-flight. The
-      // launcher is the topmost surface while it is up, so it consumes the key
-      // rather than also closing a panel the visitor cannot see behind it.
-      event.preventDefault();
-      event.stopPropagation();
-      dismiss();
-      return;
-    }
-    if (event.key !== 'Tab') return;
-    // Keep Tab inside the launcher while it is up. The rest of the page is
-    // deliberately still live to the mouse, so this stops short of claiming
-    // `aria-modal` — it confines the keyboard without asserting the map is inert.
-    const order = focusables();
-    if (!order.length) return;
-    const first = order[0];
-    const last = order[order.length - 1];
-    const active = documentRef.activeElement;
-    // Plain focus(), NOT preventScroll: on a short viewport the mission list
-    // scrolls inside the card, and a tile the keyboard just reached has to be
-    // brought into view rather than focused somewhere off-screen.
-    if (!root.contains(active)) {
-      event.preventDefault();
-      (event.shiftKey ? last : first).focus();
-      return;
-    }
-    if (event.shiftKey && active === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && active === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
+  const keyboard = createSurfaceKeyboard({
+    root,
+    documentRef,
+    // A measurable card may still be hidden by another surface. Check on the
+    // key itself, before the observer has had a chance to process that change.
+    isActive: () => !closing && isTopmost(),
+    onEscape: () => dismiss(),
+    fallbackFocus: () => documentRef.body,
+  });
 
   for (const button of buttons) button.addEventListener('click', onChoice);
   suppressBox?.addEventListener('change', onSuppressChange);
   // Capture phase: the app binds its own global hotkeys (including bare letters
   // that cycle detection and styles), and the launcher owns the keyboard first.
-  documentRef.addEventListener('keydown', onKeyDown, true);
+  keyboard.activate();
 
   // The scroll fade is an affordance, so it may only appear when the list really
   // overflows. On a viewport where all five tiles fit, a faded bottom edge would
@@ -664,7 +603,7 @@ export function initFirstRunExperience({
    * And the no-show IS benign: the card stays hidden, the key handler is inert
    * (isTopmost() is false), no session flag is written, and the observer is
    * still watching — so it appears the moment the class clears, and returns next
-   * session regardless. Documented in docs/current-state/first-run-and-sharing.md.
+   * session regardless. Documented in docs/CURRENT-STATE.md.
    */
   const syncToExclusiveSurfaces = () => {
     if (closing) return;
@@ -694,7 +633,7 @@ export function initFirstRunExperience({
   // Teardown is not a user dismissal and must not change the show preference.
   const destroy = () => {
     closing = true;
-    documentRef.removeEventListener('keydown', onKeyDown, true);
+    keyboard.destroy();
     globalThis.removeEventListener?.('resize', onViewportResize);
     surfaceObserver?.disconnect();
     root.remove();

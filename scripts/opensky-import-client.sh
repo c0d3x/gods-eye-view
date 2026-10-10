@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SOURCE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT_DIR="$(cd "${GEV_PROJECT_ROOT:-$SOURCE_ROOT}" && pwd)"
 cd "${ROOT_DIR}"
 
 if ! command -v security >/dev/null 2>&1; then
@@ -39,21 +40,8 @@ if [[ -z "${CLIENT_ID}" || -z "${CLIENT_SECRET}" ]]; then
   exit 1
 fi
 
-# Hand each value to `security -i` on stdin. printf is a shell builtin, so
-# neither value appears in a process's argument list, where `ps` would show
-# it; `security add-generic-password -w <value>` would put it there.
-# `security -i` has its own quoting rules, so only plain token characters are
-# passed this way.
-TOKEN_RE='^[A-Za-z0-9._~+/=-]+$'
-if [[ ! "${CLIENT_ID}" =~ ${TOKEN_RE} || ! "${CLIENT_SECRET}" =~ ${TOKEN_RE} ]]; then
-  echo "error: the client id or secret contains characters this script can't pass to the Keychain safely."
-  echo "Store them by hand instead; security prompts for each value:"
-  echo "  security add-generic-password -U -s opensky-network -a client_id -w"
-  echo "  security add-generic-password -U -s opensky-network -a client_secret -w"
-  exit 1
-fi
-printf 'add-generic-password -U -s opensky-network -a client_id -w %s\n' "${CLIENT_ID}" | security -i >/dev/null
-printf 'add-generic-password -U -s opensky-network -a client_secret -w %s\n' "${CLIENT_SECRET}" | security -i >/dev/null
+security add-generic-password -U -s "opensky-network" -a "client_id" -w "${CLIENT_ID}" >/dev/null
+security add-generic-password -U -s "opensky-network" -a "client_secret" -w "${CLIENT_SECRET}" >/dev/null
 
 echo "OpenSky OAuth client credentials stored in Keychain:"
 echo "  service=opensky-network account=client_id"

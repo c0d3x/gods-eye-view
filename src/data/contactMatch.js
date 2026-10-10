@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Shared identity matching for aircraft contact lookup (`findByQuery`).
  *
@@ -92,12 +91,12 @@ export function rankContactMatch({
     return CONTACT_MATCH_TIER.REGISTRATION_EXACT;
   }
 
-  if (callsignText?.startsWith(rawQuery))
+  if (callsignText && callsignText.startsWith(rawQuery))
     return CONTACT_MATCH_TIER.CALLSIGN_PREFIX;
   if (canonicalQuery && canonicalRegistration.startsWith(canonicalQuery)) {
     return CONTACT_MATCH_TIER.REGISTRATION_PREFIX;
   }
-  if (callsignText?.includes(rawQuery))
+  if (callsignText && callsignText.includes(rawQuery))
     return CONTACT_MATCH_TIER.CALLSIGN_SUBSTRING;
   if (canonicalQuery && canonicalRegistration.includes(canonicalQuery)) {
     return CONTACT_MATCH_TIER.REGISTRATION_SUBSTRING;

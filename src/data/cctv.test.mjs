@@ -13,60 +13,80 @@
 //
 // computeFrustumGeometry is PURE (no viewer, no scene queries) so it runs under
 // plain node:test.
-
-import assert from 'node:assert/strict';
 import { test } from 'node:test';
+// Preserve structural pins across component qualification and formatter wrapping.
+function componentFunctionSource(fn) {
+  return fn
+    .toString()
+    .replace(/\blayerState\./g, '')
+    .replace(/\bparts\.\w+\./g, '')
+    .replace(/,\s*(?=\))/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/\(\s+/g, '(');
+}
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as Cesium from 'cesium';
-import {
-  activateCctvCameraFromWorldClick,
-  CCTV_ACTIVATION_RESULT,
-  CCTV_FOCUS_REQUEST_EVENT,
-} from '../cctvFocusRequest.js';
-import { readUiSource } from '../testing/uiSources.mjs';
 import cctvLayer, {
+  CCTV_PROJECTION_OVERLAY_SOURCE_OPTIONS,
   _createCctvProjectionPlaneForTest,
   _extractPickedCameraIdForTest,
-  _pushAmbientCardEntriesForTest,
-  _setCctvCoverageStateForTest,
-  _setCctvOverlayHostForTest,
   _updateCctvProjectionPlaneForTest,
+  _setCctvCoverageStateForTest,
+  _pushAmbientCardEntriesForTest,
+  _setCctvOverlayHostForTest,
   activationProbeClampRange,
   bindCctvWorldClickGesture,
-  CCTV_CALIBRATION_STORAGE_KEY_V1,
-  CCTV_CALIBRATION_STORAGE_KEY_V2,
-  CCTV_FOCUS_RESULT,
-  CCTV_PROJECTION_OVERLAY_SOURCE_OPTIONS,
-  calibrationPatchMovesAnchor,
-  cctvCycleIndex,
-  cctvEmptyClickDeselects,
-  cctvGeometryDrainPacing,
-  cctvRecordNeedsActivation,
   clearProbeClampOnDeactivation,
   computeFrustumGeometry,
-  createGeometryProgressNotifier,
+  cctvCycleIndex,
+  cctvEmptyClickDeselects,
+  cctvRecordNeedsActivation,
   deactivateActiveCamera,
-  deriveCalBadge,
+  CCTV_FOCUS_RESULT,
   FRUSTUM_GROUND_CLEARANCE_M,
-  focusCctvRecord,
+  CCTV_CALIBRATION_STORAGE_KEY_V2,
+  CCTV_CALIBRATION_STORAGE_KEY_V1,
+  readCalibrationStoreV2,
+  writeCalibrationStoreV2,
+  deriveCalBadge,
+  surfaceRegimeKey,
+  calibrationPatchMovesAnchor,
+  migrateRangeScaleForFloor,
+  cctvGeometryDrainPacing,
+  createGeometryProgressNotifier,
+  normalizeCoverageMode,
   frameSignatureFromPixels,
+  focusCctvRecord,
   hideCctvRecordVisuals,
   materializeCctvActiveCoverageEntities,
   materializeCctvVisibleCoverageEntities,
   maybeAutoHop,
-  normalizeCoverageMode,
   prioritizeActiveCctvGeometryRecord,
   processCctvGeometryDrainBatch,
   processCctvGeometryQueueBatch,
   processGeometryBatch,
-  readCalibrationStoreV2,
   refreshCoverageStyles,
-  setActiveCamera,
   setCctvCardPresentationOptions,
-  surfaceRegimeKey,
-  writeCalibrationStoreV2,
+  setActiveCamera,
 } from './cctv.js';
+import {
+  CCTV_ACTIVATION_RESULT,
+  CCTV_FOCUS_REQUEST_EVENT,
+  activateCctvCameraFromWorldClick,
+} from '../cctvFocusRequest.js';
 
-const UI_SOURCE = readUiSource();
+const CCTV_PRESENTATION_SOURCE = fs.readFileSync(
+  path.join(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '..',
+    'ui',
+    'cctvPresentation.js',
+  ),
+  'utf8',
+);
 
 const ASPECT = 16 / 9;
 const toRad = (deg) => (deg * Math.PI) / 180;
@@ -221,7 +241,7 @@ test('lazy coverage inserts nothing at catalog init, then materializes only elig
     'building a 100-camera catalog must insert zero coverage entities',
   );
   assert.doesNotMatch(
-    cctvLayer.init.toString(),
+    componentFunctionSource(cctvLayer.init),
     /buildCoverageEntities|ensure(?:Active|Visible)CoverageEntities/,
   );
 
@@ -257,7 +277,7 @@ test('lazy coverage inserts nothing at catalog init, then materializes only elig
     15,
   );
   assert.match(
-    refreshCoverageStyles.toString(),
+    componentFunctionSource(refreshCoverageStyles),
     /ensureVisibleCoverageEntities\(_records, coverageVisible\)/,
   );
   assert.equal(
@@ -481,31 +501,66 @@ test('unclamped pose: corners keep their true plane altitudes (no clamp applied)
   );
 });
 
-test('ground clamp lifts the CAP CENTER only — the rectangle stays rigid (true pyramid)', () => {
+test('ground clearance lifts the whole rectangle rigidly until its lowest support clears the floor', () => {
   const g = computeFrustumGeometry(AUSTIN_FABRICATED_CAMERA, AUSTIN_GROUND);
   const floor = AUSTIN_GROUND + FRUSTUM_GROUND_CLEARANCE_M;
-  // Unclamped cap alt would be 160 + 210·sin(-24°) ≈ 74.6 m — far underground.
-  assert.equal(
-    g.capCenter.alt,
-    floor,
-    'cap center clamps exactly to the floor',
-  );
-  // Corners derive rigidly from the lifted center: alt = floor ± cos(pitch)·halfH.
-  // The bottom pair sits BELOW the floor (tiles occlude it) — per-corner clamping
-  // is what flattened the wireframe into a fan (owner field test 2026-07-04).
   const upVert = Math.cos(toRad(-24)) * g.halfH;
-  for (const key of ['tl', 'tr']) {
-    assert.ok(
-      Math.abs(g.corners[key].alt - (floor + upVert)) < 1e-6,
-      `${key} alt ${g.corners[key].alt}`,
-    );
-  }
+  // The bottom row is the limiting support on flat ground: it lands exactly on
+  // the floor and the rest of the rectangle rides up with it, rigidly.
+  assert.ok(g.liftM > 0, 'a downward pitch needs a lift');
+  assert.equal(
+    g.liftLimitedBy[0],
+    'b',
+    `limited by a bottom support, got ${g.liftLimitedBy}`,
+  );
   for (const key of ['bl', 'br']) {
     assert.ok(
-      Math.abs(g.corners[key].alt - (floor - upVert)) < 1e-6,
+      Math.abs(g.corners[key].alt - floor) < 1e-6,
+      `${key} alt ${g.corners[key].alt} vs floor ${floor}`,
+    );
+  }
+  assert.ok(
+    Math.abs(g.capCenter.alt - (floor + upVert)) < 1e-6,
+    'cap center sits one half-height above the floor',
+  );
+  for (const key of ['tl', 'tr']) {
+    assert.ok(
+      Math.abs(g.corners[key].alt - (floor + 2 * upVert)) < 1e-6,
       `${key} alt ${g.corners[key].alt}`,
     );
   }
+  // Nothing on the rectangle is below the floor any more.
+  for (const key of ['tl', 'tr', 'bl', 'br'])
+    assert.ok(g.corners[key].alt >= floor - 1e-6, key);
+});
+
+test('measured ground under a far support raises the plane further, still rigidly', () => {
+  const flat = computeFrustumGeometry(AUSTIN_FABRICATED_CAMERA, AUSTIN_GROUND);
+  const rise = 30;
+  const lifted = computeFrustumGeometry(
+    AUSTIN_FABRICATED_CAMERA,
+    AUSTIN_GROUND,
+    null,
+    {
+      br: AUSTIN_GROUND + rise,
+    },
+  );
+  assert.ok(
+    Math.abs(lifted.liftM - (flat.liftM + rise)) < 1e-6,
+    'lift grows by exactly the rise',
+  );
+  assert.equal(lifted.liftLimitedBy, 'br');
+  assert.equal(lifted.footprintMeasured, true);
+  for (const key of ['tl', 'tr', 'bl', 'br']) {
+    assert.ok(
+      Math.abs(lifted.corners[key].alt - flat.corners[key].alt - rise) < 1e-6,
+      key,
+    );
+  }
+  assert.ok(
+    Math.abs(lifted.mount.alt - flat.mount.alt) < 1e-6,
+    'the mount does not move',
+  );
 });
 
 test('clamped pose keeps corner/plane coincidence and the rigid 2·halfW × 2·halfH span', () => {
@@ -778,7 +833,7 @@ test('CCTV disable→enable defers the active-camera re-probe until its next act
   assert.equal(record.activationDone, false);
   assert.equal(cctvRecordNeedsActivation('active', 'active', record), true);
   assert.doesNotMatch(
-    cctvLayer.enable.toString(),
+    componentFunctionSource(cctvLayer.enable),
     /setActiveCamera|runActivationObstructionProbe|pickFromRay/,
     'enable must restore nominal visuals without entering the activation probe path',
   );
@@ -910,17 +965,23 @@ test('CCTV repeated in-world clicks dispatch focus only for the one real activat
   assert.deepEqual(activated, ['atx-cam-3', 'atx-cam-3', 'atx-cam-3']);
   assert.deepEqual(requests, [{ cameraId: 'atx-cam-3' }]);
   assert.match(
-    cctvLayer.init.toString(),
-    /bindCctvWorldClickGesture\(\s*_clickHandler/,
+    componentFunctionSource(cctvLayer.init),
+    /bindCctvWorldClickGesture\(_clickHandler/,
   );
-  assert.match(cctvLayer.init.toString(), /_cctvOverlayHost\.hitTest/);
-  assert.match(cctvLayer.init.toString(), /sourceId: CCTV_OVERLAY_SOURCE_ID/);
   assert.match(
-    cctvLayer.init.toString(),
+    componentFunctionSource(cctvLayer.init),
+    /_cctvOverlayHost\.hitTest/,
+  );
+  assert.match(
+    componentFunctionSource(cctvLayer.init),
+    /sourceId: CCTV_OVERLAY_SOURCE_ID/,
+  );
+  assert.match(
+    componentFunctionSource(cctvLayer.init),
     /activateCctvCameraFromWorldClick\(cameraId, setActiveCamera\)/,
   );
   assert.match(
-    cctvLayer.init.toString(),
+    componentFunctionSource(cctvLayer.init),
     /activateCctvCameraFromWorldClick\(cardId, setActiveCamera\)/,
   );
 });
@@ -1033,7 +1094,7 @@ test('CCTV empty-click gate excludes every identified scene object, ADJUST, and 
     'an ID-less surface pick remains true empty space',
   );
 
-  const initSource = cctvLayer.init.toString();
+  const initSource = componentFunctionSource(cctvLayer.init);
   assert.ok(
     initSource.indexOf('if (pickedId !== null) return') <
       initSource.indexOf('_cctvOverlayHost.hitTest'),
@@ -1206,8 +1267,8 @@ test('CCTV null-active coverage, auto-hop, cycling, and panel targets stay hones
     assert.equal(cctvCycleIndex(2, 1, records.length), 0);
     assert.equal(cctvCycleIndex(0, -1, records.length), records.length - 1);
 
-    const renderer = UI_SOURCE.match(
-      /_renderCctvState\(state\) \{[\s\S]*?\n {2}\}\n/,
+    const renderer = CCTV_PRESENTATION_SOURCE.match(
+      /_renderCctvState\(state\) \{[\s\S]*?\n\}\n/,
     );
     assert.ok(renderer, '_renderCctvState is missing');
     assert.match(
@@ -1216,7 +1277,7 @@ test('CCTV null-active coverage, auto-hop, cycling, and panel targets stay hones
     );
     assert.match(
       renderer[0],
-      /_cctvFocusBtn\s*\.disabled\s*=\s*!enabled\s*\|\|\s*cameras\s*\.length\s*===\s*0\s*\|\|\s*!activeId/,
+      /_cctvFocusBtn\.disabled\s*=\s*!enabled\s*\|\|\s*cameras\.length === 0\s*\|\|\s*!activeId/,
     );
   } finally {
     cctvLayer.setParams({ autoHop: false });
@@ -1682,4 +1743,60 @@ test('frameSignatureFromPixels: empty or junk input yields null (always redraw)'
   assert.equal(frameSignatureFromPixels(null), null);
   assert.equal(frameSignatureFromPixels(undefined), null);
   assert.equal(frameSignatureFromPixels({}), null);
+});
+
+test('a saved rangeScale keeps its effective range when the catalog range floor drops', () => {
+  const saved = {
+    offsetNorthM: 0,
+    offsetEastM: 0,
+    headingDeg: 0,
+    pitchDeg: 0,
+    fovDeg: 0,
+    rangeScale: 1.5,
+    heightM: 0,
+  };
+  // A 145 m pack range used to be inflated to 220 m: 220 × 1.5 = 330 m. The
+  // migrated multiplier reproduces that on the honest 145 m base.
+  const migrated = migrateRangeScaleForFloor(saved, 145);
+  assert.ok(
+    Math.abs(145 * migrated.rangeScale - 330) < 1,
+    `${145 * migrated.rangeScale}`,
+  );
+  // A pack range at or above the old floor was never inflated: unchanged.
+  assert.equal(migrateRangeScaleForFloor(saved, 250).rangeScale, 1.5);
+  assert.equal(migrateRangeScaleForFloor(saved, 220).rangeScale, 1.5);
+  // The 3× ceiling still applies.
+  assert.equal(
+    migrateRangeScaleForFloor({ ...saved, rangeScale: 3 }, 145).rangeScale,
+    3,
+  );
+});
+
+test('the footprint lift is capped so a tower under the far edge cannot launch the plane', () => {
+  // Rises are placed under a BOTTOM support: the top row already sits one
+  // plane-height higher, so a rise there is absorbed by the tilt first.
+  const flat = computeFrustumGeometry(AUSTIN_FABRICATED_CAMERA, AUSTIN_GROUND);
+  const tower = computeFrustumGeometry(
+    AUSTIN_FABRICATED_CAMERA,
+    AUSTIN_GROUND,
+    null,
+    {
+      br: AUSTIN_GROUND + 240,
+    },
+  );
+  assert.equal(tower.liftCapped, true);
+  assert.ok(
+    Math.abs(tower.liftM - (flat.liftM + 60)) < 1e-6,
+    `lift ${tower.liftM} vs ${flat.liftM}`,
+  );
+  const hill = computeFrustumGeometry(
+    AUSTIN_FABRICATED_CAMERA,
+    AUSTIN_GROUND,
+    null,
+    {
+      br: AUSTIN_GROUND + 30,
+    },
+  );
+  assert.equal(hill.liftCapped, false);
+  assert.ok(Math.abs(hill.liftM - (flat.liftM + 30)) < 1e-6);
 });

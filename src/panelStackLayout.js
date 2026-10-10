@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * Fits expanded panels into a shared vertical corridor. Natural heights are
  * retained when they fit; constrained panels keep a usable floor and share

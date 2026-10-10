@@ -1,4 +1,3 @@
-// @ts-check
 /**
  * @module worldOverlayTokens
  * @description Visual constants shared by the world-overlay host, painters,
@@ -25,6 +24,10 @@ export const WORLD_OVERLAY_STYLE = Object.freeze({
   fontTrackedTitle: '600 13px "JetBrains Mono", monospace',
   fontTrackedDetail: '500 11px "JetBrains Mono", monospace',
   radius: 4,
+  anchorDotRadius: 3.2,
+  anchorDotStrokeWidth: 1,
+  anchorDotStroke: 'rgba(4, 12, 16, 0.96)',
+  leaderWidth: 1.35,
 });
 
 /** CCTV's field-tested thumbnail-card overrides on top of shared card chrome. */
@@ -124,6 +127,12 @@ export const DETECTION_THEME_MAP = Object.freeze({
       veh_slow: '#ffb300',
       veh_free: '#00ff66',
       veh_nodata: '#c9c9c9',
+      transit_bus: '#5EF08A',
+      transit_tram: '#FFC24A',
+      transit_subway: '#FF4538',
+      transit_rail: '#D9A6FF',
+      transit_ferry: '#5FD6FF',
+      transit_unknown: '#D8DDE5',
     },
   },
   surveillance: {
@@ -148,6 +157,12 @@ export const DETECTION_THEME_MAP = Object.freeze({
       veh_slow: '#ffc24a',
       veh_free: '#45d8ff',
       veh_nodata: '#dcdcdc',
+      transit_bus: '#5EF08A',
+      transit_tram: '#FFC24A',
+      transit_subway: '#FF4538',
+      transit_rail: '#D9A6FF',
+      transit_ferry: '#5FD6FF',
+      transit_unknown: '#D8DDE5',
     },
   },
   thermal: {
@@ -172,6 +187,12 @@ export const DETECTION_THEME_MAP = Object.freeze({
       veh_slow: '#ffc24a',
       veh_free: '#2ecc71',
       veh_nodata: '#d8d8d8',
+      transit_bus: '#5EF08A',
+      transit_tram: '#FFC24A',
+      transit_subway: '#FF4538',
+      transit_rail: '#D9A6FF',
+      transit_ferry: '#5FD6FF',
+      transit_unknown: '#D8DDE5',
     },
   },
   _default: {
@@ -196,6 +217,12 @@ export const DETECTION_THEME_MAP = Object.freeze({
       veh_slow: '#f0b23e',
       veh_free: '#2ecc71',
       veh_nodata: '#c9c9c9',
+      transit_bus: '#5EF08A',
+      transit_tram: '#FFC24A',
+      transit_subway: '#FF4538',
+      transit_rail: '#D9A6FF',
+      transit_ferry: '#5FD6FF',
+      transit_unknown: '#D8DDE5',
     },
   },
 });

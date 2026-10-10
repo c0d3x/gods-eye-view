@@ -1,4 +1,3 @@
-// @ts-check
 /** Decide whether a loaded aircraft participates in a proximity query.
  *
  * `modelRendering` is the OWNERSHIP question, not `model.show`: a model that

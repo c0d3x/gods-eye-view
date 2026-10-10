@@ -31,6 +31,13 @@ const PROVIDER_STATIC_REFRESH_MS = Object.freeze({
   'austin transportation & public works': 5 * 60 * 1000,
   'transport for london': 3 * 60 * 1000,
   caltrans: 3 * 60 * 1000,
+  'ontario 511': 3 * 60 * 1000,
+  // TxDOT publishes roughly once a minute; 3 min matches the other highway packs.
+  txdot: 3 * 60 * 1000,
+  // Digitraffic publishes a new weathercam frame on each station's
+  // collectionInterval, 600 s for every station sampled; polling faster only
+  // re-fetches the same JPEG.
+  fintraffic: 10 * 60 * 1000,
 });
 
 /**
@@ -83,7 +90,7 @@ export function incumbentRankKm(
 export const CCTV_CARD_CENTER_WEIGHT = 0.5;
 
 /** Robust pool-distance percentile used to scale the screen-space term. */
-const CCTV_CARD_SPREAD_PERCENTILE = 0.9;
+export const CCTV_CARD_SPREAD_PERCENTILE = 0.9;
 
 /** True only when both viewport dimensions are finite positive pixels. */
 export function hasFiniteCctvViewport(viewW, viewH) {
@@ -161,8 +168,8 @@ export function blendCenterRankKm(
 // viewport is bucketed into this grid and every occupied cell gets its best
 // candidate before global rank fills the rest. Owner-tunable together with
 // the budgets above.
-const CCTV_CARD_GRID_COLS = 5;
-const CCTV_CARD_GRID_ROWS = 4;
+export const CCTV_CARD_GRID_COLS = 5;
+export const CCTV_CARD_GRID_ROWS = 4;
 
 /**
  * Screen-space distribution pass (owner round 2, item C). Buckets the

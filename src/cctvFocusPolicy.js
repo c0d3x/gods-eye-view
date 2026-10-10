@@ -27,7 +27,7 @@ export function runCctvLayerEnableFocus({
  * @param {Object} [after={}] Ownership immediately after the await.
  * @returns {{ trackedEntity: *, cockpitActive: boolean }} Conservative ownership.
  */
-function mergeCctvEnableOwnership(before = {}, after = {}) {
+export function mergeCctvEnableOwnership(before = {}, after = {}) {
   return {
     trackedEntity: before.trackedEntity || after.trackedEntity || null,
     cockpitActive: !!(before.cockpitActive || after.cockpitActive),

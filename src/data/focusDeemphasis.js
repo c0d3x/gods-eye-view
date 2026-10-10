@@ -165,6 +165,11 @@ export function getFocusDeemphasisParams() {
   return _params;
 }
 
+/** Restore production defaults. Primarily useful for deterministic QA. */
+export function resetFocusDeemphasisParams() {
+  _params = { ...DEFAULT_FOCUS_DEEMPHASIS_PARAMS };
+}
+
 /**
  * Publish a focus target from the exact world position already cached by its
  * tracking/render path. Callers must never re-derive a position here: a second
@@ -525,7 +530,7 @@ export function nearFarScalarValueAtDistance(scalar, cameraDistanceM) {
   if (!Number.isFinite(nearSq) || !Number.isFinite(farSq) || farSq <= nearSq)
     return 1;
   const rawT = (cameraDistanceM * cameraDistanceM - nearSq) / (farSq - nearSq);
-  const t = clamp(rawT, 0, 1) ** 0.2;
+  const t = Math.pow(clamp(rawT, 0, 1), 0.2);
   return scalar.nearValue + (scalar.farValue - scalar.nearValue) * t;
 }
 

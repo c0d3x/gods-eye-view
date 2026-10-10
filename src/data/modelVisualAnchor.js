@@ -1,5 +1,4 @@
 import * as Cesium from 'cesium';
-
 /**
  * Model-space visual centres measured from the shipped GLBs' scene-space AABBs.
  *
@@ -113,7 +112,7 @@ const _chainScratch = new Cesium.Matrix4();
  * @returns {{x:number,y:number,z:number}|null} World position of the anchor.
  */
 export function modelAnchorWorld(model, nativeAnchor, result) {
-  if (!model?.modelMatrix || !nativeAnchor || !result) return null;
+  if (!model || !model.modelMatrix || !nativeAnchor || !result) return null;
   const scale = Number.isFinite(model.computedScale) ? model.computedScale : 1;
   _anchorScratch.x = (nativeAnchor[0] || 0) * scale;
   _anchorScratch.y = (nativeAnchor[1] || 0) * scale;
