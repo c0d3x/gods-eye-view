@@ -120,3 +120,16 @@ test("the tray's notice-dwell check steps its own clock", () => {
   );
   assert.ok(wait && number(wait[1]) >= 15_000, wait?.[0]);
 });
+
+test('the corridor check accepts every floor cell the clamp may hold', () => {
+  const source = read('scripts/track-regression.mjs');
+  assert.match(
+    source,
+    /if \(gf\.stickyFloorCell\(d1\.lat, d1\.lon, c\) === c\)/,
+  );
+  assert.match(
+    source,
+    /dfCorridor\.spriteH >= Math\.min\(\.\.\.spriteFloors\) \+ DISPLAY_FLOOR_LIFT_M - 0\.5/,
+  );
+  assert.doesNotMatch(source, /dfCorridor\.spriteFloor\b/);
+});

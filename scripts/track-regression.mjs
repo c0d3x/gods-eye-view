@@ -3310,6 +3310,23 @@ async function main() {
             && Math.abs(d1.lat - cell(d1.lat)) < interiorLimit
             && Math.abs(d1.lon - cell(d1.lon)) < interiorLimit;
         } while (!sampleInterior && Date.now() < sampleDeadline);
+        // On a slow SwiftShader page the deadline can pass with the sample
+        // still near an edge, where the clamp keeps the cell it read last until
+        // the display is CELL_HYSTERESIS_DEG clear of it (stickyFloorCell).
+        // Collect every cell that rule could be holding at this position;
+        // inside a cell that is only the cell it rounds to (#50).
+        const spriteCells = [];
+        if (d1) {
+          const own = gf.coarseFloorCoord(d1.lat, d1.lon);
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              const c = { lat: cell(own.lat + dy * 0.001), lon: cell(own.lon + dx * 0.001) };
+              if (gf.stickyFloorCell(d1.lat, d1.lon, c) === c) {
+                spriteCells.push({ ...c, floor: gf.cachedGroundFloor(c.lat, c.lon) });
+              }
+            }
+          }
+        }
         return {
           startCold,
           sampleInterior,
@@ -3321,7 +3338,7 @@ async function main() {
           aheadCell,
           aheadFloor: gf.cachedGroundFloor(aheadCell.lat, aheadCell.lon),
           spriteH: d1 ? d1.h : null,
-          spriteFloor: d1 ? gf.cachedGroundFloor(d1.lat, d1.lon) : null,
+          spriteCells,
           beforeH: d0.h,
         };
       }, 30.3000, -97.8000);
@@ -3355,15 +3372,30 @@ async function main() {
         dfCorridor.controlFloor == null,
         `control cell floor = ${dfCorridor.controlFloor}`);
 
-      record('display-floor/corridor: the height sample clears cell-boundary hysteresis',
-        dfCorridor.sampleInterior === true,
-        'the sampled coordinate lies inside one unambiguous floor cell');
+      // An edge sample no longer makes the floor check below ambiguous, so it
+      // is reported rather than failed.
+      if (dfCorridor.sampleInterior === true) {
+        record('display-floor/corridor: the height sample clears cell-boundary hysteresis',
+          true,
+          'the sampled coordinate lies inside one unambiguous floor cell');
+      } else {
+        skip('display-floor/corridor: the height sample clears cell-boundary hysteresis',
+          'sampled near a cell edge; the floor check allows each cell the clamp may hold');
+      }
 
+      // Near an edge the clamp may still hold the cell the sprite is leaving,
+      // so the sprite must ride at least the lowest floor it could be reading.
+      const spriteFloors = (dfCorridor.spriteCells || [])
+        .map((c) => c.floor)
+        .filter(Number.isFinite);
+      const spriteFloorText = spriteFloors.length
+        ? spriteFloors.map((f) => `${f.toFixed(1)} m`).join(' or ')
+        : 'cold';
       record('display-floor/corridor: the sprite rides the corridor-warmed floor',
-        Number.isFinite(dfCorridor.spriteH) && Number.isFinite(dfCorridor.spriteFloor)
-          && dfCorridor.spriteH >= dfCorridor.spriteFloor + DISPLAY_FLOOR_LIFT_M - 0.5,
+        Number.isFinite(dfCorridor.spriteH) && spriteFloors.length > 0
+          && dfCorridor.spriteH >= Math.min(...spriteFloors) + DISPLAY_FLOOR_LIFT_M - 0.5,
         dfCorridor.error
-          || `${Number(dfCorridor.beforeH).toFixed(1)} m → ${Number(dfCorridor.spriteH).toFixed(1)} m on a ${Number(dfCorridor.spriteFloor).toFixed(1)} m floor`);
+          || `${Number(dfCorridor.beforeH).toFixed(1)} m → ${Number(dfCorridor.spriteH).toFixed(1)} m on a ${spriteFloorText} floor (cells the clamp may hold: ${JSON.stringify(dfCorridor.spriteCells)})`);
 
       // ---- Tracked contact gets the same floor ----------------------------
       // The fleet pass skips the tracked icao and the tracked entity draws from
