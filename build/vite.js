@@ -94,8 +94,23 @@ export function createBrowserViteConfig({
       // Host-header check. LAN hostnames are added explicitly (see
       // build/allowedHosts.js); IP addresses are always accepted.
       allowedHosts: [...allowedHosts],
+      // No CORS. Vite's default lets any localhost origin read what this
+      // server returns: API results, the Realtime token, served files. The
+      // app itself only ever calls its own origin.
+      cors: false,
       fs: {
-        deny: ['.env', '.env.*', '*.{crt,pem}', '**/.git/**', '**/ENVIRONMENT'],
+        // The app's voice logs and caches (including the MCP panel key), and
+        // local Claude settings, stay private too.
+        deny: [
+          '.env',
+          '.env.*',
+          '*.{crt,pem}',
+          '**/.git/**',
+          '**/ENVIRONMENT',
+          '**/.gev-logs/**',
+          '**/.gev-cache/**',
+          '**/.claude/**',
+        ],
       },
       // These headers protect the document containing Provider Settings and
       // give the whole page a real Content-Security-Policy (BROWSER_CSP).
@@ -105,7 +120,7 @@ export function createBrowserViteConfig({
     },
     // The preview server serves the same documents, so it carries the same
     // framing + CSP hardening (one constant, no drift).
-    preview: { headers: BROWSER_HEADERS },
+    preview: { headers: BROWSER_HEADERS, cors: false },
     define: {
       'import.meta.env.GOOGLE_MAPS_API_KEY': JSON.stringify(googleApiKey),
       'import.meta.env.CESIUM_ION_TOKEN': JSON.stringify(cesiumToken),

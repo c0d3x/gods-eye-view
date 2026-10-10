@@ -456,6 +456,19 @@ async function exerciseServer(port, reached) {
     headers: { 'sec-fetch-site': 'cross-site', 'content-length': '0' },
   });
   assert.equal(refusedClick.status, 403);
+  // With CORS off, a cross-origin preflight reaches the guard and is refused,
+  // so no JSON request follows it.
+  const preflight = await send(port, '/api/openai/hud-summary', {
+    method: 'OPTIONS',
+    headers: {
+      origin: 'http://evil.example',
+      'sec-fetch-site': 'cross-site',
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'content-type',
+    },
+  });
+  assert.equal(preflight.status, 403);
+  assert.equal(preflight.headers['access-control-allow-origin'], undefined);
   const textBody = await send(port, '/api/realtime/debug-log', {
     method: 'POST',
     headers: {
