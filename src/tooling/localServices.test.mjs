@@ -639,6 +639,7 @@ test('Realtime sessions carry supplied tools, and the standalone voice adds the 
 });
 
 test('debug logging resolves each supplied application directory independently', async (t) => {
+  env(t, 'GEV_REALTIME_DEBUG_LOG', '1');
   const first = root(t),
     second = root(t);
   for (const [sourceRoot, marker] of [
@@ -872,7 +873,11 @@ test('the debug-log sink omits what people said and tool arguments unless conten
   ];
   for (const includeContent of [false, true]) {
     const sourceRoot = root(t);
-    const handler = createDebugLogHandler({ sourceRoot, includeContent });
+    const handler = createDebugLogHandler({
+      sourceRoot,
+      includeContent,
+      enabled: true,
+    });
     for (const record of records) {
       const response = await request(handler, {
         method: 'POST',
@@ -928,7 +933,8 @@ test('the debug-log sink omits what people said and tool arguments unless conten
     assert.equal(serverEvent.payload.payload.output_index, 0);
     assert.equal(serverEvent.payload.payload.call_id, 'call-1');
     assert.equal(serverEvent.payload.payload.name, 'analyst_query');
-    assert.equal(transcriptEvent.payload.usage.input_tokens, 40);
+    // Token-named keys are redacted, as the browser already does.
+    assert.equal(transcriptEvent.payload.usage.input_tokens, '[Redacted]');
     assert.equal(numericDelta.payload.delta, 17);
     assert.equal(numericDelta.payload.total, 41);
     if (!includeContent) {
@@ -1009,7 +1015,11 @@ test('debug logs omit structured and serialized tool results unless content logg
   ].map((record) => sanitizeDebugValue(record));
   for (const includeContent of [false, true]) {
     const sourceRoot = root(t);
-    const handler = createDebugLogHandler({ sourceRoot, includeContent });
+    const handler = createDebugLogHandler({
+      sourceRoot,
+      includeContent,
+      enabled: true,
+    });
     for (const record of records) {
       const response = await request(handler, {
         method: 'POST',
@@ -1046,6 +1056,7 @@ test('debug logs omit structured and serialized tool results unless content logg
 });
 
 test('the debug-log sink stays bounded, rate limited, and quiet about failures', async (t) => {
+  env(t, 'GEV_REALTIME_DEBUG_LOG', '1');
   const sourceRoot = root(t);
   const handler = install(openAiRealtimeProxy({ sourceRoot })).get(
     '/api/realtime/debug-log',
@@ -1087,6 +1098,7 @@ test('the debug-log sink stays bounded, rate limited, and quiet about failures',
 });
 
 test('a debug-log record cannot supply its own timestamp', async (t) => {
+  env(t, 'GEV_REALTIME_DEBUG_LOG', '1');
   const sourceRoot = root(t);
   const handler = install(openAiRealtimeProxy({ sourceRoot })).get(
     '/api/realtime/debug-log',
@@ -1105,6 +1117,7 @@ test('a debug-log record cannot supply its own timestamp', async (t) => {
 });
 
 test('an oversized debug-log request receives the fixed error response', async (t) => {
+  env(t, 'GEV_REALTIME_DEBUG_LOG', '1');
   const handler = install(openAiRealtimeProxy({ sourceRoot: root(t) })).get(
     '/api/realtime/debug-log',
   );
@@ -1114,33 +1127,37 @@ test('an oversized debug-log request receives the fixed error response', async (
 
   const response = await fetch(
     `http://127.0.0.1:${server.address().port}/api/realtime/debug-log`,
-    { method: 'POST', body: 'x'.repeat(8 * 1024 * 1024 + 1) },
+    { method: 'POST', body: 'x'.repeat(256 * 1024 + 1) },
   );
-  assert.equal(response.status, 400);
+  assert.equal(response.status, 413);
   assert.deepEqual(await response.json(), {
     error: 'Failed to write Realtime debug log',
   });
 });
 
 test('the debug log rotates instead of growing without bound', async (t) => {
+  env(t, 'GEV_REALTIME_DEBUG_LOG', '1');
   const sourceRoot = root(t);
   const handler = install(openAiRealtimeProxy({ sourceRoot })).get(
     '/api/realtime/debug-log',
   );
   const file = path.join(sourceRoot, '.gev-logs/realtime-conversations.jsonl');
 
-  // 8 MB bounds one request body; nothing bounded the file until now, so a
+  // 256 KiB bounds one request body; nothing bounded the file until now, so a
   // single page could grow it for as long as the dev server ran. Each record
-  // here is ~1 MB, well inside the body cap.
-  const pad = 'x'.repeat(1024 * 1024);
-  // Seventy-two records force two rotations. The second one replaces an
-  // existing `.1`, which requires an explicit removal on Windows.
-  for (let n = 0; n < 72; n += 1) {
+  // here is ~250 KB, just inside the body cap, in strings short enough to
+  // survive redaction whole.
+  const pad = Array.from({ length: 5 }, () => 'x'.repeat(50_000));
+  // 280 records force two rotations. The second one replaces an existing
+  // `.1`, which requires an explicit removal on Windows. Three client
+  // addresses keep each under the per-minute limit.
+  for (let n = 0; n < 280; n += 1) {
     assert.equal(
       (
         await request(handler, {
           method: 'POST',
           body: JSON.stringify({ n, pad }),
+          remoteAddress: `127.0.0.${(n % 3) + 1}`,
         })
       ).status,
       204,
@@ -1154,7 +1171,7 @@ test('the debug log rotates instead of growing without bound', async (t) => {
     live + previous <= 64 * 1024 * 1024,
     'both generations together stay within twice the ceiling',
   );
-  // Unrotated, these records would be ~75 MB in one file.
+  // Unrotated, these records would be ~70 MB in one file.
   assert.ok(live + previous < 64 * 1024 * 1024);
   assert.ok(!existsSync(`${file}.2`), 'exactly one generation is retained');
 });

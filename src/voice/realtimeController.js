@@ -19,7 +19,7 @@ import {
 const POINTER_NONE_KEY = 'none';
 
 import { shouldPauseRadioForVoice } from './realtimeProtocol.js';
-import { postDebugLog } from './realtimeDiagnostics.js';
+import { isDebugLogEnabled, postDebugLog } from './realtimeDiagnostics.js';
 
 export {
   readStoredVoiceTier,
@@ -72,7 +72,8 @@ export class GevRealtimeController extends RealtimeFacade {
     dataManager = null,
     backend = createRealtimeBackend(),
     signal,
-    debugSink = postDebugLog,
+    // The server's debug log is opt-in (GEV_REALTIME_DEBUG_LOG).
+    debugSink = isDebugLogEnabled() ? postDebugLog : null,
     actionExecutor,
     onSessionEvent,
     pointer = null,

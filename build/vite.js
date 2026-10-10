@@ -54,6 +54,7 @@ export function createBrowserViteConfig({
   googleApiKey,
   cesiumToken,
   mapillaryToken,
+  realtimeDebugLog = false,
   host = 'localhost',
   port = 4173,
   allowedHosts = DEFAULT_ALLOWED_HOSTS,
@@ -127,6 +128,10 @@ export function createBrowserViteConfig({
       // Mapillary client tokens are public by design (see SECURITY.md).
       'import.meta.env.MAPILLARY_CLIENT_TOKEN': JSON.stringify(
         mapillaryToken ?? '',
+      ),
+      // Whether the browser posts voice debug records (GEV_REALTIME_DEBUG_LOG).
+      'import.meta.env.GEV_REALTIME_DEBUG_LOG': JSON.stringify(
+        realtimeDebugLog === true,
       ),
     },
     build: { chunkSizeWarningLimit: 1500 },

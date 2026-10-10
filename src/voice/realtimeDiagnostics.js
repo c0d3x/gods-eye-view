@@ -1,3 +1,12 @@
+import { sanitizeDebugValue } from './debugRedaction.js';
+
+// The redaction rules live in debugRedaction.js, which the server applies too.
+export {
+  isSecretLikeKey,
+  sanitizeDebugString,
+  sanitizeDebugValue,
+} from './debugRedaction.js';
+
 export const ERROR_LOG_LIMIT = 30;
 
 export const ERROR_STORAGE_KEY = 'gev-realtime-errors';
@@ -9,67 +18,53 @@ export function createDebugSessionId() {
   return `gev-${Date.now().toString(36)}-${randomPart}`;
 }
 
-export function postDebugLog(record) {
-  try {
-    const body = JSON.stringify(record);
-    if (navigator.sendBeacon) {
-      const blob = new Blob([body], { type: 'application/json' });
-      if (navigator.sendBeacon(DEBUG_LOG_URL, blob)) return;
+/**
+ * A sink that posts debug records to the server's log while the log is on.
+ * The server answers 404 while it is off, and the sink then stops posting.
+ * @param {{enabled?: boolean, fetchImpl?: typeof fetch}} [options]
+ */
+export function createDebugLogPoster({
+  enabled = false,
+  fetchImpl = (...args) => fetch(...args),
+} = {}) {
+  let on = enabled === true;
+  function post(record) {
+    if (!on) return;
+    try {
+      const body = JSON.stringify(record);
+      // Not sendBeacon: its answer cannot be read. keepalive lets a small
+      // record outlive the page, as a beacon would.
+      fetchImpl(DEBUG_LOG_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body,
+        keepalive: body.length < 60000,
+      }).then(
+        (response) => {
+          if (response.status === 404) on = false;
+        },
+        () => {},
+      );
+    } catch {
+      // Debug logging must never affect voice control.
     }
-    fetch(DEBUG_LOG_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body,
-      keepalive: body.length < 60000,
-    }).catch(() => {});
-  } catch {
-    // Debug logging must never affect voice control.
   }
+  return { post, isEnabled: () => on };
 }
 
-export function sanitizeDebugValue(value, depth = 0) {
-  if (depth > 10) return '[MaxDepth]';
-  if (value == null || typeof value === 'number' || typeof value === 'boolean')
-    return value;
-  if (typeof value === 'string') return sanitizeDebugString(value);
-  if (Array.isArray(value))
-    return value.map((item) => sanitizeDebugValue(item, depth + 1));
-  if (typeof value !== 'object') return String(value);
+// build/vite.js defines this from GEV_REALTIME_DEBUG_LOG. The log is off by
+// default, and outside Vite (tests).
+const debugLog = createDebugLogPoster({
+  enabled:
+    typeof import.meta.env === 'object' &&
+    import.meta.env.GEV_REALTIME_DEBUG_LOG === true,
+});
 
-  const output = {};
-  for (const [key, item] of Object.entries(value)) {
-    if (isSecretLikeKey(key)) {
-      output[key] = '[Redacted]';
-      continue;
-    }
-    output[key] = sanitizeDebugValue(item, depth + 1);
-  }
-  return output;
-}
+/** Post one record to the server's debug log, while it is on. */
+export const postDebugLog = debugLog.post;
 
-export function sanitizeDebugString(value) {
-  if (value.startsWith('data:image/')) {
-    return `[Redacted image data URL, ${value.length} chars]`;
-  }
-  const redacted = value
-    .replace(/sk-(?:proj-)?[A-Za-z0-9_-]{20,}/g, '[Redacted OpenAI API key]')
-    .replace(/Bearer\s+[A-Za-z0-9._~+/-]+=*/gi, 'Bearer [Redacted]')
-    .replace(/"client_secret"\s*:\s*"[^"]+"/gi, '"client_secret":"[Redacted]"')
-    .replace(
-      /"value"\s*:\s*"ek_[^"]+"/gi,
-      '"value":"[Redacted ephemeral key]"',
-    );
-  const maxLength = 50000;
-  return redacted.length > maxLength
-    ? `${redacted.slice(0, maxLength)}...[Truncated ${redacted.length - maxLength} chars]`
-    : redacted;
-}
-
-export function isSecretLikeKey(key) {
-  return /(?:api[_-]?key|authorization|bearer|client[_-]?secret|token|secret|password)/i.test(
-    key,
-  );
-}
+/** Whether voice debug records are posted to the server's log. */
+export const isDebugLogEnabled = debugLog.isEnabled;
 
 export function createErrorRecord(source, error, extra = {}) {
   const rtcError = error?.error || error;

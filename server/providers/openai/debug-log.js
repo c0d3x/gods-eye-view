@@ -3,9 +3,10 @@ import path from 'node:path';
 import { readRequestBody } from '../common/request.js';
 import { promises as fsp } from 'node:fs';
 import { makeRateLimiter, clientKey } from '../common/rate-limit.js';
+import { redactDebugRecord } from '../../../src/voice/debugRedaction.js';
 
-/** Cap on one request body. */
-const REALTIME_DEBUG_LOG_MAX_BYTES = 8 * 1024 * 1024;
+/** Cap on one request body; a larger one is answered 413. */
+const REALTIME_DEBUG_LOG_MAX_BYTES = 256 * 1024;
 
 /**
  * Ceiling for the live log before it rotates. One generation is kept
@@ -72,12 +73,29 @@ function omitVoiceContent(value, depth = 0) {
   return output;
 }
 
+/**
+ * Whether a GEV_REALTIME_DEBUG_LOG value turns the voice debug log on. It is
+ * off unless set; while off, the route answers 404 and the browser, which
+ * reads the same setting from a build-time define, posts nothing.
+ * @param {string|undefined} value
+ */
+function isRealtimeDebugLogEnabled(value) {
+  return /^(?:1|true|on|yes)$/i.test(String(value ?? '').trim());
+}
+
+/** Tighten a mode left by an older version; some filesystems ignore modes. */
+async function tightenMode(target, mode) {
+  await fsp.chmod(target, mode).catch(() => {});
+}
+
 function createDebugLogHandler({
   sourceRoot = defaultSourceRoot,
   includeContent = process.env.GEV_VOICE_LOG_CONTENT === '1',
+  enabled = isRealtimeDebugLogEnabled(process.env.GEV_REALTIME_DEBUG_LOG),
 } = {}) {
   const logDir = path.join(sourceRoot, '.gev-logs');
   const logFile = path.join(logDir, 'realtime-conversations.jsonl');
+  let tightened = false;
   const allow = makeRateLimiter({
     windowMs: 60_000,
     max: REALTIME_DEBUG_LOG_MAX_PER_MIN,
@@ -92,7 +110,15 @@ function createDebugLogHandler({
 
   function append(line) {
     const done = queue.then(async () => {
-      await fsp.mkdir(logDir, { recursive: true });
+      // Only this user can read the log: the directory is 0700, the files
+      // 0600, and ones an older version created are tightened once.
+      await fsp.mkdir(logDir, { recursive: true, mode: 0o700 });
+      if (!tightened) {
+        await tightenMode(logDir, 0o700);
+        await tightenMode(logFile, 0o600);
+        await tightenMode(`${logFile}.1`, 0o600);
+        tightened = true;
+      }
       const size = await fsp.stat(logFile).then(
         (stat) => stat.size,
         () => 0,
@@ -104,7 +130,7 @@ function createDebugLogHandler({
         await fsp.rm(`${logFile}.1`, { force: true });
         await fsp.rename(logFile, `${logFile}.1`);
       }
-      await fsp.appendFile(logFile, line);
+      await fsp.appendFile(logFile, line, { mode: 0o600 });
     });
     // The caller still sees its own rejection, but one failed append must not
     // poison the chain for every request queued behind it.
@@ -113,6 +139,12 @@ function createDebugLogHandler({
   }
 
   return async (req, res) => {
+    if (!enabled) {
+      res.statusCode = 404;
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ error: 'Not found' }));
+      return;
+    }
     if (req.method !== 'POST') {
       res.statusCode = 405;
       res.setHeader('Content-Type', 'application/json');
@@ -132,7 +164,11 @@ function createDebugLogHandler({
     try {
       const body = await readRequestBody(req, REALTIME_DEBUG_LOG_MAX_BYTES);
       const parsed = JSON.parse(body || '{}');
-      const record = includeContent ? parsed : omitVoiceContent(parsed);
+      // Redacted here too, whoever posted it: API keys, tokens, client
+      // secrets, Authorization values and image data URLs.
+      const record = redactDebugRecord(
+        includeContent ? parsed : omitVoiceContent(parsed),
+      );
       // The server's own timestamp comes last, so a record cannot supply one.
       await append(
         `${JSON.stringify({
@@ -147,14 +183,14 @@ function createDebugLogHandler({
       // write is ours, and only the second is worth a log line. Neither answer
       // carries the error text, which for an fs failure is an errno and an
       // absolute path.
-      const callerFault =
-        error instanceof SyntaxError || error?.code === 'BODY_TOO_LARGE';
+      const tooLarge = error?.code === 'BODY_TOO_LARGE';
+      const callerFault = error instanceof SyntaxError || tooLarge;
       if (!callerFault) console.warn('[realtime-debug-log] append failed');
-      res.statusCode = callerFault ? 400 : 500;
+      res.statusCode = tooLarge ? 413 : callerFault ? 400 : 500;
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({ error: 'Failed to write Realtime debug log' }));
     }
   };
 }
 
-export { createDebugLogHandler, omitVoiceContent };
+export { createDebugLogHandler, isRealtimeDebugLogEnabled, omitVoiceContent };
