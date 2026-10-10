@@ -133,3 +133,19 @@ test('the corridor check accepts every floor cell the clamp may hold', () => {
   );
   assert.doesNotMatch(source, /dfCorridor\.spriteFloor\b/);
 });
+
+test('the voice-context checks wait for voice instead of skipping', () => {
+  const source = read('scripts/track-regression.mjs');
+  const wait = source.indexOf(
+    'page.waitForFunction(\n      () => window.__godsEyeView?.voiceCommands,',
+  );
+  const runner = source.indexOf(
+    "const runnerReady = await evalPage(() => typeof window.__gevVoiceCommands?.runner === 'function');",
+  );
+  assert.ok(wait > 0, 'the track regression waits for voice');
+  assert.ok(runner > wait, 'it waits before it looks for the runner');
+  assert.match(
+    source.slice(runner),
+    /if \(!voiceLoaded\) \{\s+record\('voice-context: click-selected aircraft answers scope:selected', false,/,
+  );
+});

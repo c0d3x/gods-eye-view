@@ -844,8 +844,17 @@ async function main() {
     // 2026-08-21). Drives the real tool runner; costs no model turns.
     // ============================================================
     console.log('\nVoice entity context — a click-selected contact answers scope:selected');
+    // Voice loads after startup (src/app/deferredVoice.js), so on a slow page
+    // it may still be on its way. Wait for it; voice that never loads fails.
+    const voiceLoaded = await page.waitForFunction(
+      () => window.__godsEyeView?.voiceCommands,
+      { timeout: 60000, polling: 200 },
+    ).then(() => true, () => false);
     const runnerReady = await evalPage(() => typeof window.__gevVoiceCommands?.runner === 'function');
-    if (!runnerReady) {
+    if (!voiceLoaded) {
+      record('voice-context: click-selected aircraft answers scope:selected', false,
+        'voice did not load within 60 s (window.__godsEyeView.voiceCommands)');
+    } else if (!runnerReady) {
       skip('voice-context: click-selected aircraft answers scope:selected',
         'voice command runner not exposed on this build');
     } else {
