@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Browser QA for the Street Level layer against a running server. Run with
- * `npm run qa:street-level -- --url http://localhost:4173`.
+ * `pnpm run qa:street-level --url http://localhost:4173`.
  *
  * `--fixtures` (the CI mode) answers every *.mapillary.com request from
  * fixtures, so nothing reaches Mapillary. The server still needs a token

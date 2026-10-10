@@ -81,7 +81,7 @@ bashTest(
       }
       const capture = path.join(root, 'capture.json');
       await writeFile(
-        path.join(bin, 'npm'),
+        path.join(bin, 'pnpm'),
         `#!/usr/bin/env node
 require('node:fs').writeFileSync(process.env.TEST_CAPTURE, JSON.stringify({ cwd: process.cwd(), args: process.argv.slice(2), browser: process.env.GOOGLE_MAPS_API_KEY, server: process.env.GOOGLE_MAPS_SERVER_API_KEY, voice: process.env.OPENAI_API_KEY, provenance: process.env.GEV_KEY_SETUP_EXTERNAL_KEYS }));
 `,
@@ -106,7 +106,6 @@ require('node:fs').writeFileSync(process.env.TEST_CAPTURE, JSON.stringify({ cwd:
       assert.deepEqual(result.args, [
         'run',
         'dev',
-        '--',
         '--host',
         'localhost',
         '--port',

@@ -22,7 +22,7 @@ import {
 /**
  * Browser proof for the Transit layer against a running app.
  *
- *   npm run qa:transit                       (defaults to http://localhost:4173)
+ *   pnpm run qa:transit                      (defaults to http://localhost:4173)
  *   QA_BASE_URL=http://localhost:4305 node scripts/qa-transit.mjs
  *
  * Drives the real layer toggle and the real CONTEXT chooser, watches the real

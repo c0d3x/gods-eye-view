@@ -482,7 +482,7 @@ export function panelRuntime(config) {
     if (!response.ok)
       throw new Error(
         response.status === 404
-          ? 'the app has no panel build (npm run build:panel)'
+          ? 'the app has no panel build (pnpm run build:panel)'
           : `the app answered ${response.status}`,
       );
     const built = new DOMParser().parseFromString(

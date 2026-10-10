@@ -372,7 +372,7 @@ try {
     report(minAgl >= 90, 'the eye always clears the rendered floor',
       `min AGL ${minAgl.toFixed(1)} m, max ${maxAgl.toFixed(1)} m over ${warm.length} warm samples`);
   } else {
-    note('terrain clearance', `only ${warm.length} warm floor cells under the route — clearance clamp is pinned in npm test`);
+    note('terrain clearance', `only ${warm.length} warm floor cells under the route — clearance clamp is pinned in pnpm test`);
   }
   // The floor ACQUISITION — the one frame where a cold-corridor safety seed is
   // replaced by real terrain — is deliberately a single step, and it lands in

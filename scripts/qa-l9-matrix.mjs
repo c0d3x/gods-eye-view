@@ -565,10 +565,10 @@ check({
 });
 
 check({
-  id: 'A2', group: 'A', desc: 'npm test — unit suite green',
+  id: 'A2', group: 'A', desc: 'pnpm test — unit suite green',
   heavy: false,
   run: async () => {
-    const r = await sh('npm', ['test'], { timeoutMs: 600000 });
+    const r = await sh('pnpm', ['test'], { timeoutMs: 600000 });
     const m = /ℹ pass (\d+)[\s\S]*?ℹ fail (\d+)/.exec(r.out) || /pass (\d+)[\s\S]*?fail (\d+)/.exec(r.out);
     if (!m) return fail(`could not parse test output (exit ${r.code}): ${tail(r.err) || tail(r.out)}`);
     const [, p, f] = m;
@@ -618,9 +618,9 @@ check({
 });
 
 check({
-  id: 'A4', group: 'A', desc: 'npm run build — production build clean',
+  id: 'A4', group: 'A', desc: 'pnpm run build — production build clean',
   run: async () => {
-    const r = await sh('npm', ['run', 'build'], { timeoutMs: 900000 });
+    const r = await sh('pnpm', ['run', 'build'], { timeoutMs: 900000 });
     return r.code === 0 ? pass('build succeeded') : fail(`build failed: ${tail(r.err) || tail(r.out)}`);
   },
 });

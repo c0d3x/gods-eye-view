@@ -11,7 +11,7 @@
  * client-side retry in `src/maps/terrain.js` provides.
  *
  * Run against a keyless dev server (no Google or ion credentials):
- *   env -u GOOGLE_MAPS_API_KEY -u CESIUM_ION_TOKEN npm run dev -- --port 4180
+ *   env -u GOOGLE_MAPS_API_KEY -u CESIUM_ION_TOKEN pnpm run dev --port 4180
  *   QA_BASE_URL=http://localhost:4180 node scripts/qa-terrain-429.mjs
  *
  * Flags: `--mode zoomOut|wheel` (default zoomOut), `--notches N` (default 12),

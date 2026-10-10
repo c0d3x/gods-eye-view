@@ -114,7 +114,7 @@ if (import.meta.url === invokedPath) {
   const baseRef =
     args[0] === '--base-ref' && args.length === 2 ? args[1] : null;
   if (!baseRef || baseRef.startsWith('-')) {
-    console.error('Usage: npm run layer-token:check -- --base-ref origin/main');
+    console.error('Usage: pnpm run layer-token:check --base-ref origin/main');
     process.exitCode = 1;
   } else {
     try {

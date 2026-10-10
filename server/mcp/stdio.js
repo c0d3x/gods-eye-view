@@ -1,11 +1,11 @@
 /**
  * Local MCP server over stdio for agents such as Claude Code and Codex.
  *
- *   npm run mcp -- [--api-base http://localhost:4173]
+ *   pnpm run mcp [--api-base http://localhost:4173]
  *
  * Reads newline-delimited JSON-RPC from stdin and writes responses to stdout.
- * Tools read data from a running God's Eye View server (`npm run dev` or
- * `npm run preview`) at the API base. Diagnostics go to stderr.
+ * Tools read data from a running God's Eye View server (`pnpm run dev` or
+ * `pnpm run preview`) at the API base. Diagnostics go to stderr.
  */
 
 import { createInterface } from 'node:readline';

@@ -81,7 +81,7 @@ export function panelBuildPlugin({ outDir = PANEL_OUT_DIR } = {}) {
         } catch {
           res.statusCode = 404;
           res.end(
-            relative ? 'Not found' : 'No panel build; run npm run build:panel',
+            relative ? 'Not found' : 'No panel build; run pnpm run build:panel',
           );
         }
       });

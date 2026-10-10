@@ -90,7 +90,7 @@ function keySetupEndpoint({ sourceRoot = defaultSourceRoot } = {}) {
   // The launcher marker is read from the BOOT environment captured before
   // Vite's loadEnv merges dotenv files into process.env — otherwise a stray
   // `GEV_LAUNCHER=pinokio` line in someone's .env would silently redirect a
-  // plain `npm run dev` to write the Pinokio store it never loaded.
+  // plain `pnpm run dev` to write the Pinokio store it never loaded.
   const pinokioManaged = () => LAUNCHER_AT_BOOT === 'pinokio';
   const storeName = () =>
     pinokioManaged() ? 'pinokio-environment' : 'env-file';
