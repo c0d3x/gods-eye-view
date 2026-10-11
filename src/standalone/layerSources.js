@@ -1,4 +1,5 @@
 import { createDirectionsSource } from '../layers/directions/source.js';
+import { runtimeKey } from '../runtimeConfig.js';
 import { createRecentImagerySource } from '../layers/recentImagery/source.js';
 import { createOpenFreeMapSource } from '../sources/openFreeMap.js';
 import {
@@ -54,7 +55,11 @@ export function createStandaloneLayerSources(overrides = {}) {
     weather: createWeatherSource(),
     cyclones: createCycloneSource(),
     mapillary: createMapillarySource({
-      token: import.meta.env?.MAPILLARY_CLIENT_TOKEN || '',
+      token:
+        runtimeKey(
+          'MAPILLARY_CLIENT_TOKEN',
+          import.meta.env?.MAPILLARY_CLIENT_TOKEN,
+        ) || '',
     }),
   };
   for (const name of Object.keys(overrides)) {

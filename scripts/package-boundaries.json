@@ -1904,6 +1904,7 @@
       "src/panelStackLayout.js",
       "src/renderGovernor.js",
       "src/rightRailPolicy.js",
+      "src/runtimeConfig.js",
       "src/scenes/director.js",
       "src/scenes/playbackAdapter.js",
       "src/director/playback.js",
