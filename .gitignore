@@ -24,3 +24,6 @@ pinokio/.installed
 
 # Test coverage from pnpm run test:coverage
 coverage/
+
+# Mac app builds from pnpm run app:build (scripts/app.mjs)
+release/

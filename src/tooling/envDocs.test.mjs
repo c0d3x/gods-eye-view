@@ -21,6 +21,16 @@ const ALLOWED = new Map([
     'GEV_PROJECT_ROOT',
     'points the launchers and tools at another project (tools/README.md)',
   ],
+  [
+    'GEV_APP_OUT_DIR',
+    'where `pnpm run app:build` puts the app (docs/MAC-APP.md)',
+  ],
+  [
+    'GEV_APP_SIGN_IDENTITY',
+    'the certificate the app is signed with (docs/MAC-APP.md)',
+  ],
+  ['GEV_NOTARY_PROFILE', 'the notarytool keychain profile (docs/MAC-APP.md)'],
+  ['PATH', 'the Mac app adds the folders where codex is installed'],
   ['PINOKIO_SHARE_CLOUDFLARE', 'set by Pinokio'],
   ['PINOKIO_SHARE_LOCAL', 'set by Pinokio'],
   ['PINOKIO_SHARE_PASSCODE', 'set by Pinokio'],
@@ -57,14 +67,14 @@ function trackedFiles() {
     .filter(Boolean);
 }
 
-/** The dev server, its build helpers, scripts and launchers. */
+/** The dev server, its build helpers, scripts, launchers and the Mac app. */
 function serverSources() {
   return trackedFiles().filter(
     (file) =>
       /\.(?:m?js|cjs)$/.test(file) &&
       !file.endsWith('.test.mjs') &&
       (file === 'vite.config.js' ||
-        /^(?:build|server|scripts|pinokio|tools)\//.test(file) ||
+        /^(?:app|build|server|scripts|pinokio|tools)\//.test(file) ||
         /^src\/.*\.mjs$/.test(file)),
   );
 }

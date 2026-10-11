@@ -1,9 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2024",
-    "lib": [
-      "es2024"
-    ],
+    "lib": ["es2024"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "allowJs": true,
@@ -12,17 +10,16 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": [
-      "node"
-    ]
+    "maxNodeModuleJsDepth": 0,
+    "types": ["node"]
   },
   "include": [
     "**/*.js",
     "**/*.mjs",
+    "types/*.d.ts",
+    "../app/**/*.mjs",
     "../build/**/*.js",
     "../vite.config.js"
   ],
-  "exclude": [
-    "**/*.test.mjs"
-  ]
+  "exclude": ["**/*.test.mjs"]
 }

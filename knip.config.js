@@ -16,6 +16,7 @@ export default {
   ],
   project: [
     '*.js',
+    'app/**/*.mjs',
     'build/**/*.js',
     'src/**/*.{js,mjs}',
     'server/**/*.{js,mjs}',

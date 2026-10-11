@@ -11,7 +11,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 /** Directories whose sources a test should load, besides vite.config.js. */
-export const SOURCE_ROOTS = Object.freeze(['build', 'src', 'server']);
+export const SOURCE_ROOTS = Object.freeze(['app', 'build', 'src', 'server']);
 
 const COUNTS = Object.freeze({
   LF: ['lines', 'found'],

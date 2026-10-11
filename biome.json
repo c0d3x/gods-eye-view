@@ -8,6 +8,7 @@
       "*.js",
       "*.mjs",
       "*.json",
+      "app/**/*.mjs",
       "build/**/*.js",
       "config/**/*.json",
       "pinokio/**/*.js",

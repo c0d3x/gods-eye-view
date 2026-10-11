@@ -768,7 +768,6 @@
     "build/embed-framing.js": 8,
     "build/panel.js": 18,
     "build/vite.js": 7,
-    "node_modules/.pnpm/@meri-imperiumi+eccodes-wasm@2.48.2/node_modules/@meri-imperiumi/eccodes-wasm/wasm/eccodes.js": 42,
     "scripts/google-server-key.mjs": 3,
     "scripts/pinokio-environment.mjs": 5,
     "server/mcp/panelKey.js": 8,

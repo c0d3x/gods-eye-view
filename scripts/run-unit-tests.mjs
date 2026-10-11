@@ -48,7 +48,7 @@ export function unitTestFlags({ timeoutMs = UNIT_TEST_TIMEOUT_MS } = {}) {
 }
 
 /** Directories whose `*.test.mjs` files make up the unit suite. */
-export const UNIT_TEST_ROOTS = Object.freeze(['src', 'server']);
+export const UNIT_TEST_ROOTS = Object.freeze(['app', 'src', 'server']);
 
 /** Discover repository unit tests in stable path order. */
 export function discoverUnitTestFiles(root = process.cwd()) {
