@@ -66,6 +66,17 @@ configuration through the development app or environment file. Unknown API
 paths return JSON 404 responses. Vite preview is for checking a local build;
 it is not a production server.
 
+## Building the Mac app
+
+`pnpm run app:build` packages the app with Electron, signs it and makes a
+`.dmg`; `pnpm run app:smoke` launches the result and checks it;
+`pnpm run app:dev` runs it from the repository; `pnpm run app:notarize` and
+`pnpm run app:install` notarize and install it. The code lives in `app/`, the
+commands in `scripts/app.mjs`, and [docs/MAC-APP.md](docs/MAC-APP.md) has the
+details, including the environment variables that move the build and
+Electron's downloads to another drive. The app's unit tests run with
+`pnpm test`; building and the smoke test need a Mac.
+
 ## Feature regression gates
 
 Those three are the baseline, not the whole story. Most features also have a

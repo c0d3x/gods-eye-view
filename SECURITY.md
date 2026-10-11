@@ -110,6 +110,17 @@ God's Eye View's tools are also served to MCP clients: over stdio (`pnpm run mcp
 - **The panel carries the three browser keys.** The panel build (`pnpm run build:panel`) includes the same Google Maps key, Cesium ion token and Mapillary client token as the app, and they run inside the client's panel page, on the client's site. A key restricted by HTTP referrer must also allow that page, or the panel cannot load tiles. To keep the app's own keys narrower, build the panel with separately restricted keys in the environment of `pnpm run build:panel`.
 - **Embed mode is not framable by default.** `?embed=1` documents keep `X-Frame-Options: DENY` and `frame-ancestors 'none'` unless `GEV_EMBED_FRAME_ANCESTORS` names the pages that may frame them; a framing page can change what the app shows. Other documents can never be framed.
 
+## The Mac app
+
+The Mac app (`app/`, [docs/MAC-APP.md](docs/MAC-APP.md)) runs the same server in Electron's main process:
+
+- **Loopback only.** Its server binds 127.0.0.1 and keeps the Host check, the `/api` cross-site guard, no CORS and the private-path denials. Like the dev server, any program on the Mac can still call it, including `/mcp`: that is transport safety, not authentication.
+- **Keys.** Provider Settings saves keys as dotenv text encrypted with Electron's `safeStorage`, whose key the macOS Keychain holds, in a 0600 file under `~/Library/Application Support/God's Eye View/`. The app reads no `.env` file. Server-only keys stay in the main process.
+- **The three browser keys** (Google Maps, Cesium ion, Mapillary) reach the page through a same-origin, uncached script, `/gev-runtime-config.js`, instead of being baked into the build. That is the same exposure as the web build: restrict them as described above. The MCP panel gets them the same way.
+- **The window** runs with context isolation, the sandbox and no Node integration, and has no preload. It stays on the app's own origin; only http and https links leave it, in the default browser.
+- **Permissions** go only to the app's own page: the microphone (no camera), USB devices you pick in a chooser, geolocation, fullscreen and clipboard writes.
+- **Signing.** A signed build uses the hardened runtime with three entitlements: JIT for V8, audio input and USB. Nothing is written inside the signed bundle; caches go to `~/Library/Caches`. The app has no auto-update and is not published.
+
 ## Scope & expectations
 
 - The Vite server is a **development/preview** server. If you expose it beyond localhost, put it behind your own auth/proxy and review the bindings (see the threat model above).

@@ -152,6 +152,18 @@ See [docs/PERFORMANCE.md](docs/PERFORMANCE.md).
 **macOS shortcut:** `./scripts/dev-fresh.sh` clears the Vite cache and pulls any
 configured keys straight from the Keychain. It starts keyless too.
 
+### Path 3 — A Mac app (Apple Silicon)
+
+```bash
+pnpm run app:build
+pnpm run app:install
+```
+
+builds God's Eye View as a signed Mac app, with every feature, and copies it
+to `/Applications`. Keys are pasted in the app and kept encrypted by your
+Keychain. [docs/MAC-APP.md](docs/MAC-APP.md) covers signing, notarizing and
+installing it on your other Macs.
+
 ### Then power it up — in the app, not in a file
 
 Keys are upgrades, not prerequisites. When you want one, click the **POWER UP**

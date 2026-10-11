@@ -44,6 +44,16 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
     - The OpenAI and Google Places proxies are rate-limited by default.
     - The MCP server and embed mode are hardened.
 
+- A Mac app for Apple Silicon. `pnpm run app:build` packages God's Eye View
+  with Electron as a signed `.dmg`, with every feature, and
+  `pnpm run app:install` copies it to `/Applications`. Provider Settings works
+  in the app and keeps keys encrypted with a key the macOS Keychain holds;
+  the browser keys reach the page at runtime, so the build has none baked in.
+  The app asks for the microphone for voice and lets you pick the SDR
+  receiver's USB device. `pnpm run app:notarize` notarizes a build signed with
+  a Developer ID certificate. [docs/MAC-APP.md](docs/MAC-APP.md) has the
+  details. Provider Settings also lists the optional TfL app key.
+
 - `pnpm run typecheck` runs TypeScript 7 in strict mode over every browser
   and server module, and `pnpm run knip` finds files, exports and
   dependencies that nothing uses. CI runs both. Upstream's code was never
