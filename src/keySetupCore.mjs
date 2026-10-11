@@ -119,6 +119,14 @@ export const KEY_SETUP_KEYS = Object.freeze([
     envVars: Object.freeze(['LL2_API_TOKEN']),
     tier: 'free',
   }),
+  Object.freeze({
+    id: 'tfl',
+    title: 'TRANSPORT FOR LONDON',
+    unlocks: 'A higher request allowance for the London JamCams camera list',
+    getUrl: 'https://api-portal.tfl.gov.uk/',
+    envVars: Object.freeze(['TFL_APP_KEY']),
+    tier: 'free',
+  }),
 ]);
 
 /** Hostnames a Provider Settings request may arrive under or originate from. */
