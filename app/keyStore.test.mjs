@@ -32,7 +32,8 @@ test('an empty store reads as no keys', (t) => {
   const { store } = tempStore(t);
   assert.equal(store.name, KEY_STORE_NAME);
   assert.equal(store.read(), '');
-  assert.deepEqual(store.values(), {});
+  assert.equal(Object.getPrototypeOf(store.values()), null);
+  assert.deepEqual({ ...store.values() }, {});
 });
 
 test('saved keys are written encrypted, 0600, and read back', (t) => {
@@ -41,12 +42,15 @@ test('saved keys are written encrypted, 0600, and read back', (t) => {
   const raw = fs.readFileSync(file, 'utf8');
   assert.doesNotMatch(raw, /sk-test-123/, 'no key is on disk in plain text');
   assert.equal(fs.statSync(file).mode & 0o777, 0o600);
-  assert.deepEqual(store.values(), {
-    OPENAI_API_KEY: 'sk-test-123',
-    TFL_APP_KEY: 'abc',
-  });
+  assert.deepEqual(
+    { ...store.values() },
+    {
+      OPENAI_API_KEY: 'sk-test-123',
+      TFL_APP_KEY: 'abc',
+    },
+  );
   store.write('OPENAI_API_KEY=\n');
-  assert.deepEqual(store.values(), { OPENAI_API_KEY: '' });
+  assert.deepEqual({ ...store.values() }, { OPENAI_API_KEY: '' });
   assert.deepEqual(
     fs.readdirSync(path.dirname(file)),
     ['provider-keys.enc'],
@@ -72,7 +76,7 @@ test('a failed encryption leaves the previous keys in place', (t) => {
     decrypt: fakeCipher.decrypt,
   });
   assert.throws(() => failing.write('LL2_API_TOKEN=two\n'), /Keychain/);
-  assert.deepEqual(store.values(), { LL2_API_TOKEN: 'one' });
+  assert.deepEqual({ ...store.values() }, { LL2_API_TOKEN: 'one' });
   assert.deepEqual(fs.readdirSync(path.dirname(file)), ['provider-keys.enc']);
 });
 

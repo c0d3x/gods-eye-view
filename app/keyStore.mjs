@@ -75,8 +75,14 @@ export function createKeyStore({ file, encrypt, decrypt }) {
     name: KEY_STORE_NAME,
     read,
     write,
-    /** The saved values, by environment variable name. */
-    values: () => /** @type {Record<string, string>} */ (parseEnv(read())),
+    /**
+     * The saved values, by environment variable name, in an object without a
+     * prototype (as Node 26's parseEnv returns; Node 24's has one).
+     */
+    values: () =>
+      /** @type {Record<string, string>} */ (
+        Object.assign(Object.create(null), parseEnv(read()))
+      ),
   };
 }
 
