@@ -369,9 +369,7 @@ export async function initKeySetup({
   };
 
   const storeLabel = () =>
-    status?.store === 'pinokio-environment'
-      ? 'your app configuration'
-      : 'your local .env';
+    status?.store === 'env-file' ? 'your local .env' : 'your app configuration';
 
   const submitUpdates = async (updates, doneVerb) => {
     if (disposed || busy) return;

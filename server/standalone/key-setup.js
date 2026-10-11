@@ -70,8 +70,24 @@ const DEV_FRESH_EXTERNAL_KEYS_AT_BOOT = new Set(
  * and a guest must be able to neither write the host's .env nor probe which
  * keys exist. Prod builds never register this middleware (apply: 'serve'), so
  * the panel's status fetch fails and the client removes the whole surface.
+ *
+ * The Mac app (app/) passes its own `store` instead: dotenv text it keeps
+ * encrypted, which it treats as the only source of keys, as Pinokio does. It
+ * runs on a preview server, so with a store the endpoints install there too,
+ * and `onSaved` replaces the dev server's restart.
+ *
+ * @param {object} [options]
+ * @param {string} [options.sourceRoot]
+ * @param {{name: string, read: () => string, write: (text: string) => void}} [options.store]
+ *   `read` returns '' when nothing is saved yet and throws when the store
+ *   cannot be read.
+ * @param {() => void} [options.onSaved] Called after a save has been answered.
  */
-function keySetupEndpoint({ sourceRoot = defaultSourceRoot } = {}) {
+function keySetupEndpoint({
+  sourceRoot = defaultSourceRoot,
+  store,
+  onSaved,
+} = {}) {
   const respond = (res, statusCode, payload) => {
     res.statusCode = statusCode;
     res.setHeader('Content-Type', 'application/json');
@@ -94,7 +110,7 @@ function keySetupEndpoint({ sourceRoot = defaultSourceRoot } = {}) {
   // plain `pnpm run dev` to write the Pinokio store it never loaded.
   const pinokioManaged = () => LAUNCHER_AT_BOOT === 'pinokio';
   const storeName = () =>
-    pinokioManaged() ? 'pinokio-environment' : 'env-file';
+    store ? store.name : pinokioManaged() ? 'pinokio-environment' : 'env-file';
   const storePath = () =>
     path.join(
       sourceRoot,
@@ -107,6 +123,7 @@ function keySetupEndpoint({ sourceRoot = defaultSourceRoot } = {}) {
   // other provider key the user had configured.
   const readStore = () => {
     try {
+      if (store) return store.read();
       // The Pinokio launcher deliberately supports a UTF-16 ENVIRONMENT (a
       // Windows editor or the native Configure panel can write one). Reuse its
       // own encoding-aware decoder so a panel write can never mistake UTF-16
@@ -150,11 +167,12 @@ function keySetupEndpoint({ sourceRoot = defaultSourceRoot } = {}) {
   // provenance closes the equal-value ambiguity: an exported X remains
   // external even when the editable store independently contains X.
   const isExternallyManaged = (name, inStore) => {
-    const wasExternalAtBoot = pinokioManaged()
-      ? false
-      : LAUNCHER_AT_BOOT === 'dev-fresh'
-        ? DEV_FRESH_EXTERNAL_KEYS_AT_BOOT.has(name)
-        : PROVIDER_ENV_AT_BOOT[name] !== '';
+    const wasExternalAtBoot =
+      store || pinokioManaged()
+        ? false
+        : LAUNCHER_AT_BOOT === 'dev-fresh'
+          ? DEV_FRESH_EXTERNAL_KEYS_AT_BOOT.has(name)
+          : PROVIDER_ENV_AT_BOOT[name] !== '';
     return isKeySetupExternallyManaged({
       effectiveValue: process.env[name],
       storedValue: inStore[name],
@@ -181,6 +199,7 @@ function keySetupEndpoint({ sourceRoot = defaultSourceRoot } = {}) {
   // where writeFileSync leaves a 0644 file holding a real key before any later
   // chmod, and the truncate-in-place data-loss path.
   const persistStore = (text) => {
+    if (store) return store.write(text);
     const filepath = storePath();
     // Never write THROUGH a symlink into a credential path.
     try {
@@ -236,15 +255,23 @@ function keySetupEndpoint({ sourceRoot = defaultSourceRoot } = {}) {
       throw error;
     }
   };
-  return {
+  const plugin = {
     name: 'gev-key-setup',
     // serve AND not preview: `vite preview` resolves with command 'serve' too,
-    // so a bare apply:'serve' would still configure under preview. The endpoints
-    // only install via configureServer (never configurePreviewServer), so they
-    // are absent from preview today — but pinning apply here makes that a
-    // guarantee rather than an accident of which hook a future edit uses.
+    // so a bare apply:'serve' would still configure under preview. Without a
+    // store the endpoints install only via configureServer, so they are absent
+    // from preview — and pinning apply here makes that a guarantee rather than
+    // an accident of which hook a future edit uses. The Mac app's store is the
+    // one case that serves them from a preview server.
     apply: (_config, { command, isPreview }) =>
-      command === 'serve' && !isPreview,
+      command === 'serve' && (!isPreview || Boolean(store)),
+    // Only the Mac app's plugin has a preview hook at all.
+    ...(store && {
+      /** @param {import('vite').PreviewServer} server */
+      configurePreviewServer(server) {
+        plugin.configureServer(server);
+      },
+    }),
     configureServer(server) {
       server.middlewares.use('/api/setup/status', (req, res) => {
         if (req.method !== 'GET')
@@ -326,6 +353,7 @@ function keySetupEndpoint({ sourceRoot = defaultSourceRoot } = {}) {
           // One deliberate restart, after the response has flushed. Vite's own
           // .env watcher may fire too; a second queued restart is harmless.
           setTimeout(() => {
+            if (onSaved) return onSaved();
             server.restart().catch((error) => {
               console.warn(
                 '[KeySetup] Dev-server restart failed:',
@@ -337,6 +365,7 @@ function keySetupEndpoint({ sourceRoot = defaultSourceRoot } = {}) {
       });
     },
   };
+  return plugin;
 }
 
 export { keySetupEndpoint };
