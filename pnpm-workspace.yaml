@@ -22,3 +22,8 @@ overrides:
   # engines in the dev bundle. 14.3.0 shipped with 1.138.0 (see Cesium's pin
   # in package.json).
   '@cesium/widgets': 14.3.0
+  # Optional proxy support for @electron/get's Electron downloads. Its logger
+  # pulls in sprintf-js, which has an advisory with no fixed version
+  # (GHSA-hp3w-g68c-fv3c). The app build uses the Electron already in
+  # node_modules, and @electron/get works without it.
+  '@electron/get>global-agent': '-'
