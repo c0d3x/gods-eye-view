@@ -76,7 +76,7 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
   `package.json`, whether `ws` loads, whether the dev server's port is free,
   Lefthook's Git hook, Chrome for the QA scripts, and the OpenSky settings.
   It lists the optional TfL app key too, and a `.node-version` file names
-  Node 24.14.0 for version managers.
+  Node 24.22.1 for version managers.
 
 - `pnpm run qa:setup` downloads Puppeteer's Chrome for Testing for the QA
   harnesses, `pnpm run test:track` and `tools/cesium-render.mjs`.
@@ -165,6 +165,12 @@ behavior, see [`docs/CURRENT-STATE.md`](docs/CURRENT-STATE.md).
 - `CHANGELOG.md` keeps the fork's version through upstream merges (a
   `merge=ours` rule in `.gitattributes`), and CodeQL leaves out unit tests and
   the QA harnesses.
+
+- God's Eye View needs Node 24.22.1 or later on Node 24, or 26.12.1 or later
+  on Node 26. `.node-version`, CI and the release and QA workflows use
+  24.22.1, and the setup doctor calls an older Node 24 too old. Electron moves
+  to 44.8.0, ws to 8.22.0 and pnpm to 11.28.6, with minor and patch updates
+  to the development tools.
 
 ### Removed
 

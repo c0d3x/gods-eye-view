@@ -246,7 +246,7 @@ test('CI checks the baselines once, against the commit before the change', () =>
   );
   assert.ok(step.length < verify.length, 'the step is in the verify job');
   const body = step.slice(0, step.indexOf('\n      - name:'));
-  assert.match(body, /if: matrix\.node == '24\.14\.0'/);
+  assert.match(body, /if: matrix\.node == '24\.22\.1'/);
   assert.match(body, /github\.event\.pull_request\.base\.sha/);
   assert.match(body, /github\.event\.before/);
   assert.match(body, /'HEAD\^'/);

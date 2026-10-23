@@ -124,9 +124,10 @@ Version 8.2 fixes the launcher installation issue;
 
 ### Path 2 — Terminal / coding agent
 
-Use **Node.js 24.x (24.14.0 or later) or 26.x** with **pnpm 11** (for example
+Use **Node.js 24.x (24.22.1 or later) or 26.x (26.12.1 or later)** with
+**pnpm 11** (for example
 `npm install --global pnpm@11`; pnpm then switches to the version the project
-pins). Version managers that read `.node-version` take Node 24.14.0 from it.
+pins). Version managers that read `.node-version` take Node 24.22.1 from it.
 The setup doctor warns about Node 25, which is end-of-life.
 
 ```bash

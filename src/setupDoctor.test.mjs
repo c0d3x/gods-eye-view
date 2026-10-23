@@ -49,7 +49,7 @@ function reportWith(overrides = {}) {
   const credentials = overrides.credentials || unconfigured();
   return {
     ready: true,
-    node: { version: '24.14.0', level: 'ok', summary: 'supported' },
+    node: { version: '24.22.1', level: 'ok', summary: 'supported' },
     pnpm: {
       available: true,
       version: '11.26.0',
@@ -122,7 +122,10 @@ const LOCKFILE = [
 ].join('\n');
 
 test('doctor distinguishes supported, usable EOL, and unsupported Node versions', () => {
-  assert.equal(classifyNodeVersion('24.14.0').level, 'ok');
+  assert.equal(classifyNodeVersion('24.22.1').level, 'ok');
+  assert.equal(classifyNodeVersion('24.23.0').level, 'ok');
+  assert.equal(classifyNodeVersion('24.22.0').level, 'error');
+  assert.equal(classifyNodeVersion('24.14.0').level, 'error');
   assert.equal(classifyNodeVersion('26.1.0').level, 'ok');
   assert.equal(classifyNodeVersion('25.6.1').level, 'warn');
   assert.match(classifyNodeVersion('25.6.1').summary, /usable but EOL/);
@@ -404,7 +407,7 @@ test('doctor describes the credential ladder without exposing values', () => {
   const pinokioReport = formatSetupReport(
     {
       ready: true,
-      node: { version: '24.14.0', level: 'ok', summary: 'supported' },
+      node: { version: '24.22.1', level: 'ok', summary: 'supported' },
       pnpm: { available: true, version: '11.26.0' },
       dependenciesInstalled: true,
       credentials,
@@ -444,7 +447,7 @@ test('doctor sends Keychain-backed reports to dev-fresh and describes OpenSky as
   const capabilities = buildCapabilitySummary(credentials);
   const output = formatSetupReport({
     ready: true,
-    node: { level: 'ok', version: '24.14.0', summary: 'supported' },
+    node: { level: 'ok', version: '24.22.1', summary: 'supported' },
     pnpm: { available: true, version: '11.26.0' },
     dependenciesInstalled: true,
     capabilities,
@@ -475,7 +478,7 @@ test('doctor never calls a dependency-missing setup ready', () => {
   );
   const output = formatSetupReport({
     ready: false,
-    node: { level: 'ok', version: '24.14.0', summary: 'supported' },
+    node: { level: 'ok', version: '24.22.1', summary: 'supported' },
     pnpm: { available: true, version: '11.26.0' },
     dependenciesInstalled: false,
     capabilities: buildCapabilitySummary(credentials),

@@ -10,17 +10,18 @@ the project Bilawal Sidhu created. It merges upstream's changes regularly;
 
 ## Getting set up
 
-Use Node.js 24.14.x or 26.x (also enforced by `package.json`) and pnpm 11.
+Use Node.js 24.22.1 or later 24.x, or 26.12.1 or later 26.x (also enforced by
+`package.json`), and pnpm 11.
 Once pnpm is installed (for example with `npm install --global pnpm@11`), it
 switches to the exact version pinned in `package.json`. Version managers that
-read `.node-version` (fnm, mise, nodenv, asdf) take Node 24.14.0 from it; nvm
+read `.node-version` (fnm, mise, nodenv, asdf) take Node 24.22.1 from it; nvm
 reads only `.nvmrc`, so use the commands below.
 
 ```bash
 git clone https://github.com/c0d3x/gods-eye-view.git
 cd gods-eye-view
-nvm install 24.14.0
-nvm use 24.14.0
+nvm install 24.22.1
+nvm use 24.22.1
 pnpm install
 pnpm run doctor
 ./scripts/dev-fresh.sh        # or: pnpm run dev (keys are optional)
